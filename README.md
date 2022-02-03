@@ -1,2 +1,2 @@
-# jbi
-Jira Bugzilla Integration (JBI) - system to sync bugs and issues
+# Jira Bugzilla Integration (JBI)
+System to sync bugs and issues
