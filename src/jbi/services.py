@@ -3,4 +3,4 @@
 
 
 def get_service(param=None):
-    return None
+    return param

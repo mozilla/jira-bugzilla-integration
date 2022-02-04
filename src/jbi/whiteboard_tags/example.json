@@ -3,5 +3,8 @@
     "action": "example_action",
     "whiteboard_tag": "example",
     "project_key": "EXMPL",
-    "example_field": {"yes":1, "no":0}
+    "example_field": {
+        "yes": 1,
+        "no": 0
+    }
 }

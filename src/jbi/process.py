@@ -1,9 +1,9 @@
-from core.config import per_file_process, process_all_files_in_path
-from jbi import whiteboard_actions
+from src.core.config import per_file_process, process_all_files_in_path
+from src.jbi import whiteboard_actions
 
-action_key = "jbi"
+ACTION_KEY = "jbi"
 actions = whiteboard_actions
-jbi_folder_path = "jbi/whiteboard_tags/"
+JBI_FOLDER_PATH = "jbi/whiteboard_tags/"
 
 
 def jbi_config_process(filename: str):
@@ -15,12 +15,11 @@ def jbi_config_process(filename: str):
         ret_dict=default_dict,
         required_keys=req_keys,
         filename_key=filename_key,
-        action_key=action_key
+        action_key=ACTION_KEY,
     )
 
 
 def jbi_config_map():
     return process_all_files_in_path(
-        folder_path=jbi_folder_path,
-        process=jbi_config_process
+        folder_path=JBI_FOLDER_PATH, process=jbi_config_process
     )

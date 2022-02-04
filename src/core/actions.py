@@ -1,20 +1,14 @@
 from inspect import getmembers, isfunction, ismodule
-from jbi import process as jbi_process
 
-module_dict = {
-    jbi_process.action_key: jbi_process.actions
-}
+from src.jbi import process as jbi_process
 
-_action_context = {}
+module_dict = {jbi_process.ACTION_KEY: jbi_process.actions}
 
 
 def get_action_context_by_key(key):
-    global _action_context
     if key not in module_dict:
         assert False, "Unknown key requested"
-    if key not in _action_context.keys():
-        _action_context[key] = get_action_context_from_module(action_module=module_dict.get(module_dict))
-    return _action_context[key]
+    return get_action_context_from_module(action_module=module_dict.get(module_dict))
 
 
 def get_action_context_from_module(action_module):
@@ -23,7 +17,10 @@ def get_action_context_from_module(action_module):
         print(module)
         methods = getmembers(module, isfunction)
         for method_name, method in methods:
-            assert method_name not in context_map.keys(), f"ACTION ERROR: Action with name  `{method_name}` already exists."
+            assert (
+                method_name
+                not in context_map.keys()  # pylint: disable=consider-iterating-dictionary
+            ), f"ACTION ERROR: Action with name  `{method_name}` already exists."
             context_map[method_name] = method
 
     return context_map

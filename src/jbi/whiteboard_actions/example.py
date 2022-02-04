@@ -1,5 +1,5 @@
 def example_action(data):
-    pass
+    print(data)
 
 
 def example_helper():
