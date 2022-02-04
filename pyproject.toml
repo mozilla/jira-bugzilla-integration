@@ -1,8 +1,8 @@
 [tool.poetry]
-name = "jbi"
+name = "jira-bugzilla-integration"
 version = "0.1.0"
 description = "jira-bugzilla-integration"
-authors = ["Your Name <you@example.com>"]
+authors = ["@mozilla/jbi-core"]
 license = "MPL"
 
 [tool.poetry.dependencies]
