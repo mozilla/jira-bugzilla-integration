@@ -1,8 +1,11 @@
 # Default actions below
-from jira-bugzilla-integration.jbi import services
+from jbi import services
+
 
 def default_action(data):
-	pass
+    svc = services.get_service(None)
+    pass
+
 
 def default_helper():
-	pass
+    pass

@@ -1,2 +1,6 @@
-#import bugzilla
-#import jira
+# import bugzilla
+# import jira
+
+
+def get_service(param=None):
+    return None
