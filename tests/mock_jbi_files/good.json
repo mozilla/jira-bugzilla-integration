@@ -1,0 +1,6 @@
+{
+    "enabled": true,
+    "action": "default_action",
+    "whiteboard_tag": "good",
+    "jira_project_key": "JBI"
+}

@@ -7,20 +7,20 @@ from src.core import actions
 
 
 def per_file_process(
-    filename: str, ret_dict: dict, required_keys, action_key, filename_key=""
+    filename: str, ret_dict: dict, required_keys, action_key, filename_key
 ) -> Tuple:
     with open(filename, encoding="utf-8") as file:
         data = json.load(file)
         ret_dict.update(data)
+        print(ret_dict)
+        if not ret_dict.get("enabled"):
+            # Only process enabled files
+            return None, None
 
         action = ret_dict.get("action")
         known_actions = actions.get_action_context_by_key(key=action_key)
         if action not in known_actions:
             assert False, f"CONFIG ERROR: Unknown action `{action}`."
-
-        if not ret_dict.get("enabled"):
-            # Only process enabled files
-            return None, None
 
         for key_str in required_keys:
             key_value = ret_dict.get(key_str)
@@ -29,7 +29,7 @@ def per_file_process(
             ), f"CONFIG ERROR: Required field `{key_str}` not found."
 
         ret_key = ret_dict.get(filename_key)
-        assert (ret_key is not None and ret_key in filename) or (filename_key == ""), (
+        assert ret_key is not None and ret_key in filename, (
             f"CONFIG ERROR: Filename should contain value within key `{filename_key}`. The "
             f"value {ret_key} from the key is expected to be in the filename. "
         )
@@ -57,6 +57,5 @@ def process_all_files_in_path(
             errors.append(exception)
 
     if errors:
-        # Fail.
-        assert False
+        assert False, f"PROCESS ERROR: errors exist: {errors}"
     return config_map

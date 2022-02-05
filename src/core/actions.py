@@ -8,7 +8,8 @@ module_dict = {jbi_process.ACTION_KEY: jbi_process.actions}
 def get_action_context_by_key(key):
     if key not in module_dict:
         assert False, "Unknown key requested"
-    return get_action_context_from_module(action_module=module_dict.get(module_dict))
+    requested_module = module_dict.get(key)
+    return get_action_context_from_module(action_module=requested_module)
 
 
 def get_action_context_from_module(action_module):
