@@ -12,7 +12,6 @@ def per_file_process(
     with open(filename, encoding="utf-8") as file:
         data = json.load(file)
         ret_dict.update(data)
-        print(ret_dict)
         if not ret_dict.get("enabled"):
             # Only process enabled files
             return None, None
@@ -26,7 +25,7 @@ def per_file_process(
             key_value = ret_dict.get(key_str)
             assert (
                 key_value is not None
-            ), f"CONFIG ERROR: Required field `{key_str}` not found."
+            ), f"CONFIG ERROR: Required field `{key_str}` not found in {filename}."
 
         ret_key = ret_dict.get(filename_key)
         assert ret_key is not None and ret_key in filename, (

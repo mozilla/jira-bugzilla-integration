@@ -3,7 +3,7 @@ from src.jbi import whiteboard_actions
 
 ACTION_KEY = "jbi"
 actions = whiteboard_actions
-JBI_FOLDER_PATH = "jbi/whiteboard_tags/"
+JBI_FOLDER_PATH = "src/jbi/whiteboard_tags/"
 
 
 def jbi_config_process(filename: str):
