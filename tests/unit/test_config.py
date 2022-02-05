@@ -61,6 +61,22 @@ def test_file_processing_enabled_file():
     assert "action" in value.keys()
 
 
+def test_file_processing_enabled_file_unknown_action():
+    action_key = "test"
+    default_dict = {"action": "test_action"}
+    req_keys = ["enabled"]
+    filename = "tests/unit/mock_config_files/unknown_action.json"
+    actions.module_dict[action_key] = mock_actions
+    with pytest.raises(AssertionError):
+        per_file_process(
+            filename=filename,
+            required_keys=req_keys,
+            ret_dict=default_dict,
+            action_key=action_key,
+            filename_key="filename",
+        )
+
+
 def test_config_path_throws_exception():
     def raise_except(filename):
         raise Exception
@@ -93,7 +109,12 @@ def test_config_path_processing_success():
     )
     assert processed, "The process should return a dictionary"
     for key, value in processed.items():
-        assert key in ["enabled.json", "disabled.json", "empty.json"]
+        assert key in [
+            "enabled.json",
+            "disabled.json",
+            "empty.json",
+            "unknown_action.json",
+        ]
         assert value
         assert value.get("inner_key")
         assert "tests/unit/mock_config_files/" in value.get("inner_key")
