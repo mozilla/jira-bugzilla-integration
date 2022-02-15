@@ -1,4 +1,4 @@
-from src.core import config
+from src.core import configurator
 from src.jbi import whiteboard_actions
 
 ACTION_KEY = "jbi"
@@ -10,7 +10,7 @@ def jbi_config_process(filename: str):
     default_dict = {"action": "default_action", "enabled": True}
     filename_key = "whiteboard_tag"
     req_keys = ["jira_project_key", filename_key]
-    return config.per_file_process(
+    return configurator.per_file_process(
         filename,
         ret_dict=default_dict,
         required_keys=req_keys,
@@ -20,6 +20,6 @@ def jbi_config_process(filename: str):
 
 
 def jbi_config_map():
-    return config.process_all_files_in_path(
+    return configurator.process_all_files_in_path(
         folder_path=JBI_FOLDER_PATH, process=jbi_config_process
     )

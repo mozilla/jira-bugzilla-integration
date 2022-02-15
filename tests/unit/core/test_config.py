@@ -1,8 +1,8 @@
 # pylint: disable=cannot-enumerate-pytest-fixtures
 import pytest
 
-from src.core.config import actions, per_file_process, process_all_files_in_path
-from tests.unit import mock_actions
+from src.core.configurator import actions, per_file_process, process_all_files_in_path
+from tests.unit.core import mock_actions
 
 
 def test_file_processing_empty_file():
@@ -12,7 +12,7 @@ def test_file_processing_empty_file():
     default_dict = {"action": "test_action"}
     req_keys = ["enabled"]
 
-    filename = "tests/unit/mock_config_files/empty.json"
+    filename = "tests/unit/core/mock_config_files/empty.json"
 
     key, value = per_file_process(
         filename=filename,
@@ -29,7 +29,7 @@ def test_file_processing_disabled_file():
     action_key = "test"
     default_dict = {"action": "test_action"}
     req_keys = ["enabled"]
-    filename = "tests/unit/mock_config_files/disabled.json"
+    filename = "tests/unit/core/mock_config_files/disabled.json"
     actions.module_dict[action_key] = mock_actions
     key, value = per_file_process(
         filename=filename,
@@ -46,7 +46,7 @@ def test_file_processing_enabled_file():
     action_key = "test"
     default_dict = {"action": "test_action"}
     req_keys = ["enabled"]
-    filename = "tests/unit/mock_config_files/enabled.json"
+    filename = "tests/unit/core/mock_config_files/enabled.json"
     actions.module_dict[action_key] = mock_actions
     key, value = per_file_process(
         filename=filename,
@@ -65,7 +65,7 @@ def test_file_processing_enabled_file_unknown_action():
     action_key = "test"
     default_dict = {"action": "test_action"}
     req_keys = ["enabled"]
-    filename = "tests/unit/mock_config_files/unknown_action.json"
+    filename = "tests/unit/core/mock_config_files/unknown_action.json"
     actions.module_dict[action_key] = mock_actions
     with pytest.raises(AssertionError):
         per_file_process(
@@ -83,7 +83,7 @@ def test_config_path_throws_exception():
 
     with pytest.raises(AssertionError):
         process_all_files_in_path(
-            folder_path="tests/unit/mock_config_files/", process=raise_except
+            folder_path="tests/unit/core/mock_config_files/", process=raise_except
         )
 
 
@@ -92,7 +92,7 @@ def test_config_path_processing_none():
         return None, None
 
     processed = process_all_files_in_path(
-        folder_path="tests/unit/mock_config_files/", process=no_key_value
+        folder_path="tests/unit/core/mock_config_files/", process=no_key_value
     )
     assert (
         not processed
@@ -105,7 +105,7 @@ def test_config_path_processing_success():
         return slug, {"inner_key": filename}
 
     processed = process_all_files_in_path(
-        folder_path="tests/unit/mock_config_files/", process=random_key_value
+        folder_path="tests/unit/core/mock_config_files/", process=random_key_value
     )
     assert processed, "The process should return a dictionary"
     for key, value in processed.items():
@@ -117,4 +117,4 @@ def test_config_path_processing_success():
         ]
         assert value
         assert value.get("inner_key")
-        assert "tests/unit/mock_config_files/" in value.get("inner_key")
+        assert "tests/unit/core/mock_config_files/" in value.get("inner_key")

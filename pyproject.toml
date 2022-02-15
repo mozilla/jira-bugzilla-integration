@@ -7,6 +7,9 @@ license = "MPL"
 
 [tool.poetry.dependencies]
 python = ">=3.8, <3.11"
+fastapi = "^0.73.0"
+pydantic = "^1.9.0"
+uvicorn = {extras = ["standard"], version = "^0.17.4"}
 
 [tool.poetry.dev-dependencies]
 pre-commit = "^2.17.0"
@@ -33,7 +36,10 @@ testpaths = [
     [tool.pylint.'MESSAGES CONTROL']
     disable = [
         "C0114", #missing-module-docstring
+        "C0115", #missing-class-docstring
         "C0116", #missing-function-docstring
+        "R0903", #too-few-public-methods
+        "W0613", #unused-argument
     ]
     [tool.pylint.REPORTS]
     output-format = 'colorized'
