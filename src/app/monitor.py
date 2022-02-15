@@ -13,10 +13,9 @@ def heartbeat(request: Request, settings: environment.Settings):
     """Return status of backing services, as required by Dockerflow."""
     data: Dict = {}
     data.update(jbi_service_health_map(settings))
-
     status_code = 200
     for _, health in data.items():
-        if not health["up"]:
+        if not health.get("up"):
             status_code = 503
 
     return JSONResponse(content=data, status_code=status_code)

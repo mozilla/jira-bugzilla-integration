@@ -21,7 +21,7 @@ def get_version():
     Return contents of version.json.
     This has generic data in repo, but gets the build details in CI.
     """
-    _root = os.path.dirname(os.path.dirname(__file__))
+    _root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
     version_path = os.path.join(_root, "version.json")
     info = {}
     if os.path.exists(version_path):
