@@ -6,7 +6,10 @@ settings = environment.get_settings()
 
 
 def jbi_config_process(filename: str):
-    default_dict = {"action": "default_action", "enabled": True}
+    default_dict = {
+        "action": "default_action",
+        "enabled": True,
+    }  # Could be migrated to a json file
     filename_key = "whiteboard_tag"
     req_keys = ["jira_project_key", filename_key]
     return configurator.per_file_process(
