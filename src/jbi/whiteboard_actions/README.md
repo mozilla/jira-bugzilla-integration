@@ -1,6 +1,6 @@
 ## Looking to add a new action?
 "actions" are python functions that, once added into `whiteboard_actions/__init__.py` (from a new module),
-can be run by modifying the json config file to call the new named actions.
+can be run by updating the `action` attribute of the json config file.
 
 ### Create a new action...
 Let's create a `new_action`!
