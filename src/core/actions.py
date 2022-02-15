@@ -1,6 +1,6 @@
 from inspect import getmembers, isfunction, ismodule
 
-from src.jbi import process as jbi_process
+from src.jbi import configuration as jbi_process
 
 module_dict = {jbi_process.ACTION_KEY: jbi_process.actions}
 

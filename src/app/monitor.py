@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 
 from src.app import environment
 
-router = APIRouter(tags=["dockerflow"])
+api_router = APIRouter(tags=["dockerflow"])
 
 
 def check_bugzilla(settings):
@@ -26,7 +26,7 @@ def heartbeat(request: Request, settings: environment.Settings):
     return JSONResponse(content=data, status_code=status_code)
 
 
-@router.get("/__heartbeat__", tags=["Platform"])
+@api_router.get("/__heartbeat__", tags=["Platform"])
 def get_heartbeat(
     request: Request,
     settings: environment.Settings = Depends(environment.get_settings),
@@ -34,7 +34,7 @@ def get_heartbeat(
     return heartbeat(request, settings)
 
 
-@router.head("/__heartbeat__", tags=["Platform"])
+@api_router.head("/__heartbeat__", tags=["Platform"])
 def head_heartbeat(
     request: Request,
     settings: environment.Settings = Depends(environment.get_settings),
@@ -47,17 +47,17 @@ def lbheartbeat(request: Request):
     return {"status": "OK"}
 
 
-@router.get("/__lbheartbeat__", tags=["Platform"])
+@api_router.get("/__lbheartbeat__", tags=["Platform"])
 def get_lbheartbeat(request: Request):
     return lbheartbeat(request)
 
 
-@router.head("/__lbheartbeat__", tags=["Platform"])
+@api_router.head("/__lbheartbeat__", tags=["Platform"])
 def head_lbheartbeat(request: Request):
     return lbheartbeat(request)
 
 
-@router.get("/__version__", tags=["Platform"])
+@api_router.get("/__version__", tags=["Platform"])
 def version():
     """Return version.json, as required by Dockerflow."""
     return environment.get_version()

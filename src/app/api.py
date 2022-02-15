@@ -2,7 +2,8 @@ import uvicorn  # type: ignore
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
 
-from src.app import monitor
+from src.app.monitor import api_router as monitor_router
+from src.jbi.router import api_router as jbi_router
 
 app = FastAPI(
     title="Jira Bugzilla Integration (JBI)",
@@ -10,7 +11,8 @@ app = FastAPI(
     version="0.1.0",
 )
 
-app.include_router(monitor.router)
+app.include_router(monitor_router)
+app.include_router(jbi_router)
 
 
 @app.get("/", include_in_schema=False)
@@ -21,11 +23,6 @@ def root(request: Request):
         - **redirect**: Redirects call to ./docs
     """
     return RedirectResponse(url="./docs")
-
-
-@app.get("/bugzilla_webhook")
-def bugzilla_webhook(request: Request):
-    pass
 
 
 if __name__ == "__main__":
