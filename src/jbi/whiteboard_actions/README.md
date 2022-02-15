@@ -2,9 +2,9 @@
 "actions" are python functions that, once added into `whiteboard_actions/__init__.py` (from a new module),
 can be run by modifying the json config file to call the new named actions.
 
-# When an action is triggered...
+### Create a new action...
 Let's create a `new_action`!
-1. First, add a new python file called "my_team_actions".
+1. First, add a new python file called "my_team_actions" in the `src/jbi/whiteboard_actions/` dir.
 1. Add a python function to new "my_team_actions" module, let's use the following:
     ```python
     def unique_process(data,context):
