@@ -6,10 +6,8 @@ from pydantic import BaseSettings
 
 
 class Settings(BaseSettings):
-    # Environment Variables with prefix "jbi_"
-
-    class Config:
-        env_prefix = "jbi_"
+    jbi_action_key: str = "jbi"
+    jbi_folder_path: str = "src/jbi/whiteboard_tags/"
 
 
 @lru_cache()

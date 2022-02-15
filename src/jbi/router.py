@@ -9,7 +9,7 @@ def execute_request(request, settings):
     pass
 
 
-@api_router.get("/bugzilla_webhook", tags=["Platform"])
+@api_router.get("/bugzilla_webhook")
 def bugzilla_webhook(
     request: Request,
     settings: environment.Settings = Depends(environment.get_settings),

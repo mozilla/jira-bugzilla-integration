@@ -1,8 +1,10 @@
 from inspect import getmembers, isfunction, ismodule
+from typing import Dict
 
-from src.jbi import configuration as jbi_process
+from src.jbi.configuration import jbi_action_map
 
-module_dict = {jbi_process.ACTION_KEY: jbi_process.actions}
+module_dict: Dict = {}
+module_dict.update(jbi_action_map())
 
 
 def get_action_context_by_key(key):

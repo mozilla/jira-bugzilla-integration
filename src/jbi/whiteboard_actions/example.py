@@ -1,4 +1,4 @@
-def example_action(data):
+def example_action(data, context):
     print(data)
 
 

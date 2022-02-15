@@ -1,32 +1,28 @@
+from typing import Dict
+
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
 from src.app import environment
+from src.jbi.services import jbi_service_health_map
 
-api_router = APIRouter(tags=["dockerflow"])
-
-
-def check_bugzilla(settings):
-    pass
-
-
-def check_jira(settings):
-    pass
+api_router = APIRouter(tags=["Platform", "dockerflow"])
 
 
 def heartbeat(request: Request, settings: environment.Settings):
     """Return status of backing services, as required by Dockerflow."""
-    data = {"jira": check_jira(settings), "bugzilla": check_bugzilla(settings)}
+    data: Dict = {}
+    data.update(jbi_service_health_map(settings))
+
     status_code = 200
-    if not data["jira"]["up"]:
-        status_code = 503
-    if not data["bugzilla"]["up"]:
-        status_code = 503
+    for _, health in data.items():
+        if not health["up"]:
+            status_code = 503
 
     return JSONResponse(content=data, status_code=status_code)
 
 
-@api_router.get("/__heartbeat__", tags=["Platform"])
+@api_router.get("/__heartbeat__")
 def get_heartbeat(
     request: Request,
     settings: environment.Settings = Depends(environment.get_settings),
@@ -34,7 +30,7 @@ def get_heartbeat(
     return heartbeat(request, settings)
 
 
-@api_router.head("/__heartbeat__", tags=["Platform"])
+@api_router.head("/__heartbeat__")
 def head_heartbeat(
     request: Request,
     settings: environment.Settings = Depends(environment.get_settings),
@@ -47,17 +43,17 @@ def lbheartbeat(request: Request):
     return {"status": "OK"}
 
 
-@api_router.get("/__lbheartbeat__", tags=["Platform"])
+@api_router.get("/__lbheartbeat__")
 def get_lbheartbeat(request: Request):
     return lbheartbeat(request)
 
 
-@api_router.head("/__lbheartbeat__", tags=["Platform"])
+@api_router.head("/__lbheartbeat__")
 def head_lbheartbeat(request: Request):
     return lbheartbeat(request)
 
 
-@api_router.get("/__version__", tags=["Platform"])
+@api_router.get("/__version__")
 def version():
     """Return version.json, as required by Dockerflow."""
     return environment.get_version()

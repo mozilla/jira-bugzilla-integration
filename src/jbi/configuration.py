@@ -1,9 +1,8 @@
+from src.app import environment
 from src.core import configurator
 from src.jbi import whiteboard_actions
 
-ACTION_KEY = "jbi"
-actions = whiteboard_actions
-JBI_FOLDER_PATH = "src/jbi/whiteboard_tags/"
+settings = environment.get_settings()
 
 
 def jbi_config_process(filename: str):
@@ -15,11 +14,15 @@ def jbi_config_process(filename: str):
         ret_dict=default_dict,
         required_keys=req_keys,
         filename_key=filename_key,
-        action_key=ACTION_KEY,
+        action_key=settings.jbi_action_key,
     )
 
 
 def jbi_config_map():
     return configurator.process_all_files_in_path(
-        folder_path=JBI_FOLDER_PATH, process=jbi_config_process
+        folder_path=settings.jbi_folder_path, process=jbi_config_process
     )
+
+
+def jbi_action_map():
+    return {settings.jbi_action_key: whiteboard_actions}
