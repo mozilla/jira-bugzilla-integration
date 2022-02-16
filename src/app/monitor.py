@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from src.app import environment
 from src.jbi.services import jbi_service_health_map
 
-api_router = APIRouter(tags=["Platform", "dockerflow"])
+api_router = APIRouter(tags=["Monitor"])
 
 
 def heartbeat(request: Request, settings: environment.Settings):

@@ -1,4 +1,4 @@
 from .default import *
 from .example import *
 
-# Add new action modules here!
+# Add new JBI action modules here!

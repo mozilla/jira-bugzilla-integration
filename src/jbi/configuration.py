@@ -1,5 +1,5 @@
 from src.app import environment
-from src.core import configurator
+from src.core import actions, configurator
 from src.jbi import whiteboard_actions
 
 settings = environment.get_settings()
@@ -29,3 +29,6 @@ def jbi_config_map():
 
 def jbi_action_map():
     return {settings.jbi_action_key: whiteboard_actions}
+
+
+actions.module_dict.update(jbi_action_map())
