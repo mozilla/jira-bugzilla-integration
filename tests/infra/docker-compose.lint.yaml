@@ -1,0 +1,14 @@
+version: "3.8"
+services:
+  lint:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile
+      target: lint
+    volumes:
+      - type: bind
+        source: .
+        target: /app
+    # Let the init system handle signals for us.
+    # among other things this helps shutdown be fast
+    init: true

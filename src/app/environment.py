@@ -8,6 +8,8 @@ from pydantic import BaseSettings
 class Settings(BaseSettings):
     jbi_action_key: str = "jbi"
     jbi_folder_path: str = "src/jbi/whiteboard_tags/"
+    port: str = "80"
+    app_reload: bool = True
 
 
 @lru_cache()
