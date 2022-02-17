@@ -15,7 +15,7 @@ def get_action_context_by_key(key):
 def get_action_context_from_module(action_module):
     context_map = {}
     for _, module in getmembers(action_module, ismodule):
-        print(module)
+        # print(module)
         methods = getmembers(module, isfunction)
         for method_name, method in methods:
             assert (
