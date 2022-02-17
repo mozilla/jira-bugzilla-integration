@@ -14,6 +14,3 @@ services:
     # Let the init system handle signals for us.
     # among other things this helps shutdown be fast
     init: true
-#    env_file:
-#      - ./infra/config/local_dev.env
-#      - .env
