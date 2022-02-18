@@ -1,0 +1,6 @@
+{
+    "whiteboard_tag": "@WHITEBOARD_TAG@",
+    "jira_project_key": "@JIRA_PROJECT_KEY@",
+    "action": "@ACTION@",
+    "enabled": "@ENABLED@"
+}

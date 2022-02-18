@@ -49,6 +49,8 @@ def process_all_files_in_path(
 
     for filename in glob.glob(os.path.join(folder_path, "*.json")):
         try:
+            if "TEMPLATE" in filename:
+                continue
             key, value = process(filename)
             if key:
                 config_map[key] = value

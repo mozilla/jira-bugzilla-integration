@@ -18,6 +18,8 @@ help:
 	@echo "  shell       - open a shell in the web container"
 	@echo "  test-shell  - open a shell in test environment"
 	@echo ""
+	@echo "  generate    - create json file from TEMPLATE"
+	@echo ""
 	@echo "  help    - see this text"
 
 
@@ -50,5 +52,10 @@ ifneq (1, ${MK_KEEP_DOCKER_UP})
 endif
 
 .PHONY: test-shell
-test-shell: .env
+test-shell:
 	docker-compose -f ./docker-compose.yaml -f ./tests/infra/docker-compose.test.yaml run web
+
+
+.PHONY: generate
+generate:
+	./generate-helper.sh
