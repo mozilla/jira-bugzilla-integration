@@ -18,10 +18,52 @@ def test_read_version(anon_client):
 
 def test_read_heartbeat_no_services_fails(anon_client):
     """/__heartbeat__ returns 503 when the services are unavailable."""
-    resp = anon_client.get("/__heartbeat__")
+    expected = {
+        "jira": {
+            "up": False,
+        },
+        "bugzilla": {
+            "up": False,
+        },
+    }
+    with patch("src.app.monitor.jbi_service_health_map", return_value=expected):
+        resp = anon_client.get("/__heartbeat__")
     assert resp.status_code == 503
     data = resp.json()
-    expected = {"bugzilla": {"up": False}, "jira": {"up": False}}
+    assert data == expected
+
+
+def test_read_heartbeat_jira_services_fails(anon_client):
+    """/__heartbeat__ returns 503 when the services are unavailable."""
+    expected = {
+        "jira": {
+            "up": False,
+        },
+        "bugzilla": {
+            "up": True,
+        },
+    }
+    with patch("src.app.monitor.jbi_service_health_map", return_value=expected):
+        resp = anon_client.get("/__heartbeat__")
+    assert resp.status_code == 503
+    data = resp.json()
+    assert data == expected
+
+
+def test_read_heartbeat_bugzilla_services_fails(anon_client):
+    """/__heartbeat__ returns 503 when the services are unavailable."""
+    expected = {
+        "jira": {
+            "up": True,
+        },
+        "bugzilla": {
+            "up": False,
+        },
+    }
+    with patch("src.app.monitor.jbi_service_health_map", return_value=expected):
+        resp = anon_client.get("/__heartbeat__")
+    assert resp.status_code == 503
+    data = resp.json()
     assert data == expected
 
 
