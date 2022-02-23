@@ -1,7 +1,13 @@
 # pylint: disable=cannot-enumerate-pytest-fixtures
 import pytest
 
-from src.core.configurator import actions, per_file_process, process_all_files_in_path
+from src.core.configurator import (
+    ConfigError,
+    ProcessError,
+    actions,
+    per_file_process,
+    process_all_files_in_path,
+)
 from tests.unit.core import mock_actions
 
 
@@ -67,7 +73,7 @@ def test_file_processing_enabled_file_unknown_action():
     req_keys = ["enabled"]
     filename = "tests/unit/core/mock_config_files/unknown_action.json"
     actions.module_dict[action_key] = mock_actions
-    with pytest.raises(AssertionError):
+    with pytest.raises(ConfigError):
         per_file_process(
             filename=filename,
             required_keys=req_keys,
@@ -79,9 +85,9 @@ def test_file_processing_enabled_file_unknown_action():
 
 def test_config_path_throws_exception():
     def raise_except(filename):
-        raise Exception
+        raise ConfigError
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(ProcessError):
         process_all_files_in_path(
             folder_path="tests/unit/core/mock_config_files/", process=raise_except
         )

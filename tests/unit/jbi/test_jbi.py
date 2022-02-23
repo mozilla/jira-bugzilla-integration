@@ -6,7 +6,7 @@ from src.jbi import configuration as jbi_configuration
 
 
 def test_mock_jbi_files():
-    with pytest.raises(AssertionError):
+    with pytest.raises(test_configurator.ProcessError):
         test_configurator.process_all_files_in_path(
             process=jbi_configuration.jbi_config_process,
             folder_path="tests/unit/jbi/mock_jbi_files",
