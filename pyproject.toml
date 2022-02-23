@@ -52,36 +52,9 @@ testpaths = [
     load-plugins='pylint_pytest'
     ignore='third_party'
 
-[tool.black]
-line-length = 88
-include = '\.pyi?$'
-exclude = '''
-(
-  /(
-      \.eggs         # exclude a few common directories in the
-    | \.git          # root of the project
-    | \.hg
-    | \.mypy_cache
-    | \.pytest_cache
-    | \.venv
-    | _build
-    | buck-out
-    | build
-    | dist
-  )/
-  | foo.py           # also separately exclude a file named foo.py in
-                     # the root of the project
-)
-'''
 
 [tool.isort]
-# https://black.readthedocs.io/en/stable/compatible_configs.html
-multi_line_output = 3
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-ensure_newline_before_comments = true
-line_length = 88
+profile = "black"
 
 
 [tool.coverage]

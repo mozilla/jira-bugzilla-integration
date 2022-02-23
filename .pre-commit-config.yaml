@@ -60,6 +60,5 @@ repos:
       - id: black
         name: black
         entry: poetry run black
-        args: ["--config","./pyproject.toml", "."]
         types: [python]
         language: system
