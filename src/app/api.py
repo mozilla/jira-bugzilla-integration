@@ -1,4 +1,5 @@
 import logging
+import logging.config
 import sys
 import time
 from datetime import datetime
@@ -46,6 +47,7 @@ app.include_router(monitor_router)
 app.include_router(jbi_router)
 
 summary_logger = logging.getLogger("request.summary")
+
 
 @app.get("/", include_in_schema=False)
 def root(request: Request):
