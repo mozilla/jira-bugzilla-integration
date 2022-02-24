@@ -6,6 +6,7 @@ from pydantic import BaseSettings
 
 
 class Settings(BaseSettings):
+    host: str = "0.0.0.0"
     port: str = "80"
     app_reload: bool = True
 
@@ -19,6 +20,9 @@ class Settings(BaseSettings):
     jira_username: str
     jira_password: str
     bugzilla_api_key: str
+
+    # Logging
+    log_level: str = "info"
 
 
 @lru_cache()
