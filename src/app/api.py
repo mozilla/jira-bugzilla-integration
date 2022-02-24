@@ -1,6 +1,4 @@
 import logging
-import logging.config
-import sys
 import time
 from datetime import datetime
 
@@ -9,33 +7,11 @@ from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
 
 from src.app.environment import get_settings
+from src.app.log import configure_logging
 from src.app.monitor import api_router as monitor_router
 from src.jbi.router import api_router as jbi_router
 
 settings = get_settings()
-
-logging_config = {
-    "version": 1,
-    "formatters": {
-        "json": {
-            "()": "dockerflow.logging.JsonLogFormatter",
-            "logger_name": "jbi",
-        },
-    },
-    "handlers": {
-        "console": {
-            "level": settings.log_level.upper(),
-            "class": "logging.StreamHandler",
-            "formatter": "json",
-            "stream": sys.stdout,
-        }
-    },
-    "loggers": {
-        "request.summary": {"handlers": ["console"], "level": "INFO"},
-    },
-}
-
-logging.config.dictConfig(logging_config)
 
 app = FastAPI(
     title="Jira Bugzilla Integration (JBI)",
@@ -45,8 +21,6 @@ app = FastAPI(
 
 app.include_router(monitor_router)
 app.include_router(jbi_router)
-
-summary_logger = logging.getLogger("request.summary")
 
 
 @app.get("/", include_in_schema=False)
@@ -61,6 +35,7 @@ def root(request: Request):
 
 @app.middleware("http")
 async def request_summary(request: Request, call_next):
+    summary_logger = logging.getLogger("request.summary")
     previous_time = time.time()
 
     infos = {
@@ -84,7 +59,12 @@ async def request_summary(request: Request, call_next):
     return response
 
 
+@app.on_event("startup")
+def startup_event():
+    configure_logging()
+
+
 if __name__ == "__main__":
     uvicorn.run(
-        "app:app", host="0.0.0.0", port=settings.port, reload=settings.app_reload
+        "app:app", host=settings.host, port=settings.port, reload=settings.app_reload
     )
