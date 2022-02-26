@@ -11,8 +11,7 @@ api_router = APIRouter(tags=["Monitor"])
 
 def heartbeat(request: Request, settings: environment.Settings):
     """Return status of backing services, as required by Dockerflow."""
-    data: Dict = {}
-    data.update(jbi_service_health_map())
+    data: Dict = {**jbi_service_health_map()}
     status_code = 200
     for _, health in data.items():
         if not health.get("up"):

@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
@@ -8,6 +10,9 @@ api_router = APIRouter(tags=["JBI"])
 
 
 def execute_request(request, settings):
+    # Is request valid?
+    # Is whiteboard known?
+    # Execute desired action -- based on whiteboard config
     pass
 
 
@@ -19,28 +24,35 @@ def bugzilla_webhook(
     return execute_request(request, settings)
 
 
-@api_router.get("/whiteboard_tags")
-def get_whiteboard_tags():
-    data = configuration.jbi_config_map()
-    status_code = 200
-    return JSONResponse(content=data, status_code=status_code)
-
-
-@api_router.get("/whiteboard_tags/{whiteboard_tag}")
-def get_whiteboard_tag_or_blank(
-    whiteboard_tag: str,
+@api_router.get("/whiteboard_tags/")
+def get_whiteboard_tag(
+    whiteboard_tag: Optional[str] = None,
 ):
-    data = {}
-    wb_val = configuration.jbi_config_map().get(whiteboard_tag)
-    status_code = 200
-    if wb_val:
-        data = wb_val
-    return JSONResponse(content=data, status_code=status_code)
+    data = configuration.get_all_enabled_configurations()
+    if whiteboard_tag:
+        wb_val = data.get(whiteboard_tag)
+        if wb_val:
+            data = wb_val
+    return data
+
+
+@api_router.get("/actions/")
+def get_actions_by_type(action_type: Optional[str] = None):
+    configured_actions = configuration.get_all_enabled_configurations()
+    if action_type:
+        data = [
+            a["action"]
+            for a in configured_actions.values()
+            if a["action"].endswith(action_type)
+        ]
+    else:
+        data = [a["action"] for a in configured_actions.values()]
+    return JSONResponse(content=data)
 
 
 @api_router.get("/powered_by_jbi", response_class=HTMLResponse)
 def powered_by_jbi():
-    data = configuration.jbi_config_map()
+    data = configuration.get_all_enabled_configurations()
     num_configs = len(data)
     html = f"""
     <html>

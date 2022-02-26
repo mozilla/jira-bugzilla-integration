@@ -1,6 +1,6 @@
 {
-    "enabled": false,
-    "action": "example_action",
+    "enabled": true,
+    "action": "src.jbi.whiteboard_actions.example",
     "whiteboard_tag": "example",
     "jira_project_key": "EXMPL",
     "example_field": {

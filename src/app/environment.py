@@ -10,15 +10,13 @@ class Settings(BaseSettings):
     port: str = "80"
     app_reload: bool = True
 
-    # JBI env vars
-    jbi_action_key: str = "jbi"
-    jbi_folder_path: str = "src/jbi/whiteboard_tags/"
+    # Jira
     jira_base_url: str = "https://jira.allizom.org/"
-    bugzilla_base_url: str = "https://bugzilla-dev.allizom.org/"
-
-    # Secrets below
     jira_username: str
     jira_password: str
+
+    # Bugzilla
+    bugzilla_base_url: str = "https://bugzilla-dev.allizom.org/"
     bugzilla_api_key: str
 
     # Logging
