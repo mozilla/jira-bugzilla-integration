@@ -1,0 +1,11 @@
+---
+
+extends: default
+
+rules:
+  key-duplicates: enable
+  key-ordering: enable
+
+yaml-files:
+  - 'config.yaml'
+  - '.yamllint'
