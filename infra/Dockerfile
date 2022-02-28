@@ -80,7 +80,7 @@ ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD uvicorn src.app.api:app --reload --host=0.0.0.0 --port=$PORT
 
 
-# 'lint' stage runs similar checks to pre-commit / scripts/lint.sh
+# 'lint' stage runs similar checks to pre-commit
 # running in check mode means build will fail if any linting errors occur
 FROM development AS lint
 RUN bandit -lll --recursive src --exclude "src/poetry.lock,src/.venv,src/.mypy,src/build"
@@ -88,7 +88,8 @@ RUN mypy src
 RUN black --config ./pyproject.toml --check src tests
 RUN isort --recursive --settings-path ./pyproject.toml --check-only src
 RUN pylint src tests/unit
-CMD ./infra/lint.sh
+RUN yamllint .
+CMD ./infra/detect_secrets_helper.sh
 
 
 # 'test' stage runs our unit tests with pytest and

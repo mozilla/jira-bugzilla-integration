@@ -84,11 +84,11 @@ def get_all_enabled_configurations(
     for filename in Path(jbi_folder_path).glob("*.json"):
         try:
             filename_s = str(filename)
-            if "TEMPLATE" in filename_s:
-                continue
-            config_key, config_value = process_config_per_file(filename_s)
-            if config_key:
-                config_map[config_key] = config_value
+            action_parameter_key, action_parameter_value = process_config_per_file(
+                filename_s
+            )
+            if action_parameter_key:
+                config_map[action_parameter_key] = action_parameter_value
         except (ValueError, ConfigError) as exception:
             errors.append(exception)
 
