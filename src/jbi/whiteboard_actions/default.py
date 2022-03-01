@@ -4,7 +4,7 @@ from src.jbi import services
 
 def init(whiteboard_tag, jira_project_key, **kwargs):
     return DefaultExecutor(
-        whiteboard_tag=whiteboard_tag, jira_project_key=jira_project_key
+        whiteboard_tag=whiteboard_tag, jira_project_key=jira_project_key, **kwargs
     )
 
 

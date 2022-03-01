@@ -6,7 +6,7 @@ actions:
     action: src.jbi.whiteboard_actions.default
     contact: tbd
     description: Addons whiteboard tag for AMO Team
-    enabled: true
+    enabled: false
     parameters:
       jira_project_key: WEBEXT
       whiteboard_tag: addons
@@ -22,7 +22,7 @@ actions:
     action: src.jbi.whiteboard_actions.default
     contact: tbd
     description: Firefox Front End whiteboard tag
-    enabled: true
+    enabled: false
     parameters:
       jira_project_key: FIDEFE
       whiteboard_tag: fidefe
@@ -30,7 +30,7 @@ actions:
     action: src.jbi.whiteboard_actions.default
     contact: tbd
     description: Privacy & Security and Anti-Tracking Team whiteboard tag
-    enabled: true
+    enabled: false
     parameters:
       jira_project_key: FXATPS
       whiteboard_tag: fxatps
@@ -38,7 +38,7 @@ actions:
     action: src.jbi.whiteboard_actions.default
     contact: tbd
     description: Firefox Sync Team whiteboard tag
-    enabled: true
+    enabled: false
     parameters:
       jira_project_key: SYNC
       whiteboard_tag: fxsync
@@ -46,7 +46,7 @@ actions:
     action: src.jbi.whiteboard_actions.default
     contact: tbd
     description: GeckoView Team whiteboard tag
-    enabled: true
+    enabled: false
     parameters:
       jira_project_key: ANDP
       whiteboard_tag: gv
@@ -54,7 +54,7 @@ actions:
     action: src.jbi.whiteboard_actions.default
     contact: tbd
     description: MR2 whiteboard tag
-    enabled: true
+    enabled: false
     parameters:
       jira_project_key: MR2
       whiteboard_tag: mr2qa
@@ -62,18 +62,10 @@ actions:
     action: src.jbi.whiteboard_actions.default
     contact: tbd
     description: MV3 whiteboard tag
-    enabled: true
+    enabled: false
     parameters:
       jira_project_key: WEBEXT
       whiteboard_tag: mv3
-  nimbus:
-    action: src.jbi.whiteboard_actions.default
-    contact: tbd
-    description: Nimbus Team whiteboard tag
-    enabled: true
-    parameters:
-      jira_project_key: MR2
-      whiteboard_tag: mr2qa
   prodtest:
     action: src.jbi.whiteboard_actions.default
     contact: tbd
@@ -86,7 +78,7 @@ actions:
     action: src.jbi.whiteboard_actions.default
     contact: tbd
     description: Proton whiteboard tag for Firefox Frontend
-    enabled: true
+    enabled: false
     parameters:
       jira_project_key: FIDEFE
       whiteboard_tag: proton
@@ -94,7 +86,7 @@ actions:
     action: src.jbi.whiteboard_actions.default
     contact: tbd
     description: Release Operations Team Tag
-    enabled: true
+    enabled: false
     parameters:
       jira_project_key: RELOPS
       whiteboard_tag: relops

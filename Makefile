@@ -54,8 +54,3 @@ endif
 .PHONY: test-shell
 test-shell:
 	docker-compose -f ./docker-compose.yaml -f ./tests/infra/docker-compose.test.yaml run web
-
-
-.PHONY: generate
-generate:
-	./generate-helper.sh
