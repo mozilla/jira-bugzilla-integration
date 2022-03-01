@@ -62,8 +62,8 @@ def validate_action_yaml_jbi_naming(yaml_action_key, action_dict):
                 f"CONFIG ERROR: `{yaml_action_key}` setup, but expected '{wb_tag}'"
                 "(from the `parameters.whiteboard_tag` field)."
             )
-    except AttributeError as exception:
-        raise ConfigError("CONFIG ERROR: Incorrectly setup") from exception
+    except (TypeError, AttributeError) as exception:
+        raise ConfigError("CONFIG ERROR: Action is not properly setup.") from exception
 
 
 def validate_action_yaml_module(action_dict: Dict[str, Any]):
@@ -80,5 +80,5 @@ def validate_action_yaml_module(action_dict: Dict[str, Any]):
         signature(action_module.init).bind(**action_parameters)  # type: ignore
     except ImportError as exception:
         raise ConfigError(f"CONFIG ERROR: Unknown action `{action}`.") from exception
-    except TypeError as exception:
+    except (TypeError, AttributeError) as exception:
         raise ConfigError("CONFIG ERROR: Action is not properly setup.") from exception
