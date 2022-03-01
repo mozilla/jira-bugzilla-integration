@@ -1,5 +1,5 @@
 # Default actions below
-from src.jbi import services
+# from src.jbi import services
 
 
 def init(whiteboard_tag, jira_project_key, **kwargs):
@@ -16,5 +16,5 @@ class DefaultExecutor:
     def __call__(self, payload, context):
         # Called from BZ webhook
         # Call Jira SDK with project key etc.
-        print(services.get_jira())
-        print(services.get_bugzilla())
+        print(payload)
+        print(context)
