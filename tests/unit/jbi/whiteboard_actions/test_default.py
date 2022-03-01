@@ -19,4 +19,7 @@ def test_default_returns_callable_without_data():
 def test_default_returns_callable_with_data():
     callable_object = default.init(whiteboard_tag="", jira_project_key="")
     assert callable_object
-    assert callable_object(payload={}, context={})
+    try:
+        callable_object(payload={}, context={})
+    except Exception as exception:  # pylint: disable=broad-except
+        assert False, f"`default` raised an exception {exception}"
