@@ -1,3 +1,8 @@
+"""
+Module for testing src/app/api.py
+"""
+# pylint: disable=cannot-enumerate-pytest-fixtures
+
 from fastapi.testclient import TestClient
 
 from src.app.api import app

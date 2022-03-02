@@ -1,3 +1,6 @@
+"""
+Router dedicated to Jira Bugzilla Integration APIs
+"""
 import logging
 from typing import Optional
 

@@ -1,5 +1,10 @@
-# Default actions below
-# from src.jbi import services
+"""
+Default actions is listed below.
+`init` is required; and requires at minimum the
+`whiteboard_tag` and `jira_project_key`.
+
+`init` should return a __call__able
+"""
 
 
 def init(whiteboard_tag, jira_project_key, **kwargs):

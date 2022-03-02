@@ -1,3 +1,6 @@
+"""
+Core FastAPI app (setup, middleware)
+"""
 import logging
 import time
 from datetime import datetime

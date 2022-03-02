@@ -1,3 +1,6 @@
+"""
+Parsing and validating the YAML configuration occurs within this module
+"""
 import importlib
 import logging
 from inspect import signature

@@ -1,3 +1,6 @@
+"""
+Module for testing src/jbi/whiteboard_actions/default.py functionality
+"""
 # pylint: disable=cannot-enumerate-pytest-fixtures
 import pytest
 

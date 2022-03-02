@@ -1,3 +1,6 @@
+"""
+Module dedicated to interacting with the environment (variables, version.json)
+"""
 import json
 import os
 from functools import lru_cache

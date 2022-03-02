@@ -1,3 +1,6 @@
+"""
+Module for setting up pytest fixtures
+"""
 import pytest
 from fastapi.testclient import TestClient
 

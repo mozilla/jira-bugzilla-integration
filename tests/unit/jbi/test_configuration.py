@@ -1,3 +1,6 @@
+"""
+Module for testing src/jbi/configuration.py functionality
+"""
 # pylint: disable=cannot-enumerate-pytest-fixtures
 import pytest
 

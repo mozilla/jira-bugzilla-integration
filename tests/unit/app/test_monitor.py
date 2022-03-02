@@ -1,3 +1,8 @@
+"""
+Module for testing src/app/monitor.py
+"""
+# pylint: disable=cannot-enumerate-pytest-fixtures
+
 import json
 import os.path
 from unittest.mock import patch
