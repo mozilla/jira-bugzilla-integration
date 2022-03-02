@@ -1,0 +1,10 @@
+---
+
+# Action Config
+actions:
+  devtest:
+    contact: tbd
+    description: DevTest whiteboard tag
+    parameters:
+      jira_project_key: OSS
+      whiteboard_tag: devtest

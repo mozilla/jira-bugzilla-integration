@@ -1,0 +1,92 @@
+---
+
+# Action Config
+actions:
+  addons:
+    #  action: src.jbi.whiteboard_actions.default
+    contact: tbd
+    description: Addons whiteboard tag for AMO Team
+    # enabled: false
+    parameters:
+      jira_project_key: WEBEXT
+      whiteboard_tag: addons
+  fidedi:
+    # action: src.jbi.whiteboard_actions.default
+    contact: tbd
+    description: Firefox Desktop Integration whiteboard tag
+    enabled: true
+    parameters:
+      jira_project_key: FIDEDI
+      whiteboard_tag: fidedi
+  fidefe:
+    # action: src.jbi.whiteboard_actions.default
+    contact: tbd
+    description: Firefox Front End whiteboard tag
+    # enabled: false
+    parameters:
+      jira_project_key: FIDEFE
+      whiteboard_tag: fidefe
+  fxatps:
+    # action: src.jbi.whiteboard_actions.default
+    contact: tbd
+    description: Privacy & Security and Anti-Tracking Team whiteboard tag
+    # enabled: false
+    parameters:
+      jira_project_key: FXATPS
+      whiteboard_tag: fxatps
+  fxsync:
+    # action: src.jbi.whiteboard_actions.default
+    contact: tbd
+    description: Firefox Sync Team whiteboard tag
+    # enabled: false
+    parameters:
+      jira_project_key: SYNC
+      whiteboard_tag: fxsync
+  gv:
+    # action: src.jbi.whiteboard_actions.default
+    contact: tbd
+    description: GeckoView Team whiteboard tag
+    # enabled: false
+    parameters:
+      jira_project_key: ANDP
+      whiteboard_tag: gv
+  mr2qa:
+    # action: src.jbi.whiteboard_actions.default
+    contact: tbd
+    description: MR2 whiteboard tag
+    # enabled: false
+    parameters:
+      jira_project_key: MR2
+      whiteboard_tag: mr2qa
+  mv3:
+    # action: src.jbi.whiteboard_actions.default
+    contact: tbd
+    description: MV3 whiteboard tag
+    # enabled: false
+    parameters:
+      jira_project_key: WEBEXT
+      whiteboard_tag: mv3
+  prodtest:
+    # action: src.jbi.whiteboard_actions.default
+    contact: tbd
+    description: ProdTest tag
+    # enabled: false
+    parameters:
+      jira_project_key: OSS
+      whiteboard_tag: prodtest
+  proton:
+    # action: src.jbi.whiteboard_actions.default
+    contact: tbd
+    description: Proton whiteboard tag for Firefox Frontend
+    # enabled: false
+    parameters:
+      jira_project_key: FIDEFE
+      whiteboard_tag: proton
+  relops:
+    action: src.jbi.whiteboard_actions.default
+    contact: tbd
+    description: Release Operations Team Tag
+    enabled: false
+    parameters:
+      jira_project_key: RELOPS
+      whiteboard_tag: relops

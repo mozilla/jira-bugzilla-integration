@@ -1,0 +1,72 @@
+repos:
+  - repo: local
+    hooks:
+      - id: pylint
+        name: pylint
+        entry: poetry run pylint
+        language: system
+        exclude: ^migrations/
+        types: [python]
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v2.1.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-json
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: pretty-format-json
+        args: [
+          '--autofix',
+          '--indent', '4',
+          '--no-sort-keys',
+        ]
+      - id: trailing-whitespace
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        entry: poetry run mypy
+        language: system
+        types: [python]
+  - repo: local
+    hooks:
+      - id: bandit
+        name: bandit
+        entry: poetry run bandit
+        args: [-lll, --recursive]
+        language: system
+  - repo: local
+    hooks:
+      - id: detect-secrets
+        name: detect-secrets
+        entry: poetry run detect-secrets-hook
+        args: ['--baseline', '.secrets.baseline']
+        exclude: "poetry.lock"
+        language: system
+  - repo: https://github.com/asottile/seed-isort-config
+    rev: v1.9.3
+    hooks:
+      - id: seed-isort-config
+  - repo: local
+    hooks:
+      - id: isort
+        name: isort
+        entry: poetry run isort
+        args: ["--recursive", "--settings-path", "./pyproject.toml", "."]
+        language: system
+        types: [python]
+  - repo: local
+    hooks:
+      - id: black
+        name: black
+        entry: poetry run black
+        types: [python]
+        language: system
+  - repo: local
+    hooks:
+      - id: yamllint
+        name: yamllint
+        entry: poetry run yamllint
+        args: ["-c", ".yamllint", 'config/']
+        types: [file, yaml]
+        language: system

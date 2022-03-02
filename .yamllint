@@ -1,0 +1,21 @@
+---
+
+extends: default
+
+ignore: |
+  src/
+  tests/
+  infra/
+  .github/
+  docker-compose.yaml
+  .pre-commit-config.yaml
+
+
+rules:
+  key-duplicates: enable
+  key-ordering: enable
+
+
+yaml-files:
+  - 'config/*.yaml'
+  - '.yamllint'
