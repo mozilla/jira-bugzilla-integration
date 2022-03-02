@@ -88,7 +88,7 @@ RUN mypy src
 RUN black --config ./pyproject.toml --check src tests
 RUN isort --recursive --settings-path ./pyproject.toml --check-only src
 RUN pylint src tests/unit
-RUN yamllint .
+RUN yamllint -d "{extends: default, rules: {key-duplicates: enable, key-ordering: enable}}" ./config
 CMD ./infra/detect_secrets_helper.sh
 
 

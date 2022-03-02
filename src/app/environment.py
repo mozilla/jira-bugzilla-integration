@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: str = "80"
     app_reload: bool = True
+    env: str = "dev"
 
     # Jira
     jira_base_url: str = "https://jira.allizom.org/"

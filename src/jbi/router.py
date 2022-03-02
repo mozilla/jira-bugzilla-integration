@@ -1,12 +1,15 @@
-from typing import Optional
+import logging
+from typing import Dict, Optional
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse
 
 from src.app import environment
 from src.jbi import configuration
 
 api_router = APIRouter(tags=["JBI"])
+
+jbi_logger = logging.getLogger("src.jbi")
 
 
 def execute_request(request, settings):
@@ -28,7 +31,7 @@ def bugzilla_webhook(
 def get_whiteboard_tag(
     whiteboard_tag: Optional[str] = None,
 ):
-    data = configuration.get_all_enabled_configurations()
+    data = configuration.get_yaml_configurations()
     if whiteboard_tag:
         wb_val = data.get(whiteboard_tag)
         if wb_val:
@@ -38,7 +41,7 @@ def get_whiteboard_tag(
 
 @api_router.get("/actions/")
 def get_actions_by_type(action_type: Optional[str] = None):
-    configured_actions = configuration.get_all_enabled_configurations()
+    configured_actions = configuration.get_yaml_configurations()
     if action_type:
         data = [
             a["action"]
@@ -47,12 +50,12 @@ def get_actions_by_type(action_type: Optional[str] = None):
         ]
     else:
         data = [a["action"] for a in configured_actions.values()]
-    return JSONResponse(content=data)
+    return data
 
 
 @api_router.get("/powered_by_jbi", response_class=HTMLResponse)
-def powered_by_jbi():
-    data = configuration.get_all_enabled_configurations()
+def powered_by_jbi(enabled: Optional[bool] = None):
+    data = configuration.get_yaml_configurations()
     num_configs = len(data)
     html = f"""
     <html>
@@ -64,9 +67,47 @@ def powered_by_jbi():
         <body>
             <h1>Powered by JBI</h1>
             <p>{num_configs} collections.</p>
-            <div id="collections"> {create_inner_html_table(data)} </div>
+            <div id="collections"> {create_inner_html_table(data=data, enable_query=enabled)} </div>
         </body>
     </html>
+    """
+    return html
+
+
+def create_inner_html_table(data: Dict, enable_query: Optional[bool]):
+    agg_table = ""
+    header = """
+        <tr>
+            <th>Key</th>
+            <th>Action</th>
+            <th>Contact</th>
+            <th>Description </th>
+            <th>Enabled</th>
+            <th>Parameters</th>
+        </tr>
+    """
+    for key, value in data.items():
+        enabled = value.get("enabled")
+        if enable_query is None or enabled is enable_query:
+            parameters = ", ".join(
+                f"{k}={v}" for k, v in value.get("parameters").items()
+            )
+            per_row = f"""
+            <tr>
+                <td class="key">{key}</td>
+                <td class="action">{value.get("action")}</td>
+                <td class="contact">{value.get("contact")}</td>
+                <td class="description">{value.get("description")}</td>
+                <td class="enabled">{enabled}</td>
+                <td class="parameters">{parameters}</td>
+            </tr>"""
+            agg_table += per_row
+
+    html = f"""
+    <table>
+        <thead>{header}</thead>
+        <tbody class="list">{agg_table}</tbody>
+    </table>
     """
     return html
 
@@ -120,35 +161,3 @@ def get_css_style():
       opacity: 1;
     }
   """
-
-
-def create_inner_html_table(data):
-    agg_table = ""
-    header = """
-        <tr>
-            <th>Collection</th>
-            <th>Action</th>
-            <th>Enabled</th>
-            <th>Whiteboard Tag</th>
-            <th>Jira Project Key</th>
-        </tr>
-    """
-    for key, value in data.items():
-        collection = key
-        per_row = f"""
-        <tr>
-            <td class="collection">{collection}</td>
-            <td class="action">{value.get("action")}</td>
-            <td class="enabled">{value.get("enabled")}</td>
-            <td class="whiteboard_tag">{value.get("whiteboard_tag")}</td>
-            <td class="jira_project_key">{value.get("jira_project_key")}</td>
-        </tr>"""
-        agg_table += per_row
-
-    html = f"""
-    <table>
-        <thead>{header}</thead>
-        <tbody class="list">{agg_table}</tbody>
-    </table>
-    """
-    return html

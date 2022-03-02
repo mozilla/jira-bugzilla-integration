@@ -62,3 +62,11 @@ repos:
         entry: poetry run black
         types: [python]
         language: system
+  - repo: local
+    hooks:
+      - id: yamllint
+        name: yamllint
+        entry: poetry run yamllint
+        args: ["-c", ".yamllint", 'config/']
+        types: [file, yaml]
+        language: system
