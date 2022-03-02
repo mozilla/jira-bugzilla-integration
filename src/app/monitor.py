@@ -1,3 +1,6 @@
+"""
+Router dedicated to Dockerflow APIs
+"""
 from typing import Dict
 
 from fastapi import APIRouter, Depends, Request

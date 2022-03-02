@@ -1,3 +1,6 @@
+"""
+Services and functions that can be used to create custom actions
+"""
 import logging
 
 import bugzilla as rh_bugzilla  # type: ignore

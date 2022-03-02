@@ -1,3 +1,6 @@
+"""
+Parsing and validating the YAML configuration occurs within this module
+"""
 import importlib
 import logging
 from inspect import signature
@@ -43,6 +46,7 @@ def process_actions(action_configuration) -> Dict[str, Dict]:
     for yaml_action_key, inner_action_dict in action_configuration.items():
         inner_action_dict.setdefault("action", "src.jbi.whiteboard_actions.default")
         inner_action_dict.setdefault("enabled", False)
+        inner_action_dict.setdefault("parameters", {})
         validate_action_yaml_jbi_naming(
             yaml_action_key=yaml_action_key, action_dict=inner_action_dict
         )
@@ -53,24 +57,18 @@ def process_actions(action_configuration) -> Dict[str, Dict]:
 
 def validate_action_yaml_jbi_naming(yaml_action_key, action_dict):
     # Validate yaml_action_key == parameters.whiteboard_tag
-    try:
-        action_parameters = action_dict.get("parameters")
-        wb_tag = action_parameters.get("whiteboard_tag")
-        if yaml_action_key != wb_tag:
-            raise ConfigError(
-                f"Expected action key '{wb_tag}', found `{yaml_action_key}."
-                "(from the `parameters.whiteboard_tag` field)."
-            )
-    except (TypeError, AttributeError) as exception:
-        raise ConfigError("Action is not properly setup.") from exception
+    wb_tag = action_dict["parameters"].get("whiteboard_tag")
+    if yaml_action_key != wb_tag:
+        raise ConfigError(
+            f"Expected action key '{wb_tag}', found `{yaml_action_key}."
+            "(from the `parameters.whiteboard_tag` field)."
+        )
 
 
 def validate_action_yaml_module(action_dict: Dict[str, Any]):
     # Validate action: exists, has init function, and has expected params
     try:
         action: str = action_dict.get("action")  # type: ignore
-        print(action_dict)
-        print(action)
         action_parameters: Optional[Dict[str, Any]] = action_dict.get("parameters")
         action_module: ModuleType = importlib.import_module(action)
         if not action_module:

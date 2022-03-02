@@ -1,4 +1,7 @@
-# From: https://github.com/tiangolo/uvicorn-gunicorn-docker/blob/2daa3e3873c837d5781feb4ff6a40a89f791f81b/docker-images/gunicorn_conf.py
+"""
+Conf file extracted from:
+https://github.com/tiangolo/uvicorn-gunicorn-docker/blob/2daa3e3873c837d5781feb4ff6a40a89f791f81b/docker-images/gunicorn_conf.py
+"""
 # pylint: disable=invalid-name
 
 import multiprocessing

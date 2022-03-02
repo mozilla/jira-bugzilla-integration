@@ -1,3 +1,6 @@
+"""
+Module for testing src/jbi/whiteboard_actions/default.py functionality
+"""
 # pylint: disable=cannot-enumerate-pytest-fixtures
 import pytest
 
@@ -20,6 +23,6 @@ def test_default_returns_callable_with_data():
     callable_object = default.init(whiteboard_tag="", jira_project_key="")
     assert callable_object
     try:
-        callable_object(payload={}, context={})
+        callable_object(payload={})
     except Exception as exception:  # pylint: disable=broad-except
         assert False, f"`default` raised an exception {exception}"
