@@ -8,6 +8,7 @@ from datetime import datetime
 import uvicorn  # type: ignore
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from src.app.environment import get_settings
 from src.app.log import configure_logging
@@ -24,6 +25,7 @@ app = FastAPI(
 
 app.include_router(monitor_router)
 app.include_router(jbi_router)
+app.mount("/static", StaticFiles(directory="src/static"), name="static")
 
 
 @app.get("/", include_in_schema=False)

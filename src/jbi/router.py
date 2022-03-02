@@ -6,7 +6,6 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from src.app import environment
@@ -15,7 +14,6 @@ from src.jbi import configuration
 templates = Jinja2Templates(directory="src/templates")
 
 api_router = APIRouter(tags=["JBI"])
-api_router.mount("/static", StaticFiles(directory="src/static"), name="static")
 
 jbi_logger = logging.getLogger("src.jbi")
 
