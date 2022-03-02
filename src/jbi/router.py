@@ -78,7 +78,7 @@ def create_inner_html_table(data: Dict, enable_query: Optional[bool]):
     agg_table = ""
     header = """
         <tr>
-            <th>Key</th>
+            <th>Identifier</th>
             <th>Action</th>
             <th>Contact</th>
             <th>Description </th>
@@ -89,12 +89,10 @@ def create_inner_html_table(data: Dict, enable_query: Optional[bool]):
     for key, value in data.items():
         enabled = value.get("enabled")
         if enable_query is None or enabled is enable_query:
-            parameters = ", ".join(
-                f"{k}={v}" for k, v in value.get("parameters").items()
-            )
+            parameters = ", ".join(f"{k}={v}" for k, v in value["parameters"].items())
             per_row = f"""
             <tr>
-                <td class="key">{key}</td>
+                <td class="identifier">{key}</td>
                 <td class="action">{value.get("action")}</td>
                 <td class="contact">{value.get("contact")}</td>
                 <td class="description">{value.get("description")}</td>
