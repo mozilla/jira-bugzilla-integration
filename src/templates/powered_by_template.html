@@ -1,0 +1,40 @@
+<html>
+    <head>
+        <title>{{title}}</title>
+        <link rel="stylesheet" type="text/css" href="static/styles.css">
+    </head>
+    <body>
+        <h1>{{title}}</h1>
+        <p>{{num_configs}} collections.</p>
+        <div id="collections">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Identifier</th>
+                        <th>Action</th>
+                        <th>Contact</th>
+                        <th>Description </th>
+                        <th>Enabled</th>
+                        <th>Parameters</th>
+                    </tr>
+                </thead>
+                <tbody class="list">
+                    {% for key, value in data.items() %}
+                        {% if enable_query is none or value.get("enabled") is enable_query %}
+                        <tr>
+                            <td class="identifier">{{key}}</td>
+                            <td class="action">{{value.get("action")}}</td>
+                            <td class="contact">{{value.get("contact")}}</td>
+                            <td class="description">{{value.get("description")}}</td>
+                            <td class="enabled">{{value.get("enabled")}}</td>
+                            <td class="parameters">{% for key, value in value["parameters"].items() %}{{key ~ ": " ~ value}}{{ ", " if not loop.last else "" }}{% endfor %}
+                            </td>
+                        </tr>
+                        {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </body>
+</html>

@@ -17,6 +17,7 @@ atlassian-python-api = "^3.20.1"
 dockerflow = "2022.1.0"
 PyYAML = "^6.0"
 types-PyYAML = "^6.0.4"
+Jinja2 = "^3.0.3"
 
 
 [tool.poetry.dev-dependencies]
