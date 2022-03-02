@@ -1,9 +1,12 @@
+import logging
+
 import bugzilla as rh_bugzilla  # type: ignore
 from atlassian import Jira  # type: ignore
 
 from src.app import environment
 
 settings = environment.get_settings()
+services_logger = logging.getLogger("src.jbi.services")
 
 
 def get_jira():
@@ -29,7 +32,7 @@ def bugzilla_check_health():
 def jira_check_health():
     jira = get_jira()
     server_info = jira.get_server_info(True)
-    print(server_info)
+    services_logger.info(server_info)
     health = {"up": False}
     return health
 
