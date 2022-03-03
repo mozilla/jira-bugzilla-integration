@@ -40,12 +40,7 @@ def root(request: Request):
 
 @app.middleware("http")
 async def request_summary(request: Request, call_next):
-    """
-    Middleware to log request info
-    :param request:
-    :param call_next:
-    :return: response
-    """
+    """Middleware to log request info"""
     summary_logger = logging.getLogger("request.summary")
     previous_time = time.time()
 
@@ -72,10 +67,7 @@ async def request_summary(request: Request, call_next):
 
 @app.on_event("startup")
 def startup_event():
-    """
-    On app startup perform these setup operations
-    :return:
-    """
+    """On app startup perform these setup operations"""
     configure_logging()
 
 
