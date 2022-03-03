@@ -2,13 +2,15 @@
 Module dedicated to interacting with the environment (variables, version.json)
 """
 import json
-import os
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import BaseSettings
 
 
 class Settings(BaseSettings):
+    """The Settings object extracts environment variables for convenience."""
+
     host: str = "0.0.0.0"
     port: str = "80"
     app_reload: bool = True
@@ -29,19 +31,15 @@ class Settings(BaseSettings):
 
 @lru_cache()
 def get_settings() -> Settings:
+    """Return the Settings object; use cache"""
     return Settings()
 
 
 @lru_cache()
 def get_version():
-    """
-    Return contents of version.json.
-    This has generic data in repo, but gets the build details in CI.
-    """
-    _root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    version_path = os.path.join(_root, "version.json")
+    """Return contents of version.json. This has generic data in repo, but gets the build details in CI."""
     info = {}
-    if os.path.exists(version_path):
-        with open(version_path, "r", encoding="utf8") as version_file:
-            info = json.load(version_file)
+    version_path = Path(__file__).parents[2] / "version.json"
+    if version_path.exists():
+        info = json.loads(version_path.read_text(encoding="utf8"))
     return info

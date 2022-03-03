@@ -87,7 +87,7 @@ RUN bandit -lll --recursive src --exclude "src/poetry.lock,src/.venv,src/.mypy,s
 RUN mypy src
 RUN black --config ./pyproject.toml --check src tests
 RUN isort --recursive --settings-path ./pyproject.toml --check-only src
-RUN pylint src tests/unit
+RUN pylint src tests
 RUN yamllint -d "{extends: default, rules: {key-duplicates: enable, key-ordering: enable}}" ./config
 CMD ./infra/detect_secrets_helper.sh
 

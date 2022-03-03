@@ -30,16 +30,13 @@ app.mount("/static", StaticFiles(directory="src/static"), name="static")
 
 @app.get("/", include_in_schema=False)
 def root(request: Request):
-    """GET via root redirects to /docs.
-    - Args:
-    - Returns:
-        - **redirect**: Redirects call to ./docs
-    """
+    """GET via root redirects to /docs."""
     return RedirectResponse(url="./docs")
 
 
 @app.middleware("http")
 async def request_summary(request: Request, call_next):
+    """Middleware to log request info"""
     summary_logger = logging.getLogger("request.summary")
     previous_time = time.time()
 
@@ -66,6 +63,7 @@ async def request_summary(request: Request, call_next):
 
 @app.on_event("startup")
 def startup_event():
+    """On app startup perform these setup operations"""
     configure_logging()
 
 

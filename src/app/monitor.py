@@ -28,6 +28,7 @@ def get_heartbeat(
     request: Request,
     settings: environment.Settings = Depends(environment.get_settings),
 ):
+    """Dockerflow API for heartbeat: GET"""
     return heartbeat(request, settings)
 
 
@@ -36,6 +37,7 @@ def head_heartbeat(
     request: Request,
     settings: environment.Settings = Depends(environment.get_settings),
 ):
+    """Dockerflow API for heartbeat: HEAD"""
     return heartbeat(request, settings)
 
 
@@ -46,11 +48,13 @@ def lbheartbeat(request: Request):
 
 @api_router.get("/__lbheartbeat__")
 def get_lbheartbeat(request: Request):
+    """Dockerflow API for lbheartbeat: GET"""
     return lbheartbeat(request)
 
 
 @api_router.head("/__lbheartbeat__")
 def head_lbheartbeat(request: Request):
+    """Dockerflow API for lbheartbeat: HEAD"""
     return lbheartbeat(request)
 
 

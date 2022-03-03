@@ -45,9 +45,6 @@ testpaths = [
 [tool.pylint]
     [tool.pylint.'MESSAGES CONTROL']
     disable = [
-#        "C0114", #missing-module-docstring
-        "C0115", #missing-class-docstring
-        "C0116", #missing-function-docstring
         "C0301", #line-too-long
         "R0903", #too-few-public-methods
         "W0613", #unused-argument
@@ -57,7 +54,7 @@ testpaths = [
     [tool.pylint.MASTER]
     load-plugins='pylint_pytest'
     ignore='third_party'
-
+    ignore-patterns = "tests/*"
 
 [tool.isort]
 profile = "black"

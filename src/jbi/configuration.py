@@ -1,6 +1,4 @@
-"""
-Parsing and validating the YAML configuration occurs within this module
-"""
+"""Parsing and validating the YAML configuration occurs within this module"""
 import importlib
 import logging
 from inspect import signature
@@ -17,16 +15,17 @@ jbi_logger = logging.getLogger("src.jbi")
 
 
 class ConfigError(Exception):
-    pass
+    """Errors used to determine when the Configuration is invalid"""
 
 
 class ProcessError(Exception):
-    pass
+    """Error when an exception occurs during processing"""
 
 
 def get_yaml_configurations(
     jbi_config_file: str = f"config/config.{settings.env}.yaml",
 ) -> Dict[str, Dict]:
+    """Convert and validate YAML configuration to python dict"""
 
     with open(jbi_config_file, encoding="utf-8") as file:
         try:
@@ -42,6 +41,7 @@ def get_yaml_configurations(
 
 
 def process_actions(action_configuration) -> Dict[str, Dict]:
+    """Validate `actions` section of the YAML config"""
     requested_actions = {}
     for yaml_action_key, inner_action_dict in action_configuration.items():
         inner_action_dict.setdefault("action", "src.jbi.whiteboard_actions.default")
@@ -56,7 +56,7 @@ def process_actions(action_configuration) -> Dict[str, Dict]:
 
 
 def validate_action_yaml_jbi_naming(yaml_action_key, action_dict):
-    # Validate yaml_action_key == parameters.whiteboard_tag
+    """Validate yaml_action_key == parameters.whiteboard_tag"""
     wb_tag = action_dict["parameters"].get("whiteboard_tag")
     if yaml_action_key != wb_tag:
         raise ConfigError(
@@ -66,7 +66,7 @@ def validate_action_yaml_jbi_naming(yaml_action_key, action_dict):
 
 
 def validate_action_yaml_module(action_dict: Dict[str, Any]):
-    # Validate action: exists, has init function, and has expected params
+    """Validate action: exists, has init function, and has expected params"""
     try:
         action: str = action_dict.get("action")  # type: ignore
         action_parameters: Optional[Dict[str, Any]] = action_dict.get("parameters")
