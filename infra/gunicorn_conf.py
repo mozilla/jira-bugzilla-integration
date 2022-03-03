@@ -8,6 +8,15 @@ import multiprocessing
 import os
 
 from prometheus_client import multiprocess
+from pydantic import BaseSettings
+
+
+class GunicornSettings(BaseSettings):
+    keep_alive: int = 5
+    timeout: int = 120
+    graceful_timeout: int = 120
+    log_level: str = "info"
+
 
 workers_per_core_str = os.getenv("WORKERS_PER_CORE", "1")
 max_workers_str = os.getenv("MAX_WORKERS")
@@ -19,7 +28,6 @@ web_concurrency_str = os.getenv("WEB_CONCURRENCY", None)
 host = os.getenv("HOST", "0.0.0.0")
 port = os.getenv("PORT", "8000")
 bind_env = os.getenv("BIND", None)
-use_loglevel = os.getenv("LOG_LEVEL", "info")
 if bind_env:
     use_bind = bind_env
 else:
@@ -39,20 +47,20 @@ accesslog_var = os.getenv("ACCESS_LOG", "-")
 use_accesslog = accesslog_var or None
 errorlog_var = os.getenv("ERROR_LOG", "-")
 use_errorlog = errorlog_var or None
-graceful_timeout_str = os.getenv("GRACEFUL_TIMEOUT", "120")
-timeout_str = os.getenv("TIMEOUT", "120")
-keepalive_str = os.getenv("KEEP_ALIVE", "5")
+
+
+gunicorn_settings = GunicornSettings()
 
 # Gunicorn config variables
-loglevel = use_loglevel
+loglevel = gunicorn_settings.log_level
 workers = web_concurrency
 bind = use_bind
 errorlog = use_errorlog
 worker_tmp_dir = "/dev/shm"
 accesslog = use_accesslog
-graceful_timeout = int(graceful_timeout_str)
-timeout = int(timeout_str)
-keepalive = int(keepalive_str)
+graceful_timeout = gunicorn_settings.graceful_timeout
+timeout = gunicorn_settings.timeout
+keepalive = gunicorn_settings.keep_alive
 
 
 # For debugging and testing
