@@ -5,7 +5,7 @@ repos:
         name: pylint
         entry: poetry run pylint
         language: system
-        exclude: ^migrations/
+        exclude: ^tests/
         types: [python]
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v2.1.0
@@ -20,6 +20,7 @@ repos:
           '--indent', '4',
           '--no-sort-keys',
         ]
+        exclude: "infra/k8s/secret.json"
       - id: trailing-whitespace
   - repo: local
     hooks:

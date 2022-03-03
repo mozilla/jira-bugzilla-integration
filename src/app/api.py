@@ -30,11 +30,7 @@ app.mount("/static", StaticFiles(directory="src/static"), name="static")
 
 @app.get("/", include_in_schema=False)
 def root(request: Request):
-    """GET via root redirects to /docs.
-    - Args:
-    - Returns:
-        - **redirect**: Redirects call to ./docs
-    """
+    """GET via root redirects to /docs."""
     return RedirectResponse(url="./docs")
 
 

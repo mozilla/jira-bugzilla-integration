@@ -19,11 +19,7 @@ jbi_logger = logging.getLogger("src.jbi")
 
 
 def execute_request(request, settings):
-    """
-    Is request valid?
-    Is whiteboard known?
-    Execute desired action -- based on whiteboard config
-    """
+    """Execute action"""
 
 
 @api_router.post("/bugzilla_webhook")
@@ -31,9 +27,7 @@ def bugzilla_webhook(
     request: Request,
     settings: environment.Settings = Depends(environment.get_settings),
 ):
-    """
-    API endpoint that Bugzilla Webhook Events request
-    """
+    """API endpoint that Bugzilla Webhook Events request"""
     return execute_request(request, settings)
 
 

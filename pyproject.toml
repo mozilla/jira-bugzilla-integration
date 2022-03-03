@@ -54,7 +54,7 @@ testpaths = [
     [tool.pylint.MASTER]
     load-plugins='pylint_pytest'
     ignore='third_party'
-
+    ignore-patterns = "tests/*"
 
 [tool.isort]
 profile = "black"

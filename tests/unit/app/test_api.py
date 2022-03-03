@@ -18,9 +18,7 @@ def test_read_root(anon_client):
     assert prev_resp.headers["location"] == "./docs"
 
 
-def test_request_summary_is_logged(
-    caplog,
-):  # pylint: disable=missing-function-docstring
+def test_request_summary_is_logged(caplog):
     with TestClient(app) as anon_client:
         # https://fastapi.tiangolo.com/advanced/testing-events/
         anon_client.get("/__lbheartbeat__")
