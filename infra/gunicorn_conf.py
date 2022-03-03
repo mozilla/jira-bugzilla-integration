@@ -73,5 +73,5 @@ log_data = {
 }
 
 
-def child_exit(server, worker):
+def child_exit(server, worker):  # pylint: disable=missing-function-docstring
     multiprocess.mark_process_dead(worker.pid)

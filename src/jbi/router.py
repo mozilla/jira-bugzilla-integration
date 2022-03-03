@@ -19,10 +19,11 @@ jbi_logger = logging.getLogger("src.jbi")
 
 
 def execute_request(request, settings):
-    # Is request valid?
-    # Is whiteboard known?
-    # Execute desired action -- based on whiteboard config
-    pass
+    """
+    Is request valid?
+    Is whiteboard known?
+    Execute desired action -- based on whiteboard config
+    """
 
 
 @api_router.post("/bugzilla_webhook")
@@ -30,6 +31,9 @@ def bugzilla_webhook(
     request: Request,
     settings: environment.Settings = Depends(environment.get_settings),
 ):
+    """
+    API endpoint that Bugzilla Webhook Events request
+    """
     return execute_request(request, settings)
 
 
@@ -37,6 +41,7 @@ def bugzilla_webhook(
 def get_whiteboard_tag(
     whiteboard_tag: Optional[str] = None,
 ):
+    """API for viewing whiteboard_tags"""
     data = configuration.get_yaml_configurations()
     if whiteboard_tag:
         wb_val = data.get(whiteboard_tag)
@@ -47,6 +52,7 @@ def get_whiteboard_tag(
 
 @api_router.get("/actions/")
 def get_actions_by_type(action_type: Optional[str] = None):
+    """API for viewing actions"""
     configured_actions = configuration.get_yaml_configurations()
     if action_type:
         data = [
@@ -61,6 +67,7 @@ def get_actions_by_type(action_type: Optional[str] = None):
 
 @api_router.get("/powered_by_jbi", response_class=HTMLResponse)
 def powered_by_jbi(request: Request, enabled: Optional[bool] = None):
+    """API for `Powered By` endpoint"""
     data = configuration.get_yaml_configurations()
     context = {
         "request": request,

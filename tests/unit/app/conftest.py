@@ -16,4 +16,5 @@ def anon_client():
 
 @pytest.fixture
 def settings():
+    """A test Settings object"""
     return Settings()

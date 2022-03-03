@@ -11,6 +11,9 @@ settings = get_settings()
 
 
 def configure_logging():
+    """
+    Configure logging; mozlog format for Dockerflow
+    """
     logging_config = {
         "version": 1,
         "formatters": {
