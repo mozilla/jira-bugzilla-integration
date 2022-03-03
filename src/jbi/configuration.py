@@ -17,11 +17,15 @@ jbi_logger = logging.getLogger("src.jbi")
 
 
 class ConfigError(Exception):
-    pass
+    """
+    Errors used to determine when the Configuration is invalid
+    """
 
 
 class ProcessError(Exception):
-    pass
+    """
+    Error when an exception occurs during processing
+    """
 
 
 def get_yaml_configurations(

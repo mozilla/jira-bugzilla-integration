@@ -14,6 +14,10 @@ def init(whiteboard_tag, jira_project_key, **kwargs):
 
 
 class DefaultExecutor:
+    """
+    Callable class that encapsulates the default action
+    """
+
     def __init__(self, **kwargs):
         self.parameters = kwargs
         self.whiteboard_tag = kwargs.get("whiteboard_tag")
