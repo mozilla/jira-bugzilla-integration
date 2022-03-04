@@ -5,7 +5,6 @@ https://github.com/tiangolo/uvicorn-gunicorn-docker/blob/2daa3e3873c837d5781feb4
 # pylint: disable=invalid-name
 
 import multiprocessing
-import os
 from typing import Optional
 
 from prometheus_client import multiprocess
@@ -20,6 +19,8 @@ class GunicornSettings(BaseSettings):
     host: str = "0.0.0.0"
     port: str = "8000"
     bind: Optional[str]
+    access_log: str = "-"
+    error_log: str = "-"
 
     @validator("bind")
     def set_bind(cls, bind, values):
@@ -43,10 +44,6 @@ else:
     web_concurrency = max(int(default_web_concurrency), 2)
     if use_max_workers:
         web_concurrency = min(web_concurrency, use_max_workers)
-accesslog_var = os.getenv("ACCESS_LOG", "-")
-use_accesslog = accesslog_var or None
-errorlog_var = os.getenv("ERROR_LOG", "-")
-use_errorlog = errorlog_var or None
 
 
 gunicorn_settings = GunicornSettings()
@@ -55,9 +52,9 @@ gunicorn_settings = GunicornSettings()
 loglevel = gunicorn_settings.log_level
 workers = web_concurrency
 bind = gunicorn_settings.bind
-errorlog = use_errorlog
+errorlog = gunicorn_settings.error_log
 worker_tmp_dir = "/dev/shm"
-accesslog = use_accesslog
+accesslog = gunicorn_settings.access_log
 graceful_timeout = gunicorn_settings.graceful_timeout
 timeout = gunicorn_settings.timeout
 keepalive = gunicorn_settings.keep_alive
