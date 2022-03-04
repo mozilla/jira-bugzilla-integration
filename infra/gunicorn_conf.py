@@ -1,8 +1,7 @@
 """
-Conf file extracted from:
+Conf file adapted from:
 https://github.com/tiangolo/uvicorn-gunicorn-docker/blob/2daa3e3873c837d5781feb4ff6a40a89f791f81b/docker-images/gunicorn_conf.py
 """
-# pylint: disable=invalid-name
 
 import multiprocessing
 from typing import Optional
@@ -49,6 +48,7 @@ class GunicornSettings(BaseSettings):
 gunicorn_settings = GunicornSettings()
 
 # Gunicorn config variables
+# https://docs.gunicorn.org/en/stable/settings.html#settings
 loglevel = gunicorn_settings.log_level
 workers = gunicorn_settings.workers
 bind = gunicorn_settings.bind
