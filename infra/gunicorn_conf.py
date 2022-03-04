@@ -6,9 +6,10 @@ https://github.com/tiangolo/uvicorn-gunicorn-docker/blob/2daa3e3873c837d5781feb4
 
 import multiprocessing
 import os
+from typing import Optional
 
 from prometheus_client import multiprocess
-from pydantic import BaseSettings
+from pydantic import BaseSettings, root_validator, validator
 
 
 class GunicornSettings(BaseSettings):
@@ -16,6 +17,13 @@ class GunicornSettings(BaseSettings):
     timeout: int = 120
     graceful_timeout: int = 120
     log_level: str = "info"
+    host: str = "0.0.0.0"
+    port: str = "8000"
+    bind: Optional[str]
+
+    @validator("bind")
+    def set_bind(cls, bind, values):
+        return bind if bind else f"{values['host']}:{values['port']}"
 
 
 workers_per_core_str = os.getenv("WORKERS_PER_CORE", "1")
@@ -24,14 +32,6 @@ use_max_workers = None
 if max_workers_str:
     use_max_workers = int(max_workers_str)
 web_concurrency_str = os.getenv("WEB_CONCURRENCY", None)
-
-host = os.getenv("HOST", "0.0.0.0")
-port = os.getenv("PORT", "8000")
-bind_env = os.getenv("BIND", None)
-if bind_env:
-    use_bind = bind_env
-else:
-    use_bind = f"{host}:{port}"
 
 cores = multiprocessing.cpu_count()
 workers_per_core = float(workers_per_core_str)
@@ -54,7 +54,7 @@ gunicorn_settings = GunicornSettings()
 # Gunicorn config variables
 loglevel = gunicorn_settings.log_level
 workers = web_concurrency
-bind = use_bind
+bind = gunicorn_settings.bind
 errorlog = use_errorlog
 worker_tmp_dir = "/dev/shm"
 accesslog = use_accesslog
@@ -76,8 +76,8 @@ log_data = {
     # Additional, non-gunicorn variables
     "workers_per_core": workers_per_core,
     "use_max_workers": use_max_workers,
-    "host": host,
-    "port": port,
+    "host": gunicorn_settings.host,
+    "port": gunicorn_settings.port,
 }
 
 
