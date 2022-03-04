@@ -8,7 +8,7 @@ import multiprocessing
 from typing import Optional
 
 from prometheus_client import multiprocess
-from pydantic import BaseSettings, root_validator, validator
+from pydantic import BaseSettings, conint, root_validator, validator
 
 
 class GunicornSettings(BaseSettings):
@@ -21,36 +21,36 @@ class GunicornSettings(BaseSettings):
     bind: Optional[str]
     access_log: str = "-"
     error_log: str = "-"
+    workers_per_core: float = 1.0
+    max_workers: Optional[int]
+    web_concurrency: Optional[conint(gt=0)]
+    workers: Optional[int]
 
     @validator("bind")
     def set_bind(cls, bind, values):
         return bind if bind else f"{values['host']}:{values['port']}"
 
-
-workers_per_core_str = os.getenv("WORKERS_PER_CORE", "1")
-max_workers_str = os.getenv("MAX_WORKERS")
-use_max_workers = None
-if max_workers_str:
-    use_max_workers = int(max_workers_str)
-web_concurrency_str = os.getenv("WEB_CONCURRENCY", None)
-
-cores = multiprocessing.cpu_count()
-workers_per_core = float(workers_per_core_str)
-default_web_concurrency = workers_per_core * cores
-if web_concurrency_str:
-    web_concurrency = int(web_concurrency_str)
-    assert web_concurrency > 0
-else:
-    web_concurrency = max(int(default_web_concurrency), 2)
-    if use_max_workers:
-        web_concurrency = min(web_concurrency, use_max_workers)
+    @root_validator(skip_on_failure=True)
+    def set_workers(cls, values):
+        if values["workers"] is not None:
+            return values
+        elif values["web_concurrency"]:
+            values["workers"] = values["web_concurrency"]
+        else:
+            cores = multiprocessing.cpu_count()
+            default_workers = values["workers_per_core"] * cores
+            workers = max(int(default_workers), 2)
+            if values["max_workers"]:
+                workers = min(workers, values["max_workers"])
+            values["workers"] = workers
+        return values
 
 
 gunicorn_settings = GunicornSettings()
 
 # Gunicorn config variables
 loglevel = gunicorn_settings.log_level
-workers = web_concurrency
+workers = gunicorn_settings.workers
 bind = gunicorn_settings.bind
 errorlog = gunicorn_settings.error_log
 worker_tmp_dir = "/dev/shm"
@@ -71,8 +71,8 @@ log_data = {
     "errorlog": errorlog,
     "accesslog": accesslog,
     # Additional, non-gunicorn variables
-    "workers_per_core": workers_per_core,
-    "use_max_workers": use_max_workers,
+    "workers_per_core": gunicorn_settings.workers_per_core,
+    "use_max_workers": gunicorn_settings.max_workers,
     "host": gunicorn_settings.host,
     "port": gunicorn_settings.port,
 }
