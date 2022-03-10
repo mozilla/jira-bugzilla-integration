@@ -1,10 +1,6 @@
 name: Docker
 
-on:
-  push:
-    branches: [ deploy ]
-  pull_request:
-    branches: [ deploy ]
+on: [ push, pull_request ]
 
 jobs:
 
