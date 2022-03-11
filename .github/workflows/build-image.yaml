@@ -1,6 +1,6 @@
 name: Build Docker image
 
-on: [ push, pull_request ]
+on: pull_request
 
 jobs:
   prepare:
