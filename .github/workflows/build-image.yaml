@@ -83,5 +83,6 @@ jobs:
             "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" > ./version.json
           docker build --file infra/Dockerfile -t $GCR_REGISTRY/$GCR_REPOSITORY:$IMAGE_TAG .
           docker image tag $GCR_REGISTRY/$GCR_REPOSITORY:$IMAGE_TAG $GCR_REGISTRY/$GCR_REPOSITORY:latest
-          echo $GCP_CREDENTIALS | docker login -u _json_key --password-stdin https://gcr.io          docker push $GCR_REGISTRY/$GCR_REPOSITORY:$IMAGE_TAG
+          echo $GCP_CREDENTIALS | docker login -u _json_key --password-stdin https://gcr.io
+          docker push $GCR_REGISTRY/$GCR_REPOSITORY:$IMAGE_TAG
           docker push $GCR_REGISTRY/$GCR_REPOSITORY:latest
