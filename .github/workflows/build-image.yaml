@@ -69,6 +69,9 @@ jobs:
             "$IMAGE_TAG" \
             "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
             "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" > ./version.json
+          echo $JIRA_USERNAME > ./run/secrets/JIRA_USERNAME
+          echo $JIRA_PASSWORD > ./run/secrets/JIRA_PASSWORD
+          echo $BUGZILLA_API_KEY > ./run/secrets/BUGZILLA_API_KEY
           docker build --file infra/Dockerfile -t $GCR_REGISTRY/$GCR_REPOSITORY:$IMAGE_TAG .
           docker image tag $GCR_REGISTRY/$GCR_REPOSITORY:$IMAGE_TAG $GCR_REGISTRY/$GCR_REPOSITORY:latest
           docker push $GCR_REGISTRY/$GCR_REPOSITORY:$IMAGE_TAG
