@@ -101,14 +101,6 @@ CMD ./infra/test.sh
 # 'production' stage uses the clean 'python-base' stage and copyies
 # in only our runtime deps that were installed in the 'builder-base'
 FROM python-base as production
-RUN --mount=type=secret,id=JIRA_USERNAME \
-  --mount=type=secret,id=JIRA_PASSWORD \
-  --mount=type=secret,id=BUGZILLA_API_KEY \
-   export JIRA_USERNAME=$(cat /run/secrets/JIRA_USERNAME) && \
-   export JIRA_PASSWORD=$(cat /run/secrets/JIRA_PASSWORD) && \
-   export BUGZILLA_API_KEY=$(cat /run/secrets/BUGZILLA_API_KEY) && \
-   yarn gen
-
 ENV FASTAPI_ENV=production \
     IS_GUNICORN=1 \
     PROMETHEUS_MULTIPROC=1
