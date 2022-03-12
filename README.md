@@ -10,9 +10,7 @@ System to sync Bugzilla bugs to Jira issues.
 - The system POSTs an update to the see_also field of Bugzilla bugs
 - Bugs' whiteboard tags are used to determine if they should be synchronized or ignored
 
-## Self-Service
-
-### Action Configuration
+## Action Configuration
 The action configuration uses a YAML file per environment, this file stores all the configuration information for jbi data flows. The process to enable a new data flow will be explained below.
 
 
