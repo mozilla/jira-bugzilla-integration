@@ -50,7 +50,9 @@ A bit more about the different fields...
     - The [default action](src/jbi/whiteboard_actions/default.py) expects both the `whiteboard_tag` and `jira_project_key` fields
 
 
+
 [View 'dev'  configurations here.](config/config.dev.yaml)
+
 [View 'prod' configurations here.](config/config.prod.yaml)
 
 
