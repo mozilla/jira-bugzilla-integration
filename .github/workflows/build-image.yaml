@@ -31,8 +31,8 @@ jobs:
     needs: prepare
     environment:
         name: dev
-    env:
-      IMAGE_NAME: gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_APP_NAME }}
+    outputs:
+      BUILD_TAG: ${{ steps.build-push.outputs.build-tag }}
 
     steps:
       - name: Echo tag
@@ -56,8 +56,7 @@ jobs:
       - name: Build and push to GCR
         id: build-push
         env:
-          GCR_REGISTRY: gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_APP_NAME }}
-          GCR_REPOSITORY: jira-bugzilla-integration
+          GCR_REGISTRY: gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_APP_NAME }}/${{ secrets.GCP_GCR_REPO }}
           IMAGE_TAG: ${{ needs.prepare.outputs.FULL_IMAGE_TAG }}
         run: |
           printf '{\n    "commit": "%s",\n    "version": "%s",\n    "image_tag": "%s",\n    "source": "%s",\n    "build": "%s"\n}\n' \
@@ -66,20 +65,31 @@ jobs:
             "$IMAGE_TAG" \
             "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
             "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" > ./version.json
-          docker build --file infra/Dockerfile -t $GCR_REGISTRY/$GCR_REPOSITORY:$IMAGE_TAG .
-          docker image tag $GCR_REGISTRY/$GCR_REPOSITORY:$IMAGE_TAG $GCR_REGISTRY/$GCR_REPOSITORY:latest
-          docker push $GCR_REGISTRY/$GCR_REPOSITORY:$IMAGE_TAG
-          docker push $GCR_REGISTRY/$GCR_REPOSITORY:latest
+          docker build --file infra/Dockerfile -t $GCR_REGISTRY:$IMAGE_TAG .
+          docker image tag $GCR_REGISTRY:$IMAGE_TAG $GCR_REGISTRY:latest
+          docker push $GCR_REGISTRY:$IMAGE_TAG
+          docker push $GCR_REGISTRY:latest
+          echo "::set-output name=build-tag::$GCR_REGISTRY:$IMAGE_TAG"
+          echo "::debug::Set the build-tag output as $GCR_REGISTRY:$IMAGE_TAG"
 
+  deploy-image:
+    runs-on: ubuntu-latest
+    needs: build-image
+    environment:
+      name: dev
+
+    steps:
       - id: auth
         uses: google-github-actions/auth@v0
         with:
           credentials_json: ${{ secrets.GCP_CREDENTIALS }}
 
       - name: Deploy to Cloud Run
+        env:
+          BUILD_TAG: ${{ needs.build-image.outputs.BUILD_TAG }}
         run: |
           gcloud run deploy ${{ secrets.GCP_APP_NAME }} \
-          --image gcr.io/${{ secrets.GCP_PROJECT }}/${{ secrets.GCP_APP_NAME }}:$IMAGE_TAG \
+          --image $BUILD_TAG \
           --platform managed \
           --allow-unauthenticated \
           --update-secrets=JIRA_PASSWORD=JIRA_PASSWORD:latest,JIRA_USERNAME=JIRA_USERNAME:latest,BUGZILLA_API_KEY=BUGZILLA_API_KEY:latest # pragma: allowlist secret
