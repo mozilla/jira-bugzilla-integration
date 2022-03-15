@@ -69,8 +69,8 @@ jobs:
           docker image tag $GCR_REGISTRY:$IMAGE_TAG $GCR_REGISTRY:latest
           docker push $GCR_REGISTRY:$IMAGE_TAG
           docker push $GCR_REGISTRY:latest
-          echo "::set-output name=build-tag::$GCR_REGISTRY:$IMAGE_TAG"
-          echo "::debug::Set the build-tag output as $GCR_REGISTRY:$IMAGE_TAG"
+          echo "::set-output name=build-tag::$IMAGE_TAG"
+          echo "::debug::Set the build-tag output as $IMAGE_TAG"
 
   deploy-image:
     runs-on: ubuntu-latest
@@ -83,10 +83,11 @@ jobs:
         uses: google-github-actions/auth@v0
         with:
           credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+          create_credentials_file: false
 
       - name: Deploy to Cloud Run
         env:
-          BUILD_TAG: ${{ needs.build-image.outputs.BUILD_TAG }}
+          BUILD_TAG: gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_APP_NAME }}/${{ secrets.GCP_GCR_REPO }}:${{ needs.build-image.outputs.BUILD_TAG }}
         run: |
           gcloud run deploy ${{ secrets.GCP_APP_NAME }} \
           --image $BUILD_TAG \
