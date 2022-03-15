@@ -6,9 +6,9 @@ System to sync Bugzilla bugs to Jira issues.
 
 ### Caveats
 - The system accepts webhook events from Bugzilla
+- Bugs' whiteboard tags are used to determine if they should be synchronized or ignored
 - The events are transformed into Jira issues
 - The system sets the `see_also` field of the Bugzilla bug with the URL to the Jira issue
-- Bugs' whiteboard tags are used to determine if they should be synchronized or ignored
 
 ## Action Configuration
 The system reads the action configuration from a YAML file, one per environment. Each entry controls the synchronization between Bugzilla tickets with Jira issues.
