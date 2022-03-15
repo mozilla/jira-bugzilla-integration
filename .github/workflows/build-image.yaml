@@ -88,4 +88,7 @@ jobs:
           service: ${{ secrets.GCP_APP_NAME }}
           image: gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_APP_NAME }}/${{ secrets.GCP_GCR_REPO }}:${{ needs.build-image.outputs.BUILD_TAG }}
           region: ${{ secrets.GCP_REGION }}
-          env_vars: JIRA_PASSWORD=JIRA_PASSWORD:latest,JIRA_USERNAME=JIRA_USERNAME:latest,BUGZILLA_API_KEY=BUGZILLA_API_KEY:latest # pragma: allowlist secret
+          secrets: |
+            JIRA_PASSWORD=JIRA_PASSWORD:latest # pragma: allowlist secret
+            JIRA_USERNAME=JIRA_USERNAME:latest # pragma: allowlist secret
+            BUGZILLA_API_KEY=BUGZILLA_API_KEY:latest # pragma: allowlist secret
