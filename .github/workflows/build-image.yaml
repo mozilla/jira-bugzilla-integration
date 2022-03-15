@@ -53,7 +53,7 @@ jobs:
           username: _json_key
           password: ${{ secrets.GCP_CREDENTIALS }}
 
-      - name: Build and push to GCR v2
+      - name: Build and push to GCR
         id: build-push
         env:
           GCR_REGISTRY: gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_APP_NAME }}
@@ -70,3 +70,18 @@ jobs:
           docker image tag $GCR_REGISTRY/$GCR_REPOSITORY:$IMAGE_TAG $GCR_REGISTRY/$GCR_REPOSITORY:latest
           docker push $GCR_REGISTRY/$GCR_REPOSITORY:$IMAGE_TAG
           docker push $GCR_REGISTRY/$GCR_REPOSITORY:latest
+
+      - name: Login to gcloud
+        uses: google-github-actions/setup-gcloud@v0
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          service_account_email: ${{ secrets.GCP_EMAIL }}
+          service_account_key: ${{ secrets.GCP_CREDENTIALS }}
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy ${{ secrets.GCP_APP_NAME }} \
+          --image gcr.io/${{ secrets.GCP_PROJECT }}/${{ secrets.GCP_APP_NAME }}:$IMAGE_TAG \
+          --platform managed \
+          --allow-unauthenticated \
+          --update-secrets=JIRA_PASSWORD=JIRA_PASSWORD:latest,JIRA_USERNAME=JIRA_USERNAME:latest,BUGZILLA_API_KEY=BUGZILLA_API_KEY:latest # pragma: allowlist secret
