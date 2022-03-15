@@ -24,8 +24,6 @@ jobs:
           fi
         env:
           version_pattern: "tags\\/v[0-9]+\\.[0-9]+\\.[0-9]+"
-
-
   build-image:
     runs-on: ubuntu-latest
     needs: prepare
@@ -91,6 +89,8 @@ jobs:
         run: |
           gcloud run deploy ${{ secrets.GCP_APP_NAME }} \
           --image $BUILD_TAG \
+          --memory 512M \
           --platform managed \
           --allow-unauthenticated \
+          --region ${{ secrets.GCP_REGION }} \
           --update-secrets=JIRA_PASSWORD=JIRA_PASSWORD:latest,JIRA_USERNAME=JIRA_USERNAME:latest,BUGZILLA_API_KEY=BUGZILLA_API_KEY:latest # pragma: allowlist secret
