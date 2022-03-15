@@ -5,6 +5,7 @@ import logging
 import time
 from datetime import datetime
 
+import sentry_sdk
 import uvicorn  # type: ignore
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
@@ -61,10 +62,34 @@ async def request_summary(request: Request, call_next):
     return response
 
 
+@app.middleware("http")
+async def sentry_exception(request: Request, call_next):
+    """Middleware to report errors to Sentry"""
+    try:
+        response = await call_next(request)
+        return response
+    except Exception as exc:
+        with sentry_sdk.push_scope() as scope:
+            scope.set_context(
+                "request",
+                {
+                    "method": request.method,
+                    "path": request.url.path,
+                    "querystring": dict(request.query_params),
+                    "body": await request.body(),
+                },
+            )
+            sentry_sdk.capture_exception(exc)
+        raise exc
+
+
 @app.on_event("startup")
 def startup_event():
     """On app startup perform these setup operations"""
     configure_logging()
+    sentry_sdk.init(  # pylint: disable=abstract-class-instantiated  # noqa: E0110
+        dsn=settings.sentry_dsn
+    )
 
 
 if __name__ == "__main__":

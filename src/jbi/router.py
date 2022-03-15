@@ -20,6 +20,7 @@ jbi_logger = logging.getLogger("src.jbi")
 
 def execute_request(request, settings):
     """Execute action"""
+    return {}
 
 
 @api_router.post("/bugzilla_webhook")

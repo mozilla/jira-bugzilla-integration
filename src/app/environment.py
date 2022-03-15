@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = "info"
 
+    # Sentry
+    sentry_dsn: str = ""
+
 
 @lru_cache()
 def get_settings() -> Settings:
