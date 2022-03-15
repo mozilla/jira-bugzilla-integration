@@ -11,10 +11,10 @@ System to sync Bugzilla bugs to Jira issues.
 - Bugs' whiteboard tags are used to determine if they should be synchronized or ignored
 
 ## Action Configuration
-The action configuration uses a YAML file per environment, this file stores all the configuration information for jbi data flows. The process to enable a new data flow will be explained below.
+The system reads the action configuration from a YAML file, one per environment. Each entry controls the synchronization between Bugzilla tickets with Jira issues.
 
 
-Below is an full example of an action configuration:
+Below is a full example of an action configuration:
 ```yaml
     action: src.jbi.whiteboard_actions.default
     contact: [example@allizom.com]
@@ -29,10 +29,10 @@ A bit more about the different fields...
 - `action` (optional)
     - string
     - default: [src.jbi.whiteboard_actions.default](src/jbi/whiteboard_actions/default.py)
-    - If using a custom action, place the PYTHONPATH to the custom action python module
+    - The specified Python module must be available in the `PYTHONPATH`
 - `contact`
     - list of strings
-    - If an issue arises with the workflow, communication will be established with this `contact`
+    - If an issue arises with the workflow, communication will be established with these contacts
     - Please enter the contact information for one or more stakeholders
 - `description`
     - string
@@ -44,7 +44,7 @@ A bit more about the different fields...
 - `parameters` (optional)
     - dict
     - default: {}
-    - The parameters will be validated to ensure the selected action has all expected parameters
+    - The parameters will be validated to ensure the selected action accepts the specified values
     - The [default action](src/jbi/whiteboard_actions/default.py) expects both the `whiteboard_tag` and `jira_project_key` fields
 
 
