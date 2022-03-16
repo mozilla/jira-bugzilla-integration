@@ -1,0 +1,9 @@
+on: [push]
+
+jobs:
+  projectflow:
+    runs-on: ubuntu-latest
+    name: ProjectFlow Lint
+    steps:
+      - uses: actions/checkout@v1
+      - uses: leplatrem/projectflow-lint@v0
