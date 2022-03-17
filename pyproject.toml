@@ -56,6 +56,7 @@ testpaths = [
     load-plugins='pylint_pytest'
     ignore='third_party'
     ignore-patterns = "tests/*"
+    extension-pkg-whitelist = "pydantic"
 
 [tool.isort]
 profile = "black"
