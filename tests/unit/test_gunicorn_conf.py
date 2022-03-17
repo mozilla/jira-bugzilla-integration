@@ -1,5 +1,6 @@
-from pydantic import ValidationError
 import pytest
+from pydantic import ValidationError
+
 from infra.gunicorn_conf import GunicornSettings
 
 
