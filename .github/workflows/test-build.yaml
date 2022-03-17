@@ -30,3 +30,14 @@ jobs:
           JIRA_USERNAME: "fake_username"
           JIRA_PASSWORD: "fake_password"
           BUGZILLA_API_KEY: "fake_api_key"
+
+  run_precommit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: set PY
+        run: echo "PY=$(python -VV | sha256sum | cut -d' ' -f1)" >> $GITHUB_ENV
+      - uses: actions/cache@v1
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit|${{ env.PY }}|${{ hashFiles('.pre-commit-config.yaml') }}
