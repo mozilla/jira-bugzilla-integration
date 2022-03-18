@@ -1,6 +1,8 @@
-name: Build Docker image
+name: Build and Deploy Docker image
 
-on: pull_request
+on:
+  push:
+    branches: [main]
 
 jobs:
   prepare:
@@ -69,3 +71,26 @@ jobs:
           docker push $GCR_REGISTRY:latest
           echo "::set-output name=build-tag::$IMAGE_TAG"
           echo "::debug::Set the build-tag output as $IMAGE_TAG"
+
+  deploy-image:
+    runs-on: ubuntu-latest
+    needs: build-image
+    environment:
+      name: dev
+
+    steps:
+      - id: auth
+        uses: google-github-actions/auth@v0
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v0
+        with:
+          service: ${{ secrets.GCP_APP_NAME }}
+          image: gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_APP_NAME }}/${{ secrets.GCP_GCR_REPO }}:${{ needs.build-image.outputs.BUILD_TAG }}
+          region: ${{ secrets.GCP_REGION }}
+          secrets: |
+            JIRA_PASSWORD=JIRA_PASSWORD:latest
+            JIRA_USERNAME=JIRA_USERNAME:latest
+            BUGZILLA_API_KEY=BUGZILLA_API_KEY:latest
