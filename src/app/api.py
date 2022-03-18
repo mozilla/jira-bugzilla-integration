@@ -18,6 +18,11 @@ from src.jbi.router import api_router as jbi_router
 
 settings = get_settings()
 
+configure_logging()
+sentry_sdk.init(  # pylint: disable=abstract-class-instantiated  # noqa: E0110
+    dsn=settings.sentry_dsn
+)
+
 app = FastAPI(
     title="Jira Bugzilla Integration (JBI)",
     description="JBI v2 Platform",
@@ -81,15 +86,6 @@ async def sentry_exception(request: Request, call_next):
             )
             sentry_sdk.capture_exception(exc)
         raise exc
-
-
-@app.on_event("startup")
-def startup_event():
-    """On app startup perform these setup operations"""
-    configure_logging()
-    sentry_sdk.init(  # pylint: disable=abstract-class-instantiated  # noqa: E0110
-        dsn=settings.sentry_dsn
-    )
 
 
 if __name__ == "__main__":
