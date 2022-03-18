@@ -20,7 +20,7 @@
                 </thead>
                 <tbody class="list">
                     {% for key, value in data.items() %}
-                        {% if enable_query is none or value.enabled is enable_query %}
+                        {% if enable_query == none or value.enabled == enable_query %}
                         <tr>
                             <td class="identifier">{{key}}</td>
                             <td class="action">{{value.action}}</td>
