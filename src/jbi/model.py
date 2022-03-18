@@ -10,10 +10,9 @@ from pydantic import Extra, ValidationError, root_validator, validator
 from pydantic_yaml import YamlModel
 
 
-class ActionConfig(YamlModel, extra=Extra.allow):
+class Action(YamlModel, extra=Extra.allow):
     """
-    ActionConfig is the inner model of `actions` in yaml
-    """
+    Action is the inner model for each action in the configuration file"""
 
     action: str = "src.jbi.whiteboard_actions.default"
     enabled: bool = False
@@ -43,13 +42,13 @@ class ActionConfig(YamlModel, extra=Extra.allow):
 
 class Actions(YamlModel):
     """
-    Actions is the overall model from parsing the yaml config `actions` sections
+    Actions is the overall model for the list of `actions` in the configuration file
     """
 
-    actions: Dict[str, ActionConfig]
+    actions: Dict[str, Action]
 
     @validator("actions")
-    def validate_action_yaml_jbi_naming(
+    def validate_action_matches_whiteboard(
         cls, actions
     ):  # pylint: disable=no-self-argument, no-self-use
         """

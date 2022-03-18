@@ -18,10 +18,10 @@ class ConfigError(Exception):
 
 
 @lru_cache
-def get_yaml_configurations(
+def get_actions(
     jbi_config_file: str = f"config/config.{settings.env}.yaml",
 ) -> Actions:
-    """Convert and validate YAML configuration to python dict"""
+    """Convert and validate YAML configuration to Action object"""
 
     with open(jbi_config_file, encoding="utf-8") as file:
         try:
@@ -31,3 +31,8 @@ def get_yaml_configurations(
         except ValidationError as exception:
             jbi_logger.exception(exception)
             raise ConfigError("Errors exist.") from exception
+
+
+def get_actions_dict():
+    """Returns dict of"""
+    return get_actions().dict()["actions"]
