@@ -36,7 +36,7 @@ def get_whiteboard_tag(
     whiteboard_tag: Optional[str] = None,
 ):
     """API for viewing whiteboard_tags"""
-    data = configuration.get_yaml_configurations()
+    data = configuration.get_yaml_configurations().dict()["actions"]
     if whiteboard_tag:
         wb_val = data.get(whiteboard_tag)
         if wb_val:
@@ -47,7 +47,7 @@ def get_whiteboard_tag(
 @api_router.get("/actions/")
 def get_actions_by_type(action_type: Optional[str] = None):
     """API for viewing actions"""
-    configured_actions = configuration.get_yaml_configurations()
+    configured_actions = configuration.get_yaml_configurations().dict()["actions"]
     if action_type:
         data = [
             a["action"]
@@ -62,7 +62,7 @@ def get_actions_by_type(action_type: Optional[str] = None):
 @api_router.get("/powered_by_jbi", response_class=HTMLResponse)
 def powered_by_jbi(request: Request, enabled: Optional[bool] = None):
     """API for `Powered By` endpoint"""
-    data = configuration.get_yaml_configurations()
+    data = configuration.get_yaml_configurations().dict()["actions"]
     context = {
         "request": request,
         "title": "Powered by JBI",

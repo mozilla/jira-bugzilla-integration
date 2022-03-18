@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
 from src.app import environment
-from src.jbi.services import jbi_service_health_map
+from src.jbi.service import jbi_service_health_map
 
 api_router = APIRouter(tags=["Monitor"])
 
