@@ -21,7 +21,7 @@ class ConfigError(Exception):
 def get_actions(
     jbi_config_file: str = f"config/config.{settings.env}.yaml",
 ) -> Actions:
-    """Convert and validate YAML configuration to Action object"""
+    """Convert and validate YAML configuration to `Action` objects"""
 
     with open(jbi_config_file, encoding="utf-8") as file:
         try:
@@ -34,5 +34,5 @@ def get_actions(
 
 
 def get_actions_dict():
-    """Returns dict of"""
+    """Returns dict of `get_actions()`"""
     return get_actions().dict()["actions"]
