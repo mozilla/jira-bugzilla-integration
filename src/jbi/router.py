@@ -35,39 +35,37 @@ def bugzilla_webhook(
 def get_whiteboard_tag(
     whiteboard_tag: Optional[str] = None,
 ):
-    """API for viewing whiteboard_tags"""
-    data = configuration.get_yaml_configurations()
+    """API for viewing whiteboard_tags and associated data"""
+    actions = configuration.get_actions_dict()
     if whiteboard_tag:
-        wb_val = data.get(whiteboard_tag)
+        wb_val = actions.get(whiteboard_tag)
         if wb_val:
-            data = wb_val
-    return data
+            actions = wb_val
+    return actions
 
 
 @api_router.get("/actions/")
 def get_actions_by_type(action_type: Optional[str] = None):
-    """API for viewing actions"""
-    configured_actions = configuration.get_yaml_configurations()
+    """API for viewing actions within the config; `action_type` matched on end of action identifier"""
+    actions = configuration.get_actions_dict()
     if action_type:
         data = [
-            a["action"]
-            for a in configured_actions.values()
-            if a["action"].endswith(action_type)
+            a["action"] for a in actions.values() if a["action"].endswith(action_type)
         ]
     else:
-        data = [a["action"] for a in configured_actions.values()]
+        data = [a["action"] for a in actions.values()]
     return data
 
 
 @api_router.get("/powered_by_jbi", response_class=HTMLResponse)
 def powered_by_jbi(request: Request, enabled: Optional[bool] = None):
     """API for `Powered By` endpoint"""
-    data = configuration.get_yaml_configurations()
+    actions = configuration.get_actions_dict()
     context = {
         "request": request,
         "title": "Powered by JBI",
-        "num_configs": len(data),
-        "data": data,
+        "num_configs": len(actions),
+        "data": actions,
         "enable_query": enabled,
     }
     return templates.TemplateResponse("powered_by_template.html", context)
