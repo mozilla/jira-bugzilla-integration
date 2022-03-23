@@ -43,6 +43,7 @@ def execute_request(request: BugzillaWebhookRequest, action_map, settings):
     try:
         if not request.bug:
             raise ValidationError("no bug data received")
+
         is_private_bug = request.bug.is_private
         if is_private_bug:
             raise ValidationError("private bugs are not valid")
@@ -56,6 +57,7 @@ def execute_request(request: BugzillaWebhookRequest, action_map, settings):
         action_module: ModuleType = importlib.import_module(current_action["action"])
         if not action_module:
             raise ValidationError("action not found")
+
         callable_action = action_module.init(  # type: ignore
             **current_action["parameters"]
         )

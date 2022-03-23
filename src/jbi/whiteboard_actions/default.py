@@ -59,24 +59,39 @@ class DefaultExecutor:
                     # noop
                     return JSONResponse(content={"status": "noop"}, status_code=201)
                 # else
-                jira_client.issue_add_comment(
+                jira_response = jira_client.issue_add_comment(
                     issue_key=linked_issue_key,
                     comment=payload.map_as_jira_comment(),
                 )
-                return JSONResponse(content={"status": "comment"}, status_code=201)
+                return JSONResponse(
+                    content={"status": "comment", "jira_response": jira_response},
+                    status_code=201,
+                )
 
             if target == "bug":
                 if linked_issue_key:
                     # update
                     fields, comments = payload.map_as_tuple_of_field_dict_and_comments()
                     fields["issue_key"] = linked_issue_key
-                    jira_client.issue_create_or_update(fields=fields)
+                    jira_update_response = jira_client.issue_create_or_update(
+                        fields=fields
+                    )
                     # comment
+                    jira_comment_responses = []
                     for comment in comments:
-                        jira_client.issue_add_comment(
-                            issue_key=linked_issue_key, comment=comment
+                        jira_comment_responses.append(
+                            jira_client.issue_add_comment(
+                                issue_key=linked_issue_key, comment=comment
+                            )
                         )
-                    return JSONResponse(content={"status": "update"}, status_code=201)
+                    return JSONResponse(
+                        content={
+                            "status": "update",
+                            "jira_update_response": jira_update_response,
+                            "jira_comment_responses": jira_comment_responses,
+                        },
+                        status_code=201,
+                    )
                 # else: create jira issue
                 response = jira_client.create_issue(
                     fields=bug_obj.get_jira_issue_dict(
@@ -92,8 +107,7 @@ class DefaultExecutor:
                         element in ["errors", "errorMessages"] and response[element]
                         for element in response.keys()
                     ):
-                        # err keys exist and with not None value
-                        # Failure to create
+                        # Failure to create: err keys exist with value
                         return None
 
                 jira_key_in_response = response.get("key")
