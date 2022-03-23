@@ -139,7 +139,9 @@ class DefaultExecutor:
                     }
                     return JSONResponse(content=content, status_code=201)
                 # else:
-                # TODO: ROLLBACK # pylint: disable=fixme
-                return JSONResponse()
+                response = jira_client.delete_issue(
+                    issue_id_or_key=jira_key_in_response
+                )
+                return JSONResponse(content={"response": response}, status_code=201)
         except ValidationError as exception:
             return JSONResponse(content={"error": exception}, status_code=201)
