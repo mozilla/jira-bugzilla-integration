@@ -5,6 +5,7 @@ actions:
   devtest:
     contact: tbd
     description: DevTest whiteboard tag
+    enabled: true
     parameters:
-      jira_project_key: OSS
+      jira_project_key: JST
       whiteboard_tag: devtest

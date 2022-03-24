@@ -22,7 +22,7 @@ def get_jira():
 def get_bugzilla():
     """Get bugzilla service"""
     return rh_bugzilla.Bugzilla(
-        settings.bugzilla_base_url, api_key=settings.bugzilla_api_key
+        settings.bugzilla_base_url, api_key=str(settings.bugzilla_api_key)
     )
 
 
@@ -37,8 +37,7 @@ def jira_check_health():
     """Check health for Jira Service"""
     jira = get_jira()
     server_info = jira.get_server_info(True)
-    services_logger.info(server_info)
-    health = {"up": False}
+    health = {"up": server_info is not None}
     return health
 
 

@@ -72,9 +72,8 @@ class DefaultExecutor:
                 if linked_issue_key:
                     # update
                     fields, comments = payload.map_as_tuple_of_field_dict_and_comments()
-                    fields["issue_key"] = linked_issue_key
-                    jira_update_response = jira_client.issue_create_or_update(
-                        fields=fields
+                    jira_update_response = jira_client.update_issue_field(
+                        key=linked_issue_key, fields=fields
                     )
                     # comment
                     jira_comment_responses = []
@@ -93,11 +92,10 @@ class DefaultExecutor:
                         status_code=201,
                     )
                 # else: create jira issue
-                response = jira_client.create_issue(
-                    fields=bug_obj.get_jira_issue_dict(
-                        jira_project_key=self.jira_project_key
-                    )
-                )
+                fields = bug_obj.get_jira_issue_dict()
+                fields["project"] = {"key": self.jira_project_key}
+
+                response = jira_client.create_issue(fields=fields)
 
                 if isinstance(response, list):
                     response = response[0]

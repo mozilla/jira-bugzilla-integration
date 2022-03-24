@@ -146,12 +146,11 @@ class BugzillaBug(BaseModel):
             return None
         return whiteboard.split(sep="-", maxsplit=1)[0].lower()
 
-    def get_jira_issue_dict(self, jira_project_key):
+    def get_jira_issue_dict(self):
         """Extract bug info as jira issue dictionary"""
         type_map: dict = {"enhancement": "Task", "task": "Task", "defect": "Bug"}
         return {
             "summary": self.summary,
-            "project": {"key": jira_project_key},
             "labels": self.get_jbi_labels(),
             "issuetype": {"name": type_map.get(self.type, "Task")},
         }
@@ -185,14 +184,6 @@ class BugzillaWebhookRequest(BaseModel):
     event: BugzillaWebhookEvent
     bug: Optional[BugzillaBug] = None
 
-    def __eq__(self, other):
-        """Equality check"""
-        return (
-            self.__dict__ == other.__dict__
-            and self.bug.__dict__ == other.bug.__dict__
-            and self.event.__dict__ == other.event.__dict__
-        )
-
     def map_as_jira_comment(self):
         """Extract comment from Webhook Event"""
         comment: BugzillaWebhookComment = self.bug.comment
@@ -219,7 +210,11 @@ class BugzillaWebhookRequest(BaseModel):
         if not self.bug:
             return {}, []
         bug: BugzillaBug = self.bug
-        update_fields: dict = {"labels": bug.get_jbi_labels()}
+
+        update_fields: dict = {
+            "summary": bug.summary,
+            "labels": bug.get_jbi_labels(),
+        }
         if self.event.changes:
             for change in self.event.changes:
 
@@ -236,9 +231,6 @@ class BugzillaWebhookRequest(BaseModel):
 
                 if assignee_log_enabled and change.field in ["assigned_to", "assignee"]:
                     comments.append({"assignee": bug.assigned_to})
-
-                if change.field in ["short_desc", "summary"]:
-                    update_fields["summary"] = change.added
 
                 if change.field == "reporter":
                     update_fields[change.field] = change.added

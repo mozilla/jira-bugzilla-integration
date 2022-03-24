@@ -3,6 +3,7 @@ Router dedicated to Jira Bugzilla Integration APIs
 """
 import importlib
 import logging
+import traceback
 from types import ModuleType
 from typing import Dict, List, Optional
 
@@ -26,16 +27,19 @@ class ValidationError(Exception):
     """Error throw when requests are invalid and ignored"""
 
 
-def extract_current_action(bug_obj: BugzillaBug, action_map, settings):
+def extract_current_action(  # pylint: disable=inconsistent-return-statements
+    bug_obj: BugzillaBug, action_map, settings
+):
     """Find first matching action from bug's whiteboard list"""
     potential_configuration_tags: List[
         str
     ] = bug_obj.get_potential_whiteboard_config_list()
+    if not potential_configuration_tags:
+        return {}
     for tag in potential_configuration_tags:
         value = action_map.get(tag.lower())
         if value:
             return value
-    return {}
 
 
 def execute_request(request: BugzillaWebhookRequest, action_map, settings):
@@ -48,7 +52,8 @@ def execute_request(request: BugzillaWebhookRequest, action_map, settings):
         if is_private_bug:
             raise ValidationError("private bugs are not valid")
 
-        current_bug_info = get_bugzilla().getbug(request.bug.id)
+        bugzilla_client = get_bugzilla()
+        current_bug_info = bugzilla_client.getbug(request.bug.id)
         bug_obj = BugzillaBug.parse_obj(current_bug_info.__dict__)
         current_action = extract_current_action(bug_obj, action_map, settings)
         if not current_action:
@@ -61,9 +66,11 @@ def execute_request(request: BugzillaWebhookRequest, action_map, settings):
         callable_action = action_module.init(  # type: ignore
             **current_action["parameters"]
         )
-        return callable_action()
+        return callable_action(payload=request)
     except ValidationError as exception:
-        return JSONResponse(content={"error": exception}, status_code=201)
+        return JSONResponse(content={"error": str(exception)}, status_code=201)
+    except Exception:  # pylint: disable=broad-except
+        return JSONResponse(content={"error": traceback.format_exc()}, status_code=500)
 
 
 @api_router.post("/bugzilla_webhook")
@@ -73,7 +80,7 @@ def bugzilla_webhook(
     action_map: Dict = Depends(configuration.get_actions_dict),
 ):
     """API endpoint that Bugzilla Webhook Events request"""
-    jbi_logger.info("(webhook-request): %s", request.json())
+    jbi_logger.info("(bugzilla_webhook): %s", request.dict())
     return execute_request(request, action_map, settings)
 
 
