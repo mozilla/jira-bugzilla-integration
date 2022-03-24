@@ -44,7 +44,9 @@ class DefaultExecutor:
         Called from BZ webhook when default action is used. All default-action webhook-events are processed here.
         """
         try:
-            payload: BugzillaWebhookRequest = payload  # typing assistance
+            payload: BugzillaWebhookRequest = BugzillaWebhookRequest.parse_obj(
+                payload
+            )  # typing assistance
             bugzilla_client = get_bugzilla()
             jira_client = get_jira()
             settings = get_settings()
