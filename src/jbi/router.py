@@ -14,7 +14,7 @@ from fastapi.templating import Jinja2Templates
 from src.app import environment
 from src.jbi import configuration
 from src.jbi.bugzilla_objects import BugzillaBug, BugzillaWebhookRequest
-from src.jbi.model import ActionError
+from src.jbi.model import ActionError, IgnoreInvalidRequestError
 from src.jbi.service import get_bugzilla
 
 templates = Jinja2Templates(directory="src/templates")
@@ -22,10 +22,6 @@ templates = Jinja2Templates(directory="src/templates")
 api_router = APIRouter(tags=["JBI"])
 
 jbi_logger = logging.getLogger("src.jbi.router")
-
-
-class ValidationError(Exception):
-    """Error throw when requests are invalid and ignored"""
 
 
 def extract_current_action(  # pylint: disable=inconsistent-return-statements
@@ -47,28 +43,28 @@ def execute_request(request: BugzillaWebhookRequest, action_map, settings):
     """Execute action"""
     try:
         if not request.bug:
-            raise ValidationError("no bug data received")
+            raise IgnoreInvalidRequestError("no bug data received")
 
         is_private_bug = request.bug.is_private
         if is_private_bug:
-            raise ValidationError("private bugs are not valid")
+            raise IgnoreInvalidRequestError("private bugs are not valid")
 
         bugzilla_client = get_bugzilla()
         current_bug_info = bugzilla_client.getbug(request.bug.id)
         bug_obj = BugzillaBug.parse_obj(current_bug_info.__dict__)
         current_action = extract_current_action(bug_obj, action_map, settings)
         if not current_action:
-            raise ValidationError("bug does not have matching config")
+            raise IgnoreInvalidRequestError("bug does not have matching config")
 
         action_module: ModuleType = importlib.import_module(current_action["action"])
         if not action_module:
-            raise ValidationError("action not found")
+            raise IgnoreInvalidRequestError("action not found")
 
         callable_action = action_module.init(  # type: ignore
             **current_action["parameters"]
         )
         return callable_action(payload=request)
-    except (ValidationError, ActionError) as exception:
+    except (IgnoreInvalidRequestError, ActionError) as exception:
         return JSONResponse(content={"error": str(exception)}, status_code=201)
     except Exception:  # pylint: disable=broad-except
         return JSONResponse(content={"error": traceback.format_exc()}, status_code=500)

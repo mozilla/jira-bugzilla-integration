@@ -10,7 +10,6 @@ from fastapi.responses import JSONResponse
 from src.app.environment import get_settings
 from src.jbi.bugzilla_objects import BugzillaBug, BugzillaWebhookRequest
 from src.jbi.model import ActionError
-from src.jbi.router import ValidationError
 from src.jbi.service import get_bugzilla, get_jira
 
 
@@ -37,26 +36,23 @@ class DefaultExecutor:
         self, payload
     ):
         """Called from BZ webhook when default action is used. All default-action webhook-events are processed here."""
-        try:
-            payload: BugzillaWebhookRequest = BugzillaWebhookRequest.parse_obj(
-                payload
-            )  # typing assistance
+        payload: BugzillaWebhookRequest = BugzillaWebhookRequest.parse_obj(
+            payload
+        )  # typing assistance
 
-            current_bug_info = self.bugzilla_client.getbug(payload.bug.id)
-            bug_obj = BugzillaBug.parse_obj(current_bug_info.__dict__)
-            target = payload.event.target
-            linked_issue_key = bug_obj.extract_from_see_also()
+        current_bug_info = self.bugzilla_client.getbug(payload.bug.id)
+        bug_obj = BugzillaBug.parse_obj(current_bug_info.__dict__)
+        target = payload.event.target
+        linked_issue_key = bug_obj.extract_from_see_also()
 
-            if target == "comment":
-                self.event_target_comment(
-                    payload=payload, linked_issue_key=linked_issue_key
-                )
-            if target == "bug":
-                self.event_target_bug(
-                    payload=payload, linked_issue_key=linked_issue_key, bug_obj=bug_obj
-                )
-        except ValidationError as exception:
-            return JSONResponse(content={"error": exception}, status_code=201)
+        if target == "comment":
+            self.event_target_comment(
+                payload=payload, linked_issue_key=linked_issue_key
+            )
+        if target == "bug":
+            self.event_target_bug(
+                payload=payload, linked_issue_key=linked_issue_key, bug_obj=bug_obj
+            )
 
     def event_target_comment(self, payload: BugzillaWebhookRequest, linked_issue_key):
         """Confirm issue is already linked, then apply comments; otherwise noop"""
