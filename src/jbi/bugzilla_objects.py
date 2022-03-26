@@ -1,5 +1,7 @@
 """
 Bugzilla Typed Objects for ease of use throughout JBI
+View additional bugzilla webhook documentation here: https://bugzilla.mozilla.org/page.cgi?id=webhooks.html
+
 """
 import datetime
 from typing import Dict, List, Optional, Tuple
@@ -28,11 +30,11 @@ class BugzillaWebhookEvent(BaseModel):
     """Bugzilla Event Object"""
 
     action: str
-    time: Optional[datetime.datetime] = None
-    user: Optional[BugzillaWebhookUser] = None
-    changes: Optional[List[BugzillaWebhookEventChange]] = None
-    target: Optional[str] = None
-    routing_key: Optional[str] = None
+    time: Optional[datetime.datetime]
+    user: Optional[BugzillaWebhookUser]
+    changes: Optional[List[BugzillaWebhookEventChange]]
+    target: Optional[str]
+    routing_key: Optional[str]
 
 
 class BugzillaWebhookAttachment(BaseModel):
@@ -81,22 +83,22 @@ class BugzillaBug(BaseModel):
     """Bugzilla Bug Object"""
 
     id: int
-    is_private: Optional[bool] = None
-    type: Optional[str] = None
-    product: Optional[str] = None
-    component: Optional[str] = None
-    whiteboard: Optional[str] = None
-    keywords: Optional[List] = None
-    flags: Optional[List] = None
-    status: Optional[str] = None
-    resolution: Optional[str] = None
-    see_also: Optional[List] = None
-    summary: Optional[str] = None
-    severity: Optional[str] = None
-    priority: Optional[str] = None
-    creator: Optional[str] = None
-    assigned_to: Optional[str] = None
-    comment: Optional[BugzillaWebhookComment] = None
+    is_private: Optional[bool]
+    type: Optional[str]
+    product: Optional[str]
+    component: Optional[str]
+    whiteboard: Optional[str]
+    keywords: Optional[List]
+    flags: Optional[List]
+    status: Optional[str]
+    resolution: Optional[str]
+    see_also: Optional[List]
+    summary: Optional[str]
+    severity: Optional[str]
+    priority: Optional[str]
+    creator: Optional[str]
+    assigned_to: Optional[str]
+    comment: Optional[BugzillaWebhookComment]
 
     def get_whiteboard_count(self):
         """Get count of whiteboard labels"""
@@ -182,7 +184,7 @@ class BugzillaWebhookRequest(BaseModel):
     webhook_id: int
     webhook_name: str
     event: BugzillaWebhookEvent
-    bug: Optional[BugzillaBug] = None
+    bug: Optional[BugzillaBug]
 
     def map_as_jira_comment(self):
         """Extract comment from Webhook Event"""
@@ -241,5 +243,5 @@ class BugzillaWebhookRequest(BaseModel):
 class BugzillaApiResponse(BaseModel):
     """Bugzilla Response Object"""
 
-    faults: Optional[List] = None
-    bugs: Optional[List[BugzillaBug]] = None
+    faults: Optional[List]
+    bugs: Optional[List[BugzillaBug]]

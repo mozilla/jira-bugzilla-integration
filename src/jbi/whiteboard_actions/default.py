@@ -9,139 +9,141 @@ from fastapi.responses import JSONResponse
 
 from src.app.environment import get_settings
 from src.jbi.bugzilla_objects import BugzillaBug, BugzillaWebhookRequest
+from src.jbi.model import ActionError
 from src.jbi.router import ValidationError
 from src.jbi.service import get_bugzilla, get_jira
 
 
 def init(whiteboard_tag, jira_project_key, **kwargs):
-    """
-    Function that takes required and optional params and returns a callable object
-    :param whiteboard_tag: Required param
-    :param jira_project_key: Required param
-    :param kwargs: Optional params
-    :return: DefaultExecutor
-    """
+    """Function that takes required and optional params and returns a callable object"""
     return DefaultExecutor(
         whiteboard_tag=whiteboard_tag, jira_project_key=jira_project_key, **kwargs
     )
 
 
 class DefaultExecutor:
-    """
-    Callable class that encapsulates the default action
-    """
+    """Callable class that encapsulates the default action."""
 
     def __init__(self, **kwargs):
         """Initialize DefaultExecutor Object"""
         self.parameters = kwargs
         self.whiteboard_tag = kwargs.get("whiteboard_tag")
         self.jira_project_key = kwargs.get("jira_project_key")
+        self.bugzilla_client = get_bugzilla()
+        self.jira_client = get_jira()
+        self.settings = get_settings()
 
     def __call__(  # pylint: disable=too-many-locals,too-many-return-statements,inconsistent-return-statements
         self, payload
     ):
-        """
-        Called from BZ webhook when default action is used. All default-action webhook-events are processed here.
-        """
+        """Called from BZ webhook when default action is used. All default-action webhook-events are processed here."""
         try:
             payload: BugzillaWebhookRequest = BugzillaWebhookRequest.parse_obj(
                 payload
             )  # typing assistance
-            bugzilla_client = get_bugzilla()
-            jira_client = get_jira()
-            settings = get_settings()
 
-            current_bug_info = bugzilla_client.getbug(payload.bug.id)
+            current_bug_info = self.bugzilla_client.getbug(payload.bug.id)
             bug_obj = BugzillaBug.parse_obj(current_bug_info.__dict__)
             target = payload.event.target
             linked_issue_key = bug_obj.extract_from_see_also()
 
             if target == "comment":
-                if not linked_issue_key:
-                    # noop
-                    return JSONResponse(content={"status": "noop"}, status_code=201)
-                # else
-                jira_response = jira_client.issue_add_comment(
-                    issue_key=linked_issue_key,
-                    comment=payload.map_as_jira_comment(),
+                self.event_target_comment(
+                    payload=payload, linked_issue_key=linked_issue_key
                 )
-                return JSONResponse(
-                    content={"status": "comment", "jira_response": jira_response},
-                    status_code=201,
-                )
-
             if target == "bug":
-                if linked_issue_key:
-                    # update
-                    fields, comments = payload.map_as_tuple_of_field_dict_and_comments()
-                    jira_update_response = jira_client.update_issue_field(
-                        key=linked_issue_key, fields=fields
-                    )
-                    # comment
-                    jira_comment_responses = []
-                    for comment in comments:
-                        jira_comment_responses.append(
-                            jira_client.issue_add_comment(
-                                issue_key=linked_issue_key, comment=comment
-                            )
-                        )
-                    return JSONResponse(
-                        content={
-                            "status": "update",
-                            "jira_update_response": jira_update_response,
-                            "jira_comment_responses": jira_comment_responses,
-                        },
-                        status_code=201,
-                    )
-                # else: create jira issue
-                fields = bug_obj.get_jira_issue_dict()
-                fields["project"] = {"key": self.jira_project_key}
-
-                response = jira_client.create_issue(fields=fields)
-
-                if isinstance(response, list):
-                    response = response[0]
-
-                if isinstance(response, dict):
-                    if any(
-                        element in ["errors", "errorMessages"] and response[element]
-                        for element in response.keys()
-                    ):
-                        # Failure to create: err keys exist with value
-                        return None
-
-                jira_key_in_response = response.get("key")
-                current_bug_info = bugzilla_client.getbug(payload.bug.id)
-                bug_obj = BugzillaBug.parse_obj(current_bug_info.__dict__)
-                jira_key_in_bugzilla = bug_obj.extract_from_see_also()
-                _duplicate_creation_event = (
-                    jira_key_in_bugzilla is not None
-                    and jira_key_in_response != jira_key_in_bugzilla
+                self.event_target_bug(
+                    payload=payload, linked_issue_key=linked_issue_key, bug_obj=bug_obj
                 )
-                if not _duplicate_creation_event:
-                    jira_url = f"{settings.jira_base_url}/browse/{jira_key_in_response}"
-                    update = bugzilla_client.build_update(see_also_add=jira_url)
-                    bugzilla_response = bugzilla_client.update_bugs(
-                        [bug_obj.id], update
-                    )
-
-                    bugzilla_url = (
-                        f"{settings.bugzilla_base_url}show_bug.cgi?id={bug_obj.id}"
-                    )
-                    jira_response = jira_client.create_or_update_issue_remote_links(
-                        issue_key=jira_key_in_response,
-                        link_url=bugzilla_url,
-                        title="Bugzilla Ticket",
-                    )
-                    content = {
-                        "bugzilla_response": bugzilla_response,
-                        "jira_response": jira_response,
-                    }
-                    return JSONResponse(content=content, status_code=201)
-                # else:
-                response = jira_client.delete_issue(
-                    issue_id_or_key=jira_key_in_response
-                )
-                return JSONResponse(content={"response": response}, status_code=201)
         except ValidationError as exception:
             return JSONResponse(content={"error": exception}, status_code=201)
+
+    def event_target_comment(self, payload: BugzillaWebhookRequest, linked_issue_key):
+        """Confirm issue is already linked, then apply comments; otherwise noop"""
+        if not linked_issue_key:
+            # noop
+            return JSONResponse(content={"status": "noop"}, status_code=201)
+        # else
+        jira_response = self.jira_client.issue_add_comment(
+            issue_key=linked_issue_key,
+            comment=payload.map_as_jira_comment(),
+        )
+        return JSONResponse(
+            content={"status": "comment", "jira_response": jira_response},
+            status_code=201,
+        )
+
+    def event_target_bug(  # pylint: disable=too-many-locals
+        self, payload: BugzillaWebhookRequest, linked_issue_key, bug_obj
+    ):
+        """Create and link jira issue with bug, or update; rollback if multiple events fire"""
+        if linked_issue_key:
+            # update
+            fields, comments = payload.map_as_tuple_of_field_dict_and_comments()
+            jira_update_response = self.jira_client.update_issue_field(
+                key=linked_issue_key, fields=fields
+            )
+            # comment
+            jira_comment_responses = []
+            for comment in comments:
+                jira_comment_responses.append(
+                    self.jira_client.issue_add_comment(
+                        issue_key=linked_issue_key, comment=comment
+                    )
+                )
+            return JSONResponse(
+                content={
+                    "status": "update",
+                    "jira_update_response": jira_update_response,
+                    "jira_comment_responses": jira_comment_responses,
+                },
+                status_code=201,
+            )
+        # else: create jira issue
+        fields = bug_obj.get_jira_issue_dict()
+        fields["project"] = {"key": self.jira_project_key}
+
+        response = self.jira_client.create_issue(fields=fields)
+
+        if isinstance(response, list):
+            response = response[0]
+
+        if isinstance(response, dict):
+            if any(
+                element in ["errors", "errorMessages"] and response[element]
+                for element in response.keys()
+            ):
+                # Failure to create: err keys exist with value
+                raise ActionError(f"response contains error: {response}")
+
+        jira_key_in_response = response.get("key")
+        if not payload.bug:
+            raise ActionError("payload does not contain bug data")
+        current_bug_info = self.bugzilla_client.getbug(payload.bug.id)
+        bug_obj = BugzillaBug.parse_obj(current_bug_info.__dict__)
+        jira_key_in_bugzilla = bug_obj.extract_from_see_also()
+        _duplicate_creation_event = (
+            jira_key_in_bugzilla is not None
+            and jira_key_in_response != jira_key_in_bugzilla
+        )
+        if not _duplicate_creation_event:
+            jira_url = f"{self.settings.jira_base_url}/browse/{jira_key_in_response}"
+            update = self.bugzilla_client.build_update(see_also_add=jira_url)
+            bugzilla_response = self.bugzilla_client.update_bugs([bug_obj.id], update)
+
+            bugzilla_url = (
+                f"{self.settings.bugzilla_base_url}show_bug.cgi?id={bug_obj.id}"
+            )
+            jira_response = self.jira_client.create_or_update_issue_remote_links(
+                issue_key=jira_key_in_response,
+                link_url=bugzilla_url,
+                title="Bugzilla Ticket",
+            )
+            content = {
+                "bugzilla_response": bugzilla_response,
+                "jira_response": jira_response,
+            }
+            return JSONResponse(content=content, status_code=201)
+        # else:
+        response = self.jira_client.delete_issue(issue_id_or_key=jira_key_in_response)
+        return JSONResponse(content={"response": response}, status_code=201)

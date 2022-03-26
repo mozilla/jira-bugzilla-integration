@@ -10,6 +10,10 @@ from pydantic import Extra, ValidationError, root_validator, validator
 from pydantic_yaml import YamlModel
 
 
+class ActionError(Exception):
+    """Error occurred during Action handling"""
+
+
 class Action(YamlModel, extra=Extra.allow):
     """
     Action is the inner model for each action in the configuration file"""

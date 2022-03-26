@@ -14,6 +14,7 @@ from fastapi.templating import Jinja2Templates
 from src.app import environment
 from src.jbi import configuration
 from src.jbi.bugzilla_objects import BugzillaBug, BugzillaWebhookRequest
+from src.jbi.model import ActionError
 from src.jbi.service import get_bugzilla
 
 templates = Jinja2Templates(directory="src/templates")
@@ -67,7 +68,7 @@ def execute_request(request: BugzillaWebhookRequest, action_map, settings):
             **current_action["parameters"]
         )
         return callable_action(payload=request)
-    except ValidationError as exception:
+    except (ValidationError, ActionError) as exception:
         return JSONResponse(content={"error": str(exception)}, status_code=201)
     except Exception:  # pylint: disable=broad-except
         return JSONResponse(content={"error": traceback.format_exc()}, status_code=500)
