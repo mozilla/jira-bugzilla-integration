@@ -3,7 +3,6 @@ Router dedicated to Jira Bugzilla Integration APIs
 """
 import importlib
 import logging
-import traceback
 from types import ModuleType
 from typing import Dict, List, Optional
 
@@ -31,15 +30,13 @@ def extract_current_action(  # pylint: disable=inconsistent-return-statements
     potential_configuration_tags: List[
         str
     ] = bug_obj.get_potential_whiteboard_config_list()
-    if not potential_configuration_tags:
-        return {}
+
     for tag in potential_configuration_tags:
-        value = action_map.get(tag.lower())
-        if value:
-            return value
+        if tag.lower() in action_map:
+            return action_map.get(tag.lower())
 
 
-def execute_request(request: BugzillaWebhookRequest, action_map, settings):
+def execute_action(request: BugzillaWebhookRequest, action_map, settings):
     """Execute action"""
     try:
         if not request.bug:
@@ -51,23 +48,21 @@ def execute_request(request: BugzillaWebhookRequest, action_map, settings):
 
         bugzilla_client = get_bugzilla()
         current_bug_info = bugzilla_client.getbug(request.bug.id)
-        bug_obj = BugzillaBug.parse_obj(current_bug_info.__dict__)
-        current_action = extract_current_action(bug_obj, action_map, settings)
+        request.bug = BugzillaBug.parse_obj(current_bug_info.__dict__)
+        current_action = extract_current_action(request.bug, action_map, settings)
         if not current_action:
-            raise IgnoreInvalidRequestError("bug does not have matching config")
+            raise IgnoreInvalidRequestError(
+                "whiteboard tag not found in configured actions"
+            )
 
         action_module: ModuleType = importlib.import_module(current_action["action"])
-        if not action_module:
-            raise IgnoreInvalidRequestError("action not found")
-
         callable_action = action_module.init(  # type: ignore
             **current_action["parameters"]
         )
-        return callable_action(payload=request)
+        content = callable_action(payload=request)
+        return JSONResponse(content=content, status_code=201)
     except (IgnoreInvalidRequestError, ActionError) as exception:
         return JSONResponse(content={"error": str(exception)}, status_code=201)
-    except Exception:  # pylint: disable=broad-except
-        return JSONResponse(content={"error": traceback.format_exc()}, status_code=500)
 
 
 @api_router.post("/bugzilla_webhook")
@@ -78,7 +73,7 @@ def bugzilla_webhook(
 ):
     """API endpoint that Bugzilla Webhook Events request"""
     jbi_logger.info("(bugzilla_webhook): %s", request.dict())
-    return execute_request(request, action_map, settings)
+    return execute_action(request, action_map, settings)
 
 
 @api_router.get("/whiteboard_tags/")

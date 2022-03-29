@@ -18,11 +18,13 @@ class Settings(BaseSettings):
 
     # Jira
     jira_base_url: str = "https://mozit-test.atlassian.net/"
+    jira_issue_url: str = f"{jira_base_url}/browse/%s"
     jira_username: str
     jira_password: str
 
     # Bugzilla
     bugzilla_base_url: str = "https://bugzilla-dev.allizom.org"
+    bugzilla_bug_url: str = f"{bugzilla_base_url}/show_bug.cgi?id=%s"
     bugzilla_api_key: str
 
     # Logging

@@ -63,9 +63,7 @@ class BugzillaWebhookComment(BaseModel):
 
     def is_comment_description(self) -> bool:
         """Used to determine if `self` is a description or comment."""
-        if self.number in [0]:  # Currently 0th comment is the description
-            return True
-        return False
+        return self.number == 0
 
     def is_comment_generic(self) -> bool:
         """All comments after comment-0 are generic"""
@@ -74,9 +72,7 @@ class BugzillaWebhookComment(BaseModel):
 
     def is_private_comment(self) -> bool:
         """Helper function to determine if this comment private--not accessible or open"""
-        if self.is_private is None:
-            self.is_private = False
-        return self.is_private
+        return bool(self.is_private)
 
 
 class BugzillaBug(BaseModel):
@@ -121,7 +117,10 @@ class BugzillaBug(BaseModel):
         return []
 
     def get_jbi_labels(self):
-        """bugzilla is a required label for SYNC project and is being used to prevent gh syncing"""
+        """
+        whiteboard labels are added as a convenience for users to search in jira;
+        bugzilla is a required label for SYNC project
+        """
         return (
             ["bugzilla"]
             + self.get_whiteboard_as_list()
@@ -136,8 +135,6 @@ class BugzillaBug(BaseModel):
             if converted_tag not in [None, "", " "]:
                 converted_list.append(converted_tag)
 
-        if len(converted_list) == 0:
-            return None
         return converted_list
 
     @staticmethod
@@ -145,7 +142,7 @@ class BugzillaBug(BaseModel):
         """Extract tag from whiteboard label"""
         _exists = whiteboard not in (" ", "")
         if not _exists:
-            return None
+            return ""
         return whiteboard.split(sep="-", maxsplit=1)[0].lower()
 
     def get_jira_issue_dict(self):
