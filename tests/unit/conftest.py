@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from src.app.api import app
 from src.app.environment import Settings
+from src.jbi.bugzilla_objects import BugzillaWebhookRequest
 
 
 @pytest.fixture
@@ -21,39 +22,41 @@ def settings():
 
 
 @pytest.fixture
-def webhook_request_example():
-    return {
-        "bug": {
-            "assigned_to": "nobody@mozilla.org",
-            "comment": None,
-            "component": "General",
-            "creator": "nobody@mozilla.org",
-            "flags": [],
-            "id": 654321,
-            "is_private": False,
-            "keywords": [],
-            "priority": "",
-            "product": "JBI",
-            "resolution": "",
-            "see_also": [],
-            "severity": "--",
-            "status": "NEW",
-            "summary": "[JBI Test]",
-            "type": "defect",
-            "whiteboard": "[devtest-]",
-        },
-        "event": {
-            "action": "create",
-            "changes": None,
-            "routing_key": "bug.create",
-            "target": "bug",
-            "time": "2022-03-23T20:10:17.495000+00:00",
-            "user": {
-                "id": 123456,
-                "login": "nobody@mozilla.org",
-                "real_name": "Nobody [ :nobody ]",
+def webhook_request_example() -> BugzillaWebhookRequest:
+    return BugzillaWebhookRequest.parse_obj(
+        {
+            "bug": {
+                "assigned_to": "nobody@mozilla.org",
+                "comment": None,
+                "component": "General",
+                "creator": "nobody@mozilla.org",
+                "flags": [],
+                "id": 654321,
+                "is_private": False,
+                "keywords": [],
+                "priority": "",
+                "product": "JBI",
+                "resolution": "",
+                "see_also": [],
+                "severity": "--",
+                "status": "NEW",
+                "summary": "[JBI Test]",
+                "type": "defect",
+                "whiteboard": "[devtest-]",
             },
-        },
-        "webhook_id": 34,
-        "webhook_name": "local-test",
-    }
+            "event": {
+                "action": "create",
+                "changes": None,
+                "routing_key": "bug.create",
+                "target": "bug",
+                "time": "2022-03-23T20:10:17.495000+00:00",
+                "user": {
+                    "id": 123456,
+                    "login": "nobody@mozilla.org",
+                    "real_name": "Nobody [ :nobody ]",
+                },
+            },
+            "webhook_id": 34,
+            "webhook_name": "local-test",
+        }
+    )

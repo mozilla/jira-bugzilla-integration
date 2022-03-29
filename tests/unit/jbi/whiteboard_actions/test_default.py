@@ -28,7 +28,7 @@ def test_default_returns_callable_with_data(webhook_request_example, monkeypatch
 
     def mock_getbug(self, id):
         class MockBug:
-            __dict__ = webhook_request_example["bug"]
+            __dict__ = webhook_request_example.bug
 
         return MockBug()
 
