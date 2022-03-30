@@ -24,7 +24,7 @@ jbi_logger = logging.getLogger("src.jbi.router")
 
 
 def extract_current_action(  # pylint: disable=inconsistent-return-statements
-    bug_obj: BugzillaBug, action_map, settings
+    bug_obj: BugzillaBug, action_map
 ):
     """Find first matching action from bug's whiteboard list"""
     potential_configuration_tags: List[
@@ -32,8 +32,8 @@ def extract_current_action(  # pylint: disable=inconsistent-return-statements
     ] = bug_obj.get_potential_whiteboard_config_list()
 
     for tag in potential_configuration_tags:
-        if tag.lower() in action_map:
-            return action_map.get(tag.lower())
+        if action := action_map.get(tag.lower()):
+            return action
 
 
 def execute_action(request: BugzillaWebhookRequest, action_map, settings):
@@ -49,7 +49,7 @@ def execute_action(request: BugzillaWebhookRequest, action_map, settings):
         bugzilla_client = get_bugzilla()
         current_bug_info = bugzilla_client.getbug(request.bug.id)
         request.bug = BugzillaBug.parse_obj(current_bug_info.__dict__)
-        current_action = extract_current_action(request.bug, action_map, settings)
+        current_action = extract_current_action(request.bug, action_map)
         if not current_action:
             raise IgnoreInvalidRequestError(
                 "whiteboard tag not found in configured actions"
