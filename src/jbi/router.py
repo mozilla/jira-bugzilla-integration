@@ -60,8 +60,10 @@ def execute_action(request: BugzillaWebhookRequest, action_map, settings):
             **current_action["parameters"]
         )
         content = callable_action(payload=request)
+        jbi_logger.info("request: %s, content: %s", request.json(), content)
         return JSONResponse(content=content, status_code=200)
     except IgnoreInvalidRequestError as exception:
+        jbi_logger.info("ignore-invalid-request: %s", exception, exc_info=True)
         return JSONResponse(content={"error": str(exception)}, status_code=202)
 
 
@@ -72,7 +74,6 @@ def bugzilla_webhook(
     action_map: Dict = Depends(configuration.get_actions_dict),
 ):
     """API endpoint that Bugzilla Webhook Events request"""
-    jbi_logger.info("(bugzilla_webhook): %s", request.dict())
     return execute_action(request, action_map, settings)
 
 

@@ -5,11 +5,8 @@ Module for testing src/jbi/whiteboard_actions/default.py functionality
 from unittest import mock
 from unittest.mock import MagicMock
 
-import bugzilla  # type: ignore
 import pytest
-from atlassian import Jira  # type: ignore
 
-from src.jbi.bugzilla import BugzillaWebhookRequest
 from src.jbi.whiteboard_actions import default
 
 

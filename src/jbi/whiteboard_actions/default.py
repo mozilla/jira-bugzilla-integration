@@ -84,7 +84,7 @@ class DefaultExecutor:
 
     def create_and_link_issue(self, payload):
         """create jira issue and establish link between bug and issue; rollback/delete if required"""
-        fields = {**payload.bug.map_jira_issue_dict(), "key": self.jira_project_key}  # type: ignore
+        fields = {**payload.bug.map_as_jira_issue(), "key": self.jira_project_key}  # type: ignore
 
         jira_response_create = self.jira_client.create_issue(fields=fields)
 

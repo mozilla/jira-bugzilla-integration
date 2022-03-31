@@ -142,7 +142,7 @@ class BugzillaBug(BaseModel):
             return ""
         return whiteboard.split(sep="-", maxsplit=1)[0].lower()
 
-    def map_jira_issue_dict(self):
+    def map_as_jira_issue(self):
         """Extract bug info as jira issue dictionary"""
         type_map: dict = {"enhancement": "Task", "task": "Task", "defect": "Bug"}
         return {
