@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 from src.app.api import app
 from src.app.environment import Settings
-from src.jbi.bugzilla_objects import BugzillaWebhookRequest
+from src.jbi.bugzilla import BugzillaWebhookRequest
 
 
 @pytest.fixture

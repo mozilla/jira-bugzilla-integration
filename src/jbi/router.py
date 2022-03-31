@@ -12,9 +12,9 @@ from fastapi.templating import Jinja2Templates
 
 from src.app import environment
 from src.jbi import configuration
-from src.jbi.bugzilla_objects import BugzillaBug, BugzillaWebhookRequest
-from src.jbi.model import ActionError, IgnoreInvalidRequestError
-from src.jbi.service import get_bugzilla
+from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
+from src.jbi.errors import IgnoreInvalidRequestError
+from src.jbi.services import get_bugzilla
 
 templates = Jinja2Templates(directory="src/templates")
 
@@ -60,9 +60,9 @@ def execute_action(request: BugzillaWebhookRequest, action_map, settings):
             **current_action["parameters"]
         )
         content = callable_action(payload=request)
-        return JSONResponse(content=content, status_code=201)
-    except (IgnoreInvalidRequestError, ActionError) as exception:
-        return JSONResponse(content={"error": str(exception)}, status_code=201)
+        return JSONResponse(content=content, status_code=200)
+    except IgnoreInvalidRequestError as exception:
+        return JSONResponse(content={"error": str(exception)}, status_code=202)
 
 
 @api_router.post("/bugzilla_webhook")

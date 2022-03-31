@@ -4,10 +4,14 @@ View additional bugzilla webhook documentation here: https://bugzilla.mozilla.or
 
 """
 import datetime
+import logging
+import traceback
 from typing import Dict, List, Optional, Tuple
 from urllib.parse import ParseResult, urlparse
 
 from pydantic import BaseModel  # pylint: disable=no-name-in-module
+
+bugzilla_logger = logging.getLogger("src.jbi.bugzilla")
 
 
 class BugzillaWebhookUser(BaseModel):
@@ -96,12 +100,6 @@ class BugzillaBug(BaseModel):
     assigned_to: Optional[str]
     comment: Optional[BugzillaWebhookComment]
 
-    def get_whiteboard_count(self):
-        """Get count of whiteboard labels"""
-        if self.whiteboard is not None:
-            return self.whiteboard.count("[")
-        return 0
-
     def get_whiteboard_as_list(self):
         """Convert string whiteboard into list, splitting on ']' and removing '['."""
         if self.whiteboard is not None:
@@ -116,10 +114,10 @@ class BugzillaBug(BaseModel):
             return [f"[{element}]" for element in wb_list]
         return []
 
-    def get_jbi_labels(self):
+    def get_jira_labels(self):
         """
         whiteboard labels are added as a convenience for users to search in jira;
-        bugzilla is a required label for SYNC project
+        bugzilla is an expected label in Jira
         """
         return (
             ["bugzilla"]
@@ -131,26 +129,25 @@ class BugzillaBug(BaseModel):
         """Get all possible whiteboard_tag configuration values"""
         converted_list: List = []
         for whiteboard in self.get_whiteboard_as_list():
-            converted_tag = self.convert_wb_to_tag(whiteboard=whiteboard)
+            converted_tag = self.convert_whiteboard_to_tag(whiteboard=whiteboard)
             if converted_tag not in [None, "", " "]:
                 converted_list.append(converted_tag)
 
         return converted_list
 
-    @staticmethod
-    def convert_wb_to_tag(whiteboard):
+    def convert_whiteboard_to_tag(self, whiteboard):  # pylint: disable=no-self-use
         """Extract tag from whiteboard label"""
         _exists = whiteboard not in (" ", "")
         if not _exists:
             return ""
         return whiteboard.split(sep="-", maxsplit=1)[0].lower()
 
-    def get_jira_issue_dict(self):
+    def map_jira_issue_dict(self):
         """Extract bug info as jira issue dictionary"""
         type_map: dict = {"enhancement": "Task", "task": "Task", "defect": "Bug"}
         return {
             "summary": self.summary,
-            "labels": self.get_jbi_labels(),
+            "labels": self.get_jira_labels(),
             "issuetype": {"name": type_map.get(self.type, "Task")},
         }
 
@@ -170,8 +167,8 @@ class BugzillaBug(BaseModel):
                     parsed_jira_key = parsed_url.path.split("/")[-1]
                     return parsed_jira_key
             except Exception:  # pylint: disable=broad-except
-                # Try parsing all see_also fields; skip errors.
-                continue
+                # Try parsing all see_also fields; log errors.
+                bugzilla_logger.debug(traceback.format_exc())
         return None
 
 
@@ -206,27 +203,24 @@ class BugzillaWebhookRequest(BaseModel):
         """Extract update dict and comment list from Webhook Event"""
 
         comments: List = []
-        if not self.bug:
-            return {}, []
-        bug: BugzillaBug = self.bug
+        bug: BugzillaBug = self.bug  # type: ignore
 
         update_fields: dict = {
             "summary": bug.summary,
-            "labels": bug.get_jbi_labels(),
+            "labels": bug.get_jira_labels(),
         }
         if self.event.changes:
+            user = self.event.user.login if self.event.user else "unknown"
             for change in self.event.changes:
 
                 if status_log_enabled and change.field in ["status", "resolution"]:
-                    comment_dict = {
-                        "modified by": "unknown",
-                        "resolution": bug.resolution,
-                        "status": bug.status,
-                    }
-                    if self.event.user:
-                        comment_dict["modified by"] = self.event.user.login
-
-                    comments.append(comment_dict)
+                    comments.append(
+                        {
+                            "modified by": user,
+                            "resolution": bug.resolution,
+                            "status": bug.status,
+                        }
+                    )
 
                 if assignee_log_enabled and change.field in ["assigned_to", "assignee"]:
                     comments.append({"assignee": bug.assigned_to})

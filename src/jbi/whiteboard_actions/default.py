@@ -7,9 +7,9 @@ Default actions is listed below.
 """
 
 from src.app.environment import get_settings
-from src.jbi.bugzilla_objects import BugzillaBug, BugzillaWebhookRequest
-from src.jbi.model import ActionError
-from src.jbi.service import get_bugzilla, get_jira
+from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
+from src.jbi.errors import ActionError
+from src.jbi.services import get_bugzilla, get_jira
 
 
 def init(whiteboard_tag, jira_project_key, **kwargs):
@@ -60,9 +60,7 @@ class DefaultExecutor:
         self, payload: BugzillaWebhookRequest
     ):  # pylint: disable=too-many-locals
         """Create and link jira issue with bug, or update; rollback if multiple events fire"""
-        bug_obj = payload.bug
-        linked_issue_key = bug_obj.extract_from_see_also()  # type: ignore
-
+        linked_issue_key = payload.bug.extract_from_see_also()  # type: ignore
         if linked_issue_key:
             # update
             fields, comments = payload.map_as_tuple_of_field_dict_and_comments()
@@ -82,7 +80,11 @@ class DefaultExecutor:
                 "jira_responses": [jira_response_update, jira_response_comments],
             }
         # else: create jira issue
-        fields = {**bug_obj.get_jira_issue_dict(), "key": self.jira_project_key}  # type: ignore
+        return self.create_and_link_issue(payload)
+
+    def create_and_link_issue(self, payload):
+        """create jira issue and establish link between bug and issue; rollback/delete if required"""
+        fields = {**payload.bug.map_jira_issue_dict(), "key": self.jira_project_key}  # type: ignore
 
         jira_response_create = self.jira_client.create_issue(fields=fields)
 
