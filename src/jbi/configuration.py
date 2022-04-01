@@ -7,7 +7,7 @@ from functools import lru_cache
 from pydantic import ValidationError
 
 from src.app import environment
-from src.jbi.model import Actions
+from src.jbi.models import Actions
 
 settings = environment.get_settings()
 jbi_logger = logging.getLogger("src.jbi")

@@ -5,6 +5,7 @@ import bugzilla as rh_bugzilla  # type: ignore
 from atlassian import Jira  # type: ignore
 
 from src.app import environment
+from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
 
 settings = environment.get_settings()
 services_logger = logging.getLogger("src.jbi.services")
@@ -22,8 +23,14 @@ def get_jira():
 def get_bugzilla():
     """Get bugzilla service"""
     return rh_bugzilla.Bugzilla(
-        settings.bugzilla_base_url, api_key=settings.bugzilla_api_key
+        settings.bugzilla_base_url, api_key=str(settings.bugzilla_api_key)
     )
+
+
+def getbug_as_bugzilla_object(request: BugzillaWebhookRequest) -> BugzillaBug:
+    """Helper method to get up to date bug data from Request.bug.id in BugzillaBug format"""
+    current_bug_info = get_bugzilla().getbug(request.bug.id)  # type: ignore
+    return BugzillaBug.parse_obj(current_bug_info.__dict__)
 
 
 def bugzilla_check_health():
@@ -37,8 +44,7 @@ def jira_check_health():
     """Check health for Jira Service"""
     jira = get_jira()
     server_info = jira.get_server_info(True)
-    services_logger.info(server_info)
-    health = {"up": False}
+    health = {"up": server_info is not None}
     return health
 
 

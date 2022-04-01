@@ -90,3 +90,11 @@ actions:
     parameters:
       jira_project_key: RELOPS
       whiteboard_tag: relops
+  snt:
+    action: src.jbi.whiteboard_actions.default
+    contact: tbd
+    description: Search/NewTab Team Tag
+    enabled: false
+    parameters:
+      jira_project_key: SNT
+      whiteboard_tag: snt
