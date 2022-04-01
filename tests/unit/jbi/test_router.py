@@ -28,7 +28,7 @@ def test_request_is_ignored_because_private(
         assert response.json()["error"] == "private bugs are not valid"
 
         invalid_request_logs = caplog.records[0]
-        assert invalid_request_logs.name == "src.jbi.router"
+        assert invalid_request_logs.name == "ignored-requests"
 
         assert invalid_request_logs.msg == "ignore-invalid-request: %s"
         assert invalid_request_logs.args
@@ -53,7 +53,7 @@ def test_request_is_ignored_because_no_bug(
         assert response.json()["error"] == "no bug data received"
 
         invalid_request_logs = caplog.records[0]
-        assert invalid_request_logs.name == "src.jbi.router"
+        assert invalid_request_logs.name == "ignored-requests"
 
         assert invalid_request_logs.msg == "ignore-invalid-request: %s"
         assert invalid_request_logs.args
@@ -85,7 +85,7 @@ def test_request_is_ignored_because_no_action(
                 )
 
                 invalid_request_logs = caplog.records[0]
-                assert invalid_request_logs.name == "src.jbi.router"
+                assert invalid_request_logs.name == "ignored-requests"
 
                 assert invalid_request_logs.msg == "ignore-invalid-request: %s"
                 assert invalid_request_logs.args
