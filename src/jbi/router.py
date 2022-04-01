@@ -21,6 +21,7 @@ templates = Jinja2Templates(directory="src/templates")
 api_router = APIRouter(tags=["JBI"])
 
 jbi_logger = logging.getLogger("src.jbi.router")
+invalid_logger = logging.getLogger("ignored-requests")
 
 
 def extract_current_action(  # pylint: disable=inconsistent-return-statements
@@ -58,11 +59,12 @@ def execute_action(request: BugzillaWebhookRequest, action_map, settings):
         callable_action = action_module.init(  # type: ignore
             **current_action["parameters"]
         )
+        jbi_logger.info("request: %s", request.json())
         content = callable_action(payload=request)
         jbi_logger.info("request: %s, content: %s", request.json(), content)
         return JSONResponse(content=content, status_code=200)
     except IgnoreInvalidRequestError as exception:
-        jbi_logger.info("ignore-invalid-request: %s", exception, exc_info=True)
+        invalid_logger.debug("ignore-invalid-request: %s", exception)
         return JSONResponse(content={"error": str(exception)}, status_code=202)
 
 
