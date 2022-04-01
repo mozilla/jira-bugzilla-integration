@@ -84,7 +84,7 @@ class DefaultExecutor:
 
     def create_and_link_issue(self, payload):
         """create jira issue and establish link between bug and issue; rollback/delete if required"""
-        fields = {**payload.bug.map_as_jira_issue(), "key": self.jira_project_key}  # type: ignore
+        fields = {**payload.bug.map_as_jira_issue(), "project": {"key": self.jira_project_key}}  # type: ignore
 
         jira_response_create = self.jira_client.create_issue(fields=fields)
 
@@ -114,11 +114,11 @@ class DefaultExecutor:
             )
             return {"status": "duplicate", "jira_response": jira_response_delete}
         # else:
-        jira_url = self.settings.jira_issue_url.format(jira_key_in_response)
+        jira_url = self.settings.jira_issue_url % jira_key_in_response
         update = self.bugzilla_client.build_update(see_also_add=jira_url)
         bugzilla_response = self.bugzilla_client.update_bugs([bug_obj.id], update)
 
-        bugzilla_url = self.settings.bugzilla_bug_url.format(bug_obj.id)
+        bugzilla_url = self.settings.bugzilla_bug_url % bug_obj.id
         jira_response = self.jira_client.create_or_update_issue_remote_links(
             issue_key=jira_key_in_response,
             link_url=bugzilla_url,

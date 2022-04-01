@@ -18,7 +18,7 @@ class Settings(BaseSettings):
 
     # Jira
     jira_base_url: str = "https://mozit-test.atlassian.net/"
-    jira_issue_url: str = f"{jira_base_url}/browse/%s"
+    jira_issue_url: str = f"{jira_base_url}browse/%s"
     jira_username: str
     jira_password: str
 

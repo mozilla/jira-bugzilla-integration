@@ -130,3 +130,6 @@ dmypy.json
 
 # iSort - Pre-Commit
 .isort.cfg
+
+# Don't check in your own Env
+infra/config/local_dev.env

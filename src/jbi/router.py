@@ -53,6 +53,7 @@ def execute_action(request: BugzillaWebhookRequest, action_map, settings):
                 "whiteboard tag not found in configured actions"
             )
 
+        jbi_logger.info("\nrequest: %s, \naction: %s", request.json(), current_action)
         action_module: ModuleType = importlib.import_module(current_action["action"])
         callable_action = action_module.init(  # type: ignore
             **current_action["parameters"]
