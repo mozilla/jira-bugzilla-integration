@@ -66,10 +66,9 @@ def test_request_is_ignored_because_no_action(
     caplog, webhook_request_example: BugzillaWebhookRequest
 ):
     with mock.patch("src.jbi.whiteboard_actions.default.get_jira") as mocked_jira:
-        with mock.patch("src.jbi.router.get_bugzilla") as mocked_bz:
-            bugzilla_client = MagicMock()
-            bugzilla_client.getbug.return_value = webhook_request_example.bug
-            mocked_bz.return_value = bugzilla_client
+        with mock.patch("src.jbi.router.getbug_as_bugzilla_object") as mocked_bz_func:
+            mocked_bz_func = MagicMock()
+            mocked_bz_func.return_value = webhook_request_example.bug
             with TestClient(app) as anon_client:
                 # https://fastapi.tiangolo.com/advanced/testing-events/
                 invalid_webhook_request_example = webhook_request_example

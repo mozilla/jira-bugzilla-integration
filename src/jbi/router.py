@@ -14,7 +14,7 @@ from src.app import environment
 from src.jbi import configuration
 from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
 from src.jbi.errors import IgnoreInvalidRequestError
-from src.jbi.services import get_bugzilla
+from src.jbi.services import getbug_as_bugzilla_object
 
 templates = Jinja2Templates(directory="src/templates")
 
@@ -46,10 +46,8 @@ def execute_action(request: BugzillaWebhookRequest, action_map, settings):
         if is_private_bug:
             raise IgnoreInvalidRequestError("private bugs are not valid")
 
-        bugzilla_client = get_bugzilla()
-        current_bug_info = bugzilla_client.getbug(request.bug.id)
-        request.bug = BugzillaBug.parse_obj(current_bug_info.__dict__)
-        current_action = extract_current_action(request.bug, action_map)
+        request.bug = getbug_as_bugzilla_object(request=request)
+        current_action = extract_current_action(request.bug, action_map)  # type: ignore
         if not current_action:
             raise IgnoreInvalidRequestError(
                 "whiteboard tag not found in configured actions"

@@ -26,11 +26,12 @@ def test_default_returns_callable_with_data(webhook_request_example):
 
     with mock.patch("src.jbi.whiteboard_actions.default.get_jira") as mocked_jira:
         with mock.patch("src.jbi.whiteboard_actions.default.get_bugzilla") as mocked_bz:
-            bugzilla_client = MagicMock()
-            bugzilla_client.getbug.return_value = webhook_request_example.bug
-            mocked_bz.return_value = bugzilla_client
-            callable_object = default.init(whiteboard_tag="", jira_project_key="")
-            assert callable_object
-            value = callable_object(payload=webhook_request_example)
+            with mock.patch(
+                "src.jbi.whiteboard_actions.default.getbug_as_bugzilla_object"
+            ) as mocked_bz_func:
+                mocked_bz_func.return_value = webhook_request_example.bug
+                callable_object = default.init(whiteboard_tag="", jira_project_key="")
+                assert callable_object
+                value = callable_object(payload=webhook_request_example)
 
     assert value["status"] == "create"

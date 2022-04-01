@@ -7,9 +7,9 @@ Default actions is listed below.
 """
 
 from src.app.environment import get_settings
-from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
+from src.jbi.bugzilla import BugzillaWebhookRequest
 from src.jbi.errors import ActionError
-from src.jbi.services import get_bugzilla, get_jira
+from src.jbi.services import get_bugzilla, get_jira, getbug_as_bugzilla_object
 
 
 def init(whiteboard_tag, jira_project_key, **kwargs):
@@ -102,8 +102,7 @@ class DefaultExecutor:
                 raise ActionError(f"response contains error: {jira_response_create}")
 
         jira_key_in_response = jira_response_create.get("key")
-        current_bug_info = self.bugzilla_client.getbug(payload.bug.id)  # type: ignore
-        bug_obj = BugzillaBug.parse_obj(current_bug_info.__dict__)
+        bug_obj = getbug_as_bugzilla_object(request=payload)
         jira_key_in_bugzilla = bug_obj.extract_from_see_also()
         _duplicate_creation_event = (
             jira_key_in_bugzilla is not None
