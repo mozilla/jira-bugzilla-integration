@@ -60,7 +60,7 @@ class DefaultExecutor:
         self, payload: BugzillaWebhookRequest
     ):  # pylint: disable=too-many-locals
         """Create and link jira issue with bug, or update; rollback if multiple events fire"""
-        linked_issue_key = payload.bug.extract_from_see_also()  # type: ignore
+        linked_issue_key = getbug_as_bugzilla_object(payload).extract_from_see_also()  # type: ignore
         if linked_issue_key:
             # update
             fields, comments = payload.map_as_tuple_of_field_dict_and_comments()
@@ -84,7 +84,14 @@ class DefaultExecutor:
 
     def create_and_link_issue(self, payload):
         """create jira issue and establish link between bug and issue; rollback/delete if required"""
-        fields = {**payload.bug.map_as_jira_issue(), "project": {"key": self.jira_project_key}}  # type: ignore
+        comment_list = self.bugzilla_client.get_comments(idlist=[payload.bug.id])
+        fields = {
+            **payload.bug.map_as_jira_issue(),  # type: ignore
+            "description": comment_list["bugs"][str(payload.bug.id)]["comments"][0][
+                "text"
+            ],
+            "project": {"key": self.jira_project_key},
+        }
 
         jira_response_create = self.jira_client.create_issue(fields=fields)
 

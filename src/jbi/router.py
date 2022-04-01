@@ -46,8 +46,8 @@ def execute_action(request: BugzillaWebhookRequest, action_map, settings):
         if is_private_bug:
             raise IgnoreInvalidRequestError("private bugs are not valid")
 
-        request.bug = getbug_as_bugzilla_object(request=request)
-        current_action = extract_current_action(request.bug, action_map)  # type: ignore
+        bug_obj = getbug_as_bugzilla_object(request=request)
+        current_action = extract_current_action(bug_obj, action_map)  # type: ignore
         if not current_action:
             raise IgnoreInvalidRequestError(
                 "whiteboard tag not found in configured actions"
