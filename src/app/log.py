@@ -31,6 +31,7 @@ def configure_logging():
         "loggers": {
             "request.summary": {"handlers": ["console"], "level": "INFO"},
             "src.jbi": {"handlers": ["console"], "level": "INFO"},
+            "ignored-requests": {"handlers": ["console"], "level": "DEBUG"},
         },
     }
 

@@ -1,3 +1,8 @@
+exclude: |
+  (?x)^(
+      .*/gunicorn_conf.py|
+      .*/test_gunicorn_conf.py
+  )$
 repos:
   - repo: local
     hooks:
@@ -56,6 +61,11 @@ repos:
         args: ["--recursive", "--settings-path", "./pyproject.toml", "."]
         language: system
         types: [python]
+        exclude: |
+          (?x)^(
+              .*/gunicorn_conf.py|
+              .*/test_gunicorn_conf.py
+          )$
   - repo: local
     hooks:
       - id: black

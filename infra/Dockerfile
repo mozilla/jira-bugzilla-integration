@@ -93,7 +93,7 @@ CMD ./infra/detect_secrets_helper.sh
 
 
 # 'test' stage runs our unit tests with pytest and
-# coverage.  Build will fail if test coverage is under 80%
+# coverage.
 FROM development AS test
 CMD ./infra/test.sh
 
