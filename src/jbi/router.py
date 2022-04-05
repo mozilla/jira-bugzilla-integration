@@ -66,12 +66,6 @@ def execute_action(request: BugzillaWebhookRequest, action_map, settings):
     except IgnoreInvalidRequestError as exception:
         invalid_logger.debug("ignore-invalid-request: %s", exception)
         return JSONResponse(content={"error": str(exception)}, status_code=202)
-    except Exception as exception:  # pylint: disable=broad-except
-        # TODO: Remove when sentry is enabled # pylint: disable=fixme
-        jbi_logger.debug(
-            "unknown-exception (%s): %s", type(exception), exception, exc_info=True
-        )
-        raise exception
 
 
 @api_router.post("/bugzilla_webhook")
