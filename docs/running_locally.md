@@ -41,3 +41,30 @@ Confirm the following environment variable is the expected value:
 The `ENV` environment variable defaults to `dev` and as such uses the `config/config.dev.yaml`
 
 Additional/different action configuration YAMLs can be constructed and used through this environment variable, the YAML used for the service is in the form: `config/config.{ENV}.yaml`
+
+----
+#### Starting up the Service
+
+After setting the expected Environment variables, the service can be started with `make start`.
+
+Using `ngrok`, `localtunnel`, or another alternate tool the locally run service can be used to accept webhooks and provide updates to the chosen jira instance.
+The chosen tool should provide a publicly accessible endpoint that can be used in the next step.
+
+----
+
+#### Setting up Bugzilla Webhooks
+
+Set up the webhooks within bugzilla preferences:
+- https://bugzilla-dev.allizom.org/userprefs.cgi?tab=webhooks
+
+Minimum required fields to setup a webhook:
+- `Name`:
+    - Will be provided in the request
+- `URL`:
+    - The URL the requests will POST to
+- `Events`:
+    - Selected bugzilla events (create, update, comment, attachment)
+- `Product`:
+    - Currently needs to be set
+- `Component`:
+    - Can be set to ANY, or a Specific Component.
