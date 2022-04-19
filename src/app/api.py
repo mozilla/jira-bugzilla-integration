@@ -5,10 +5,12 @@ import logging
 import time
 from datetime import datetime
 
+import sentry_sdk
 import uvicorn  # type: ignore
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 
 from src.app.environment import get_settings
 from src.app.log import configure_logging
@@ -16,6 +18,8 @@ from src.app.monitor import api_router as monitor_router
 from src.jbi.router import api_router as jbi_router
 
 settings = get_settings()
+
+configure_logging()
 
 app = FastAPI(
     title="Jira Bugzilla Integration (JBI)",
@@ -26,6 +30,11 @@ app = FastAPI(
 app.include_router(monitor_router)
 app.include_router(jbi_router)
 app.mount("/static", StaticFiles(directory="src/static"), name="static")
+
+sentry_sdk.init(  # pylint: disable=abstract-class-instantiated  # noqa: E0110
+    dsn=settings.sentry_dsn
+)
+app.add_middleware(SentryAsgiMiddleware)
 
 
 @app.get("/", include_in_schema=False)
@@ -59,12 +68,6 @@ async def request_summary(request: Request, call_next):
     summary_logger.info("", extra=infos)
 
     return response
-
-
-@app.on_event("startup")
-def startup_event():
-    """On app startup perform these setup operations"""
-    configure_logging()
 
 
 if __name__ == "__main__":

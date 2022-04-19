@@ -4,8 +4,13 @@ Module dedicated to interacting with the environment (variables, version.json)
 import json
 from functools import lru_cache
 from pathlib import Path
+from typing import Optional
 
-from pydantic import BaseSettings
+from pydantic import AnyUrl, BaseSettings
+
+
+class SentryDsn(AnyUrl):
+    """Url type to validate Sentry DSN"""
 
 
 class Settings(BaseSettings):
@@ -29,6 +34,9 @@ class Settings(BaseSettings):
 
     # Logging
     log_level: str = "info"
+
+    # Sentry
+    sentry_dsn: Optional[SentryDsn]
 
 
 @lru_cache()
