@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: str = "80"
     app_reload: bool = True
-    env: str = "dev"
+    env: str = "nonprod"
 
     # Jira
     jira_base_url: str = "https://mozit-test.atlassian.net/"

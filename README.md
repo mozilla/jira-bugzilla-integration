@@ -50,7 +50,7 @@ A bit more about the different fields...
 
 
 
-[View 'dev'  configurations here.](config/config.dev.yaml)
+[View 'nonprod'  configurations here.](config/config.nonprod.yaml)
 
 [View 'prod' configurations here.](config/config.prod.yaml)
 
