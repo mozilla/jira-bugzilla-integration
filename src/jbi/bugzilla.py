@@ -118,12 +118,14 @@ class BugzillaBug(BaseModel):
         """
         whiteboard labels are added as a convenience for users to search in jira;
         bugzilla is an expected label in Jira
+        since jira-labels can't contain a " ", convert to "."
         """
-        return (
-            ["bugzilla"]
-            + self.get_whiteboard_as_list()
-            + self.get_whiteboard_with_brackets_as_list()
-        )
+        wb_list = [wb.replace(" ", ".") for wb in self.get_whiteboard_as_list()]
+        wb_bracket_list = [
+            wb.replace(" ", ".") for wb in self.get_whiteboard_with_brackets_as_list()
+        ]
+
+        return ["bugzilla"] + wb_list + wb_bracket_list
 
     def get_potential_whiteboard_config_list(self):
         """Get all possible whiteboard_tag configuration values"""
