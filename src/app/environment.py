@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     jira_base_url: str = "https://mozit-test.atlassian.net/"
     jira_issue_url: str = f"{jira_base_url}browse/%s"
     jira_username: str
-    jira_password: str
+    jira_api_key: str
 
     # Bugzilla
     bugzilla_base_url: str = "https://bugzilla-dev.allizom.org"

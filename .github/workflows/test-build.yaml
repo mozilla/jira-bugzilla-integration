@@ -23,10 +23,10 @@ jobs:
         run: |-
           docker run --rm \
           -e JIRA_USERNAME \
-          -e JIRA_PASSWORD \
+          -e JIRA_API_KEY \
           -e BUGZILLA_API_KEY \
           ghcr.io/${{ github.repository }}:${{ github.sha }}
         env:
           JIRA_USERNAME: "fake_username"
-          JIRA_PASSWORD: "fake_password"
+          JIRA_API_KEY: "fake_api_key"
           BUGZILLA_API_KEY: "fake_api_key"
