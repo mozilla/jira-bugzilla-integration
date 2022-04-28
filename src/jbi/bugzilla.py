@@ -4,6 +4,7 @@ View additional bugzilla webhook documentation here: https://bugzilla.mozilla.or
 
 """
 import datetime
+import json
 import logging
 import traceback
 from typing import Dict, List, Optional, Tuple
@@ -100,21 +101,21 @@ class BugzillaBug(BaseModel):
     assigned_to: Optional[str]
     comment: Optional[BugzillaWebhookComment]
 
-    def get_whiteboard_as_list(self):
+    def get_whiteboard_as_list(self) -> List[str]:
         """Convert string whiteboard into list, splitting on ']' and removing '['."""
         if self.whiteboard is not None:
             split_list = self.whiteboard.replace("[", "").split("]")
             return [x.strip() for x in split_list if x not in ["", " "]]
         return []
 
-    def get_whiteboard_with_brackets_as_list(self):
+    def get_whiteboard_with_brackets_as_list(self) -> List[str]:
         """Convert string whiteboard into list, splitting on ']' and removing '['; then re-adding."""
         wb_list = self.get_whiteboard_as_list()
         if wb_list is not None and len(wb_list) > 0:
             return [f"[{element}]" for element in wb_list]
         return []
 
-    def get_jira_labels(self):
+    def get_jira_labels(self) -> List[str]:
         """
         whiteboard labels are added as a convenience for users to search in jira;
         bugzilla is an expected label in Jira
@@ -127,7 +128,7 @@ class BugzillaBug(BaseModel):
 
         return ["bugzilla"] + wb_list + wb_bracket_list
 
-    def get_potential_whiteboard_config_list(self):
+    def get_potential_whiteboard_config_list(self) -> List[str]:
         """Get all possible whiteboard_tag configuration values"""
         converted_list: List = []
         for whiteboard in self.get_whiteboard_as_list():
@@ -139,12 +140,12 @@ class BugzillaBug(BaseModel):
 
     def convert_whiteboard_to_tag(self, whiteboard):  # pylint: disable=no-self-use
         """Extract tag from whiteboard label"""
-        _exists = whiteboard not in (" ", "")
+        _exists = whiteboard not in [" ", ""]
         if not _exists:
             return ""
         return whiteboard.split(sep="-", maxsplit=1)[0].lower()
 
-    def map_as_jira_issue(self):
+    def map_as_jira_issue(self) -> Dict:
         """Extract bug info as jira issue dictionary"""
         type_map: dict = {"enhancement": "Task", "task": "Task", "defect": "Bug"}
         return {
@@ -201,7 +202,7 @@ class BugzillaWebhookRequest(BaseModel):
         self,
         status_log_enabled: bool = True,
         assignee_log_enabled: bool = True,
-    ) -> Tuple[Dict, List]:
+    ) -> Tuple[Dict, List[str]]:
         """Extract update dict and comment list from Webhook Event"""
 
         comments: List = []
@@ -230,7 +231,8 @@ class BugzillaWebhookRequest(BaseModel):
                 if change.field == "reporter":
                     update_fields[change.field] = change.added
 
-        return update_fields, comments
+        comments_as_str: List[str] = [json.dumps(comment) for comment in comments]
+        return update_fields, comments_as_str
 
 
 class BugzillaApiResponse(BaseModel):
