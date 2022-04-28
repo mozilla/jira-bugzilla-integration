@@ -231,7 +231,9 @@ class BugzillaWebhookRequest(BaseModel):
                 if change.field == "reporter":
                     update_fields[change.field] = change.added
 
-        comments_as_str: List[str] = [json.dumps(comment) for comment in comments]
+        comments_as_str: List[str] = [
+            json.dumps(comment, indent=4) for comment in comments
+        ]
         return update_fields, comments_as_str
 
 
