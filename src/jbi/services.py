@@ -1,5 +1,6 @@
 """Services and functions that can be used to create custom actions"""
 import logging
+from typing import Dict, List
 
 import bugzilla as rh_bugzilla  # type: ignore
 from atlassian import Jira  # type: ignore
@@ -59,4 +60,5 @@ def jbi_service_health_map():
 def jira_visible_projects():
     """Returns list of projects that are currently accessible"""
     jira = get_jira()
-    return jira.projects(included_archived=None)
+    visible_projects: List[Dict] = jira.projects(included_archived=None)
+    return [project["key"] for project in visible_projects]
