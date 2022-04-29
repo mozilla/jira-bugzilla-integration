@@ -121,11 +121,11 @@ class DefaultExecutor:
             )
             return {"status": "duplicate", "jira_response": jira_response_delete}
         # else:
-        jira_url = self.settings.jira_issue_url % jira_key_in_response
+        jira_url = f"{self.settings.jira_base_url}browse/{jira_key_in_response}"
         update = self.bugzilla_client.build_update(see_also_add=jira_url)
         bugzilla_response = self.bugzilla_client.update_bugs([bug_obj.id], update)
 
-        bugzilla_url = self.settings.bugzilla_bug_url % bug_obj.id
+        bugzilla_url = f"{self.settings.bugzilla_base_url}/show_bug.cgi?id={bug_obj.id}"
         jira_response = self.jira_client.create_or_update_issue_remote_links(
             issue_key=jira_key_in_response,
             link_url=bugzilla_url,
