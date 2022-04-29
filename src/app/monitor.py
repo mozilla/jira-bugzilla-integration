@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
 from src.app import environment
-from src.jbi.services import jbi_service_health_map
+from src.jbi.services import jbi_service_health_map, jira_visible_projects
 
 api_router = APIRouter(tags=["Monitor"])
 
@@ -62,3 +62,9 @@ def head_lbheartbeat(request: Request):
 def version():
     """Return version.json, as required by Dockerflow."""
     return environment.get_version()
+
+
+@api_router.get("/jira_projects/")
+def get_jira_projects():
+    """API for viewing projects that are currently accessible by API"""
+    return jira_visible_projects()
