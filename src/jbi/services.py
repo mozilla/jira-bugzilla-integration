@@ -54,3 +54,9 @@ def jbi_service_health_map():
         "bugzilla": bugzilla_check_health(),
         "jira": jira_check_health(),
     }
+
+
+def jira_visible_projects():
+    """Returns list of projects that are currently accessible"""
+    jira = get_jira()
+    return jira.projects(included_archived=None)
