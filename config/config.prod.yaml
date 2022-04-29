@@ -6,49 +6,56 @@ actions:
     #  action: src.jbi.whiteboard_actions.default
     contact: tbd
     description: Addons whiteboard tag for AMO Team
-    # enabled: false
+    enabled: true
     parameters:
       jira_project_key: WEBEXT
       whiteboard_tag: addons
   fidedi:
     contact: tbd
     description: Firefox Desktop Integration whiteboard tag
+    enabled: true
     parameters:
       jira_project_key: FIDEDI
       whiteboard_tag: fidedi
   fidefe:
     contact: tbd
     description: Firefox Front End whiteboard tag
+    enabled: true
     parameters:
       jira_project_key: FIDEFE
       whiteboard_tag: fidefe
   fxatps:
     contact: tbd
     description: Privacy & Security and Anti-Tracking Team whiteboard tag
+    enabled: true
     parameters:
       jira_project_key: FXATPS
       whiteboard_tag: fxatps
   fxsync:
     contact: tbd
     description: Firefox Sync Team whiteboard tag
+    enabled: true
     parameters:
       jira_project_key: SYNC
       whiteboard_tag: fxsync
   gv:
     contact: tbd
     description: GeckoView Team whiteboard tag
+    enabled: true
     parameters:
       jira_project_key: ANDP
       whiteboard_tag: gv
   mr2qa:
     contact: tbd
     description: MR2 whiteboard tag
+    enabled: true
     parameters:
       jira_project_key: MR2
       whiteboard_tag: mr2qa
   mv3:
     contact: tbd
     description: MV3 whiteboard tag
+    enabled: true
     parameters:
       jira_project_key: WEBEXT
       whiteboard_tag: mv3
@@ -62,18 +69,21 @@ actions:
   proton:
     contact: tbd
     description: Proton whiteboard tag for Firefox Frontend
+    enabled: true
     parameters:
       jira_project_key: FIDEFE
       whiteboard_tag: proton
   relops:
     contact: tbd
     description: Release Operations Team Tag
+    enabled: true
     parameters:
       jira_project_key: RELOPS
       whiteboard_tag: relops
   snt:
     contact: tbd
     description: Search/NewTab Team Tag
+    enabled: true
     parameters:
       jira_project_key: SNT
       whiteboard_tag: snt
