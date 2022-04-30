@@ -24,10 +24,10 @@ def test_request_is_ignored_because_private(
             "/bugzilla_webhook", data=invalid_webhook_request_example.json()
         )
         assert response
-        assert response.status_code == 202
+        assert response.status_code == 200
         assert response.json()["error"] == "private bugs are not valid"
 
-        invalid_request_logs = caplog.records[0]
+        invalid_request_logs = caplog.records[1]
         assert invalid_request_logs.name == "ignored-requests"
 
         assert invalid_request_logs.msg == "ignore-invalid-request: %s"
@@ -49,10 +49,10 @@ def test_request_is_ignored_because_no_bug(
             "/bugzilla_webhook", data=invalid_webhook_request_example.json()
         )
         assert response
-        assert response.status_code == 202
+        assert response.status_code == 200
         assert response.json()["error"] == "no bug data received"
 
-        invalid_request_logs = caplog.records[0]
+        invalid_request_logs = caplog.records[1]
         assert invalid_request_logs.name == "ignored-requests"
 
         assert invalid_request_logs.msg == "ignore-invalid-request: %s"
@@ -78,13 +78,13 @@ def test_request_is_ignored_because_no_action(
                     "/bugzilla_webhook", data=invalid_webhook_request_example.json()
                 )
                 assert response
-                assert response.status_code == 202
+                assert response.status_code == 200
                 assert (
                     response.json()["error"]
                     == "whiteboard tag not found in configured actions"
                 )
 
-                invalid_request_logs = caplog.records[0]
+                invalid_request_logs = caplog.records[1]
                 assert invalid_request_logs.name == "ignored-requests"
 
                 assert invalid_request_logs.msg == "ignore-invalid-request: %s"
