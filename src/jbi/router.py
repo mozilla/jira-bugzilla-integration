@@ -40,6 +40,7 @@ def extract_current_action(  # pylint: disable=inconsistent-return-statements
 def execute_action(request: BugzillaWebhookRequest, action_map, settings):
     """Execute action"""
     try:
+        jbi_logger.info("request: %s", request.json())
         if not request.bug:
             raise IgnoreInvalidRequestError("no bug data received")
 
@@ -59,13 +60,12 @@ def execute_action(request: BugzillaWebhookRequest, action_map, settings):
         callable_action = action_module.init(  # type: ignore
             **current_action["parameters"]
         )
-        jbi_logger.info("request: %s", request.json())
         content = callable_action(payload=request)
         jbi_logger.info("request: %s, content: %s", request.json(), content)
         return JSONResponse(content=content, status_code=200)
     except IgnoreInvalidRequestError as exception:
         invalid_logger.debug("ignore-invalid-request: %s", exception)
-        return JSONResponse(content={"error": str(exception)}, status_code=202)
+        return JSONResponse(content={"error": str(exception)}, status_code=200)
 
 
 @api_router.post("/bugzilla_webhook")
