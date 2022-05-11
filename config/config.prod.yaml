@@ -31,6 +31,13 @@ actions:
     parameters:
       jira_project_key: FXATPS
       whiteboard_tag: fxatps
+  fxcm:
+    contact: tbd
+    description: tbd
+    enabled: true
+    parameters:
+      jira_project_key: FXCM
+      whiteboard_tag: fxcm
   fxsync:
     contact: tbd
     description: Firefox Sync Team whiteboard tag
