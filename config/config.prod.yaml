@@ -33,7 +33,7 @@ actions:
       whiteboard_tag: fxatps
   fxcm:
     contact: tbd
-    description: tbd
+    description: Firefox Credential Management Team whiteboard tag
     enabled: true
     parameters:
       jira_project_key: FXCM
@@ -66,6 +66,13 @@ actions:
     parameters:
       jira_project_key: WEBEXT
       whiteboard_tag: mv3
+  nimbus:
+    contact: tbd
+    description: Nimbus whiteboard tag
+    enabled: true
+    parameters:
+      jira_project_key: EXP
+      whiteboard_tag: nimbus
   prodtest:
     contact: tbd
     description: ProdTest tag
