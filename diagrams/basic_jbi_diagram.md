@@ -1,3 +1,4 @@
+``` mermaid
 graph TD
     A[Bugzilla Webhook Queue] --> B[Bugzila]
     B[Bugzilla] -->|webhook event| C(JBI)
@@ -5,3 +6,4 @@ graph TD
     C -->|Read Bug| B
     C -->|update see_also| B
     E["config.{ENV}.yaml"] -->|action configuration| C
+```
