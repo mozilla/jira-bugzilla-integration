@@ -1,9 +1,14 @@
 ``` mermaid
 graph TD
-    A[Bugzilla Webhook Queue] --> B[Bugzila]
-    B[Bugzilla] -->|webhook event| C(JBI)
-    C --> |create/update/delete issue| D(Jira)
-    C -->|Read Bug| B
-    C -->|update see_also| B
-    E["config.{ENV}.yaml"] -->|action configuration| C
+    subgraph bugzilla services
+        A[Bugzilla] ---|bugzilla event| B[(Webhook Queue)]
+        B --- C[Webhook Push Service]
+    end
+    D --> |create/update/delete issue| E[Jira]
+    D<-->|Read Bug| A
+    D -->|update see_also| A
+    subgraph jira-bugzilla-integration
+        C -->|webhook event| D{JBI}
+        F["config.{ENV}.yaml"] ---|action configuration| D
+    end
 ```
