@@ -57,3 +57,21 @@ A bit more about the different fields...
 
 ### Custom Actions
 If you're looking for a unique capability for your team's data flow, you can add your own python methods and functionality[...read more here.](src/jbi/whiteboard_actions/README.md)
+
+
+### Diagram Oveview
+
+``` mermaid
+graph TD
+    subgraph bugzilla services
+        A[Bugzilla] -.-|bugzilla event| B[(Webhook Queue)]
+        B --- C[Webhook Push Service]
+    end
+    D --> |create/update/delete issue| E[Jira]
+    D<-->|read bug| A
+    D -->|update see_also| A
+    subgraph jira-bugzilla-integration
+        C -.->|post /bugzilla_webhook| D{JBI}
+        F["config.{ENV}.yaml"] ---| read actions config| D
+    end
+```
