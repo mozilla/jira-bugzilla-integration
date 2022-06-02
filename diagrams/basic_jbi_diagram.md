@@ -5,10 +5,10 @@ graph TD
         B --- C[Webhook Push Service]
     end
     D --> |create/update/delete issue| E[Jira]
-    D<-->|Read Bug| A
+    D<-->|read bug| A
     D -->|update see_also| A
     subgraph jira-bugzilla-integration
-        C -.->|webhook event| D{JBI}
-        F["config.{ENV}.yaml"] ---|action configuration| D
+        C -.->|post /bugzilla_webhook| D{JBI}
+        F["config.{ENV}.yaml"] ---| read actions config| D
     end
 ```
