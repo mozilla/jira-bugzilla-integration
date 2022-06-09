@@ -16,6 +16,7 @@ class Action(YamlModel, extra=Extra.allow):
 
     action: str = "src.jbi.whiteboard_actions.default"
     enabled: bool = False
+    allow_private: bool = False
     parameters: dict = {}
 
     @root_validator

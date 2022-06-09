@@ -91,6 +91,7 @@ class BugzillaBug(BaseModel):
     whiteboard: Optional[str]
     keywords: Optional[List]
     flags: Optional[List]
+    groups: Optional[List]
     status: Optional[str]
     resolution: Optional[str]
     see_also: Optional[List]
