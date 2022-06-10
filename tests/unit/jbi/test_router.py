@@ -60,9 +60,7 @@ def test_private_request_is_allowed(
         mocked_extract_action.return_value = test_action
         with mock.patch("src.jbi.router.getbug_as_bugzilla_object") as mocked_bz_func:
             mocked_bz_func.return_value = private_webhook_request_example.bug
-            with mock.patch(
-                "tests.unit.jbi.noop_action.init"
-            ) as mocked_action_init:
+            with mock.patch("tests.unit.jbi.noop_action.init") as mocked_action_init:
                 mocked_action = MagicMock()
                 mocked_action.return_value = dict()
                 mocked_action_init.return_value = mocked_action
