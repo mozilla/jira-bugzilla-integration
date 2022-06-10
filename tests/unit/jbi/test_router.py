@@ -60,21 +60,17 @@ def test_private_request_is_allowed(
         mocked_extract_action.return_value = test_action
         with mock.patch("src.jbi.router.getbug_as_bugzilla_object") as mocked_bz_func:
             mocked_bz_func.return_value = private_webhook_request_example.bug
-            with mock.patch("tests.unit.jbi.noop_action.init") as mocked_action_init:
-                mocked_action = MagicMock()
-                mocked_action.return_value = dict()
-                mocked_action_init.return_value = mocked_action
-                with TestClient(app) as anon_client:
-                    # https://fastapi.tiangolo.com/advanced/testing-events/
+            with TestClient(app) as anon_client:
+                # https://fastapi.tiangolo.com/advanced/testing-events/
 
-                    response = anon_client.post(
-                        "/bugzilla_webhook", data=private_webhook_request_example.json()
-                    )
-                    assert response
-                    assert response.status_code == 200
+                response = anon_client.post(
+                    "/bugzilla_webhook", data=private_webhook_request_example.json()
+                )
+                assert response
+                assert response.status_code == 200
 
-                    assert mocked_action.call_count == 1
-                    assert mocked_action.call_args.kwargs["payload"].bug.id == 654321
+                payload = BugzillaWebhookRequest.parse_raw(response.json()["payload"])
+                assert payload.bug.id == 654321
 
 
 def test_request_is_ignored_because_no_bug(
