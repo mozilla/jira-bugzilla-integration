@@ -60,7 +60,8 @@ class DefaultExecutor:
         self, payload: BugzillaWebhookRequest
     ):  # pylint: disable=too-many-locals
         """Create and link jira issue with bug, or update; rollback if multiple events fire"""
-        linked_issue_key = getbug_as_bugzilla_object(payload).extract_from_see_also()  # type: ignore
+        bug_obj = getbug_as_bugzilla_object(payload)
+        linked_issue_key = bug_obj.extract_from_see_also()  # type: ignore
         if linked_issue_key:
             # update
             fields, comments = payload.map_as_tuple_of_field_dict_and_comments()
@@ -80,16 +81,14 @@ class DefaultExecutor:
                 "jira_responses": [jira_response_update, jira_response_comments],
             }
         # else: create jira issue
-        return self.create_and_link_issue(payload)
+        return self.create_and_link_issue(payload, bug_obj)
 
-    def create_and_link_issue(self, payload):
+    def create_and_link_issue(self, payload, bug_obj):
         """create jira issue and establish link between bug and issue; rollback/delete if required"""
-        comment_list = self.bugzilla_client.get_comments(idlist=[payload.bug.id])
+        comment_list = self.bugzilla_client.get_comments(idlist=[bug_obj.id])
         fields = {
-            **payload.bug.map_as_jira_issue(),  # type: ignore
-            "description": comment_list["bugs"][str(payload.bug.id)]["comments"][0][
-                "text"
-            ],
+            **bug_obj.map_as_jira_issue(),  # type: ignore
+            "description": comment_list["bugs"][str(bug_obj.id)]["comments"][0]["text"],
             "project": {"key": self.jira_project_key},
         }
 

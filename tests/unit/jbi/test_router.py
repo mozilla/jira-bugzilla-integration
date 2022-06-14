@@ -10,31 +10,67 @@ from fastapi.testclient import TestClient
 from src.app.api import app
 from src.jbi.bugzilla import BugzillaWebhookRequest
 from src.jbi.errors import IgnoreInvalidRequestError
+from src.jbi.models import Action
 
 
 def test_request_is_ignored_because_private(
     caplog, webhook_request_example: BugzillaWebhookRequest
 ):
-    with TestClient(app) as anon_client:
-        # https://fastapi.tiangolo.com/advanced/testing-events/
-        invalid_webhook_request_example = webhook_request_example
-        invalid_webhook_request_example.bug.is_private = True  # type: ignore
+    private_webhook_request_example = webhook_request_example
+    private_webhook_request_example.bug.is_private = True  # type: ignore
+    test_action = Action.parse_obj({"action": "tests.unit.jbi.noop_action"}).dict()
 
-        response = anon_client.post(
-            "/bugzilla_webhook", data=invalid_webhook_request_example.json()
-        )
-        assert response
-        assert response.status_code == 200
-        assert response.json()["error"] == "private bugs are not valid"
+    with mock.patch("src.jbi.router.extract_current_action") as mocked_extract_action:
+        mocked_extract_action.return_value = test_action
+        with mock.patch("src.jbi.router.getbug_as_bugzilla_object") as mocked_bz_func:
+            mocked_bz_func.return_value = private_webhook_request_example.bug
+            with TestClient(app) as anon_client:
+                # https://fastapi.tiangolo.com/advanced/testing-events/
 
-        invalid_request_logs = caplog.records[1]
-        assert invalid_request_logs.name == "ignored-requests"
+                response = anon_client.post(
+                    "/bugzilla_webhook", data=private_webhook_request_example.json()
+                )
+                assert response
+                assert response.status_code == 200
+                assert (
+                    response.json()["error"]
+                    == "private bugs are not valid for this action"
+                )
 
-        assert invalid_request_logs.msg == "ignore-invalid-request: %s"
-        assert invalid_request_logs.args
-        for arg in invalid_request_logs.args:
-            assert isinstance(arg, IgnoreInvalidRequestError)
-            assert str(arg) == "private bugs are not valid"
+                invalid_request_logs = caplog.records[1]
+                assert invalid_request_logs.name == "ignored-requests"
+
+                assert invalid_request_logs.msg == "ignore-invalid-request: %s"
+                assert invalid_request_logs.args
+                for arg in invalid_request_logs.args:
+                    assert isinstance(arg, IgnoreInvalidRequestError)
+                    assert str(arg) == "private bugs are not valid for this action"
+
+
+def test_private_request_is_allowed(
+    caplog, webhook_request_example: BugzillaWebhookRequest
+):
+    private_webhook_request_example = webhook_request_example
+    private_webhook_request_example.bug.is_private = True  # type: ignore
+    test_action = Action.parse_obj(
+        {"action": "tests.unit.jbi.noop_action", "allow_private": True}
+    ).dict()
+
+    with mock.patch("src.jbi.router.extract_current_action") as mocked_extract_action:
+        mocked_extract_action.return_value = test_action
+        with mock.patch("src.jbi.router.getbug_as_bugzilla_object") as mocked_bz_func:
+            mocked_bz_func.return_value = private_webhook_request_example.bug
+            with TestClient(app) as anon_client:
+                # https://fastapi.tiangolo.com/advanced/testing-events/
+
+                response = anon_client.post(
+                    "/bugzilla_webhook", data=private_webhook_request_example.json()
+                )
+                assert response
+                assert response.status_code == 200
+
+                payload = BugzillaWebhookRequest.parse_raw(response.json()["payload"])
+                assert payload.bug.id == 654321
 
 
 def test_request_is_ignored_because_no_bug(
