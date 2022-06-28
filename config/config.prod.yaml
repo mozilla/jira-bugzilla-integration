@@ -25,10 +25,10 @@ actions:
       jira_project_key: FIDEFE
       whiteboard_tag: fidefe
   flowstate:
+    allow_private: true
     contact: dtownsend@mozilla.com
     description: Flowstate whiteboard tag
     enabled: true
-    allow_private: true
     parameters:
       jira_project_key: MR2
       whiteboard_tag: flowstate
