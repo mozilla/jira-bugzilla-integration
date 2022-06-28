@@ -24,6 +24,14 @@ actions:
     parameters:
       jira_project_key: FIDEFE
       whiteboard_tag: fidefe
+  flowstate:
+    contact: dtownsend@mozilla.com
+    description: Flowstate whiteboard tag
+    enabled: true
+    allow_private: true
+    parameters:
+      jira_project_key: MR2
+      whiteboard_tag: flowstate
   fxatps:
     contact: tbd
     description: Privacy & Security and Anti-Tracking Team whiteboard tag
@@ -52,13 +60,6 @@ actions:
     parameters:
       jira_project_key: ANDP
       whiteboard_tag: gv
-  mr2qa:
-    contact: tbd
-    description: MR2 whiteboard tag
-    enabled: true
-    parameters:
-      jira_project_key: MR2
-      whiteboard_tag: mr2qa
   mv3:
     contact: tbd
     description: MV3 whiteboard tag
