@@ -6,7 +6,7 @@ from inspect import signature
 from types import ModuleType
 from typing import Any, Dict, Optional
 
-from pydantic import Extra, ValidationError, root_validator, validator
+from pydantic import Extra, root_validator, validator
 from pydantic_yaml import YamlModel
 
 
@@ -35,9 +35,9 @@ class Action(YamlModel, extra=Extra.allow):
 
             signature(action_module.init).bind(**action_parameters)  # type: ignore
         except ImportError as exception:
-            raise ValidationError(f"unknown action `{action}`.") from exception
+            raise ValueError(f"unknown action `{action}`.") from exception
         except (TypeError, AttributeError) as exception:
-            raise ValidationError("action is not properly setup.") from exception
+            raise ValueError("action is not properly setup.") from exception
         return values
 
 
@@ -56,9 +56,9 @@ class Actions(YamlModel):
         Validate that the inner actions are named as expected
         """
         if not actions:
-            raise ValidationError("no actions configured")
+            raise ValueError("no actions configured")
         for name, action in actions.items():
             if name != action.parameters["whiteboard_tag"]:
-                raise ValidationError("action name must match whiteboard tag")
+                raise ValueError("action name must match whiteboard tag")
 
         return actions
