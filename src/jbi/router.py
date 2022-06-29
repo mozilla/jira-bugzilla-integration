@@ -93,17 +93,6 @@ def get_whiteboard_tag(
     return actions
 
 
-@api_router.get("/actions/")
-def get_actions_by_type(action_type: Optional[str] = None):
-    """API for viewing actions within the config; `action_type` matched on end of action identifier"""
-    actions = configuration.get_actions_dict()
-    if action_type:
-        return [
-            a["action"] for a in actions.values() if a["action"].endswith(action_type)
-        ]
-    return [a["action"] for a in actions.values()]
-
-
 @api_router.get("/powered_by_jbi", response_class=HTMLResponse)
 def powered_by_jbi(request: Request, enabled: Optional[bool] = None):
     """API for `Powered By` endpoint"""
