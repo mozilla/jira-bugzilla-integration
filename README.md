@@ -83,6 +83,13 @@ Software and configuration are deployed automatically:
 - on DEV and STAGE when a pull-request is merged
 - on PROD when a tag is pushed
 
+| Env   | Base URL                                       |
+|-------|------------------------------------------------|
+| Dev   | https://dev.jbi.nonprod.cloudops.mozgcp.net/ |
+| Stage | https://stage.jbi.nonprod.cloudops.mozgcp.net/ |
+| Prod  | https://jbi.services.mozilla.com/              |
+
+
 In order to verify that a certain commit was deployed, check that the Github Actions executed successfully on the commit, and use the *Version* endpoint:
 
 ```
