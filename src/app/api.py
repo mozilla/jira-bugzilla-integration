@@ -8,7 +8,6 @@ from datetime import datetime
 import sentry_sdk
 import uvicorn  # type: ignore
 from fastapi import FastAPI, Request
-from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 
@@ -39,8 +38,17 @@ app.add_middleware(SentryAsgiMiddleware)
 
 @app.get("/", include_in_schema=False)
 def root(request: Request):
-    """GET via root redirects to /docs."""
-    return RedirectResponse(url="./docs")
+    """Expose key configuration"""
+    return {
+        "title": app.title,
+        "description": app.description,
+        "version": app.version,
+        "documentation": app.docs_url,
+        "configuration": {
+            "jira_base_url": settings.jira_base_url,
+            "bugzilla_base_url": settings.bugzilla_base_url,
+        },
+    }
 
 
 @app.middleware("http")
