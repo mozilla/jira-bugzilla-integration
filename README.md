@@ -83,11 +83,27 @@ Software and configuration are deployed automatically:
 - on NONPROD when a pull-request is merged
 - on PROD when a tag is pushed
 
-| Env   | Base URL                                       |
-|-------|------------------------------------------------|
+| Env     | Base URL                                       |
+|---------|------------------------------------------------|
 | Nonprod | https://stage.jbi.nonprod.cloudops.mozgcp.net/ |
-| Prod  | https://jbi.services.mozilla.com/              |
+| Prod    | https://jbi.services.mozilla.com/              |
 
+In order to view the configured Jira and Bugzilla, check the root URL:
+
+```
+GET /
+
+{
+    "configuration": {
+        "bugzilla_base_url": "https://bugzilla-dev.allizom.org",
+        "jira_base_url": "https://mozit-test.atlassian.net/"
+    },
+    "description": "JBI v2 Platform",
+    "documentation": "/docs",
+    "title": "Jira Bugzilla Integration (JBI)",
+    "version": "2.0.1"
+}
+```
 
 In order to verify that a certain commit was deployed, check that the Github Actions executed successfully on the commit, and use the *Version* endpoint:
 
