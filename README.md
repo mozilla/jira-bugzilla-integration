@@ -80,13 +80,12 @@ graph TD
 
 Software and configuration are deployed automatically:
 
-- on DEV and STAGE when a pull-request is merged
+- on NONPROD when a pull-request is merged
 - on PROD when a tag is pushed
 
 | Env   | Base URL                                       |
 |-------|------------------------------------------------|
-| Dev   | https://dev.jbi.nonprod.cloudops.mozgcp.net/ |
-| Stage | https://stage.jbi.nonprod.cloudops.mozgcp.net/ |
+| Nonprod | https://stage.jbi.nonprod.cloudops.mozgcp.net/ |
 | Prod  | https://jbi.services.mozilla.com/              |
 
 
