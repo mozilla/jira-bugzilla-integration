@@ -7,7 +7,7 @@ import datetime
 import json
 import logging
 import traceback
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 from urllib.parse import ParseResult, urlparse
 
 from pydantic import BaseModel  # pylint: disable=no-name-in-module
@@ -146,13 +146,16 @@ class BugzillaBug(BaseModel):
             return ""
         return whiteboard.split(sep="-", maxsplit=1)[0].lower()
 
+    def issue_type(self) -> str:
+        """Get the Jira issue type for this bug"""
+        type_map: dict = {"enhancement": "Task", "task": "Task", "defect": "Bug"}
+        return type_map.get(self.type, "Task")
+
     def map_as_jira_issue(self) -> Dict:
         """Extract bug info as jira issue dictionary"""
-        type_map: dict = {"enhancement": "Task", "task": "Task", "defect": "Bug"}
         return {
             "summary": self.summary,
             "labels": self.get_jira_labels(),
-            "issuetype": {"name": type_map.get(self.type, "Task")},
         }
 
     def extract_from_see_also(self):
@@ -199,20 +202,16 @@ class BugzillaWebhookRequest(BaseModel):
         body = f"*(description)*: \n{{quote}}{comment_body}{{quote}}"
         return body
 
-    def map_as_tuple_of_field_dict_and_comments(
+    def map_as_comments(
         self,
         status_log_enabled: bool = True,
         assignee_log_enabled: bool = True,
-    ) -> Tuple[Dict, List[str]]:
+    ) -> List[str]:
         """Extract update dict and comment list from Webhook Event"""
 
         comments: List = []
         bug: BugzillaBug = self.bug  # type: ignore
 
-        update_fields: dict = {
-            "summary": bug.summary,
-            "labels": bug.get_jira_labels(),
-        }
         if self.event.changes:
             user = self.event.user.login if self.event.user else "unknown"
             for change in self.event.changes:
@@ -229,13 +228,7 @@ class BugzillaWebhookRequest(BaseModel):
                 if assignee_log_enabled and change.field in ["assigned_to", "assignee"]:
                     comments.append({"assignee": bug.assigned_to})
 
-                if change.field == "reporter":
-                    update_fields[change.field] = change.added
-
-        comments_as_str: List[str] = [
-            json.dumps(comment, indent=4) for comment in comments
-        ]
-        return update_fields, comments_as_str
+        return [json.dumps(comment, indent=4) for comment in comments]
 
 
 class BugzillaApiResponse(BaseModel):

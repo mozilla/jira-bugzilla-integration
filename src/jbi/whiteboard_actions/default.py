@@ -64,9 +64,9 @@ class DefaultExecutor:
         linked_issue_key = bug_obj.extract_from_see_also()  # type: ignore
         if linked_issue_key:
             # update
-            fields, comments = payload.map_as_tuple_of_field_dict_and_comments()
+            comments = payload.map_as_comments()
             jira_response_update = self.jira_client.update_issue_field(
-                key=linked_issue_key, fields=fields
+                key=linked_issue_key, fields=bug_obj.map_as_jira_issue()
             )
             # comment
             jira_response_comments = []
@@ -88,6 +88,7 @@ class DefaultExecutor:
         comment_list = self.bugzilla_client.get_comments(idlist=[bug_obj.id])
         fields = {
             **bug_obj.map_as_jira_issue(),  # type: ignore
+            "issuetype": {"name": bug_obj.issue_type()},
             "description": comment_list["bugs"][str(bug_obj.id)]["comments"][0]["text"],
             "project": {"key": self.jira_project_key},
         }
