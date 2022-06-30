@@ -56,6 +56,8 @@ testpaths = [
     ignore='third_party'
     ignore-patterns = "tests/*"
     extension-pkg-whitelist = "pydantic"
+    [tool.pylint.SIMILARITIES]
+    ignore-signatures = "yes"
 
 [tool.isort]
 profile = "black"
