@@ -8,10 +8,15 @@ devtest:
     jira_project_key: JST
     whiteboard_tag: devtest
 flowstate:
+  action: src.jbi.whiteboard_actions.default_with_assignee_and_status
   allow_private: true
   contact: dtownsend@mozilla.com
   description: Flowstate whiteboard tag
   enabled: true
   parameters:
     jira_project_key: MR2
+    status_map:
+      ASSIGNED: In Progress
+      FIXED: In Review
+      REOPENED: In Progress
     whiteboard_tag: flowstate
