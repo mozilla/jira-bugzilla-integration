@@ -49,7 +49,6 @@ A bit more about the different fields...
     - The [default action](src/jbi/whiteboard_actions/default.py) expects both the `whiteboard_tag` and `jira_project_key` fields
 
 
-
 [View 'nonprod'  configurations here.](config/config.nonprod.yaml)
 
 [View 'prod' configurations here.](config/config.prod.yaml)
@@ -74,4 +73,69 @@ graph TD
         C -.->|post /bugzilla_webhook| D{JBI}
         F["config.{ENV}.yaml"] ---| read actions config| D
     end
+```
+
+
+## Deployment
+
+Software and configuration are deployed automatically:
+
+- on NONPROD when a pull-request is merged
+- on PROD when a tag is pushed
+
+| Env     | Base URL                                       |
+|---------|------------------------------------------------|
+| Nonprod | https://stage.jbi.nonprod.cloudops.mozgcp.net/ |
+| Prod    | https://jbi.services.mozilla.com/              |
+
+In order to view the configured Jira and Bugzilla, check the root URL:
+
+```
+GET /
+
+{
+    "configuration": {
+        "bugzilla_base_url": "https://bugzilla-dev.allizom.org",
+        "jira_base_url": "https://mozit-test.atlassian.net/"
+    },
+    "description": "JBI v2 Platform",
+    "documentation": "/docs",
+    "title": "Jira Bugzilla Integration (JBI)",
+    "version": "2.0.1"
+}
+```
+
+In order to verify that a certain commit was deployed, check that the Github Actions executed successfully on the commit, and use the *Version* endpoint:
+
+```
+GET /__version__
+
+{
+  "commit": "1ea792a733d704e0094fe6065ee64b2a3435f280",
+  "version": "refs/tags/v2.0.1",
+  "image_tag": "v2.0.1",
+  "source": "https://github.com/mozilla/jira-bugzilla-integration",
+  "build": "https://github.com/mozilla/jira-bugzilla-integration/actions/runs/2315380477"
+}
+```
+
+In order to verify that a certain action is configured correctly and enabled, use the *Powered By JBI* endpoint: [https://${SERVER}/powered_by_jbi](https://jbi.services.mozilla.com/powered_by_jbi)
+
+For the list of configured whiteboard tags:
+
+```
+GET /whiteboard_tags/
+{
+    "addons": {
+        "action": "src.jbi.whiteboard_actions.default",
+        "contact": "tbd",
+        "description": "Addons whiteboard tag for AMO Team",
+        "enabled": true,
+        "parameters": {
+            "jira_project_key": "WEBEXT",
+            "whiteboard_tag": "addons"
+        }
+    },
+    ...
+}
 ```
