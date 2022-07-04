@@ -12,7 +12,7 @@ from urllib.parse import ParseResult, urlparse
 
 from pydantic import BaseModel  # pylint: disable=no-name-in-module
 
-bugzilla_logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class BugzillaWebhookUser(BaseModel):
@@ -175,7 +175,7 @@ class BugzillaBug(BaseModel):
                     return parsed_jira_key
             except Exception:  # pylint: disable=broad-except
                 # Try parsing all see_also fields; log errors.
-                bugzilla_logger.debug(traceback.format_exc())
+                logger.debug(traceback.format_exc())
         return None
 
 

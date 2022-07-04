@@ -10,7 +10,7 @@ from src.app import environment
 from src.jbi.models import Actions
 
 settings = environment.get_settings()
-jbi_logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class ConfigError(Exception):
@@ -29,7 +29,7 @@ def get_actions(
             actions: Actions = Actions.parse_raw(yaml_data)
             return actions
         except ValidationError as exception:
-            jbi_logger.exception(exception)
+            logger.exception(exception)
             raise ConfigError("Errors exist.") from exception
 
 
