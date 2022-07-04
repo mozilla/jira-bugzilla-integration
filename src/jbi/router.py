@@ -34,6 +34,7 @@ def extract_current_action(  # pylint: disable=inconsistent-return-statements
 
     for tag in potential_configuration_tags:
         if action := action_map.get(tag.lower()):
+            action["name"] = tag.lower()
             return action
 
 
