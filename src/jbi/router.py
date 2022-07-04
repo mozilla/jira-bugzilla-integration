@@ -21,7 +21,6 @@ templates = Jinja2Templates(directory="src/templates")
 api_router = APIRouter(tags=["JBI"])
 
 logger = logging.getLogger(__name__)
-invalid_logger = logging.getLogger("ignored-requests")
 
 
 def extract_current_action(  # pylint: disable=inconsistent-return-statements
@@ -40,8 +39,16 @@ def extract_current_action(  # pylint: disable=inconsistent-return-statements
 
 def execute_action(request: BugzillaWebhookRequest, action_map, settings):
     """Execute action"""
+    log_context = {
+        "bug": {
+            "id": request.bug.id if request.bug else None,
+        },
+        "request": request.json(),
+    }
     try:
-        logger.info("request: %s", request.json())
+        logger.debug(
+            "Handling incoming request", extra={"operation": "handle", **log_context}
+        )
         if not request.bug:
             raise IgnoreInvalidRequestError("no bug data received")
 
@@ -53,21 +60,37 @@ def execute_action(request: BugzillaWebhookRequest, action_map, settings):
                 "whiteboard tag not found in configured actions"
             )
 
+        log_context["action"] = current_action
+
         if bug_obj.is_private and not current_action["allow_private"]:
             raise IgnoreInvalidRequestError(
                 "private bugs are not valid for this action"
             )
 
-        logger.info("\nrequest: %s, \naction: %s", request.json(), current_action)
+        logger.info(
+            "Execute action %(name)s for Bug %(id)s",
+            name=current_action["name"],
+            id=bug_obj.id,
+            extra={"operation": "execute", **log_context},
+        )
         action_module: ModuleType = importlib.import_module(current_action["action"])
         callable_action = action_module.init(  # type: ignore
             **current_action["parameters"]
         )
         content = callable_action(payload=request)
-        logger.info("request: %s, content: %s", request.json(), content)
+        logger.info(
+            "Action %(name)s executed successfully for Bug %(id)s",
+            name=current_action["name"],
+            id=bug_obj.id,
+            extra={"operation": "success", **log_context},
+        )
         return JSONResponse(content=content, status_code=200)
     except IgnoreInvalidRequestError as exception:
-        invalid_logger.debug("ignore-invalid-request: %s", exception)
+        logger.debug(
+            "Ignore incoming request: %(err)s",
+            err=str(exception),
+            extra={"operation": "ignore", **log_context},
+        )
         return JSONResponse(content={"error": str(exception)}, status_code=200)
 
 
