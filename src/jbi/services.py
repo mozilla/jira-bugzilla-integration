@@ -9,7 +9,7 @@ from src.app import environment
 from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
 
 settings = environment.get_settings()
-services_logger = logging.getLogger("src.jbi.services")
+services_logger = logging.getLogger(__name__)
 
 
 def get_jira():

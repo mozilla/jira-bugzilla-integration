@@ -10,7 +10,7 @@ from src.app import environment
 from src.jbi.models import Actions
 
 settings = environment.get_settings()
-jbi_logger = logging.getLogger("src.jbi")
+jbi_logger = logging.getLogger(__name__)
 
 
 class ConfigError(Exception):

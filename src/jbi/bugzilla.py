@@ -12,7 +12,7 @@ from urllib.parse import ParseResult, urlparse
 
 from pydantic import BaseModel  # pylint: disable=no-name-in-module
 
-bugzilla_logger = logging.getLogger("src.jbi.bugzilla")
+bugzilla_logger = logging.getLogger(__name__)
 
 
 class BugzillaWebhookUser(BaseModel):

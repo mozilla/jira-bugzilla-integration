@@ -20,7 +20,7 @@ templates = Jinja2Templates(directory="src/templates")
 
 api_router = APIRouter(tags=["JBI"])
 
-jbi_logger = logging.getLogger("src.jbi.router")
+jbi_logger = logging.getLogger(__name__)
 invalid_logger = logging.getLogger("ignored-requests")
 
 
