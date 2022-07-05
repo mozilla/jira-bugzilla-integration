@@ -169,9 +169,9 @@ class BugzillaBug(BaseModel):
                 parsed_url: ParseResult = urlparse(url=url)
             except ValueError:
                 logger.debug(
-                    "Bug %(id)s `see_also` is not a URL: %(url)s",
-                    id=self.id,
-                    url=url,
+                    "Bug %s `see_also` is not a URL: %s",
+                    self.id,
+                    url,
                     extra={
                         "bug": {
                             "id": self.id,

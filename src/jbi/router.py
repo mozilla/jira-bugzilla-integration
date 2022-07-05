@@ -65,13 +65,13 @@ def execute_action(request: BugzillaWebhookRequest, action_map, settings):
 
         if bug_obj.is_private and not current_action["allow_private"]:
             raise IgnoreInvalidRequestError(
-                f"private bugs are not valid for action {current_action['name']}"
+                f"private bugs are not valid for action {current_action['name']!r}"
             )
 
         logger.info(
-            "Execute action %(name)s for Bug %(id)s",
-            name=current_action["name"],
-            id=bug_obj.id,
+            "Execute action %r for Bug %s",
+            current_action["name"],
+            bug_obj.id,
             extra={"operation": "execute", **log_context},
         )
         action_module: ModuleType = importlib.import_module(current_action["action"])
@@ -80,16 +80,16 @@ def execute_action(request: BugzillaWebhookRequest, action_map, settings):
         )
         content = callable_action(payload=request)
         logger.info(
-            "Action %(name)s executed successfully for Bug %(id)s",
-            name=current_action["name"],
-            id=bug_obj.id,
+            "Action %r executed successfully for Bug %s",
+            current_action["name"],
+            bug_obj.id,
             extra={"operation": "success", **log_context},
         )
         return JSONResponse(content=content, status_code=200)
     except IgnoreInvalidRequestError as exception:
         logger.debug(
-            "Ignore incoming request: %(err)s",
-            err=str(exception),
+            "Ignore incoming request: %s",
+            exception,
             extra={"operation": "ignore", **log_context},
         )
         return JSONResponse(content={"error": str(exception)}, status_code=200)
