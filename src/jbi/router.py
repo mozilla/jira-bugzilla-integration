@@ -33,8 +33,7 @@ def extract_current_action(  # pylint: disable=inconsistent-return-statements
 
     for tag in potential_configuration_tags:
         if action := action_map.get(tag.lower()):
-            action["name"] = tag.lower()
-            return action
+            return tag.lower(), action
 
 
 def execute_action(request: BugzillaWebhookRequest, action_map, settings):
@@ -53,24 +52,25 @@ def execute_action(request: BugzillaWebhookRequest, action_map, settings):
             raise IgnoreInvalidRequestError("no bug data received")
 
         bug_obj = getbug_as_bugzilla_object(request=request)
-        current_action = extract_current_action(bug_obj, action_map)  # type: ignore
-
         log_context["bug"] = bug_obj.json()
-        log_context["action"] = current_action
 
-        if not current_action:
+        action_item = extract_current_action(bug_obj, action_map)  # type: ignore
+        if not action_item:
             raise IgnoreInvalidRequestError(
                 "whiteboard tag not found in configured actions"
             )
 
+        action_name, current_action = action_item
+        log_context["action"] = current_action
+
         if bug_obj.is_private and not current_action["allow_private"]:
             raise IgnoreInvalidRequestError(
-                f"private bugs are not valid for action {current_action['name']!r}"
+                f"private bugs are not valid for action {action_name!r}"
             )
 
         logger.info(
             "Execute action %r for Bug %s",
-            current_action["name"],
+            action_name,
             bug_obj.id,
             extra={"operation": "execute", **log_context},
         )
@@ -81,7 +81,7 @@ def execute_action(request: BugzillaWebhookRequest, action_map, settings):
         content = callable_action(payload=request)
         logger.info(
             "Action %r executed successfully for Bug %s",
-            current_action["name"],
+            action_name,
             bug_obj.id,
             extra={"operation": "success", **log_context},
         )

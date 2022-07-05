@@ -21,8 +21,7 @@ def test_request_is_ignored_because_private(
     test_action = Action.parse_obj({"action": "tests.unit.jbi.noop_action"}).dict()
 
     with mock.patch("src.jbi.router.extract_current_action") as mocked_extract_action:
-        mocked_extract_action.return_value = test_action
-        test_action["name"] = "test"
+        mocked_extract_action.return_value = "test", test_action
         with mock.patch("src.jbi.router.getbug_as_bugzilla_object") as mocked_bz_func:
             mocked_bz_func.return_value = private_webhook_request_example.bug
             with TestClient(app) as anon_client:
@@ -58,7 +57,7 @@ def test_private_request_is_allowed(
     ).dict()
 
     with mock.patch("src.jbi.router.extract_current_action") as mocked_extract_action:
-        mocked_extract_action.return_value = test_action
+        mocked_extract_action.return_value = "test", test_action
         with mock.patch("src.jbi.router.getbug_as_bugzilla_object") as mocked_bz_func:
             mocked_bz_func.return_value = private_webhook_request_example.bug
             with TestClient(app) as anon_client:
