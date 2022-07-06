@@ -180,9 +180,7 @@ class BugzillaBug(BaseModel):
                 )
                 continue
 
-            if any(  # pylint: disable=use-a-generator
-                part in JIRA_HOSTNAMES for part in parsed_url.hostname.split(".")
-            ):
+            if any(part in JIRA_HOSTNAMES for part in parsed_url.hostname.split(".")):
                 parsed_jira_key = parsed_url.path.split("/")[-1]
                 return parsed_jira_key
 
