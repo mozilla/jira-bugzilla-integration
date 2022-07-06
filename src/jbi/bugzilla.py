@@ -167,7 +167,8 @@ class BugzillaBug(BaseModel):
         for url in self.see_also:  # pylint: disable=not-an-iterable
             try:
                 parsed_url: ParseResult = urlparse(url=url)
-            except ValueError:
+                host_parts = parsed_url.hostname.split(".")
+            except (ValueError, AttributeError):
                 logger.debug(
                     "Bug %s `see_also` is not a URL: %s",
                     self.id,
@@ -180,9 +181,10 @@ class BugzillaBug(BaseModel):
                 )
                 continue
 
-            if any(part in JIRA_HOSTNAMES for part in parsed_url.hostname.split(".")):
-                parsed_jira_key = parsed_url.path.split("/")[-1]
-                return parsed_jira_key
+            if any(part in JIRA_HOSTNAMES for part in host_parts):
+                parsed_jira_key = parsed_url.path.rstrip("/").split("/")[-1]
+                if parsed_jira_key:  # URL ending with /
+                    return parsed_jira_key
 
         return None
 
