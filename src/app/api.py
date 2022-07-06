@@ -88,7 +88,7 @@ async def request_summary(request: Request, call_next):
 @app.post("/bugzilla_webhook")
 def bugzilla_webhook(
     request: BugzillaWebhookRequest = Body(..., embed=False),
-    action_map: Dict = Depends(configuration.get_actions_dict),
+    action_map: Dict = Depends(configuration.get_actions),
 ):
     """API endpoint that Bugzilla Webhook Events request"""
     try:
@@ -101,14 +101,13 @@ def bugzilla_webhook(
 @app.get("/whiteboard_tags/")
 def get_whiteboard_tag(
     whiteboard_tag: Optional[str] = None,
-    action_map: Dict = Depends(configuration.get_actions_dict),
+    action_map: Dict = Depends(configuration.get_actions),
 ):
     """API for viewing whiteboard_tags and associated data"""
     if whiteboard_tag:
-        wb_val = action_map.get(whiteboard_tag)
-        if wb_val:
-            action_map = wb_val
-    return action_map
+        if existing := action_map.get(whiteboard_tag):
+            action_map = {whiteboard_tag: existing}
+    return {k: v.dict() for k, v in action_map.items()}
 
 
 @app.get("/jira_projects/")
@@ -123,14 +122,14 @@ def get_jira_projects():
 def powered_by_jbi(
     request: Request,
     enabled: Optional[bool] = None,
-    action_map: Dict = Depends(configuration.get_actions_dict),
+    action_map: Dict = Depends(configuration.get_actions),
 ):
     """API for `Powered By` endpoint"""
     context = {
         "request": request,
         "title": "Powered by JBI",
         "num_configs": len(action_map),
-        "data": action_map,
+        "data": {k: v.dict() for k, v in action_map.items()},
         "enable_query": enabled,
     }
     return templates.TemplateResponse("powered_by_template.html", context)

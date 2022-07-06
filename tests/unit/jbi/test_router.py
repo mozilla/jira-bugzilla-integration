@@ -18,7 +18,7 @@ def test_request_is_ignored_because_private(
 ):
     private_webhook_request_example = webhook_request_example
     private_webhook_request_example.bug.is_private = True  # type: ignore
-    test_action = Action.parse_obj({"action": "tests.unit.jbi.noop_action"}).dict()
+    test_action = Action.parse_obj({"action": "tests.unit.jbi.noop_action"})
 
     with mock.patch("src.jbi.router.extract_current_action") as mocked_extract_action:
         mocked_extract_action.return_value = "test", test_action
@@ -54,7 +54,7 @@ def test_private_request_is_allowed(
     private_webhook_request_example.bug.is_private = True  # type: ignore
     test_action = Action.parse_obj(
         {"action": "tests.unit.jbi.noop_action", "allow_private": True}
-    ).dict()
+    )
 
     with mock.patch("src.jbi.router.extract_current_action") as mocked_extract_action:
         mocked_extract_action.return_value = "test", test_action

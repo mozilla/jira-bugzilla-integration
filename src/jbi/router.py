@@ -1,14 +1,13 @@
 """
 Router dedicated to Jira Bugzilla Integration APIs
 """
-import importlib
 import logging
-from types import ModuleType
-from typing import Dict, List, Mapping, Optional, Tuple
+from typing import List, Mapping, Optional, Tuple
 
 from src.app.environment import Settings
 from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
 from src.jbi.errors import IgnoreInvalidRequestError
+from src.jbi.models import Action
 from src.jbi.services import getbug_as_bugzilla_object
 
 logger = logging.getLogger(__name__)
@@ -24,8 +23,8 @@ class Operations:
 
 
 def extract_current_action(
-    bug_obj: BugzillaBug, action_map: Mapping[str, Dict]
-) -> Optional[Tuple[str, Dict]]:
+    bug_obj: BugzillaBug, action_map: Mapping[str, Action]
+) -> Optional[Tuple[str, Action]]:
     """Find first matching action from bug's whiteboard list"""
     potential_configuration_tags: List[
         str
@@ -39,7 +38,7 @@ def extract_current_action(
 
 def execute_action(
     request: BugzillaWebhookRequest,
-    action_map: Mapping[str, Dict],
+    action_map: Mapping[str, Action],
     settings: Settings,
 ):
     """Execute action"""
@@ -67,9 +66,9 @@ def execute_action(
             )
 
         action_name, current_action = action_item
-        log_context["action"] = current_action
+        log_context["action"] = current_action.dict()
 
-        if bug_obj.is_private and not current_action["allow_private"]:
+        if bug_obj.is_private and not current_action.allow_private:
             raise IgnoreInvalidRequestError(
                 f"private bugs are not valid for action {action_name!r}"
             )
@@ -80,11 +79,9 @@ def execute_action(
             bug_obj.id,
             extra={"operation": Operations.EXECUTE, **log_context},
         )
-        action_module: ModuleType = importlib.import_module(current_action["action"])
-        callable_action = action_module.init(  # type: ignore
-            **current_action["parameters"]
-        )
-        content = callable_action(payload=request)
+
+        content = current_action.callable(payload=request)
+
         logger.info(
             "Action %r executed successfully for Bug %s",
             action_name,
