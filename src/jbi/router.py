@@ -4,7 +4,7 @@ Router dedicated to Jira Bugzilla Integration APIs
 import importlib
 import logging
 from types import ModuleType
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Mapping, Optional, Tuple
 
 from fastapi import APIRouter, Body, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -23,9 +23,9 @@ api_router = APIRouter(tags=["JBI"])
 logger = logging.getLogger(__name__)
 
 
-def extract_current_action(  # pylint: disable=inconsistent-return-statements
-    bug_obj: BugzillaBug, action_map
-) -> Optional[Tuple(str, Dict)]:
+def extract_current_action(
+    bug_obj: BugzillaBug, action_map: Mapping[str, Dict]
+) -> Optional[Tuple[str, Dict]]:
     """Find first matching action from bug's whiteboard list"""
     potential_configuration_tags: List[
         str
@@ -34,9 +34,14 @@ def extract_current_action(  # pylint: disable=inconsistent-return-statements
     for tag in potential_configuration_tags:
         if action := action_map.get(tag.lower()):
             return tag.lower(), action
+    return None
 
 
-def execute_action(request: BugzillaWebhookRequest, action_map, settings):
+def execute_action(
+    request: BugzillaWebhookRequest,
+    action_map: Mapping[str, Dict],
+    settings: environment.Settings,
+):
     """Execute action"""
     log_context = {
         "bug": {
@@ -54,7 +59,7 @@ def execute_action(request: BugzillaWebhookRequest, action_map, settings):
         bug_obj = getbug_as_bugzilla_object(request=request)
         log_context["bug"] = bug_obj.json()
 
-        action_item = extract_current_action(bug_obj, action_map)  # type: ignore
+        action_item = extract_current_action(bug_obj, action_map)
         if not action_item:
             raise IgnoreInvalidRequestError(
                 "whiteboard tag not found in configured actions"
