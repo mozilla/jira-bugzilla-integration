@@ -1,15 +1,15 @@
 """
-Module for testing src/jbi/configuration.py functionality
+Module for testing src/app/configuration.py functionality
 """
 # pylint: disable=cannot-enumerate-pytest-fixtures
 import pytest
 
-from src.jbi import configuration
+from src.app import configuration
 
 
 def test_mock_jbi_files():
     with pytest.raises(configuration.ConfigError):
-        configuration.get_actions(jbi_config_file="tests/unit/jbi/test-config.yaml")
+        configuration.get_actions(jbi_config_file="tests/unit/app/test-config.yaml")
 
 
 def test_actual_jbi_files():

@@ -14,10 +14,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 
+from src.app import configuration
 from src.app.environment import get_settings
 from src.app.log import configure_logging
 from src.app.monitor import api_router as monitor_router
-from src.jbi import configuration
 from src.jbi.bugzilla import BugzillaWebhookRequest
 from src.jbi.models import Actions
 from src.jbi.router import IgnoreInvalidRequestError, execute_action
