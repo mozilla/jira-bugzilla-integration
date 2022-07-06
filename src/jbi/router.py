@@ -23,6 +23,15 @@ api_router = APIRouter(tags=["JBI"])
 logger = logging.getLogger(__name__)
 
 
+class Operations:
+    """Track status of incoming requests in log entries."""
+
+    HANDLE = "handle"
+    EXECUTE = "execute"
+    IGNORE = "ignore"
+    SUCCESS = "success"
+
+
 def extract_current_action(
     bug_obj: BugzillaBug, action_map: Mapping[str, Dict]
 ) -> Optional[Tuple[str, Dict]]:
@@ -51,7 +60,8 @@ def execute_action(
     }
     try:
         logger.debug(
-            "Handling incoming request", extra={"operation": "handle", **log_context}
+            "Handling incoming request",
+            extra={"operation": Operations.HANDLE, **log_context},
         )
         if not request.bug:
             raise IgnoreInvalidRequestError("no bug data received")
@@ -77,7 +87,7 @@ def execute_action(
             "Execute action %r for Bug %s",
             action_name,
             bug_obj.id,
-            extra={"operation": "execute", **log_context},
+            extra={"operation": Operations.EXECUTE, **log_context},
         )
         action_module: ModuleType = importlib.import_module(current_action["action"])
         callable_action = action_module.init(  # type: ignore
@@ -88,14 +98,14 @@ def execute_action(
             "Action %r executed successfully for Bug %s",
             action_name,
             bug_obj.id,
-            extra={"operation": "success", **log_context},
+            extra={"operation": Operations.SUCCESS, **log_context},
         )
         return JSONResponse(content=content, status_code=200)
     except IgnoreInvalidRequestError as exception:
         logger.debug(
             "Ignore incoming request: %s",
             exception,
-            extra={"operation": "ignore", **log_context},
+            extra={"operation": Operations.IGNORE, **log_context},
         )
         return JSONResponse(content={"error": str(exception)}, status_code=200)
 
