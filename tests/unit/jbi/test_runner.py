@@ -1,5 +1,5 @@
 """
-Module for testing src/jbi/router.py
+Module for testing src/jbi/runner.py
 """
 # pylint: disable=cannot-enumerate-pytest-fixtures
 from unittest import mock
@@ -118,7 +118,7 @@ def test_execution_logging_for_successful_requests(
     )
 
     captured_log_msgs = [
-        r.msg % r.args for r in caplog.records if r.name == "src.jbi.router"
+        r.msg % r.args for r in caplog.records if r.name == "src.jbi.runner"
     ]
 
     assert captured_log_msgs == [
@@ -144,7 +144,7 @@ def test_execution_logging_for_ignored_requests(
         )
 
     captured_log_msgs = [
-        r.msg % r.args for r in caplog.records if r.name == "src.jbi.router"
+        r.msg % r.args for r in caplog.records if r.name == "src.jbi.runner"
     ]
 
     assert captured_log_msgs == [

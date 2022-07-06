@@ -20,7 +20,7 @@ from src.app.log import configure_logging
 from src.app.monitor import api_router as monitor_router
 from src.jbi.bugzilla import BugzillaWebhookRequest
 from src.jbi.models import Actions
-from src.jbi.router import IgnoreInvalidRequestError, execute_action
+from src.jbi.runner import IgnoreInvalidRequestError, execute_action
 from src.jbi.services import get_jira
 
 templates = Jinja2Templates(directory="src/templates")

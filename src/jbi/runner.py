@@ -1,5 +1,5 @@
 """
-Router dedicated to Jira Bugzilla Integration APIs
+Execute actions from Webhook requests
 """
 import logging
 
