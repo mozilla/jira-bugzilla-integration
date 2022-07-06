@@ -13,8 +13,6 @@ from pydantic import BaseModel  # pylint: disable=no-name-in-module
 
 logger = logging.getLogger(__name__)
 
-JIRA_HOSTNAMES = ("jira", "atlassian")
-
 
 class BugzillaWebhookUser(BaseModel):
     """Bugzilla User Object"""
@@ -161,6 +159,8 @@ class BugzillaBug(BaseModel):
 
     def extract_from_see_also(self):
         """Extract Jira Issue Key from see_also if jira url present"""
+        JIRA_HOSTNAMES = ("jira", "atlassian")
+
         if not self.see_also and len(self.see_also) > 0:
             return None
 
