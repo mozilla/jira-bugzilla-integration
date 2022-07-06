@@ -35,37 +35,30 @@ def test_request_summary_is_logged(caplog):
 
 def test_webhook_is_200_if_action_succeeds(
     webhook_request_example: BugzillaWebhookRequest,
+    actions_example: Actions,
 ):
-    test_action = Action.parse_obj({"action": "tests.unit.jbi.noop_action"})
-
-    with mock.patch("src.jbi.router.getbug_as_bugzilla_object") as mocked_bz_func:
-        mocked_bz_func.return_value = webhook_request_example.bug
-
-        with mock.patch("src.jbi.models.Actions.get", return_value=test_action):
-            with TestClient(app) as anon_client:
-                response = anon_client.post(
-                    "/bugzilla_webhook", data=webhook_request_example.json()
-                )
-                assert response
-                assert response.status_code == 200
+    with mock.patch("src.app.configuration.get_actions", return_value=actions_example):
+        with TestClient(app) as anon_client:
+            response = anon_client.post(
+                "/bugzilla_webhook", data=webhook_request_example.json()
+            )
+            assert response
+            assert response.status_code == 200
 
 
 def test_webhook_is_200_if_action_raises_IgnoreInvalidRequestError(
     webhook_request_example: BugzillaWebhookRequest,
 ):
-    test_action = Action.parse_obj({"action": "tests.unit.jbi.noop_action"})
+    actions = Actions.parse_obj({"actions": {}})
 
-    with mock.patch("src.jbi.router.getbug_as_bugzilla_object") as mocked_bz_func:
-        mocked_bz_func.return_value = webhook_request_example.bug
-
-        with mock.patch("src.jbi.models.Actions.get", return_value=None):
-            with TestClient(app) as anon_client:
-                response = anon_client.post(
-                    "/bugzilla_webhook", data=webhook_request_example.json()
-                )
-                assert response
-                assert response.status_code == 200
-                assert (
-                    response.json()["error"]
-                    == "no action matching bug whiteboard tags: devtest"
-                )
+    with mock.patch("src.app.configuration.get_actions", return_value=actions):
+        with TestClient(app) as anon_client:
+            response = anon_client.post(
+                "/bugzilla_webhook", data=webhook_request_example.json()
+            )
+            assert response
+            assert response.status_code == 200
+            assert (
+                response.json()["error"]
+                == "no action matching bug whiteboard tags: devtest"
+            )

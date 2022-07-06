@@ -3,131 +3,151 @@ Module for testing src/jbi/router.py
 """
 # pylint: disable=cannot-enumerate-pytest-fixtures
 from unittest import mock
-from unittest.mock import MagicMock
 
-from fastapi.testclient import TestClient
+import pytest
 
 from src.app.api import app
+from src.app.environment import Settings
+from src.jbi.router import execute_action
 from src.jbi.bugzilla import BugzillaWebhookRequest
 from src.jbi.errors import IgnoreInvalidRequestError
-from src.jbi.models import Action
+from src.jbi.models import Action, Actions
 
 
 def test_request_is_ignored_because_private(
-    caplog, webhook_request_example: BugzillaWebhookRequest
+    caplog,
+    webhook_request_example: BugzillaWebhookRequest,
+    settings: Settings,
 ):
     private_webhook_request_example = webhook_request_example
+    private_webhook_request_example.bug.whiteboard = "test"
     private_webhook_request_example.bug.is_private = True  # type: ignore
-    test_action = Action.parse_obj({"action": "tests.unit.jbi.noop_action"})
+    actions = Actions.parse_obj(
+        {
+            "actions": {
+                "test": {
+                    "action": "tests.unit.jbi.noop_action",
+                    "parameters": {"whiteboard_tag": "test"},
+                }
+            }
+        }
+    )
 
-    with mock.patch(
-        "src.jbi.bugzilla.BugzillaBug.lookup_action"
-    ) as mocked_lookup_action:
-        mocked_lookup_action.return_value = "test", test_action
-        with mock.patch("src.jbi.router.getbug_as_bugzilla_object") as mocked_bz_func:
-            mocked_bz_func.return_value = private_webhook_request_example.bug
-            with TestClient(app) as anon_client:
-                # https://fastapi.tiangolo.com/advanced/testing-events/
+    with pytest.raises(IgnoreInvalidRequestError) as exc_info:
+        execute_action(
+            request=webhook_request_example,
+            actions=actions,
+            settings=settings,
+        )
 
-                response = anon_client.post(
-                    "/bugzilla_webhook", data=private_webhook_request_example.json()
-                )
-                assert response
-                assert response.status_code == 200
-                assert (
-                    response.json()["error"]
-                    == "private bugs are not valid for action 'test'"
-                )
-
-                captured_log_msgs = [
-                    r.msg % r.args for r in caplog.records if r.name == "src.jbi.router"
-                ]
-
-                assert captured_log_msgs == [
-                    "Handling incoming request",
-                    "Ignore incoming request: private bugs are not valid for action 'test'",
-                ]
+    assert str(exc_info.value) == "private bugs are not valid for action 'test'"
 
 
 def test_private_request_is_allowed(
-    caplog, webhook_request_example: BugzillaWebhookRequest
+    caplog,
+    webhook_request_example: BugzillaWebhookRequest,
+    settings: Settings,
 ):
     private_webhook_request_example = webhook_request_example
+    private_webhook_request_example.bug.whiteboard = "pv"
     private_webhook_request_example.bug.is_private = True  # type: ignore
-    test_action = Action.parse_obj(
-        {"action": "tests.unit.jbi.noop_action", "allow_private": True}
+    actions = Actions.parse_obj(
+        {
+            "actions": {
+                "pv": {
+                    "action": "tests.unit.jbi.noop_action",
+                    "allow_private": True,
+                    "parameters": {"whiteboard_tag": "pv"},
+                }
+            }
+        }
     )
 
-    with mock.patch(
-        "src.jbi.bugzilla.BugzillaBug.lookup_action"
-    ) as mocked_lookup_action:
-        mocked_lookup_action.return_value = "test", test_action
-        with mock.patch("src.jbi.router.getbug_as_bugzilla_object") as mocked_bz_func:
-            mocked_bz_func.return_value = private_webhook_request_example.bug
-            with TestClient(app) as anon_client:
-                # https://fastapi.tiangolo.com/advanced/testing-events/
+    result = execute_action(
+        request=webhook_request_example,
+        actions=actions,
+        settings=settings,
+    )
 
-                response = anon_client.post(
-                    "/bugzilla_webhook", data=private_webhook_request_example.json()
-                )
-                assert response
-                assert response.status_code == 200
-
-                payload = BugzillaWebhookRequest.parse_raw(response.json()["payload"])
-                assert payload.bug.id == 654321
+    payload = BugzillaWebhookRequest.parse_raw(result["payload"])
+    assert payload.bug.id == 654321
 
 
 def test_request_is_ignored_because_no_bug(
-    caplog, webhook_request_example: BugzillaWebhookRequest
+    webhook_request_example: BugzillaWebhookRequest,
+    actions_example: Actions,
+    settings: Settings,
 ):
-    with TestClient(app) as anon_client:
-        # https://fastapi.tiangolo.com/advanced/testing-events/
-        invalid_webhook_request_example = webhook_request_example
-        invalid_webhook_request_example.bug = None
+    webhook_request_example.bug = None
 
-        response = anon_client.post(
-            "/bugzilla_webhook", data=invalid_webhook_request_example.json()
+    with pytest.raises(IgnoreInvalidRequestError) as exc_info:
+        execute_action(
+            request=webhook_request_example,
+            actions=actions_example,
+            settings=settings,
         )
-        assert response
-        assert response.status_code == 200
-        assert response.json()["error"] == "no bug data received"
-
-        captured_log_msgs = [
-            r.msg % r.args for r in caplog.records if r.name == "src.jbi.router"
-        ]
-
-        assert captured_log_msgs == [
-            "Handling incoming request",
-            "Ignore incoming request: no bug data received",
-        ]
+    assert str(exc_info.value) == "no bug data received"
 
 
 def test_request_is_ignored_because_no_action(
-    caplog, webhook_request_example: BugzillaWebhookRequest
+    webhook_request_example: BugzillaWebhookRequest,
+    actions_example: Actions,
+    settings: Settings,
 ):
-    with mock.patch("src.jbi.whiteboard_actions.default.get_jira") as mocked_jira:
-        with mock.patch("src.jbi.router.getbug_as_bugzilla_object") as mocked_bz_func:
-            mocked_bz_func.return_value = webhook_request_example.bug
-            with TestClient(app) as anon_client:
-                # https://fastapi.tiangolo.com/advanced/testing-events/
-                invalid_webhook_request_example = webhook_request_example
-                invalid_webhook_request_example.bug.whiteboard = ""  # type: ignore
+    webhook_request_example.bug.whiteboard = "bar"
 
-                response = anon_client.post(
-                    "/bugzilla_webhook", data=invalid_webhook_request_example.json()
-                )
-                assert response
-                assert response.status_code == 200
-                assert (
-                    response.json()["error"]
-                    == "no action matching bug whiteboard tags: "
-                )
+    with pytest.raises(IgnoreInvalidRequestError) as exc_info:
+        execute_action(
+            request=webhook_request_example,
+            actions=actions_example,
+            settings=settings,
+        )
+    assert str(exc_info.value) == "no action matching bug whiteboard tags: bar"
 
-                captured_log_msgs = [
-                    r.msg % r.args for r in caplog.records if r.name == "src.jbi.router"
-                ]
 
-                assert captured_log_msgs == [
-                    "Handling incoming request",
-                    "Ignore incoming request: no action matching bug whiteboard tags: ",
-                ]
+def test_execution_logging_for_successful_requests(
+    caplog,
+    webhook_request_example: BugzillaWebhookRequest,
+    actions_example: Actions,
+    settings: Settings,
+):
+    execute_action(
+        request=webhook_request_example,
+        actions=actions_example,
+        settings=settings,
+    )
+
+    captured_log_msgs = [
+        r.msg % r.args for r in caplog.records if r.name == "src.jbi.router"
+    ]
+
+    assert captured_log_msgs == [
+        "Handling incoming request",
+        "Execute action 'devtest' for Bug 654321",
+        "Action 'devtest' executed successfully for Bug 654321",
+    ]
+
+
+def test_execution_logging_for_ignored_requests(
+    caplog,
+    webhook_request_example: BugzillaWebhookRequest,
+    actions_example: Actions,
+    settings: Settings,
+):
+    webhook_request_example.bug.whiteboard = "foo"
+
+    with pytest.raises(IgnoreInvalidRequestError):
+        execute_action(
+            request=webhook_request_example,
+            actions=actions_example,
+            settings=settings,
+        )
+
+    captured_log_msgs = [
+        r.msg % r.args for r in caplog.records if r.name == "src.jbi.router"
+    ]
+
+    assert captured_log_msgs == [
+        "Handling incoming request",
+        "Ignore incoming request: no action matching bug whiteboard tags: foo",
+    ]

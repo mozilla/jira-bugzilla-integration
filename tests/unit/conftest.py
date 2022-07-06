@@ -1,12 +1,16 @@
 """
 Module for setting up pytest fixtures
 """
+from unittest import mock
+
 import pytest
 from fastapi.testclient import TestClient
 
 from src.app.api import app
 from src.app.environment import Settings
+from src.jbi.models import Actions
 from src.jbi.bugzilla import BugzillaWebhookRequest
+from src.jbi.services import get_bugzilla
 
 
 @pytest.fixture
@@ -23,7 +27,7 @@ def settings():
 
 @pytest.fixture
 def webhook_request_example() -> BugzillaWebhookRequest:
-    return BugzillaWebhookRequest.parse_obj(
+    webhook_payload = BugzillaWebhookRequest.parse_obj(
         {
             "bug": {
                 "assigned_to": "nobody@mozilla.org",
@@ -58,5 +62,32 @@ def webhook_request_example() -> BugzillaWebhookRequest:
             },
             "webhook_id": 34,
             "webhook_name": "local-test",
+        }
+    )
+
+    class FakeBugzillaClient:
+        def getbug(self, bug_id):
+            if bug_id == webhook_payload.bug.id:
+                return webhook_payload.bug
+            return get_bugzilla().getbug(bug_id)
+
+    with mock.patch(
+        "src.jbi.services.get_bugzilla", return_value=FakeBugzillaClient()
+    ) as mocked:
+        yield webhook_payload
+
+
+@pytest.fixture
+def actions_example() -> Actions:
+    return Actions.parse_obj(
+        {
+            "actions": {
+                "devtest": {
+                    "action": "tests.unit.jbi.noop_action",
+                    "parameters": {
+                        "whiteboard_tag": "devtest",
+                    },
+                }
+            }
         }
     )
