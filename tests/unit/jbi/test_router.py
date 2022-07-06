@@ -21,7 +21,7 @@ def test_request_is_ignored_because_private(
     test_action = Action.parse_obj({"action": "tests.unit.jbi.noop_action"}).dict()
 
     with mock.patch("src.jbi.router.extract_current_action") as mocked_extract_action:
-        mocked_extract_action.return_value = test_action
+        mocked_extract_action.return_value = "test", test_action
         with mock.patch("src.jbi.router.getbug_as_bugzilla_object") as mocked_bz_func:
             mocked_bz_func.return_value = private_webhook_request_example.bug
             with TestClient(app) as anon_client:
@@ -34,17 +34,17 @@ def test_request_is_ignored_because_private(
                 assert response.status_code == 200
                 assert (
                     response.json()["error"]
-                    == "private bugs are not valid for this action"
+                    == "private bugs are not valid for action 'test'"
                 )
 
-                invalid_request_logs = caplog.records[1]
-                assert invalid_request_logs.name == "ignored-requests"
+                captured_log_msgs = [
+                    r.msg % r.args for r in caplog.records if r.name == "src.jbi.router"
+                ]
 
-                assert invalid_request_logs.msg == "ignore-invalid-request: %s"
-                assert invalid_request_logs.args
-                for arg in invalid_request_logs.args:
-                    assert isinstance(arg, IgnoreInvalidRequestError)
-                    assert str(arg) == "private bugs are not valid for this action"
+                assert captured_log_msgs == [
+                    "Handling incoming request",
+                    "Ignore incoming request: private bugs are not valid for action 'test'",
+                ]
 
 
 def test_private_request_is_allowed(
@@ -57,7 +57,7 @@ def test_private_request_is_allowed(
     ).dict()
 
     with mock.patch("src.jbi.router.extract_current_action") as mocked_extract_action:
-        mocked_extract_action.return_value = test_action
+        mocked_extract_action.return_value = "test", test_action
         with mock.patch("src.jbi.router.getbug_as_bugzilla_object") as mocked_bz_func:
             mocked_bz_func.return_value = private_webhook_request_example.bug
             with TestClient(app) as anon_client:
@@ -88,14 +88,14 @@ def test_request_is_ignored_because_no_bug(
         assert response.status_code == 200
         assert response.json()["error"] == "no bug data received"
 
-        invalid_request_logs = caplog.records[1]
-        assert invalid_request_logs.name == "ignored-requests"
+        captured_log_msgs = [
+            r.msg % r.args for r in caplog.records if r.name == "src.jbi.router"
+        ]
 
-        assert invalid_request_logs.msg == "ignore-invalid-request: %s"
-        assert invalid_request_logs.args
-        for arg in invalid_request_logs.args:
-            assert isinstance(arg, IgnoreInvalidRequestError)
-            assert str(arg) == "no bug data received"
+        assert captured_log_msgs == [
+            "Handling incoming request",
+            "Ignore incoming request: no bug data received",
+        ]
 
 
 def test_request_is_ignored_because_no_action(
@@ -120,11 +120,11 @@ def test_request_is_ignored_because_no_action(
                     == "whiteboard tag not found in configured actions"
                 )
 
-                invalid_request_logs = caplog.records[1]
-                assert invalid_request_logs.name == "ignored-requests"
+                captured_log_msgs = [
+                    r.msg % r.args for r in caplog.records if r.name == "src.jbi.router"
+                ]
 
-                assert invalid_request_logs.msg == "ignore-invalid-request: %s"
-                assert invalid_request_logs.args
-                for arg in invalid_request_logs.args:
-                    assert isinstance(arg, IgnoreInvalidRequestError)
-                    assert str(arg) == "whiteboard tag not found in configured actions"
+                assert captured_log_msgs == [
+                    "Handling incoming request",
+                    "Ignore incoming request: whiteboard tag not found in configured actions",
+                ]

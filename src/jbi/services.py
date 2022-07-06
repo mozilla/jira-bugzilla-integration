@@ -1,5 +1,4 @@
 """Services and functions that can be used to create custom actions"""
-import logging
 from typing import Dict, List
 
 import bugzilla as rh_bugzilla  # type: ignore
@@ -9,7 +8,6 @@ from src.app import environment
 from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
 
 settings = environment.get_settings()
-services_logger = logging.getLogger("src.jbi.services")
 
 
 def get_jira():

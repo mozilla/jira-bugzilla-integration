@@ -58,7 +58,7 @@ class Actions(YamlModel):
         if not actions:
             raise ValueError("no actions configured")
         for name, action in actions.items():
-            if name != action.parameters["whiteboard_tag"]:
+            if name.lower() != action.parameters["whiteboard_tag"]:
                 raise ValueError("action name must match whiteboard tag")
 
         return actions

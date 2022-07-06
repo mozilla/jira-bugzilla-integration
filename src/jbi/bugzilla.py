@@ -6,13 +6,14 @@ View additional bugzilla webhook documentation here: https://bugzilla.mozilla.or
 import datetime
 import json
 import logging
-import traceback
 from typing import Dict, List, Optional
 from urllib.parse import ParseResult, urlparse
 
 from pydantic import BaseModel  # pylint: disable=no-name-in-module
 
-bugzilla_logger = logging.getLogger("src.jbi.bugzilla")
+logger = logging.getLogger(__name__)
+
+JIRA_HOSTNAMES = ("jira", "atlassian")
 
 
 class BugzillaWebhookUser(BaseModel):
@@ -166,16 +167,25 @@ class BugzillaBug(BaseModel):
         for url in self.see_also:  # pylint: disable=not-an-iterable
             try:
                 parsed_url: ParseResult = urlparse(url=url)
-                expected_hosts = ["jira", "atlassian"]
+                host_parts = parsed_url.hostname.split(".")
+            except (ValueError, AttributeError):
+                logger.debug(
+                    "Bug %s `see_also` is not a URL: %s",
+                    self.id,
+                    url,
+                    extra={
+                        "bug": {
+                            "id": self.id,
+                        }
+                    },
+                )
+                continue
 
-                if any(  # pylint: disable=use-a-generator
-                    [part in expected_hosts for part in parsed_url.hostname.split(".")]
-                ):
-                    parsed_jira_key = parsed_url.path.split("/")[-1]
+            if any(part in JIRA_HOSTNAMES for part in host_parts):
+                parsed_jira_key = parsed_url.path.rstrip("/").split("/")[-1]
+                if parsed_jira_key:  # URL ending with /
                     return parsed_jira_key
-            except Exception:  # pylint: disable=broad-except
-                # Try parsing all see_also fields; log errors.
-                bugzilla_logger.debug(traceback.format_exc())
+
         return None
 
 
