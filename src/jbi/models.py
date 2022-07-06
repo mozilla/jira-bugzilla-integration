@@ -49,6 +49,8 @@ class Action(YamlModel):
         return values
 
     class Config:
+        """Pydantic configuration"""
+
         extra = Extra.allow
         keep_untouched = (functools.cached_property,)
 
@@ -59,6 +61,14 @@ class Actions(YamlModel):
     """
 
     actions: Mapping[str, Action]
+
+    def get(self, tag: str) -> Optional[Action]:
+        """Lookup actions by whiteboard tag"""
+        return self.actions.get(tag)
+
+    def all(self):
+        """Return mapping of all actions"""
+        return self.actions
 
     @validator("actions")
     def validate_action_matches_whiteboard(

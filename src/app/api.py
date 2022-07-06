@@ -19,6 +19,7 @@ from src.app.log import configure_logging
 from src.app.monitor import api_router as monitor_router
 from src.jbi import configuration
 from src.jbi.bugzilla import BugzillaWebhookRequest
+from src.jbi.models import Actions
 from src.jbi.router import IgnoreInvalidRequestError, execute_action
 from src.jbi.services import get_jira
 
@@ -88,11 +89,11 @@ async def request_summary(request: Request, call_next):
 @app.post("/bugzilla_webhook")
 def bugzilla_webhook(
     request: BugzillaWebhookRequest = Body(..., embed=False),
-    action_map: Dict = Depends(configuration.get_actions),
+    actions: Actions = Depends(configuration.get_actions),
 ):
     """API endpoint that Bugzilla Webhook Events request"""
     try:
-        result = execute_action(request, action_map, settings)
+        result = execute_action(request, actions, settings)
         return JSONResponse(content=result, status_code=200)
     except IgnoreInvalidRequestError as exception:
         return JSONResponse(content={"error": str(exception)}, status_code=200)
@@ -101,13 +102,14 @@ def bugzilla_webhook(
 @app.get("/whiteboard_tags/")
 def get_whiteboard_tag(
     whiteboard_tag: Optional[str] = None,
-    action_map: Dict = Depends(configuration.get_actions),
+    actions: Actions = Depends(configuration.get_actions),
 ):
     """API for viewing whiteboard_tags and associated data"""
+    selected = actions.all()
     if whiteboard_tag:
-        if existing := action_map.get(whiteboard_tag):
-            action_map = {whiteboard_tag: existing}
-    return {k: v.dict() for k, v in action_map.items()}
+        if existing := actions.get(whiteboard_tag):
+            selected = {whiteboard_tag: existing}
+    return {k: v.dict() for k, v in selected}
 
 
 @app.get("/jira_projects/")
@@ -122,14 +124,15 @@ def get_jira_projects():
 def powered_by_jbi(
     request: Request,
     enabled: Optional[bool] = None,
-    action_map: Dict = Depends(configuration.get_actions),
+    actions: Actions = Depends(configuration.get_actions),
 ):
     """API for `Powered By` endpoint"""
+    entries = actions.all()
     context = {
         "request": request,
         "title": "Powered by JBI",
-        "num_configs": len(action_map),
-        "data": {k: v.dict() for k, v in action_map.items()},
+        "num_configs": len(entries),
+        "data": {k: v.dict() for k, v in entries},
         "enable_query": enabled,
     }
     return templates.TemplateResponse("powered_by_template.html", context)

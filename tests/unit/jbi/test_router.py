@@ -20,8 +20,10 @@ def test_request_is_ignored_because_private(
     private_webhook_request_example.bug.is_private = True  # type: ignore
     test_action = Action.parse_obj({"action": "tests.unit.jbi.noop_action"})
 
-    with mock.patch("src.jbi.router.extract_current_action") as mocked_extract_action:
-        mocked_extract_action.return_value = "test", test_action
+    with mock.patch(
+        "src.jbi.bugzilla.BugzillaBug.lookup_action"
+    ) as mocked_lookup_action:
+        mocked_lookup_action.return_value = "test", test_action
         with mock.patch("src.jbi.router.getbug_as_bugzilla_object") as mocked_bz_func:
             mocked_bz_func.return_value = private_webhook_request_example.bug
             with TestClient(app) as anon_client:
@@ -56,8 +58,10 @@ def test_private_request_is_allowed(
         {"action": "tests.unit.jbi.noop_action", "allow_private": True}
     )
 
-    with mock.patch("src.jbi.router.extract_current_action") as mocked_extract_action:
-        mocked_extract_action.return_value = "test", test_action
+    with mock.patch(
+        "src.jbi.bugzilla.BugzillaBug.lookup_action"
+    ) as mocked_lookup_action:
+        mocked_lookup_action.return_value = "test", test_action
         with mock.patch("src.jbi.router.getbug_as_bugzilla_object") as mocked_bz_func:
             mocked_bz_func.return_value = private_webhook_request_example.bug
             with TestClient(app) as anon_client:
@@ -103,7 +107,6 @@ def test_request_is_ignored_because_no_action(
 ):
     with mock.patch("src.jbi.whiteboard_actions.default.get_jira") as mocked_jira:
         with mock.patch("src.jbi.router.getbug_as_bugzilla_object") as mocked_bz_func:
-            mocked_bz_func = MagicMock()
             mocked_bz_func.return_value = webhook_request_example.bug
             with TestClient(app) as anon_client:
                 # https://fastapi.tiangolo.com/advanced/testing-events/
@@ -117,7 +120,7 @@ def test_request_is_ignored_because_no_action(
                 assert response.status_code == 200
                 assert (
                     response.json()["error"]
-                    == "whiteboard tag not found in configured actions"
+                    == "no action matching bug whiteboard tags: "
                 )
 
                 captured_log_msgs = [
@@ -126,5 +129,5 @@ def test_request_is_ignored_because_no_action(
 
                 assert captured_log_msgs == [
                     "Handling incoming request",
-                    "Ignore incoming request: whiteboard tag not found in configured actions",
+                    "Ignore incoming request: no action matching bug whiteboard tags: ",
                 ]

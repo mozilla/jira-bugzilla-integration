@@ -2,12 +2,11 @@
 Router dedicated to Jira Bugzilla Integration APIs
 """
 import logging
-from typing import List, Mapping, Optional, Tuple
 
 from src.app.environment import Settings
 from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
-from src.jbi.errors import IgnoreInvalidRequestError
-from src.jbi.models import Action
+from src.jbi.errors import ActionNotFoundError, IgnoreInvalidRequestError
+from src.jbi.models import Actions
 from src.jbi.services import getbug_as_bugzilla_object
 
 logger = logging.getLogger(__name__)
@@ -22,23 +21,9 @@ class Operations:
     SUCCESS = "success"
 
 
-def extract_current_action(
-    bug_obj: BugzillaBug, action_map: Mapping[str, Action]
-) -> Optional[Tuple[str, Action]]:
-    """Find first matching action from bug's whiteboard list"""
-    potential_configuration_tags: List[
-        str
-    ] = bug_obj.get_potential_whiteboard_config_list()
-
-    for tag in potential_configuration_tags:
-        if action := action_map.get(tag.lower()):
-            return tag.lower(), action
-    return None
-
-
 def execute_action(
     request: BugzillaWebhookRequest,
-    action_map: Mapping[str, Action],
+    actions: Actions,
     settings: Settings,
 ):
     """Execute action"""
@@ -56,16 +41,16 @@ def execute_action(
         if not request.bug:
             raise IgnoreInvalidRequestError("no bug data received")
 
-        bug_obj = getbug_as_bugzilla_object(request=request)
+        bug_obj: BugzillaBug = getbug_as_bugzilla_object(request=request)
         log_context["bug"] = bug_obj.json()
 
-        action_item = extract_current_action(bug_obj, action_map)
-        if not action_item:
+        try:
+            action_name, current_action = bug_obj.lookup_action(actions)
+        except ActionNotFoundError as err:
             raise IgnoreInvalidRequestError(
-                "whiteboard tag not found in configured actions"
-            )
+                f"no action matching bug whiteboard tags: {err}"
+            ) from err
 
-        action_name, current_action = action_item
         log_context["action"] = current_action.dict()
 
         if bug_obj.is_private and not current_action.allow_private:
