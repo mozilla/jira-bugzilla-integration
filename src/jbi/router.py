@@ -6,19 +6,10 @@ import logging
 from types import ModuleType
 from typing import Dict, List, Mapping, Optional, Tuple
 
-from fastapi import APIRouter, Body, Depends, Request
-from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
-
-from src.app import environment
-from src.jbi import configuration
+from src.app.environment import Settings
 from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
 from src.jbi.errors import IgnoreInvalidRequestError
 from src.jbi.services import getbug_as_bugzilla_object
-
-templates = Jinja2Templates(directory="src/templates")
-
-api_router = APIRouter(tags=["JBI"])
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +40,7 @@ def extract_current_action(
 def execute_action(
     request: BugzillaWebhookRequest,
     action_map: Mapping[str, Dict],
-    settings: environment.Settings,
+    settings: Settings,
 ):
     """Execute action"""
     log_context = {
@@ -100,48 +91,11 @@ def execute_action(
             bug_obj.id,
             extra={"operation": Operations.SUCCESS, **log_context},
         )
-        return JSONResponse(content=content, status_code=200)
+        return content
     except IgnoreInvalidRequestError as exception:
         logger.debug(
             "Ignore incoming request: %s",
             exception,
             extra={"operation": Operations.IGNORE, **log_context},
         )
-        return JSONResponse(content={"error": str(exception)}, status_code=200)
-
-
-@api_router.post("/bugzilla_webhook")
-def bugzilla_webhook(
-    request: BugzillaWebhookRequest = Body(..., embed=False),
-    settings: environment.Settings = Depends(environment.get_settings),
-    action_map: Dict = Depends(configuration.get_actions_dict),
-):
-    """API endpoint that Bugzilla Webhook Events request"""
-    return execute_action(request, action_map, settings)
-
-
-@api_router.get("/whiteboard_tags/")
-def get_whiteboard_tag(
-    whiteboard_tag: Optional[str] = None,
-):
-    """API for viewing whiteboard_tags and associated data"""
-    actions = configuration.get_actions_dict()
-    if whiteboard_tag:
-        wb_val = actions.get(whiteboard_tag)
-        if wb_val:
-            actions = wb_val
-    return actions
-
-
-@api_router.get("/powered_by_jbi", response_class=HTMLResponse)
-def powered_by_jbi(request: Request, enabled: Optional[bool] = None):
-    """API for `Powered By` endpoint"""
-    actions = configuration.get_actions_dict()
-    context = {
-        "request": request,
-        "title": "Powered by JBI",
-        "num_configs": len(actions),
-        "data": actions,
-        "enable_query": enabled,
-    }
-    return templates.TemplateResponse("powered_by_template.html", context)
+        raise
