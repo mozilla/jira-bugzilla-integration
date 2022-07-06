@@ -4,7 +4,7 @@ Router dedicated to Jira Bugzilla Integration APIs
 import importlib
 import logging
 from types import ModuleType
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, Body, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 def extract_current_action(  # pylint: disable=inconsistent-return-statements
     bug_obj: BugzillaBug, action_map
-):
+) -> Optional[Tuple(str, Dict)]:
     """Find first matching action from bug's whiteboard list"""
     potential_configuration_tags: List[
         str
