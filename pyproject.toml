@@ -60,6 +60,10 @@ testpaths = [
 [tool.isort]
 profile = "black"
 
+[tool.mypy]
+python_version = "3.8"
+# Warn when returning Any from function with non-Any return
+warn_return_any = true
 
 [tool.coverage]
 # https://github.com/nedbat/coveragepy
