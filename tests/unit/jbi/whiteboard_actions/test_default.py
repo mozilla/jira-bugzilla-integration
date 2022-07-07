@@ -16,94 +16,32 @@ def test_default_invalid_init():
         default.init()  # pylint: disable=no-value-for-parameter
 
 
-def test_default_returns_callable_without_data():
+def test_default_returns_callable_without_data(mocked_bugzilla, mocked_jira):
     callable_object = default.init(whiteboard_tag="", jira_project_key="")
     assert callable_object
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError) as exc_info:
         assert callable_object()
 
+    assert "missing 1 required positional argument: 'payload'" in str(exc_info.value)
 
-def test_default_returns_callable_with_data(webhook_request_example):
 
-    with mock.patch("src.jbi.whiteboard_actions.default.get_jira") as mocked_jira:
-        with mock.patch("src.jbi.whiteboard_actions.default.get_bugzilla") as mocked_bz:
-            with mock.patch(
-                "src.jbi.whiteboard_actions.default.getbug_as_bugzilla_object"
-            ) as mocked_bz_func:
-                mocked_bz_func.return_value = webhook_request_example.bug
-                callable_object = default.init(whiteboard_tag="", jira_project_key="")
-                assert callable_object
-                value = callable_object(payload=webhook_request_example)
+def test_default_returns_callable_with_data(webhook_create_example, mocked_jira):
+    callable_object = default.init(whiteboard_tag="", jira_project_key="")
+
+    value = callable_object(payload=webhook_create_example)
 
     assert value["status"] == "create"
 
 
-def test_created_public():
-    public_bug = BugzillaBug.parse_obj(
-        {
-            "assigned_to": "nobody@mozilla.org",
-            "comment": None,
-            "component": "General",
-            "creator": "nobody@mozilla.org",
-            "flags": [],
-            "id": 654321,
-            "is_private": False,
-            "keywords": [],
-            "priority": "",
-            "product": "JBI",
-            "resolution": "",
-            "see_also": [],
-            "severity": "--",
-            "status": "NEW",
-            "summary": "JBI Test",
-            "type": "defect",
-            "whiteboard": "[foo]",
-        }
-    )
+def test_created_public(webhook_create_example: BugzillaWebhookRequest, mocked_jira):
+    callable_object = default.init(whiteboard_tag="", jira_project_key="JBI")
 
-    public_webhook = BugzillaWebhookRequest.parse_obj(
-        {
-            "bug": public_bug,
-            "event": {
-                "action": "create",
-                "routing_key": "bug.create",
-                "target": "bug",
-                "time": "2022-06-30T14:03:02",
-                "user": {
-                    "id": 123456,
-                    "login": "nobody@mozilla.org",
-                    "real_name": "Nobody [ :nobody ]",
-                },
-            },
-            "webhook_id": 34,
-            "webhook_name": "local-test",
-        }
-    )
+    value = callable_object(payload=webhook_create_example)
 
-    mock_jira_client = MagicMock()
-    mock_bugzilla_client = MagicMock()
-    mock_bugzilla_client.get_comments.return_value = {
-        "bugs": {"654321": {"comments": [{"text": "Initial comment"}]}}
-    }
-
-    with mock.patch("src.jbi.whiteboard_actions.default.get_jira") as mocked_jira:
-        mocked_jira.return_value = mock_jira_client
-        with mock.patch("src.jbi.whiteboard_actions.default.get_bugzilla") as mocked_bz:
-            mocked_bz.return_value = mock_bugzilla_client
-            with mock.patch(
-                "src.jbi.whiteboard_actions.default.getbug_as_bugzilla_object"
-            ) as mocked_bz_func:
-                mocked_bz_func.return_value = public_bug
-                callable_object = default.init(
-                    whiteboard_tag="", jira_project_key="JBI"
-                )
-                assert callable_object
-                value = callable_object(payload=public_webhook)
-
-    mock_jira_client.create_issue.assert_called_once_with(
+    mocked_jira().create_issue.assert_called_once_with(
         fields={
             "summary": "JBI Test",
-            "labels": ["bugzilla", "foo", "[foo]"],
+            "labels": ["bugzilla", "devtest", "[devtest]"],
             "issuetype": {"name": "Bug"},
             "description": "Initial comment",
             "project": {"key": "JBI"},
@@ -112,72 +50,17 @@ def test_created_public():
     assert value["status"] == "create"
 
 
-def test_created_private():
-    private_bug = BugzillaBug.parse_obj(
-        {
-            "assigned_to": "nobody@mozilla.org",
-            "comment": None,
-            "component": "General",
-            "creator": "nobody@mozilla.org",
-            "flags": [],
-            "id": 654321,
-            "is_private": True,
-            "keywords": [],
-            "priority": "",
-            "product": "JBI",
-            "resolution": "",
-            "see_also": [],
-            "severity": "--",
-            "status": "NEW",
-            "summary": "JBI Test",
-            "type": "defect",
-            "whiteboard": "[foo]",
-        }
-    )
+def test_created_private(
+    webhook_create_private_example: BugzillaWebhookRequest, mocked_jira
+):
+    callable_object = default.init(whiteboard_tag="", jira_project_key="JBI")
 
-    private_webhook = BugzillaWebhookRequest.parse_obj(
-        {
-            "bug": {"id": 654321, "is_private": True},
-            "event": {
-                "action": "create",
-                "routing_key": "bug.create",
-                "target": "bug",
-                "time": "2022-06-30T14:03:02",
-                "user": {
-                    "id": 123456,
-                    "login": "nobody@mozilla.org",
-                    "real_name": "Nobody [ :nobody ]",
-                },
-            },
-            "webhook_id": 34,
-            "webhook_name": "local-test",
-        }
-    )
+    value = callable_object(payload=webhook_create_private_example)
 
-    mock_jira_client = MagicMock()
-    mock_bugzilla_client = MagicMock()
-    mock_bugzilla_client.get_comments.return_value = {
-        "bugs": {"654321": {"comments": [{"text": "Initial comment"}]}}
-    }
-
-    with mock.patch("src.jbi.whiteboard_actions.default.get_jira") as mocked_jira:
-        mocked_jira.return_value = mock_jira_client
-        with mock.patch("src.jbi.whiteboard_actions.default.get_bugzilla") as mocked_bz:
-            mocked_bz.return_value = mock_bugzilla_client
-            with mock.patch(
-                "src.jbi.whiteboard_actions.default.getbug_as_bugzilla_object"
-            ) as mocked_bz_func:
-                mocked_bz_func.return_value = private_bug
-                callable_object = default.init(
-                    whiteboard_tag="", jira_project_key="JBI"
-                )
-                assert callable_object
-                value = callable_object(payload=private_webhook)
-
-    mock_jira_client.create_issue.assert_called_once_with(
+    mocked_jira().create_issue.assert_called_once_with(
         fields={
             "summary": "JBI Test",
-            "labels": ["bugzilla", "foo", "[foo]"],
+            "labels": ["bugzilla", "devtest", "[devtest]"],
             "issuetype": {"name": "Bug"},
             "description": "Initial comment",
             "project": {"key": "JBI"},
@@ -186,123 +69,29 @@ def test_created_private():
     assert value["status"] == "create"
 
 
-def test_modified_public():
-    public_bug = BugzillaBug.parse_obj(
-        {
-            "assigned_to": "nobody@mozilla.org",
-            "comment": None,
-            "component": "General",
-            "creator": "nobody@mozilla.org",
-            "flags": [],
-            "id": 654321,
-            "is_private": False,
-            "keywords": [],
-            "priority": "",
-            "product": "JBI",
-            "resolution": "",
-            "see_also": ["https://mozilla.atlassian.net/browse/JBI-234"],
-            "severity": "--",
-            "status": "NEW",
-            "summary": "JBI Test",
-            "type": "defect",
-            "whiteboard": "[foo]",
-        }
-    )
+def test_modified_public(webhook_modify_example: BugzillaWebhookRequest, mocked_jira):
+    callable_object = default.init(whiteboard_tag="", jira_project_key="")
 
-    public_webhook = BugzillaWebhookRequest.parse_obj(
-        {
-            "bug": public_bug,
-            "event": {
-                "action": "modify",
-                "routing_key": "bug.modify:status",
-                "target": "bug",
-                "time": "2022-06-30T14:03:02",
-                "user": {
-                    "id": 123456,
-                    "login": "nobody@mozilla.org",
-                    "real_name": "Nobody [ :nobody ]",
-                },
-            },
-            "webhook_id": 34,
-            "webhook_name": "local-test",
-        }
-    )
+    value = callable_object(payload=webhook_modify_example)
 
-    mock_jira_client = MagicMock()
-    with mock.patch("src.jbi.whiteboard_actions.default.get_jira") as mocked_jira:
-        mocked_jira.return_value = mock_jira_client
-        with mock.patch("src.jbi.whiteboard_actions.default.get_bugzilla") as mocked_bz:
-            with mock.patch(
-                "src.jbi.whiteboard_actions.default.getbug_as_bugzilla_object"
-            ) as mocked_bz_func:
-                mocked_bz_func.return_value = public_bug
-                callable_object = default.init(whiteboard_tag="", jira_project_key="")
-                assert callable_object
-                value = callable_object(payload=public_webhook)
+    assert webhook_modify_example.bug.extract_from_see_also(), "see_also is not empty"
 
-    mock_jira_client.update_issue_field.assert_called_once_with(
+    mocked_jira().update_issue_field.assert_called_once_with(
         key="JBI-234",
-        fields={"summary": "JBI Test", "labels": ["bugzilla", "foo", "[foo]"]},
+        fields={"summary": "JBI Test", "labels": ["bugzilla", "devtest", "[devtest]"]},
     )
     assert value["status"] == "update"
 
 
-def test_modified_private():
-    private_bug = BugzillaBug.parse_obj(
-        {
-            "assigned_to": "nobody@mozilla.org",
-            "comment": None,
-            "component": "General",
-            "creator": "nobody@mozilla.org",
-            "flags": [],
-            "id": 654321,
-            "is_private": True,
-            "keywords": [],
-            "priority": "",
-            "product": "JBI",
-            "resolution": "",
-            "see_also": ["https://mozilla.atlassian.net/browse/JBI-234"],
-            "severity": "--",
-            "status": "NEW",
-            "summary": "JBI Test",
-            "type": "defect",
-            "whiteboard": "[foo]",
-        }
-    )
+def test_modified_private(
+    webhook_modify_private_example: BugzillaWebhookRequest, mocked_jira
+):
+    callable_object = default.init(whiteboard_tag="", jira_project_key="")
 
-    private_webhook = BugzillaWebhookRequest.parse_obj(
-        {
-            "bug": {"id": 654321, "is_private": True},
-            "event": {
-                "action": "modify",
-                "routing_key": "bug.modify:status",
-                "target": "bug",
-                "time": "2022-06-30T14:03:02",
-                "user": {
-                    "id": 123456,
-                    "login": "nobody@mozilla.org",
-                    "real_name": "Nobody [ :nobody ]",
-                },
-            },
-            "webhook_id": 34,
-            "webhook_name": "local-test",
-        }
-    )
+    value = callable_object(payload=webhook_modify_private_example)
 
-    mock_jira_client = MagicMock()
-    with mock.patch("src.jbi.whiteboard_actions.default.get_jira") as mocked_jira:
-        mocked_jira.return_value = mock_jira_client
-        with mock.patch("src.jbi.whiteboard_actions.default.get_bugzilla") as mocked_bz:
-            with mock.patch(
-                "src.jbi.whiteboard_actions.default.getbug_as_bugzilla_object"
-            ) as mocked_bz_func:
-                mocked_bz_func.return_value = private_bug
-                callable_object = default.init(whiteboard_tag="", jira_project_key="")
-                assert callable_object
-                value = callable_object(payload=private_webhook)
-
-    mock_jira_client.update_issue_field.assert_called_once_with(
+    mocked_jira().update_issue_field.assert_called_once_with(
         key="JBI-234",
-        fields={"summary": "JBI Test", "labels": ["bugzilla", "foo", "[foo]"]},
+        fields={"summary": "JBI Test", "labels": ["bugzilla", "devtest", "[devtest]"]},
     )
     assert value["status"] == "update"

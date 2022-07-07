@@ -7,41 +7,29 @@ import pytest
 from src.jbi import bugzilla
 
 
-def test_get_jira_labels_without_whiteboard():
-    test_bug = bugzilla.BugzillaBug(id=0, whiteboard="")
-    jira_labels = test_bug.get_jira_labels()
-    assert ["bugzilla"] == jira_labels
-
-
-def test_get_jira_labels_with_space():
-    test_bug = bugzilla.BugzillaBug(id=0, whiteboard="[test whiteboard]")
-    jira_labels = test_bug.get_jira_labels()
-    expected = ["bugzilla", "test.whiteboard", "[test.whiteboard]"]
-    assert expected == jira_labels
-
-
-def test_get_jira_labels_without_space():
-    test_bug = bugzilla.BugzillaBug(id=0, whiteboard="[test-whiteboard]")
-    jira_labels = test_bug.get_jira_labels()
-    expected = ["bugzilla", "test-whiteboard", "[test-whiteboard]"]
-    assert expected == jira_labels
-
-
-def test_get_jira_labels_multiple():
-    test_bug = bugzilla.BugzillaBug(
-        id=0, whiteboard="[test whiteboard][test-no-space][test-both space-and-not"
-    )
-    jira_labels = test_bug.get_jira_labels()
-    expected = [
-        "bugzilla",
-        "test.whiteboard",
-        "test-no-space",
-        "test-both.space-and-not",
-        "[test.whiteboard]",
-        "[test-no-space]",
-        "[test-both.space-and-not]",
-    ]
-    assert expected == jira_labels
+@pytest.mark.parametrize(
+    "whiteboard,expected",
+    [
+        ("", ["bugzilla"]),
+        ("[test whiteboard]", ["bugzilla", "test.whiteboard", "[test.whiteboard]"]),
+        ("[test-whiteboard]", ["bugzilla", "test-whiteboard", "[test-whiteboard]"]),
+        (
+            "[test whiteboard][test-no-space][test-both space-and-not",
+            [
+                "bugzilla",
+                "test.whiteboard",
+                "test-no-space",
+                "test-both.space-and-not",
+                "[test.whiteboard]",
+                "[test-no-space]",
+                "[test-both.space-and-not]",
+            ],
+        ),
+    ],
+)
+def test_jira_labels(whiteboard, expected):
+    bug = bugzilla.BugzillaBug(id=0, whiteboard=whiteboard)
+    assert bug.get_jira_labels() == expected
 
 
 @pytest.mark.parametrize(

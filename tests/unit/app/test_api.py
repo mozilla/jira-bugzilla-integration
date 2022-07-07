@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from src.app.api import app
 from src.jbi.errors import IgnoreInvalidRequestError
 from src.jbi.bugzilla import BugzillaWebhookRequest
-from src.jbi.models import Action
+from src.jbi.models import Actions
 
 
 def test_read_root(anon_client):
@@ -34,31 +34,33 @@ def test_request_summary_is_logged(caplog):
 
 
 def test_webhook_is_200_if_action_succeeds(
-    webhook_request_example: BugzillaWebhookRequest,
-    actions_example: Actions,
+    webhook_create_example: BugzillaWebhookRequest,
+    mocked_jira,
+    mocked_bugzilla,
 ):
-    with mock.patch("src.app.configuration.get_actions", return_value=actions_example):
-        with TestClient(app) as anon_client:
-            response = anon_client.post(
-                "/bugzilla_webhook", data=webhook_request_example.json()
-            )
-            assert response
-            assert response.status_code == 200
+    mocked_bugzilla().update_bugs.return_value = {}
+    mocked_jira().create_or_update_issue_remote_links.return_value = {}
+
+    with TestClient(app) as anon_client:
+        response = anon_client.post(
+            "/bugzilla_webhook", data=webhook_create_example.json()
+        )
+        assert response
+        assert response.status_code == 200
 
 
 def test_webhook_is_200_if_action_raises_IgnoreInvalidRequestError(
-    webhook_request_example: BugzillaWebhookRequest,
+    webhook_create_example: BugzillaWebhookRequest,
 ):
-    actions = Actions.parse_obj({"actions": {}})
+    webhook_create_example.bug.whiteboard = "unmatched"
 
-    with mock.patch("src.app.configuration.get_actions", return_value=actions):
-        with TestClient(app) as anon_client:
-            response = anon_client.post(
-                "/bugzilla_webhook", data=webhook_request_example.json()
-            )
-            assert response
-            assert response.status_code == 200
-            assert (
-                response.json()["error"]
-                == "no action matching bug whiteboard tags: devtest"
-            )
+    with TestClient(app) as anon_client:
+        response = anon_client.post(
+            "/bugzilla_webhook", data=webhook_create_example.json()
+        )
+        assert response
+        assert response.status_code == 200
+        assert (
+            response.json()["error"]
+            == "no action matching bug whiteboard tags: unmatched"
+        )

@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from src.app.api import app
 from src.app.environment import Settings
 from src.jbi.models import Actions
-from src.jbi.bugzilla import BugzillaWebhookRequest
+from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
 from src.jbi.services import get_bugzilla
 
 
@@ -26,7 +26,19 @@ def settings():
 
 
 @pytest.fixture
-def webhook_request_example() -> BugzillaWebhookRequest:
+def mocked_bugzilla():
+    with mock.patch("src.jbi.services.rh_bugzilla.Bugzilla") as mocked_bz:
+        yield mocked_bz
+
+
+@pytest.fixture
+def mocked_jira():
+    with mock.patch("src.jbi.services.Jira") as mocked_jira:
+        yield mocked_jira
+
+
+@pytest.fixture
+def webhook_create_example(mocked_bugzilla) -> BugzillaWebhookRequest:
     webhook_payload = BugzillaWebhookRequest.parse_obj(
         {
             "bug": {
@@ -44,9 +56,9 @@ def webhook_request_example() -> BugzillaWebhookRequest:
                 "see_also": [],
                 "severity": "--",
                 "status": "NEW",
-                "summary": "[JBI Test]",
+                "summary": "JBI Test",
                 "type": "defect",
-                "whiteboard": "[devtest-]",
+                "whiteboard": "devtest",
             },
             "event": {
                 "action": "create",
@@ -65,16 +77,63 @@ def webhook_request_example() -> BugzillaWebhookRequest:
         }
     )
 
-    class FakeBugzillaClient:
-        def getbug(self, bug_id):
-            if bug_id == webhook_payload.bug.id:
-                return webhook_payload.bug
-            return get_bugzilla().getbug(bug_id)
+    mocked_bugzilla().getbug.return_value = webhook_payload.bug
+    mocked_bugzilla().get_comments.return_value = {
+        "bugs": {"654321": {"comments": [{"text": "Initial comment"}]}}
+    }
 
-    with mock.patch(
-        "src.jbi.services.get_bugzilla", return_value=FakeBugzillaClient()
-    ) as mocked:
-        yield webhook_payload
+    return webhook_payload
+
+
+@pytest.fixture
+def webhook_create_private_example(
+    webhook_create_example, mocked_bugzilla
+) -> BugzillaWebhookRequest:
+    private_bug = webhook_create_example.bug
+    private_bug.is_private = True
+    # Call to Bugzilla returns the actual bug object.
+    mocked_bugzilla().getbug.return_value = private_bug
+
+    # But webhook payload only contains private attribute.
+    webhook_create_private_example = BugzillaWebhookRequest.parse_obj(
+        {
+            **webhook_create_example.dict(),
+            "bug": {"id": private_bug.id, "is_private": True},
+        }
+    )
+    return webhook_create_private_example
+
+
+@pytest.fixture
+def webhook_modify_example(webhook_create_example) -> BugzillaWebhookRequest:
+    webhook_modify_example = webhook_create_example
+
+    webhook_modify_example.bug.see_also = [
+        "https://mozilla.atlassian.net/browse/JBI-234"
+    ]
+
+    webhook_modify_example.event.action = "modify"
+    webhook_modify_example.event.routing_key = "bug.modify:status"
+    return webhook_modify_example
+
+
+@pytest.fixture
+def webhook_modify_private_example(
+    webhook_modify_example, mocked_bugzilla
+) -> BugzillaWebhookRequest:
+    private_bug = webhook_modify_example.bug
+    private_bug.is_private = True
+    # Call to Bugzilla returns the actual bug object.
+    mocked_bugzilla().getbug.return_value = private_bug
+
+    # But webhook payload only contains private attribute.
+    webhook_modify_private_example = BugzillaWebhookRequest.parse_obj(
+        {
+            **webhook_modify_example.dict(),
+            "bug": {"id": private_bug.id, "is_private": True},
+        }
+    )
+    return webhook_modify_private_example
 
 
 @pytest.fixture

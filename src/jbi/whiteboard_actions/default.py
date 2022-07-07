@@ -60,7 +60,7 @@ class DefaultExecutor:
         self, payload: BugzillaWebhookRequest
     ):  # pylint: disable=too-many-locals
         """Create and link jira issue with bug, or update; rollback if multiple events fire"""
-        bug_obj = getbug_as_bugzilla_object(payload)
+        bug_obj = getbug_as_bugzilla_object(request=payload)
         linked_issue_key = bug_obj.extract_from_see_also()  # type: ignore
         if linked_issue_key:
             # update
