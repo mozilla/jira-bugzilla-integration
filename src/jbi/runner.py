@@ -59,8 +59,9 @@ def execute_action(
             )
 
         logger.info(
-            "Execute action %r for Bug %s",
+            "Execute action '%s:%s' for Bug %s",
             action_name,
+            current_action.action,
             bug_obj.id,
             extra={"operation": Operations.EXECUTE, **log_context},
         )
