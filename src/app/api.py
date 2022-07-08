@@ -2,6 +2,7 @@
 Core FastAPI app (setup, middleware)
 """
 import logging
+import os
 import time
 from datetime import datetime
 from typing import Dict, List, Optional
@@ -23,7 +24,10 @@ from src.jbi.models import Actions
 from src.jbi.runner import IgnoreInvalidRequestError, execute_action
 from src.jbi.services import get_jira
 
-templates = Jinja2Templates(directory="src/templates")
+SRC_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+
+
+templates = Jinja2Templates(directory=os.path.join(SRC_DIR, "templates"))
 
 settings = get_settings()
 
@@ -36,7 +40,9 @@ app = FastAPI(
 )
 
 app.include_router(monitor_router)
-app.mount("/static", StaticFiles(directory="src/static"), name="static")
+app.mount(
+    "/static", StaticFiles(directory=os.path.join(SRC_DIR, "static")), name="static"
+)
 
 sentry_sdk.init(  # pylint: disable=abstract-class-instantiated  # noqa: E0110
     dsn=settings.sentry_dsn
