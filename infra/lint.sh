@@ -1,14 +1,23 @@
 #!/bin/sh
 
-set -e
+set -ex
 
 CURRENT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 BASE_DIR="$(dirname "$CURRENT_DIR")"
+HAS_GIT="$(command -v git || echo '')"
 
-bandit -lll --recursive src --exclude "src/poetry.lock,src/.venv,src/.mypy,src/build"
-mypy src
-black --config "${BASE_DIR}/pyproject.toml" --check src tests
-isort --recursive --settings-path "${BASE_DIR}/pyproject.toml" --check-only src
-pylint src tests
-yamllint -c "${BASE_DIR}/.yamllint" ./config
-./infra/detect_secrets_helper.sh
+
+if [ -n "$HAS_GIT" ]; then
+	pre-commit run --all-files
+else
+	bandit -lll --recursive src --exclude "src/poetry.lock"
+	mypy src tests
+	black --check src tests
+	isort --recursive --check-only src tests
+	pylint src tests
+	yamllint -c "${BASE_DIR}/.yamllint" ./config
+
+    echo "⚠️  detect-secrets running on partial file list: \`git\` command missing"
+    SECRETS_TO_SCAN=`find ./ -type f \( -iname \*.py -o -iname \*.md -o -iname \*.toml -o -iname \*.yaml  -o -iname \*.env \)`
+    detect-secrets-hook --baseline .secrets.baseline --verbose $SECRETS_TO_SCAN
+fi
