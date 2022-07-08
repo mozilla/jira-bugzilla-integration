@@ -134,6 +134,7 @@ def webhook_modify_example(webhook_create_example) -> BugzillaWebhookRequest:
 @pytest.fixture
 def webhook_change_status_assignee(webhook_modify_example):
     payload = webhook_modify_example.dict()
+    payload["event"]["routing_key"] = "bug.modify"
     payload["event"]["changes"] = [
         {"field": "status", "removed": "OPEN", "added": "FIXED"},
         {

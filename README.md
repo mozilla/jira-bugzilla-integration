@@ -18,6 +18,7 @@ The system reads the action configuration from a YAML file, one per environment.
 Below is a full example of an action configuration:
 ```yaml
     action: src.jbi.whiteboard_actions.default
+    allow_private: false
     contact: [example@allizom.com]
     description: example configuration
     enabled: true
@@ -31,6 +32,12 @@ A bit more about the different fields...
     - string
     - default: [src.jbi.whiteboard_actions.default](src/jbi/whiteboard_actions/default.py)
     - The specified Python module must be available in the `PYTHONPATH`
+- `allow_private` (optional)
+    - bool [true, false]
+    - default: false
+    - If false bugs that are not public will not be synchronized. Note that in order to synchronize
+      private bugs the bugzilla user that JBI runs as must be in the security groups that are making
+      the bug private.
 - `contact`
     - list of strings
     - If an issue arises with the workflow, communication will be established with these contacts
@@ -53,6 +60,37 @@ A bit more about the different fields...
 
 [View 'prod' configurations here.](config/config.prod.yaml)
 
+
+## Default with assignee and status action
+The `src.jbi.whiteboard_actions.default_with_assignee_and_status` action adds some additional
+features on top of the default.
+
+It will attempt to assign the Jira issue the same person as the bug is assigned to. This relies on
+the user using the same email address in both Bugzilla and Jira. If the user does not exist in Jira
+then the assignee is cleared from the Jira issue.
+
+The action supports setting the Jira issues's status when the Bugzilla status and resolution change.
+This is defined using a mapping on a per-project basis configured in the `status_map` field of the
+`parameters` field.
+
+An example configuration:
+```yaml
+    action: src.jbi.whiteboard_actions.default_with_assignee_and_status
+    contact: [example@allizom.com]
+    description: example configuration
+    enabled: true
+    parameters:
+      jira_project_key: EXMPL
+      whiteboard_tag: example
+      status_map:
+        NEW: "In Progress"
+        FIXED: "Closed"
+```
+
+In this case if the bug changes to the NEW status the action will attempt to set the linked Jira
+issue status to "In Progress". If the bug changes to RESOLVED FIXED it will attempt to set the
+linked Jira issue status to "Closed". If the bug changes to a status not listed in `status_map` then
+no change will be made to the Jira issue.
 
 ### Custom Actions
 If you're looking for a unique capability for your team's data flow, you can add your own python methods and functionality[...read more here.](src/jbi/whiteboard_actions/README.md)
