@@ -1,6 +1,6 @@
 version: "3.8"
 services:
-  tests:
+  test:
     build:
       context: .
       dockerfile: infra/Dockerfile
