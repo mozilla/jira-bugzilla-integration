@@ -45,6 +45,7 @@ start:
 
 .PHONY: test
 test:
+	touch ./.coverage && chmod o+w ./.coverage
 	docker-compose -f ./docker-compose.yaml -f ./tests/infra/docker-compose.test.yaml run test
 ifneq (1, ${MK_KEEP_DOCKER_UP})
 	# Due to https://github.com/docker/compose/issues/2791 we have to explicitly
