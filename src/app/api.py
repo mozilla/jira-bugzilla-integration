@@ -10,6 +10,7 @@ from typing import Dict, List, Optional
 import sentry_sdk
 import uvicorn  # type: ignore
 from fastapi import Body, Depends, FastAPI, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse, ORJSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -132,7 +133,7 @@ def powered_by_jbi(
         "request": request,
         "title": "Powered by JBI",
         "num_configs": len(actions),
-        "data": entries,
+        "data": jsonable_encoder(actions),
         "enable_query": enabled,
     }
     return templates.TemplateResponse("powered_by_template.html", context)
