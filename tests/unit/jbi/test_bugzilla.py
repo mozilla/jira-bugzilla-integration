@@ -69,3 +69,24 @@ def test_lookup_action_missing(actions_example):
     with pytest.raises(ActionNotFoundError) as exc_info:
         bug.lookup_action(actions_example)
     assert str(exc_info.value) == "example devtest"
+
+
+def test_comment(webhook_comment_example):
+    assert not webhook_comment_example.bug.comment.is_comment_description()
+    assert webhook_comment_example.bug.comment.is_comment_generic()
+    assert not webhook_comment_example.bug.comment.is_private_comment()
+
+
+def test_map_jira_description(webhook_comment_example):
+    desc = webhook_comment_example.map_as_jira_description()
+    assert desc == "*(description)*: \n{quote}hello{quote}"
+
+
+def test_map_as_comments(webhook_change_status_assignee):
+    mapped = webhook_change_status_assignee.map_as_comments(
+        status_log_enabled=True, assignee_log_enabled=True
+    )
+    assert mapped == [
+        '{\n    "modified by": "nobody@mozilla.org",\n    "resolution": "",\n    "status": "NEW"\n}',
+        '{\n    "assignee": "nobody@mozilla.org"\n}',
+    ]

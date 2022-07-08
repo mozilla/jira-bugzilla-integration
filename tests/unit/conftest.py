@@ -132,6 +132,20 @@ def webhook_modify_example(webhook_create_example) -> BugzillaWebhookRequest:
 
 
 @pytest.fixture
+def webhook_change_status_assignee(webhook_modify_example):
+    payload = webhook_modify_example.dict()
+    payload["event"]["changes"] = [
+        {"field": "status", "removed": "OPEN", "added": "FIXED"},
+        {
+            "field": "assignee",
+            "removed": "nobody@mozilla.org",
+            "added": "mathieu@mozilla.com",
+        },
+    ]
+    return BugzillaWebhookRequest.parse_obj(payload)
+
+
+@pytest.fixture
 def webhook_modify_private_example(
     webhook_modify_example, mocked_bugzilla
 ) -> BugzillaWebhookRequest:
