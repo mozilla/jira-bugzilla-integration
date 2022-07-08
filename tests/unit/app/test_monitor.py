@@ -21,26 +21,33 @@ def test_read_version(anon_client):
     assert resp.json() == expected
 
 
-def test_read_heartbeat_no_services_fails(anon_client):
-    """/__heartbeat__ returns 503 when the services are unavailable."""
-    expected = {
-        "jira": {
-            "up": False,
-        },
-        "bugzilla": {
-            "up": False,
-        },
-    }
-    with patch("src.app.monitor.jbi_service_health_map", return_value=expected):
-        resp = anon_client.get("/__heartbeat__")
+def test_read_heartbeat_all_services_fail(anon_client, mocked_jira, mocked_bugzilla):
+    """/__heartbeat__ returns 503 when all the services are unavailable."""
+    mocked_bugzilla().logged_in = False
+    mocked_jira().get_server_info.return_value = None
+
+    resp = anon_client.get("/__heartbeat__")
+
     assert resp.status_code == 503
-    data = resp.json()
-    assert data == expected
+    assert resp.json() == {
+        "jira": {
+            "up": False,
+        },
+        "bugzilla": {
+            "up": False,
+        },
+    }
 
 
-def test_read_heartbeat_jira_services_fails(anon_client):
-    """/__heartbeat__ returns 503 when the services are unavailable."""
-    expected = {
+def test_read_heartbeat_jira_services_fails(anon_client, mocked_jira, mocked_bugzilla):
+    """/__heartbeat__ returns 503 when one service is unavailable."""
+    mocked_bugzilla().logged_in = True
+    mocked_jira().get_server_info.return_value = None
+
+    resp = anon_client.get("/__heartbeat__")
+
+    assert resp.status_code == 503
+    assert resp.json() == {
         "jira": {
             "up": False,
         },
@@ -48,16 +55,19 @@ def test_read_heartbeat_jira_services_fails(anon_client):
             "up": True,
         },
     }
-    with patch("src.app.monitor.jbi_service_health_map", return_value=expected):
-        resp = anon_client.get("/__heartbeat__")
+
+
+def test_read_heartbeat_bugzilla_services_fails(
+    anon_client, mocked_jira, mocked_bugzilla
+):
+    """/__heartbeat__ returns 503 when one service is unavailable."""
+    mocked_bugzilla().logged_in = False
+    mocked_jira().get_server_info.return_value = {}
+
+    resp = anon_client.get("/__heartbeat__")
+
     assert resp.status_code == 503
-    data = resp.json()
-    assert data == expected
-
-
-def test_read_heartbeat_bugzilla_services_fails(anon_client):
-    """/__heartbeat__ returns 503 when the services are unavailable."""
-    expected = {
+    assert resp.json() == {
         "jira": {
             "up": True,
         },
@@ -65,25 +75,41 @@ def test_read_heartbeat_bugzilla_services_fails(anon_client):
             "up": False,
         },
     }
-    with patch("src.app.monitor.jbi_service_health_map", return_value=expected):
-        resp = anon_client.get("/__heartbeat__")
-    assert resp.status_code == 503
-    data = resp.json()
-    assert data == expected
 
 
-def test_read_heartbeat_success(anon_client):
-    """/__heartbeat__ returns 200 when measuring the acoustic backlog fails."""
-    expected = {
-        "jira": {
-            "up": True,
-        },
-        "bugzilla": {
-            "up": True,
-        },
-    }
-    with patch("src.app.monitor.jbi_service_health_map", return_value=expected):
-        resp = anon_client.get("/__heartbeat__")
+def test_read_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
+    """/__heartbeat__ returns 200 when checks succeed."""
+    mocked_bugzilla().logged_in = True
+    mocked_jira().get_server_info.return_value = {}
+
+    resp = anon_client.get("/__heartbeat__")
+
     assert resp.status_code == 200
-    data = resp.json()
-    assert data == expected
+    assert resp.json() == {
+        "jira": {
+            "up": True,
+        },
+        "bugzilla": {
+            "up": True,
+        },
+    }
+
+
+def test_head_heartbeat(anon_client, mocked_jira, mocked_bugzilla):
+    """/__heartbeat__ support head requests"""
+    mocked_bugzilla().logged_in = True
+    mocked_jira().get_server_info.return_value = {}
+
+    resp = anon_client.head("/__heartbeat__")
+
+    assert resp.status_code == 200
+
+
+def test_lbheartbeat(anon_client):
+    """/__lbheartbeat__ always returns 200"""
+
+    resp = anon_client.get("/__lbheartbeat__")
+    assert resp.status_code == 200
+
+    resp = anon_client.head("/__lbheartbeat__")
+    assert resp.status_code == 200

@@ -6,10 +6,13 @@ View additional bugzilla webhook documentation here: https://bugzilla.mozilla.or
 import datetime
 import json
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from urllib.parse import ParseResult, urlparse
 
 from pydantic import BaseModel  # pylint: disable=no-name-in-module
+
+from src.jbi.errors import ActionNotFoundError
+from src.jbi.models import Action, Actions
 
 logger = logging.getLogger(__name__)
 
@@ -199,6 +202,15 @@ class BugzillaBug(BaseModel):
                     return parsed_jira_key
 
         return None
+
+    def lookup_action(self, actions: Actions) -> Tuple[str, Action]:
+        """Find first matching action from bug's whiteboard list"""
+        tags: List[str] = self.get_potential_whiteboard_config_list()
+        for tag in tags:
+            tag = tag.lower()
+            if action := actions.get(tag):
+                return tag, action
+        raise ActionNotFoundError(", ".join(tags))
 
 
 class BugzillaWebhookRequest(BaseModel):

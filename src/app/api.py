@@ -4,17 +4,29 @@ Core FastAPI app (setup, middleware)
 import logging
 import time
 from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Optional
 
 import sentry_sdk
 import uvicorn  # type: ignore
-from fastapi import FastAPI, Request
+from fastapi import Body, Depends, FastAPI, Request
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 
+from src.app import configuration
 from src.app.environment import get_settings
 from src.app.log import configure_logging
 from src.app.monitor import api_router as monitor_router
-from src.jbi.router import api_router as jbi_router
+from src.jbi.bugzilla import BugzillaWebhookRequest
+from src.jbi.models import Actions
+from src.jbi.runner import IgnoreInvalidRequestError, execute_action
+from src.jbi.services import get_jira
+
+SRC_DIR = Path(__file__).parents[1]
+
+templates = Jinja2Templates(directory=SRC_DIR / "templates")
 
 settings = get_settings()
 
@@ -27,8 +39,7 @@ app = FastAPI(
 )
 
 app.include_router(monitor_router)
-app.include_router(jbi_router)
-app.mount("/static", StaticFiles(directory="src/static"), name="static")
+app.mount("/static", StaticFiles(directory=SRC_DIR / "static"), name="static")
 
 sentry_sdk.init(  # pylint: disable=abstract-class-instantiated  # noqa: E0110
     dsn=settings.sentry_dsn
@@ -76,6 +87,56 @@ async def request_summary(request: Request, call_next):
     summary_logger.info("", extra=infos)
 
     return response
+
+
+@app.post("/bugzilla_webhook")
+def bugzilla_webhook(
+    request: BugzillaWebhookRequest = Body(..., embed=False),
+    actions: Actions = Depends(configuration.get_actions),
+):
+    """API endpoint that Bugzilla Webhook Events request"""
+    try:
+        result = execute_action(request, actions, settings)
+        return JSONResponse(content=result, status_code=200)
+    except IgnoreInvalidRequestError as exception:
+        return JSONResponse(content={"error": str(exception)}, status_code=200)
+
+
+@app.get("/whiteboard_tags/")
+def get_whiteboard_tag(
+    whiteboard_tag: Optional[str] = None,
+    actions: Actions = Depends(configuration.get_actions),
+):
+    """API for viewing whiteboard_tags and associated data"""
+    if existing := actions.get(whiteboard_tag):
+        return {whiteboard_tag: existing}
+    return actions.all()
+
+
+@app.get("/jira_projects/")
+def get_jira_projects():
+    """API for viewing projects that are currently accessible by API"""
+    jira = get_jira()
+    visible_projects: List[Dict] = jira.projects(included_archived=None)
+    return [project["key"] for project in visible_projects]
+
+
+@app.get("/powered_by_jbi/", response_class=HTMLResponse)
+def powered_by_jbi(
+    request: Request,
+    enabled: Optional[bool] = None,
+    actions: Actions = Depends(configuration.get_actions),
+):
+    """API for `Powered By` endpoint"""
+    entries = actions.all()
+    context = {
+        "request": request,
+        "title": "Powered by JBI",
+        "num_configs": len(entries),
+        "data": entries,
+        "enable_query": enabled,
+    }
+    return templates.TemplateResponse("powered_by_template.html", context)
 
 
 if __name__ == "__main__":

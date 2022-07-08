@@ -1,16 +1,17 @@
 """
 Python Module for Pydantic Models and validation
 """
+import functools
 import importlib
 from inspect import signature
 from types import ModuleType
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Mapping, Optional
 
 from pydantic import Extra, root_validator, validator
 from pydantic_yaml import YamlModel
 
 
-class Action(YamlModel, extra=Extra.allow):
+class Action(YamlModel):
     """
     Action is the inner model for each action in the configuration file"""
 
@@ -18,6 +19,13 @@ class Action(YamlModel, extra=Extra.allow):
     enabled: bool = False
     allow_private: bool = False
     parameters: dict = {}
+
+    @functools.cached_property
+    def callable(self) -> Callable:
+        """Return the initialized callable for this action."""
+        action_module: ModuleType = importlib.import_module(self.action)
+        initialized: Callable = action_module.init(**self.parameters)  # type: ignore
+        return initialized
 
     @root_validator
     def validate_action_config(
@@ -40,13 +48,27 @@ class Action(YamlModel, extra=Extra.allow):
             raise ValueError("action is not properly setup.") from exception
         return values
 
+    class Config:
+        """Pydantic configuration"""
+
+        extra = Extra.allow
+        keep_untouched = (functools.cached_property,)
+
 
 class Actions(YamlModel):
     """
     Actions is the overall model for the list of `actions` in the configuration file
     """
 
-    actions: Dict[str, Action]
+    actions: Mapping[str, Action]
+
+    def get(self, tag: Optional[str]) -> Optional[Action]:
+        """Lookup actions by whiteboard tag"""
+        return self.actions.get(tag.lower()) if tag else None
+
+    def all(self):
+        """Return mapping of all actions"""
+        return self.actions
 
     @validator("actions")
     def validate_action_matches_whiteboard(

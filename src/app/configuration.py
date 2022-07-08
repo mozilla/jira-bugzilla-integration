@@ -31,8 +31,3 @@ def get_actions(
         except ValidationError as exception:
             logger.exception(exception)
             raise ConfigError("Errors exist.") from exception
-
-
-def get_actions_dict():
-    """Returns dict of `get_actions()`"""
-    return get_actions().dict()["actions"]
