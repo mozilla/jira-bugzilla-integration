@@ -126,7 +126,7 @@ def get_jira_projects():
     return [project["key"] for project in visible_projects]
 
 
-@app.get("/powered_by_jbi", response_class=HTMLResponse)
+@app.get("/powered_by_jbi/", response_class=HTMLResponse)
 def powered_by_jbi(
     request: Request,
     enabled: Optional[bool] = None,
