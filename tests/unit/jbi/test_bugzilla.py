@@ -97,7 +97,7 @@ def test_payload_empty_changes_list(webhook_change_status_assignee):
     assert webhook_change_status_assignee.event.changed_fields() is None
 
 
-def test_payload_empty_changes_list(webhook_change_status_assignee):
+def test_payload_changes_list(webhook_change_status_assignee):
     assert webhook_change_status_assignee.event.changed_fields() == [
         "status",
         "assignee",

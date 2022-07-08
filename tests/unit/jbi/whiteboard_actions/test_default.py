@@ -6,6 +6,7 @@ from unittest import mock
 from unittest.mock import MagicMock
 
 import pytest
+
 from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
 from src.jbi.errors import ActionError
 from src.jbi.whiteboard_actions import default
@@ -70,6 +71,7 @@ def test_created_private(
 
 
 def test_modified_public(webhook_modify_example: BugzillaWebhookRequest, mocked_jira):
+    assert webhook_modify_example.bug
     callable_object = default.init(whiteboard_tag="", jira_project_key="")
 
     value = callable_object(payload=webhook_modify_example)
@@ -113,6 +115,7 @@ def test_added_comment(webhook_comment_example: BugzillaWebhookRequest, mocked_j
 def test_added_comment_without_linked_issue(
     webhook_comment_example: BugzillaWebhookRequest, mocked_jira
 ):
+    assert webhook_comment_example.bug
     webhook_comment_example.bug.see_also = []
     callable_object = default.init(whiteboard_tag="", jira_project_key="")
 

@@ -9,8 +9,8 @@ from datetime import datetime
 from fastapi.testclient import TestClient
 
 from src.app.api import app
-from src.jbi.errors import IgnoreInvalidRequestError
 from src.jbi.bugzilla import BugzillaWebhookRequest
+from src.jbi.errors import IgnoreInvalidRequestError
 from src.jbi.models import Actions
 
 
@@ -126,6 +126,7 @@ def test_webhook_is_200_if_action_succeeds(
 def test_webhook_is_200_if_action_raises_IgnoreInvalidRequestError(
     webhook_create_example: BugzillaWebhookRequest,
 ):
+    assert webhook_create_example.bug
     webhook_create_example.bug.whiteboard = "unmatched"
 
     with TestClient(app) as anon_client:
