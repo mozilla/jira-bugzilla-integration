@@ -26,7 +26,13 @@ def execute_action(
     actions: Actions,
     settings: Settings,
 ):
-    """Execute action"""
+    """Execute the configured action for the specified `request`.
+
+    This will raise an `IgnoreInvalidRequestError` error if the request
+    does not contain bug data or does not match any action.
+
+    The value returned by the action call is returned.
+    """
     log_context = {
         "bug": {
             "id": request.bug.id if request.bug else None,

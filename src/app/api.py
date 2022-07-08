@@ -2,9 +2,9 @@
 Core FastAPI app (setup, middleware)
 """
 import logging
-import os
 import time
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, List, Optional
 
 import sentry_sdk
@@ -24,10 +24,9 @@ from src.jbi.models import Actions
 from src.jbi.runner import IgnoreInvalidRequestError, execute_action
 from src.jbi.services import get_jira
 
-SRC_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+SRC_DIR = Path(__file__).parents[1]
 
-
-templates = Jinja2Templates(directory=os.path.join(SRC_DIR, "templates"))
+templates = Jinja2Templates(directory=SRC_DIR / "templates")
 
 settings = get_settings()
 
@@ -40,9 +39,7 @@ app = FastAPI(
 )
 
 app.include_router(monitor_router)
-app.mount(
-    "/static", StaticFiles(directory=os.path.join(SRC_DIR, "static")), name="static"
-)
+app.mount("/static", StaticFiles(directory=SRC_DIR / "static"), name="static")
 
 sentry_sdk.init(  # pylint: disable=abstract-class-instantiated  # noqa: E0110
     dsn=settings.sentry_dsn
@@ -136,7 +133,7 @@ def powered_by_jbi(
         "request": request,
         "title": "Powered by JBI",
         "num_configs": len(entries),
-        "data": {k: v.dict() for k, v in entries.items()},
+        "data": entries,
         "enable_query": enabled,
     }
     return templates.TemplateResponse("powered_by_template.html", context)
