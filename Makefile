@@ -25,19 +25,17 @@ help:
 
 .PHONY: build
 build:
-	docker-compose -f ./docker-compose.yaml \
-	    -f ./tests/infra/docker-compose.test.yaml \
-	    -f ./tests/infra/docker-compose.lint.yaml build \
+	docker-compose -f ./docker-compose.yaml build \
 		--build-arg userid=${_UID} --build-arg groupid=${_GID}
 
 .PHONY: lint
 lint:
 	mkdir -p ./.mypy_cache && chmod -R o+w ./.mypy_cache
-	docker-compose -f ./docker-compose.yaml -f ./tests/infra/docker-compose.lint.yaml run lint
+	docker-compose -f ./docker-compose.yaml run web /app/infra/lint.sh
 
 .PHONY: shell
 shell:
-	docker-compose -f ./docker-compose.yaml run web
+	docker-compose -f ./docker-compose.yaml run web /bin/sh
 
 .PHONY: start
 start:
@@ -46,7 +44,7 @@ start:
 .PHONY: test
 test:
 	touch ./.coverage && chmod o+w ./.coverage
-	docker-compose -f ./docker-compose.yaml -f ./tests/infra/docker-compose.test.yaml run test
+	docker-compose -f ./docker-compose.yaml run web /app/infra/test.sh
 ifneq (1, ${MK_KEEP_DOCKER_UP})
 	# Due to https://github.com/docker/compose/issues/2791 we have to explicitly
 	# rm all running containers
@@ -55,4 +53,4 @@ endif
 
 .PHONY: test-shell
 test-shell:
-	docker-compose -f ./docker-compose.yaml -f ./tests/infra/docker-compose.test.yaml run web
+	docker-compose -f ./docker-compose.yaml run web
