@@ -53,6 +53,15 @@ def test_whiteboard_tags(anon_client):
     assert infos["devtest"]["description"] == "DevTest whiteboard tag"
 
 
+def test_jira_projects(anon_client, mocked_jira):
+    mocked_jira().projects.return_value = [{"key": "Firefox"}, {"key": "Fenix"}]
+
+    resp = anon_client.get("/jira_projects/")
+    infos = resp.json()
+
+    assert infos == ["Firefox", "Fenix"]
+
+
 def test_whiteboard_tags_filtered(anon_client):
     resp = anon_client.get("/whiteboard_tags/?whiteboard_tag=devtest")
     infos = resp.json()

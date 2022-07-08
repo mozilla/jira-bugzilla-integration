@@ -93,3 +93,23 @@ def test_read_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
             "up": True,
         },
     }
+
+
+def test_head_heartbeat(anon_client, mocked_jira, mocked_bugzilla):
+    """/__heartbeat__ support head requests"""
+    mocked_bugzilla().logged_in = True
+    mocked_jira().get_server_info.return_value = {}
+
+    resp = anon_client.head("/__heartbeat__")
+
+    assert resp.status_code == 200
+
+
+def test_lbheartbeat(anon_client):
+    """/__lbheartbeat__ always returns 200"""
+
+    resp = anon_client.get("/__lbheartbeat__")
+    assert resp.status_code == 200
+
+    resp = anon_client.head("/__lbheartbeat__")
+    assert resp.status_code == 200
