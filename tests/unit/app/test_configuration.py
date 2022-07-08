@@ -8,8 +8,9 @@ from src.app import configuration
 
 
 def test_mock_jbi_files():
-    with pytest.raises(configuration.ConfigError):
-        configuration.get_actions(jbi_config_file="tests/unit/app/test-config.yaml")
+    with pytest.raises(configuration.ConfigError) as exc_info:
+        configuration.get_actions(jbi_config_file="tests/unit/app/bad-config.yaml")
+    assert str(exc_info.value) == "Errors exist."
 
 
 def test_actual_jbi_files():
