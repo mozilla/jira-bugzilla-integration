@@ -37,12 +37,11 @@ def test_private_request_is_allowed(
 ):
     actions = Actions.parse_obj(
         {
-            "actions": {
-                "devtest": {
-                    "action": "tests.unit.jbi.noop_action",
-                    "allow_private": True,
-                    "parameters": {"whiteboard_tag": "devtest"},
-                }
+            "devtest": {
+                "action": "tests.unit.jbi.noop_action",
+                "allow_private": True,
+                "description": "test config",
+                "parameters": {"whiteboard_tag": "devtest"},
             }
         }
     )

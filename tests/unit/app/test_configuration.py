@@ -21,17 +21,17 @@ def test_actual_jbi_files():
 
 def test_no_actions_fails():
     with pytest.raises(ValueError) as exc_info:
-        Actions.parse_obj({"actions": {}})
+        Actions.parse_obj({})
     assert "no actions configured" in str(exc_info.value)
 
 
 def test_unknown_module_fails():
     with pytest.raises(ValueError) as exc_info:
-        Actions.parse_obj({"actions": {"x": {"action": "path.to.unknown"}}})
+        Actions.parse_obj({"x": {"action": "path.to.unknown"}})
     assert "unknown action `path.to.unknown`" in str(exc_info.value)
 
 
 def test_bad_module_fails():
     with pytest.raises(ValueError) as exc_info:
-        Actions.parse_obj({"actions": {"x": {"action": "src.jbi.runner"}}})
+        Actions.parse_obj({"x": {"action": "src.jbi.runner"}})
     assert "action is not properly setup" in str(exc_info.value)
