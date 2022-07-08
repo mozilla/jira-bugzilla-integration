@@ -143,6 +143,7 @@ def actions_example() -> Actions:
             "actions": {
                 "devtest": {
                     "action": "tests.unit.jbi.noop_action",
+                    "description": "Mocked config file",
                     "parameters": {
                         "whiteboard_tag": "devtest",
                     },

@@ -4,12 +4,25 @@ Module for testing src/app/api.py
 # pylint: disable=cannot-enumerate-pytest-fixtures
 from unittest import mock
 
+import pytest
 from fastapi.testclient import TestClient
 
 from src.app.api import app
 from src.jbi.errors import IgnoreInvalidRequestError
 from src.jbi.bugzilla import BugzillaWebhookRequest
 from src.jbi.models import Actions
+
+
+@pytest.fixture
+def exclude_middleware():
+    # Hack to work around issue with Starlette issue on Jinja templates
+    # https://github.com/encode/starlette/issues/472#issuecomment-704188037
+    user_middleware = app.user_middleware.copy()
+    app.user_middleware = []
+    app.middleware_stack = app.build_middleware_stack()
+    yield
+    app.user_middleware = user_middleware
+    app.middleware_stack = app.build_middleware_stack()
 
 
 def test_read_root(anon_client):
@@ -31,6 +44,42 @@ def test_request_summary_is_logged(caplog):
         assert summary.method == "GET"
         assert summary.path == "/__lbheartbeat__"
         assert summary.querystring == {}
+
+
+def test_whiteboard_tags(anon_client):
+    resp = anon_client.get("/whiteboard_tags")
+    infos = resp.json()
+
+    assert infos["devtest"]["description"] == "DevTest whiteboard tag"
+
+
+def test_whiteboard_tags_filtered(anon_client):
+    resp = anon_client.get("/whiteboard_tags/?whiteboard_tag=devtest")
+    infos = resp.json()
+    assert sorted(infos.keys()) == ["devtest"]
+
+    resp = anon_client.get("/whiteboard_tags/?whiteboard_tag=foo")
+    infos = resp.json()
+    assert sorted(infos.keys()) == ["devtest", "flowstate"]
+
+
+def test_powered_by_jbi(exclude_middleware, anon_client):
+    resp = anon_client.get("/powered_by_jbi/")
+    html = resp.text
+    assert "<title>Powered by JBI</title>" in html
+    assert 'href="/static/styles.css"' in html
+    assert "DevTest" in html
+
+
+def test_powered_by_jbi_filtered(exclude_middleware, anon_client):
+    resp = anon_client.get("/powered_by_jbi/?enabled=false")
+    html = resp.text
+    assert "DevTest" not in html
+
+
+def test_statics_are_served(anon_client):
+    resp = anon_client.get("/static/styles.css")
+    assert resp.status_code == 200
 
 
 def test_webhook_is_200_if_action_succeeds(

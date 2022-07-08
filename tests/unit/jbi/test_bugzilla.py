@@ -5,6 +5,7 @@ Module for testing src/jbi/configuration.py functionality
 import pytest
 
 from src.jbi import bugzilla
+from src.jbi.errors import ActionNotFoundError
 
 
 @pytest.mark.parametrize(
@@ -52,3 +53,19 @@ def test_jira_labels(whiteboard, expected):
 def test_extract_see_also(see_also, expected):
     test_bug = bugzilla.BugzillaBug(id=0, see_also=see_also)
     assert test_bug.extract_from_see_also() == expected
+
+
+def test_lookup_action(actions_example):
+    bug = bugzilla.BugzillaBug.parse_obj(
+        {"id": 1234, "whiteboard": "[example][DevTest]"}
+    )
+    tag, action = bug.lookup_action(actions_example)
+    assert tag == "devtest"
+    assert "Mocked config" in action.description
+
+
+def test_lookup_action_missing(actions_example):
+    bug = bugzilla.BugzillaBug.parse_obj({"id": 1234, "whiteboard": "example DevTest"})
+    with pytest.raises(ActionNotFoundError) as exc_info:
+        bug.lookup_action(actions_example)
+    assert str(exc_info.value) == "example devtest"

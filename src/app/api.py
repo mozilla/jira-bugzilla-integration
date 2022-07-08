@@ -136,7 +136,7 @@ def powered_by_jbi(
         "request": request,
         "title": "Powered by JBI",
         "num_configs": len(entries),
-        "data": {k: v.dict() for k, v in entries},
+        "data": {k: v.dict() for k, v in entries.items()},
         "enable_query": enabled,
     }
     return templates.TemplateResponse("powered_by_template.html", context)
