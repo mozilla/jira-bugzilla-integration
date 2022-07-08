@@ -112,3 +112,23 @@ def test_payload_changes_list_in_routing_key(webhook_change_status_assignee):
         "assigned_to",
         "status",
     ]
+
+
+def test_payload_bugzilla_object_public(mocked_bugzilla, webhook_modify_example):
+    bug_obj = webhook_modify_example.bugzilla_object
+    mocked_bugzilla().getbug.assert_not_called()
+    assert bug_obj.product == "JBI"
+    assert bug_obj.status == "NEW"
+    assert webhook_modify_example.bug == bug_obj
+
+
+def test_bugzilla_object_private(mocked_bugzilla, webhook_modify_private_example):
+    bug_obj = webhook_modify_private_example.bugzilla_object
+    mocked_bugzilla().getbug.assert_called_once_with(
+        webhook_modify_private_example.bug.id
+    )
+    assert bug_obj.product == "JBI"
+    assert bug_obj.status == "NEW"
+
+    bug_obj = webhook_modify_private_example.bugzilla_object
+    mocked_bugzilla().getbug.assert_called_once()
