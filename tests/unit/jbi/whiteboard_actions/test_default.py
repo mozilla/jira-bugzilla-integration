@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
-
+from src.jbi.errors import ActionError
 from src.jbi.whiteboard_actions import default
 
 
@@ -95,3 +95,41 @@ def test_modified_private(
         fields={"summary": "JBI Test", "labels": ["bugzilla", "devtest", "[devtest]"]},
     )
     assert value["status"] == "update"
+
+
+def test_added_comment(webhook_comment_example: BugzillaWebhookRequest, mocked_jira):
+
+    callable_object = default.init(whiteboard_tag="", jira_project_key="")
+
+    value = callable_object(payload=webhook_comment_example)
+
+    mocked_jira().issue_add_comment.assert_called_once_with(
+        issue_key="JBI-234",
+        comment="*(mathieu@mozilla.org)* commented: \n{quote}hello{quote}",
+    )
+    assert value["status"] == "comment"
+
+
+def test_added_comment_without_linked_issue(
+    webhook_comment_example: BugzillaWebhookRequest, mocked_jira
+):
+    webhook_comment_example.bug.see_also = []
+    callable_object = default.init(whiteboard_tag="", jira_project_key="")
+
+    value = callable_object(payload=webhook_comment_example)
+
+    assert value["status"] == "noop"
+
+
+def test_jira_returns_an_error(
+    webhook_create_example: BugzillaWebhookRequest, mocked_jira
+):
+    mocked_jira().create_issue.return_value = [
+        {"errors": ["Boom"]},
+    ]
+    callable_object = default.init(whiteboard_tag="", jira_project_key="")
+
+    with pytest.raises(ActionError) as exc_info:
+        callable_object(payload=webhook_create_example)
+
+    assert str(exc_info.value) == "response contains error: {'errors': ['Boom']}"

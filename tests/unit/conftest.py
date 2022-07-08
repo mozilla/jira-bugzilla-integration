@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from src.app.api import app
 from src.app.environment import Settings
 from src.jbi.models import Actions
-from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
+from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookComment, BugzillaWebhookRequest
 from src.jbi.services import get_bugzilla
 
 
@@ -83,6 +83,20 @@ def webhook_create_example(mocked_bugzilla) -> BugzillaWebhookRequest:
     }
 
     return webhook_payload
+
+
+@pytest.fixture
+def webhook_comment_example(webhook_create_example) -> BugzillaWebhookRequest:
+    webhook_comment_example = webhook_create_example
+    webhook_comment_example.event.target = "comment"
+    webhook_comment_example.event.user.login = "mathieu@mozilla.org"
+    webhook_comment_example.bug.comment = BugzillaWebhookComment.parse_obj(
+        {"number": 2, "body": "hello"}
+    )
+    webhook_comment_example.bug.see_also = [
+        "https://mozilla.atlassian.net/browse/JBI-234"
+    ]
+    return webhook_comment_example
 
 
 @pytest.fixture
