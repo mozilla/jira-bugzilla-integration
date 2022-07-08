@@ -64,3 +64,41 @@ def test_get_jira_labels_multiple():
 def test_extract_see_also(see_also, expected):
     test_bug = bugzilla.BugzillaBug(id=0, see_also=see_also)
     assert test_bug.extract_from_see_also() == expected
+
+
+def test_payload_changes(webhook_request_example):
+    assert webhook_request_example.event.changed_fields() is None
+
+    webhook_request_example.event = bugzilla.BugzillaWebhookEvent.parse_obj(
+        {
+            "action": "modify",
+            "routing_key": "bug.modify",
+            "target": "bug",
+            "changes": [
+                {"field": "assigned_to", "removed": "", "added": "dtownsend"},
+                {"field": "status", "removed": "UNCONFIRMED", "added": "NEW"},
+            ],
+            "time": "2022-03-23T20:10:17.495000+00:00",
+            "user": {
+                "id": 123456,
+                "login": "nobody@mozilla.org",
+                "real_name": "Nobody [ :nobody ]",
+            },
+        }
+    )
+    assert webhook_request_example.event.changed_fields() == ["assigned_to", "status"]
+
+    webhook_request_example.event = bugzilla.BugzillaWebhookEvent.parse_obj(
+        {
+            "action": "modify",
+            "routing_key": "bug.modify:assigned_to,status",
+            "target": "bug",
+            "time": "2022-03-23T20:10:17.495000+00:00",
+            "user": {
+                "id": 123456,
+                "login": "nobody@mozilla.org",
+                "real_name": "Nobody [ :nobody ]",
+            },
+        }
+    )
+    assert webhook_request_example.event.changed_fields() == ["assigned_to", "status"]

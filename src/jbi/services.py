@@ -16,6 +16,7 @@ def get_jira():
         url=settings.jira_base_url,
         username=settings.jira_username,
         password=settings.jira_api_key,  # package calls this param 'password' but actually expects an api key
+        cloud=True,  # we run against an instance of Jira cloud
     )
 
 
