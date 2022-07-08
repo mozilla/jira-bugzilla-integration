@@ -8,8 +8,8 @@ from fastapi.testclient import TestClient
 
 from src.app.api import app
 from src.app.environment import Settings
-from src.jbi.models import Actions
 from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookComment, BugzillaWebhookRequest
+from src.jbi.models import Actions
 from src.jbi.services import get_bugzilla
 
 
@@ -87,9 +87,10 @@ def webhook_create_example(mocked_bugzilla) -> BugzillaWebhookRequest:
 
 @pytest.fixture
 def webhook_comment_example(webhook_create_example) -> BugzillaWebhookRequest:
-    webhook_comment_example = webhook_create_example
+    webhook_comment_example: BugzillaWebhookRequest = webhook_create_example
     webhook_comment_example.event.target = "comment"
-    webhook_comment_example.event.user.login = "mathieu@mozilla.org"
+    webhook_comment_example.event.user.login = "mathieu@mozilla.org"  # type: ignore
+    assert webhook_comment_example.bug
     webhook_comment_example.bug.comment = BugzillaWebhookComment.parse_obj(
         {"number": 2, "body": "hello"}
     )
@@ -120,8 +121,8 @@ def webhook_create_private_example(
 
 @pytest.fixture
 def webhook_modify_example(webhook_create_example) -> BugzillaWebhookRequest:
-    webhook_modify_example = webhook_create_example
-
+    webhook_modify_example: BugzillaWebhookRequest = webhook_create_example
+    assert webhook_modify_example.bug
     webhook_modify_example.bug.see_also = [
         "https://mozilla.atlassian.net/browse/JBI-234"
     ]

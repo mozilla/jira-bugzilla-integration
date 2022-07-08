@@ -8,10 +8,10 @@ import pytest
 
 from src.app.api import app
 from src.app.environment import Settings
-from src.jbi.runner import execute_action
 from src.jbi.bugzilla import BugzillaWebhookRequest
 from src.jbi.errors import IgnoreInvalidRequestError
 from src.jbi.models import Action, Actions
+from src.jbi.runner import execute_action
 
 
 def test_request_is_ignored_because_private(
@@ -54,6 +54,7 @@ def test_private_request_is_allowed(
     )
 
     payload = BugzillaWebhookRequest.parse_raw(result["payload"])
+    assert payload.bug
     assert payload.bug.id == 654321
 
 
@@ -78,6 +79,7 @@ def test_request_is_ignored_because_no_action(
     actions_example: Actions,
     settings: Settings,
 ):
+    assert webhook_create_example.bug
     webhook_create_example.bug.whiteboard = "bar"
 
     with pytest.raises(IgnoreInvalidRequestError) as exc_info:
@@ -118,6 +120,7 @@ def test_execution_logging_for_ignored_requests(
     actions_example: Actions,
     settings: Settings,
 ):
+    assert webhook_create_example.bug
     webhook_create_example.bug.whiteboard = "foo"
 
     with pytest.raises(IgnoreInvalidRequestError):

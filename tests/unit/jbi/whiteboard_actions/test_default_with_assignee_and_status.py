@@ -6,8 +6,8 @@ from unittest import mock
 from unittest.mock import MagicMock
 
 import pytest
-from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
 
+from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
 from src.jbi.whiteboard_actions import default_with_assignee_and_status as action
 
 
