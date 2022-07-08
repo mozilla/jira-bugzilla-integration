@@ -16,8 +16,8 @@ jobs:
           context: .
           file: infra/Dockerfile
           push: false
-          target: "test"
-          tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
+          target: "development"
+          tags: ghcr.io/${{ github.repository }}-dev:${{ github.sha }}
 
       - name: Run tests
         run: |-
@@ -25,7 +25,8 @@ jobs:
           -e JIRA_USERNAME \
           -e JIRA_API_KEY \
           -e BUGZILLA_API_KEY \
-          ghcr.io/${{ github.repository }}:${{ github.sha }}
+          ghcr.io/${{ github.repository }}-dev:${{ github.sha }} \
+          /app/infra/test.sh
         env:
           JIRA_USERNAME: "fake_username"
           JIRA_API_KEY: "fake_api_key"

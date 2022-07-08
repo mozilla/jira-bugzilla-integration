@@ -16,8 +16,8 @@ jobs:
           context: .
           file: infra/Dockerfile
           push: false
-          target: "lint"
-          tags: ghcr.io/${{ github.repository }}-lint:${{ github.sha }}
+          target: "development"
+          tags: ghcr.io/${{ github.repository }}-dev:${{ github.sha }}
 
       - name: Run lint
         run: |-
@@ -25,4 +25,6 @@ jobs:
           -e JIRA_USERNAME \
           -e JIRA_API_KEY \
           -e BUGZILLA_API_KEY \
-          ghcr.io/${{ github.repository }}-lint:${{ github.sha }}
+          --mount type=bind,source="$(pwd)",target=/app \
+          ghcr.io/${{ github.repository }}-dev:${{ github.sha }} \
+          /app/infra/lint.sh
