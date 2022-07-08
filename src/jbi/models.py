@@ -58,22 +58,21 @@ class Action(YamlModel):
 
 class Actions(YamlModel):
     """
-    Actions is the overall model for the list of `actions` in the configuration file
+    Actions is the container model for the list of actions in the configuration file
     """
 
-    actions: Mapping[str, Action]
+    __root__: Mapping[str, Action]
+
+    def __len__(self):
+        return len(self.__root__)
 
     def get(self, tag: Optional[str]) -> Optional[Action]:
         """Lookup actions by whiteboard tag"""
-        return self.actions.get(tag.lower()) if tag else None
+        return self.__root__.get(tag.lower()) if tag else None
 
-    def all(self):
-        """Return mapping of all actions"""
-        return self.actions
-
-    @validator("actions")
+    @validator("__root__")
     def validate_action_matches_whiteboard(
-        cls, actions
+        cls, actions: Mapping[str, Action]
     ):  # pylint: disable=no-self-argument, no-self-use
         """
         Validate that the inner actions are named as expected
