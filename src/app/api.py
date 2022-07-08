@@ -111,11 +111,9 @@ def get_whiteboard_tag(
     actions: Actions = Depends(configuration.get_actions),
 ):
     """API for viewing whiteboard_tags and associated data"""
-    selected = actions.all()
-    if whiteboard_tag:
-        if existing := actions.get(whiteboard_tag):
-            selected = {whiteboard_tag: existing}
-    return {k: v.dict() for k, v in selected}
+    if existing := actions.get(whiteboard_tag):
+        return {whiteboard_tag: existing}
+    return actions.all()
 
 
 @app.get("/jira_projects/")

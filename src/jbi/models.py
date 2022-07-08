@@ -62,9 +62,9 @@ class Actions(YamlModel):
 
     actions: Mapping[str, Action]
 
-    def get(self, tag: str) -> Optional[Action]:
+    def get(self, tag: Optional[str]) -> Optional[Action]:
         """Lookup actions by whiteboard tag"""
-        return self.actions.get(tag)
+        return self.actions.get(tag.lower()) if tag else None
 
     def all(self):
         """Return mapping of all actions"""
