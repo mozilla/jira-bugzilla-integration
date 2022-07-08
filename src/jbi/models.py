@@ -17,6 +17,7 @@ class Action(YamlModel):
 
     action: str = "src.jbi.whiteboard_actions.default"
     enabled: bool = False
+    description: str
     allow_private: bool = False
     parameters: dict = {}
 
