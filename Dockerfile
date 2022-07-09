@@ -37,8 +37,7 @@ RUN apt-get update && \
 FROM python-base as builder-base
 RUN apt-get install --no-install-recommends -y \
       curl \
-      build-essential \
-      git
+      build-essential
 
 # Install Poetry - respects $POETRY_VERSION & $POETRY_HOME
 USER app

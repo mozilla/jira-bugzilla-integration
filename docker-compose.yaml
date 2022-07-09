@@ -3,12 +3,9 @@ services:
   web:
     build:
       context: .
-      dockerfile: ./infra/Dockerfile
       target: development
     volumes:
-      - type: bind
-        source: .
-        target: /app
+      - .:/app
     ports:
       - ${PORT:-8000}:${PORT:-8000}
     # Let the init system handle signals for us.
