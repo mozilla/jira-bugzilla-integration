@@ -68,6 +68,10 @@ python_version = "3.9"
 # Warn when returning Any from function with non-Any return
 warn_return_any = true
 
+[[tool.mypy.overrides]]
+module = ["ruamel"]
+ignore_missing_imports = true
+
 [tool.coverage]
 # https://github.com/nedbat/coveragepy
     [tool.coverage.run]
