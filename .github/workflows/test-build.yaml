@@ -5,29 +5,19 @@ on: pull_request
 jobs:
   run_test:
     runs-on: ubuntu-latest
-
+    env:
+      JIRA_USERNAME: fake_jira_username
+      JIRA_API_KEY: fake_jira_api_key
+      BUGZILLA_API_KEY: fake_bugzilla_api_key
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Build test image
-        uses: docker/build-push-action@v2
+      - uses: actions/checkout@v3
+      - name: Install poetry
+        run: pipx install poetry
+      - uses: actions/setup-python@v4
         with:
-          context: .
-          file: infra/Dockerfile
-          push: false
-          target: "development"
-          tags: ghcr.io/${{ github.repository }}-dev:${{ github.sha }}
-
+          python-version: "3.9"
+          cache: "poetry"
+      - name: Install dependencies
+        run: poetry install
       - name: Run tests
-        run: |-
-          docker run --rm \
-          -e JIRA_USERNAME \
-          -e JIRA_API_KEY \
-          -e BUGZILLA_API_KEY \
-          ghcr.io/${{ github.repository }}-dev:${{ github.sha }} \
-          /app/infra/test.sh
-        env:
-          JIRA_USERNAME: "fake_username"
-          JIRA_API_KEY: "fake_api_key"
-          BUGZILLA_API_KEY: "fake_api_key"
+        run: infra/test.sh
