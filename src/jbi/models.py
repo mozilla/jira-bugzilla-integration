@@ -3,11 +3,12 @@ Python Module for Pydantic Models and validation
 """
 import functools
 import importlib
+import warnings
 from inspect import signature
 from types import ModuleType
-from typing import Any, Callable, Dict, Mapping, Optional
+from typing import Any, Callable, Dict, List, Literal, Mapping, Optional, Union
 
-from pydantic import Extra, root_validator, validator
+from pydantic import EmailStr, Extra, root_validator, validator
 from pydantic_yaml import YamlModel
 
 
@@ -16,7 +17,8 @@ class Action(YamlModel):
     Action is the inner model for each action in the configuration file"""
 
     action: str = "src.jbi.whiteboard_actions.default"
-    contact: str
+    # TODO: Remove the tbd literal option when all actions have contact info
+    contact: Union[EmailStr, List[EmailStr], Literal["tbd"]]
     description: str
     enabled: bool = False
     allow_private: bool = False
@@ -75,16 +77,21 @@ class Actions(YamlModel):
         return self.__root__.get(tag.lower()) if tag else None
 
     @validator("__root__")
-    def validate_action_matches_whiteboard(
+    def validate_actions(
         cls, actions: Mapping[str, Action]
     ):  # pylint: disable=no-self-argument, no-self-use
         """
-        Validate that the inner actions are named as expected
+        Inspect action values with the context of the top-level key and:
+         - Validate that the inner actions are named as expected (key matches
+           whiteboard tag parameter)
+         - If the action's contact is "tbd", emit a warning.
         """
         if not actions:
             raise ValueError("no actions configured")
         for name, action in actions.items():
             if name.lower() != action.parameters["whiteboard_tag"]:
                 raise ValueError("action name must match whiteboard tag")
+            if action.contact == "tbd":
+                warnings.warn(f"Provide contact data for `{name}` action.")
 
         return actions
