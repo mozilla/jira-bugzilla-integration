@@ -10,7 +10,7 @@ import logging
 from src.app.environment import get_settings
 from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
 from src.jbi.errors import ActionError
-from src.jbi.services import get_bugzilla, get_jira, getbug_as_bugzilla_object
+from src.jbi.services import get_bugzilla, get_jira
 
 settings = get_settings()
 
@@ -41,11 +41,9 @@ class DefaultExecutor:
         """Called from BZ webhook when default action is used. All default-action webhook-events are processed here."""
         target = payload.event.target  # type: ignore
         if target == "comment":
-            bug_obj = payload.bug
-            return self.comment_create_or_noop(payload=payload, bug_obj=bug_obj)  # type: ignore
+            return self.comment_create_or_noop(payload=payload)  # type: ignore
         if target == "bug":
-            bug_obj = getbug_as_bugzilla_object(payload)
-            return self.bug_create_or_update(payload=payload, bug_obj=bug_obj)
+            return self.bug_create_or_update(payload=payload)
         logger.debug(
             "Ignore event target %r",
             target,
@@ -54,10 +52,9 @@ class DefaultExecutor:
             },
         )
 
-    def comment_create_or_noop(
-        self, payload: BugzillaWebhookRequest, bug_obj: BugzillaBug
-    ):
+    def comment_create_or_noop(self, payload: BugzillaWebhookRequest):
         """Confirm issue is already linked, then apply comments; otherwise noop"""
+        bug_obj = payload.bugzilla_object
         linked_issue_key = bug_obj.extract_from_see_also()
 
         log_context = {
@@ -100,9 +97,10 @@ class DefaultExecutor:
         """Allows sub-classes to modify the Jira issue in response to a bug event"""
 
     def bug_create_or_update(
-        self, payload: BugzillaWebhookRequest, bug_obj: BugzillaBug
+        self, payload: BugzillaWebhookRequest
     ):  # pylint: disable=too-many-locals
         """Create and link jira issue with bug, or update; rollback if multiple events fire"""
+        bug_obj = payload.bugzilla_object
         linked_issue_key = bug_obj.extract_from_see_also()  # type: ignore
         if not linked_issue_key:
             return self.create_and_link_issue(payload, bug_obj)
@@ -180,7 +178,10 @@ class DefaultExecutor:
                 raise ActionError(f"response contains error: {jira_response_create}")
 
         jira_key_in_response = jira_response_create.get("key")
-        bug_obj = getbug_as_bugzilla_object(request=payload)
+
+        # In the time taken to create the Jira issue the bug may have been updated so
+        # re-retrieve it to ensure we have the latest data.
+        bug_obj = payload.getbug_as_bugzilla_object()
         jira_key_in_bugzilla = bug_obj.extract_from_see_also()
         _duplicate_creation_event = (
             jira_key_in_bugzilla is not None
