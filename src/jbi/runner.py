@@ -7,7 +7,6 @@ from src.app.environment import Settings
 from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
 from src.jbi.errors import ActionNotFoundError, IgnoreInvalidRequestError
 from src.jbi.models import Actions
-from src.jbi.services import getbug_as_bugzilla_object
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +46,13 @@ def execute_action(
         if not request.bug:
             raise IgnoreInvalidRequestError("no bug data received")
 
-        bug_obj: BugzillaBug = getbug_as_bugzilla_object(request=request)
+        try:
+            bug_obj: BugzillaBug = request.bugzilla_object
+        except Exception as ex:
+            logger.exception("Failed to get bug: %s", ex, extra=log_context)
+            raise IgnoreInvalidRequestError(
+                "bug not accessible or bugzilla down"
+            ) from ex
         log_context["bug"] = bug_obj.dict()
 
         try:

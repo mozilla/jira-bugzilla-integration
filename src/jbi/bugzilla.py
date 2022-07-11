@@ -6,6 +6,7 @@ View additional bugzilla webhook documentation here: https://bugzilla.mozilla.or
 import datetime
 import json
 import logging
+from functools import cached_property
 from typing import Dict, List, Optional, Tuple
 from urllib.parse import ParseResult, urlparse
 
@@ -13,6 +14,7 @@ from pydantic import BaseModel  # pylint: disable=no-name-in-module
 
 from src.jbi.errors import ActionNotFoundError
 from src.jbi.models import Action, Actions
+from src.jbi.services import get_bugzilla
 
 logger = logging.getLogger(__name__)
 
@@ -216,6 +218,13 @@ class BugzillaBug(BaseModel):
 class BugzillaWebhookRequest(BaseModel):
     """Bugzilla Webhook Request Object"""
 
+    class Config:
+        """pydantic model config"""
+
+        keep_untouched = (
+            cached_property,
+        )  # https://github.com/samuelcolvin/pydantic/issues/1241
+
     webhook_id: int
     webhook_name: str
     event: BugzillaWebhookEvent
@@ -263,6 +272,20 @@ class BugzillaWebhookRequest(BaseModel):
                     comments.append({"assignee": bug.assigned_to})
 
         return [json.dumps(comment, indent=4) for comment in comments]
+
+    def getbug_as_bugzilla_object(self) -> BugzillaBug:
+        """Helper method to get up to date bug data from Request.bug.id in BugzillaBug format"""
+        current_bug_info = get_bugzilla().getbug(self.bug.id)  # type: ignore
+        return BugzillaBug.parse_obj(current_bug_info.__dict__)
+
+    @cached_property
+    def bugzilla_object(self) -> BugzillaBug:
+        """Returns the bugzilla bug object, querying the API as needed for private bugs"""
+        if not self.bug:
+            raise ValueError("missing bug reference")
+        if not self.bug.is_private:
+            return self.bug
+        return self.getbug_as_bugzilla_object()
 
 
 class BugzillaApiResponse(BaseModel):
