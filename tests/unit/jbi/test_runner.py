@@ -34,22 +34,14 @@ def test_private_request_is_allowed(
     caplog,
     webhook_create_private_example: BugzillaWebhookRequest,
     settings: Settings,
+    actions_example,
 ):
-    actions = Actions.parse_obj(
-        {
-            "actions": {
-                "devtest": {
-                    "action": "tests.unit.jbi.noop_action",
-                    "allow_private": True,
-                    "parameters": {"whiteboard_tag": "devtest"},
-                }
-            }
-        }
-    )
+
+    actions_example["devtest"].allow_private = True
 
     result = execute_action(
         request=webhook_create_private_example,
-        actions=actions,
+        actions=actions_example,
         settings=settings,
     )
 

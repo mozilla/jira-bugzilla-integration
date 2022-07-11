@@ -22,12 +22,9 @@ def get_actions(
     jbi_config_file: str = f"config/config.{settings.env}.yaml",
 ) -> Actions:
     """Convert and validate YAML configuration to `Action` objects"""
-
-    with open(jbi_config_file, encoding="utf-8") as file:
-        try:
-            yaml_data = file.read()
-            actions: Actions = Actions.parse_raw(yaml_data)
-            return actions
-        except ValidationError as exception:
-            logger.exception(exception)
-            raise ConfigError("Errors exist.") from exception
+    try:
+        actions: Actions = Actions.parse_file(jbi_config_file)
+        return actions
+    except ValidationError as exception:
+        logger.exception(exception)
+        raise ConfigError("Errors exist.") from exception

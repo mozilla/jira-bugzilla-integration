@@ -61,7 +61,7 @@ def test_lookup_action(actions_example):
     )
     tag, action = bug.lookup_action(actions_example)
     assert tag == "devtest"
-    assert "Mocked config" in action.description
+    assert "test config" in action.description
 
 
 def test_lookup_action_missing(actions_example):

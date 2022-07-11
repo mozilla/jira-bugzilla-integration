@@ -169,14 +169,13 @@ def webhook_modify_private_example(
 def actions_example() -> Actions:
     return Actions.parse_obj(
         {
-            "actions": {
-                "devtest": {
-                    "action": "tests.unit.jbi.noop_action",
-                    "description": "Mocked config file",
-                    "parameters": {
-                        "whiteboard_tag": "devtest",
-                    },
-                }
+            "devtest": {
+                "action": "tests.unit.jbi.noop_action",
+                "contact": "tbd",
+                "description": "test config",
+                "parameters": {
+                    "whiteboard_tag": "devtest",
+                },
             }
         }
     )

@@ -10,6 +10,7 @@ from typing import Dict, List, Optional
 import sentry_sdk
 import uvicorn  # type: ignore
 from fastapi import Body, Depends, FastAPI, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse, ORJSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -110,7 +111,7 @@ def get_whiteboard_tag(
     """API for viewing whiteboard_tags and associated data"""
     if existing := actions.get(whiteboard_tag):
         return {whiteboard_tag: existing}
-    return actions.all()
+    return actions
 
 
 @app.get("/jira_projects/")
@@ -128,12 +129,11 @@ def powered_by_jbi(
     actions: Actions = Depends(configuration.get_actions),
 ):
     """API for `Powered By` endpoint"""
-    entries = actions.all()
     context = {
         "request": request,
         "title": "Powered by JBI",
-        "num_configs": len(entries),
-        "data": entries,
+        "num_configs": len(actions),
+        "data": jsonable_encoder(actions),
         "enable_query": enabled,
     }
     return templates.TemplateResponse("powered_by_template.html", context)

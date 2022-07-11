@@ -1,19 +1,17 @@
 ---
-
 # Action Config
-actions:
-  devtest:
-    contact: tbd
-    description: DevTest whiteboard tag
-    enabled: true
-    parameters:
-      jira_project_key: JST
-      whiteboard_tag: devtest
-  flowstate:
-    allow_private: true
-    contact: dtownsend@mozilla.com
-    description: Flowstate whiteboard tag
-    enabled: true
-    parameters:
-      jira_project_key: MR2
-      whiteboard_tag: flowstate
+devtest:
+  contact: tbd
+  description: DevTest whiteboard tag
+  enabled: true
+  parameters:
+    jira_project_key: JST
+    whiteboard_tag: devtest
+flowstate:
+  allow_private: true
+  contact: dtownsend@mozilla.com
+  description: Flowstate whiteboard tag
+  enabled: true
+  parameters:
+    jira_project_key: MR2
+    whiteboard_tag: flowstate

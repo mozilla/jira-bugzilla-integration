@@ -1,12 +1,10 @@
 ---
-
 # Action Config
-actions:
-  should-be-A:
-    action: src.jbi.whiteboard_actions.default
-    contact: tbd
-    description: Mock Test Config
-    enabled: true
-    parameters:
-      jira_project_key: KEY
-      whiteboard_tag: A
+should-be-A:
+  action: src.jbi.whiteboard_actions.default
+  contact: tbd
+  description: test config
+  enabled: true
+  parameters:
+    jira_project_key: KEY
+    whiteboard_tag: A
