@@ -2,7 +2,7 @@
 # Action Config
 should-be-A:
   action: src.jbi.whiteboard_actions.default
-  contact: tbd
+  contact: foobar
   description: test config
   enabled: true
   parameters:
