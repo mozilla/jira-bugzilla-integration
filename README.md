@@ -19,7 +19,7 @@ Below is a full example of an action configuration:
 ```yaml
     action: src.jbi.whiteboard_actions.default
     allow_private: false
-    contact: [example@allizom.com]
+    contact: example@allizom.com
     description: example configuration
     enabled: true
     parameters:
@@ -39,7 +39,7 @@ A bit more about the different fields...
       private bugs the bugzilla user that JBI runs as must be in the security groups that are making
       the bug private.
 - `contact`
-    - list of strings
+    - an email address, a list of email addresses, or a literal "tbd" to signify that no contact is available
     - If an issue arises with the workflow, communication will be established with these contacts
     - Please enter the contact information for one or more stakeholders
 - `description`
@@ -76,7 +76,7 @@ This is defined using a mapping on a per-project basis configured in the `status
 An example configuration:
 ```yaml
     action: src.jbi.whiteboard_actions.default_with_assignee_and_status
-    contact: [example@allizom.com]
+    contact: example@allizom.com
     description: example configuration
     enabled: true
     parameters:
@@ -166,7 +166,7 @@ GET /whiteboard_tags/
 {
     "addons": {
         "action": "src.jbi.whiteboard_actions.default",
-        "contact": "tbd",
+        "contact": "example@allizom.com",
         "description": "Addons whiteboard tag for AMO Team",
         "enabled": true,
         "parameters": {
