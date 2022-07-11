@@ -50,7 +50,7 @@ class DefaultExecutor:
             "Ignore event target %r",
             target,
             extra={
-                "request": payload.json(),
+                "request": payload.dict(),
             },
         )
 
@@ -61,8 +61,8 @@ class DefaultExecutor:
         linked_issue_key = bug_obj.extract_from_see_also()
 
         log_context = {
-            "request": payload.json(),
-            "bug": bug_obj.json(),
+            "request": payload.dict(),
+            "bug": bug_obj.dict(),
         }
         if not linked_issue_key:
             logger.debug(
@@ -108,8 +108,8 @@ class DefaultExecutor:
             return self.create_and_link_issue(payload, bug_obj)
 
         log_context = {
-            "request": payload.json(),
-            "bug": bug_obj.json(),
+            "request": payload.dict(),
+            "bug": bug_obj.dict(),
         }
         logger.debug(
             "Update fields of Jira issue %s for Bug %s",
@@ -148,8 +148,8 @@ class DefaultExecutor:
     ):  # pylint: disable=too-many-locals
         """create jira issue and establish link between bug and issue; rollback/delete if required"""
         log_context = {
-            "request": payload.json(),
-            "bug": bug_obj.json(),
+            "request": payload.dict(),
+            "bug": bug_obj.dict(),
         }
         logger.debug(
             "Create new Jira issue for Bug %s",
