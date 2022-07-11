@@ -1,7 +1,7 @@
 # Set these in the environment to override them. This is helpful for
 # development if you have file ownership problems because the user
 # in the container doesn't match the user on your host.
-_UID ?= 10001
+_UID ?= $(shell id -u)
 _GID ?= 10001
 
 .PHONY: help
