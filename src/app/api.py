@@ -10,7 +10,7 @@ from typing import Dict, List, Optional
 import sentry_sdk
 import uvicorn  # type: ignore
 from fastapi import Body, Depends, FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, ORJSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
@@ -97,9 +97,9 @@ def bugzilla_webhook(
     """API endpoint that Bugzilla Webhook Events request"""
     try:
         result = execute_action(request, actions, settings)
-        return JSONResponse(content=result, status_code=200)
+        return ORJSONResponse(content=result, status_code=200)
     except IgnoreInvalidRequestError as exception:
-        return JSONResponse(content={"error": str(exception)}, status_code=200)
+        return ORJSONResponse(content={"error": str(exception)}, status_code=200)
 
 
 @app.get("/whiteboard_tags/")

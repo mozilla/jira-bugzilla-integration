@@ -5,6 +5,7 @@ Module for testing src/app/api.py
 from unittest import mock
 
 import pytest
+from datetime import datetime
 from fastapi.testclient import TestClient
 
 from src.app.api import app
@@ -96,8 +97,23 @@ def test_webhook_is_200_if_action_succeeds(
     mocked_jira,
     mocked_bugzilla,
 ):
-    mocked_bugzilla().update_bugs.return_value = {}
-    mocked_jira().create_or_update_issue_remote_links.return_value = {}
+    mocked_bugzilla().update_bugs.return_value = {
+        "bugs": [
+            {
+                "changes": {
+                    "see_also": {
+                        "added": "https://mozilla.atlassian.net/browse/JBI-1922",
+                        "removed": "",
+                    }
+                },
+                "last_change_time": datetime.now(),
+            }
+        ]
+    }
+    mocked_jira().create_or_update_issue_remote_links.return_value = {
+        "id": 18936,
+        "self": "https://mozilla.atlassian.net/rest/api/2/issue/JBI-1922/remotelink/18936",
+    }
 
     with TestClient(app) as anon_client:
         response = anon_client.post(

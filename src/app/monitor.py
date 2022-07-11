@@ -4,7 +4,7 @@ Router dedicated to Dockerflow APIs
 from typing import Dict
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import ORJSONResponse
 
 from src.app import environment
 from src.jbi.services import jbi_service_health_map
@@ -20,7 +20,7 @@ def heartbeat(request: Request, settings: environment.Settings):
         if not health.get("up"):
             status_code = 503
 
-    return JSONResponse(content=data, status_code=status_code)
+    return ORJSONResponse(content=data, status_code=status_code)
 
 
 @api_router.get("/__heartbeat__")
