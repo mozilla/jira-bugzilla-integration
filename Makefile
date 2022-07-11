@@ -40,7 +40,7 @@ lint:
 
 .PHONY: shell
 shell:
-	docker-compose -f ./docker-compose.yaml run web /bin/sh
+	docker-compose run web /bin/sh
 
 .PHONY: start
 start:
@@ -52,4 +52,4 @@ test:
 
 .PHONY: test-shell
 test-shell:
-	docker-compose -f ./docker-compose.yaml run web
+	docker-compose run web
