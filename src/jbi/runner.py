@@ -36,7 +36,7 @@ def execute_action(
         "bug": {
             "id": request.bug.id if request.bug else None,
         },
-        "request": request.json(),
+        "request": request.dict(),
     }
     try:
         logger.debug(
@@ -53,7 +53,7 @@ def execute_action(
             raise IgnoreInvalidRequestError(
                 "bug not accessible or bugzilla down"
             ) from ex
-        log_context["bug"] = bug_obj.json()
+        log_context["bug"] = bug_obj.dict()
 
         try:
             action_name, current_action = bug_obj.lookup_action(actions)
