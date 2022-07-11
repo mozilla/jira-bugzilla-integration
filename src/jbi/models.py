@@ -66,6 +66,9 @@ class Actions(YamlModel):
     def __len__(self):
         return len(self.__root__)
 
+    def __getitem__(self, item):
+        return self.__root__[item]
+
     def get(self, tag: Optional[str]) -> Optional[Action]:
         """Lookup actions by whiteboard tag"""
         return self.__root__.get(tag.lower()) if tag else None
