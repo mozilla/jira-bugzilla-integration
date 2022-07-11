@@ -54,6 +54,9 @@ RUN poetry install --no-dev --no-root
 # 'development' stage installs all dev deps and can be used to develop code.
 # For example using docker-compose to mount local volume under /app
 FROM python-base as development
+# to run detect-secrets
+RUN apt-get install --no-install-recommends -y git
+
 ENV FASTAPI_ENV=development
 
 # Copying poetry and venv into image

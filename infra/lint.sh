@@ -11,12 +11,9 @@ black () {
   $POETRY_RUN black ${check:+--check} src tests
 }
 detect_secrets () {
-  HAS_GIT="$(command -v git || echo '')"
-  if [ -n "$HAS_GIT" ]; then
-      # Scan only files fixed into the repo, omit poetry.lock
-      SECRETS_TO_SCAN=`git ls-tree --full-tree -r --name-only HEAD | grep -v poetry.lock`
-      $POETRY_RUN detect-secrets-hook $SECRETS_TO_SCAN --baseline .secrets.baseline
-  fi
+  # Scan only files fixed into the repo, omit poetry.lock
+  SECRETS_TO_SCAN=`git ls-tree --full-tree -r --name-only HEAD | grep -v poetry.lock`
+  $POETRY_RUN detect-secrets-hook $SECRETS_TO_SCAN --baseline .secrets.baseline
 }
 isort () {
   $POETRY_RUN isort ${check:+--check-only} src
