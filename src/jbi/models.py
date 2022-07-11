@@ -16,6 +16,7 @@ class Action(YamlModel):
     Action is the inner model for each action in the configuration file"""
 
     action: str = "src.jbi.whiteboard_actions.default"
+    contact: str
     description: str
     enabled: bool = False
     allow_private: bool = False

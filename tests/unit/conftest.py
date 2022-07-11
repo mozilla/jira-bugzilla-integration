@@ -171,6 +171,7 @@ def actions_example() -> Actions:
         {
             "devtest": {
                 "action": "tests.unit.jbi.noop_action",
+                "contact": "tbd",
                 "description": "test config",
                 "parameters": {
                     "whiteboard_tag": "devtest",
