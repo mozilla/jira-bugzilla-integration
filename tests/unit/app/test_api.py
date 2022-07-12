@@ -1,11 +1,12 @@
 """
 Module for testing src/app/api.py
 """
+from datetime import datetime
+
 # pylint: disable=cannot-enumerate-pytest-fixtures
 from unittest import mock
 
 import pytest
-from datetime import datetime
 from fastapi.testclient import TestClient
 
 from src.app.api import app
