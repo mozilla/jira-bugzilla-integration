@@ -45,7 +45,7 @@ all () {
 }
 
 usage () {
-  echo "Usage: infra/lint.sh [OPTION]"
+  echo "Usage: bin/lint.sh [OPTION]"
   echo " run linting checks"
   echo "Options":
   echo "  bandit"

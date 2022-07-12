@@ -65,7 +65,7 @@ COPY --from=builder-base $POETRY_HOME $POETRY_HOME
 COPY --from=builder-base $PYSETUP_PATH $PYSETUP_PATH
 
 # Copying in our entrypoint
-COPY --chown=app:app ./infra/docker-entrypoint.sh /docker-entrypoint.sh
+COPY --chown=app:app ./bin/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
 # venv already has runtime deps installed we get a quicker install
@@ -88,9 +88,9 @@ ENV FASTAPI_ENV=production \
     PROMETHEUS_MULTIPROC=1
 
 COPY --from=builder-base $VENV_PATH $VENV_PATH
-COPY ./infra/gunicorn_conf.py /gunicorn_conf.py
+COPY ./bin/gunicorn_conf.py /gunicorn_conf.py
 
-COPY ./infra/docker-entrypoint.sh /docker-entrypoint.sh
+COPY ./bin/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
 COPY . /app

@@ -12,53 +12,53 @@ repos:
           '--indent', '4',
           '--no-sort-keys',
         ]
-        exclude: "infra/k8s/secret.json"
+        exclude: "bin/k8s/secret.json"
       - id: trailing-whitespace
   - repo: local
     hooks:
       - id: pylint
         name: pylint
-        entry: infra/lint.sh pylint
+        entry: bin/lint.sh pylint
         language: script
         types: [python]
   - repo: local
     hooks:
       - id: mypy
         name: mypy
-        entry: infra/lint.sh mypy
+        entry: bin/lint.sh mypy
         language: script
         types: [python]
   - repo: local
     hooks:
       - id: bandit
         name: bandit
-        entry: infra/lint.sh bandit
+        entry: bin/lint.sh bandit
         language: script
         types: [python]
   - repo: local
     hooks:
       - id: detect-secrets
         name: detect-secrets
-        entry: infra/lint.sh detect-secrets
+        entry: bin/lint.sh detect-secrets
         language: script
   - repo: local
     hooks:
       - id: isort
         name: isort
-        entry: infra/lint.sh isort
+        entry: bin/lint.sh isort
         language: script
         types: [python]
   - repo: local
     hooks:
       - id: black
         name: black
-        entry: infra/lint.sh black
+        entry: bin/lint.sh black
         language: script
         types: [python]
   - repo: local
     hooks:
       - id: yamllint
         name: yamllint
-        entry: infra/lint.sh yamllint
+        entry: bin/lint.sh yamllint
         language: script
         types: [yaml]
