@@ -16,7 +16,7 @@ detect_secrets () {
   $POETRY_RUN detect-secrets-hook $SECRETS_TO_SCAN --baseline .secrets.baseline
 }
 isort () {
-  $POETRY_RUN isort ${check:+--check-only} src
+  $POETRY_RUN isort ${check:+--check-only} .
 }
 pylint () {
   $POETRY_RUN pylint src tests
