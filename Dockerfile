@@ -31,16 +31,13 @@ RUN mkdir -p $POETRY_HOME && \
 
 RUN apt-get update && \
     apt-get install --assume-yes apt-utils && \
-    echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections && \
-    apt-get install --no-install-recommends -y \
-      libpq5
+    echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
 # builder-base is used to build dependencies
 FROM python-base as builder-base
 RUN apt-get install --no-install-recommends -y \
       curl \
-      build-essential \
-      libpq-dev
+      build-essential
 
 # Install Poetry - respects $POETRY_VERSION & $POETRY_HOME
 USER app
@@ -57,6 +54,9 @@ RUN poetry install --no-dev --no-root
 # 'development' stage installs all dev deps and can be used to develop code.
 # For example using docker-compose to mount local volume under /app
 FROM python-base as development
+# to run detect-secrets
+RUN apt-get install --no-install-recommends -y git
+
 ENV FASTAPI_ENV=development
 
 # Copying poetry and venv into image
@@ -78,24 +78,6 @@ COPY --chown=app:app . .
 EXPOSE $PORT
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD uvicorn src.app.api:app --reload --host=0.0.0.0 --port=$PORT
-
-
-# 'lint' stage runs similar checks to pre-commit
-# running in check mode means build will fail if any linting errors occur
-FROM development AS lint
-RUN bandit -lll --recursive src --exclude "src/poetry.lock,src/.venv,src/.mypy,src/build"
-RUN mypy src
-RUN black --config ./pyproject.toml --check src tests
-RUN isort --recursive --settings-path ./pyproject.toml --check-only src
-RUN pylint src tests
-RUN yamllint -d "{extends: default, rules: {key-duplicates: enable, key-ordering: enable}}" ./config
-CMD ./infra/detect_secrets_helper.sh
-
-
-# 'test' stage runs our unit tests with pytest and
-# coverage.
-FROM development AS test
-CMD ./infra/test.sh
 
 
 # 'production' stage uses the clean 'python-base' stage and copyies

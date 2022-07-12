@@ -12,6 +12,7 @@ help:
 	@echo ""
 	@echo "  build   - build docker containers"
 	@echo "  lint    - lint check for code"
+	@echo "  format  - run formatters (black, isort), fix in place"
 	@echo "  start   - run the API service"
 	@echo ""
 	@echo "  test        - run test suite"
@@ -25,18 +26,21 @@ help:
 
 .PHONY: build
 build:
-	docker-compose -f ./docker-compose.yaml -f ./tests/infra/docker-compose.test.yaml build \
+	docker-compose build \
 		--build-arg userid=${_UID} --build-arg groupid=${_GID}
+
+.PHONY: format
+format:
+	infra/lint.sh black --fix
+	infra/lint.sh isort --fix
 
 .PHONY: lint
 lint:
-	docker-compose -f ./docker-compose.yaml -f ./tests/infra/docker-compose.lint.yaml build \
-		--build-arg userid=${_UID} --build-arg groupid=${_GID} lint
-
+	docker-compose run --rm web infra/lint.sh
 
 .PHONY: shell
 shell:
-	docker-compose -f ./docker-compose.yaml run web
+	docker-compose run web /bin/sh
 
 .PHONY: start
 start:
@@ -44,13 +48,8 @@ start:
 
 .PHONY: test
 test:
-	docker-compose -f ./docker-compose.yaml -f ./tests/infra/docker-compose.test.yaml run tests
-ifneq (1, ${MK_KEEP_DOCKER_UP})
-	# Due to https://github.com/docker/compose/issues/2791 we have to explicitly
-	# rm all running containers
-	docker-compose down
-endif
+	docker-compose run --rm web infra/test.sh
 
 .PHONY: test-shell
 test-shell:
-	docker-compose -f ./docker-compose.yaml -f ./tests/infra/docker-compose.test.yaml run web
+	docker-compose run web
