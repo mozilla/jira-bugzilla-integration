@@ -80,7 +80,7 @@ class DefaultExecutor:
         )
         return {"status": "comment", "jira_response": jira_response}
 
-    def jira_comments_for_update(  # pylint: disable=no-self-use
+    def jira_comments_for_update(
         self,
         payload: BugzillaWebhookRequest,
     ):

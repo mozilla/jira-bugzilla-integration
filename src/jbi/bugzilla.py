@@ -151,18 +151,11 @@ class BugzillaBug(BaseModel):
         """Get all possible whiteboard_tag configuration values"""
         converted_list: List = []
         for whiteboard in self.get_whiteboard_as_list():
-            converted_tag = self.convert_whiteboard_to_tag(whiteboard=whiteboard)
-            if converted_tag not in [None, "", " "]:
-                converted_list.append(converted_tag)
+            first_tag = whiteboard.strip().lower().split(sep="-", maxsplit=1)[0]
+            if first_tag:
+                converted_list.append(first_tag)
 
         return converted_list
-
-    def convert_whiteboard_to_tag(self, whiteboard):  # pylint: disable=no-self-use
-        """Extract tag from whiteboard label"""
-        _exists = whiteboard not in [" ", ""]
-        if not _exists:
-            return ""
-        return whiteboard.split(sep="-", maxsplit=1)[0].lower()
 
     def issue_type(self) -> str:
         """Get the Jira issue type for this bug"""
