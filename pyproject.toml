@@ -69,7 +69,7 @@ env_files = [
 profile = "black"
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.10"
 # Warn when returning Any from function with non-Any return
 warn_return_any = true
 
