@@ -90,7 +90,9 @@ jobs:
 
   publish:
     runs-on: ubuntu-latest
-    needs: build
+    needs:
+      - prepare
+      - build
     if: ${{ !github.event.pull_request }} # Exclude pull-requests (see `on:` above)
 
     steps:
