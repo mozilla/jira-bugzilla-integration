@@ -15,8 +15,8 @@ def test_mock_jbi_files():
 
 
 def test_actual_jbi_files():
-    jbi_map = configuration.get_actions()
-    assert jbi_map
+    assert configuration.get_actions(jbi_config_file="config/config.nonprod.yaml")
+    assert configuration.get_actions(jbi_config_file="config/config.prod.yaml")
 
 
 def test_no_actions_fails():
