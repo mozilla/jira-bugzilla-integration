@@ -3,8 +3,7 @@ Extended action that provides some additional features over the default:
   * Updates the Jira assignee when the bug's assignee changes.
   * Optionally updates the Jira status when the bug's resolution or status changes.
 
-`init` is required; and requires at minimum the
-`whiteboard_tag` and `jira_project_key`. `status_map` is optional.
+`init` is required; and requires at minimum the `jira_project_key` parameter. `status_map` is optional.
 
 `init` should return a __call__able
 """
