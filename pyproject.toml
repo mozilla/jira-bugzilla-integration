@@ -27,7 +27,7 @@ black = "^22.1.0"
 isort = "^5.10.1"
 coverage = {extras = ["toml"], version = "^5.3"}
 mypy = "^0.910"
-detect-secrets = "^0.14.3"
+detect-secrets = "^1.2.0"
 bandit = "^1.7.0"
 pylint = "^2.14.4"
 pylint-pytest = "^1.1.2"

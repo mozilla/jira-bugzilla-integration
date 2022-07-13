@@ -12,8 +12,8 @@ black () {
 }
 detect_secrets () {
   # Scan only files fixed into the repo, omit poetry.lock
-  SECRETS_TO_SCAN=`git ls-tree --full-tree -r --name-only HEAD | grep -v poetry.lock`
-  $POETRY_RUN detect-secrets-hook $SECRETS_TO_SCAN --baseline .secrets.baseline
+  FILES_TO_SCAN=`git ls-tree --full-tree -r --name-only HEAD | grep -v poetry.lock`
+  $POETRY_RUN detect-secrets-hook $FILES_TO_SCAN --baseline .secrets.baseline
 }
 isort () {
   $POETRY_RUN isort ${check:+--check-only} .
