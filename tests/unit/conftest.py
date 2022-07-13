@@ -169,14 +169,12 @@ def webhook_modify_private_example(
 @pytest.fixture
 def actions_example() -> Actions:
     return Actions.parse_obj(
-        {
-            "devtest": {
-                "action": "tests.unit.jbi.noop_action",
-                "contact": "tbd",
+        [
+            {
+                "action_tag": "devtest",
+                "contact": "contact@corp.com",
                 "description": "test config",
-                "parameters": {
-                    "whiteboard_tag": "devtest",
-                },
+                "module": "tests.unit.jbi.noop_action",
             }
-        }
+        ]
     )
