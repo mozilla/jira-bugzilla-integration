@@ -9,7 +9,7 @@ license = "MPL"
 python = ">=3.8, <3.11"
 fastapi = "^0.73.0"
 pydantic = {version = "^1.9.1", extras = ["email"]}
-uvicorn = {extras = ["standard"], version = "^0.17.4"}
+uvicorn = {extras = ["standard"], version = "^0.18.2"}
 gunicorn = "^20.1.0"
 prometheus-client = "^0.13.1"
 python-bugzilla = "^3.2.0"
