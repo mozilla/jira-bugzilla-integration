@@ -32,9 +32,9 @@ class Action(YamlModel):
         return initialized
 
     @root_validator
-    def validate_action_config(
+    def validate_action_config(  # pylint: disable=no-self-argument
         cls, values
-    ):  # pylint: disable=no-self-argument, no-self-use
+    ):
         """Validate action: exists, has init function, and has expected params"""
         try:
             action: str = values["action"]  # type: ignore
@@ -77,9 +77,9 @@ class Actions(YamlModel):
         return self.__root__.get(tag.lower()) if tag else None
 
     @validator("__root__")
-    def validate_actions(
+    def validate_actions(  # pylint: disable=no-self-argument
         cls, actions: Mapping[str, Action]
-    ):  # pylint: disable=no-self-argument, no-self-use
+    ):
         """
         Inspect action values with the context of the top-level key and:
          - Validate that the inner actions are named as expected (key matches
