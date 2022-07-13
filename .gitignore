@@ -128,8 +128,5 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# iSort - Pre-Commit
-.isort.cfg
-
 # Don't check in your own Env
 /config/local_dev.env
