@@ -5,10 +5,6 @@ on: pull_request
 jobs:
   run_test:
     runs-on: ubuntu-latest
-    env:
-      JIRA_USERNAME: fake_jira_username
-      JIRA_API_KEY: fake_jira_api_key
-      BUGZILLA_API_KEY: fake_bugzilla_api_key
     steps:
       - uses: actions/checkout@v3
       - name: Install poetry
