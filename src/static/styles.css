@@ -45,3 +45,21 @@ tbody tr:last-of-type {
   content: "▼";
   opacity: 1;
 }
+
+dl {
+  display: grid;
+  grid-template-columns: max-content auto;
+}
+
+dt {
+  grid-column-start: 1;
+}
+
+dt:after {
+  content: ':';
+}
+
+dd {
+  grid-column-start: 2;
+  margin-left: 5;
+}
