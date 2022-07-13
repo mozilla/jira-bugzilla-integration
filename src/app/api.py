@@ -110,8 +110,8 @@ def get_whiteboard_tag(
 ):
     """API for viewing whiteboard_tags and associated data"""
     if existing := actions.get(whiteboard_tag):
-        return [existing]
-    return actions
+        return {whiteboard_tag: existing}
+    return actions.by_tag
 
 
 @app.get("/jira_projects/")

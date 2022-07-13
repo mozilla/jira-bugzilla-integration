@@ -52,7 +52,7 @@ def test_whiteboard_tags(anon_client):
     resp = anon_client.get("/whiteboard_tags")
     actions = resp.json()
 
-    assert actions[0]["description"] == "DevTest whiteboard tag"
+    assert actions["devtest"]["description"] == "DevTest whiteboard tag"
 
 
 def test_jira_projects(anon_client, mocked_jira):
@@ -66,12 +66,12 @@ def test_jira_projects(anon_client, mocked_jira):
 
 def test_whiteboard_tags_filtered(anon_client):
     resp = anon_client.get("/whiteboard_tags/?whiteboard_tag=devtest")
-    actions = resp.json()
-    assert sorted([a["action_tag"] for a in actions]) == ["devtest"]
+    infos = resp.json()
+    assert sorted(infos.keys()) == ["devtest"]
 
     resp = anon_client.get("/whiteboard_tags/?whiteboard_tag=foo")
-    actions = resp.json()
-    assert sorted([a["action_tag"] for a in actions]) == ["devtest", "flowstate"]
+    infos = resp.json()
+    assert sorted(infos.keys()) == ["devtest", "flowstate"]
 
 
 def test_powered_by_jbi(exclude_middleware, anon_client):

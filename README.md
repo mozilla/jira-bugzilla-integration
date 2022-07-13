@@ -194,16 +194,17 @@ For the list of configured whiteboard tags:
 
 ```
 GET /whiteboard_tags/
-[
-  {
-    "action_tag": "addons",
-    "contact": "example@allizom.com",
-    "description": "Addons whiteboard tag for AMO Team",
-    "enabled": true,
-    "module": "src.jbi.whiteboard_actions.default",
-    "parameters": {
-        "jira_project_key": "WEBEXT"
-  }
-  ...
-]
+{
+    "addons": {
+        "action_tag": "addons",
+        "contact": "example@allizom.com",
+        "description": "Addons whiteboard tag for AMO Team",
+        "enabled": true,
+        "module": "src.jbi.whiteboard_actions.default",
+        "parameters": {
+            "jira_project_key": "WEBEXT"
+        }
+    }
+    ...
+}
 ```
