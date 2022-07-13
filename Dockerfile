@@ -39,10 +39,9 @@ RUN apt-get install --no-install-recommends -y \
       curl \
       build-essential
 
-# Install Poetry - respects $POETRY_VERSION & $POETRY_HOME
+# Install Poetry - respects $POETRY_HOME
 USER app
-ENV POETRY_VERSION=1.1.5
-RUN curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python
+RUN curl -sSL https://install.python-poetry.org | python3 -
 
 # We copy our Python requirements here to cache them
 # and install only runtime deps using poetry
