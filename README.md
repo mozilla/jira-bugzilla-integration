@@ -7,31 +7,30 @@ System to sync Bugzilla bugs to Jira issues.
 
 ### Caveats
 - The system accepts webhook events from Bugzilla
-- Bugs' whiteboard tags are used to determine if they should be synchronized or ignored
+- Bugs' `whiteboard` tags are used to determine if they should be synchronized or ignored
 - The events are transformed into Jira issues
 - The system sets the `see_also` field of the Bugzilla bug with the URL to the Jira issue
 
 ## Action Configuration
-The system reads the action configuration from a YAML file, one per environment. Each entry controls the synchronization between Bugzilla tickets with Jira issues.
+The system reads the actions configuration from a YAML file, one per environment. Each entry controls the synchronization between Bugzilla tickets and the Jira issues.
 
 
 Below is a full example of an action configuration:
 ```yaml
-    action: src.jbi.whiteboard_actions.default
-    allow_private: false
-    contact: example@allizom.com
-    description: example configuration
-    enabled: true
-    parameters:
-      jira_project_key: EXMPL
-      whiteboard_tag: example
+- action_tag: example
+  allow_private: false
+  contact: example@allizom.com
+  description: example configuration
+  enabled: true
+  module: src.jbi.whiteboard_actions.default
+  parameters:
+    jira_project_key: EXMPL
 ```
 
 A bit more about the different fields...
-- `action` (optional)
+- `action_tag`
     - string
-    - default: [src.jbi.whiteboard_actions.default](src/jbi/whiteboard_actions/default.py)
-    - The specified Python module must be available in the `PYTHONPATH`
+    - The tag to be matched in the Bugzilla `whiteboard` field
 - `allow_private` (optional)
     - bool [true, false]
     - default: false
@@ -49,11 +48,14 @@ A bit more about the different fields...
     - bool [true, false]
     - default: false
     - If false, matching events will not be synchronized
+- `module` (optional)
+    - string
+    - default: [src.jbi.whiteboard_actions.default](src/jbi/whiteboard_actions/default.py)
+    - The specified Python module must be available in the `PYTHONPATH`
 - `parameters` (optional)
     - dict
     - default: {}
     - The parameters will be validated to ensure the selected action accepts the specified values
-    - The [default action](src/jbi/whiteboard_actions/default.py) expects both the `whiteboard_tag` and `jira_project_key` fields
 
 
 [View 'nonprod'  configurations here.](config/config.nonprod.yaml)
@@ -61,7 +63,29 @@ A bit more about the different fields...
 [View 'prod' configurations here.](config/config.prod.yaml)
 
 
-## Default with assignee and status action
+## Available Actions
+
+### Default
+The `src.jbi.whiteboard_actions.default` action will create or update the Jira issue and its comments.
+It will also set the Jira issue URL in the Bugzilla bug `see_also` field.
+
+**Parameters**
+
+- `jira_project_key`
+    - string
+    - The Jira project identifier
+
+Example configuration:
+```yaml
+    action_tag: example
+    contact: example@allizom.com
+    description: example configuration
+    module: src.jbi.whiteboard_actions.default
+    parameters:
+      jira_project_key: EXMPL
+```
+
+### Default with assignee and status action
 The `src.jbi.whiteboard_actions.default_with_assignee_and_status` action adds some additional
 features on top of the default.
 
@@ -69,19 +93,26 @@ It will attempt to assign the Jira issue the same person as the bug is assigned 
 the user using the same email address in both Bugzilla and Jira. If the user does not exist in Jira
 then the assignee is cleared from the Jira issue.
 
-The action supports setting the Jira issues's status when the Bugzilla status and resolution change.
-This is defined using a mapping on a per-project basis configured in the `status_map` field of the
-`parameters` field.
+If configured, the action supports setting the Jira issues's status when the Bugzilla status and resolution change.
 
-An example configuration:
+**Parameters**
+
+- `jira_project_key`
+    - string
+    - The Jira project identifier
+- `status_map` (optional)
+    - mapping [str, str]
+    - If defined, map the Bugzilla bug status to Jira issue status
+
+Example configuration:
 ```yaml
-    action: src.jbi.whiteboard_actions.default_with_assignee_and_status
+    action_tag: example
     contact: example@allizom.com
     description: example configuration
     enabled: true
+    module: src.jbi.whiteboard_actions.default_with_assignee_and_status
     parameters:
       jira_project_key: EXMPL
-      whiteboard_tag: example
       status_map:
         NEW: "In Progress"
         FIXED: "Closed"
@@ -93,7 +124,7 @@ linked Jira issue status to "Closed". If the bug changes to a status not listed 
 no change will be made to the Jira issue.
 
 ### Custom Actions
-If you're looking for a unique capability for your team's data flow, you can add your own python methods and functionality[...read more here.](src/jbi/whiteboard_actions/README.md)
+If you're looking for a unique capability for your team's data flow, you can add your own Python methods and functionality[...read more here.](src/jbi/whiteboard_actions/README.md)
 
 
 ## Diagram Overview
@@ -163,17 +194,16 @@ For the list of configured whiteboard tags:
 
 ```
 GET /whiteboard_tags/
-{
-    "addons": {
-        "action": "src.jbi.whiteboard_actions.default",
-        "contact": "example@allizom.com",
-        "description": "Addons whiteboard tag for AMO Team",
-        "enabled": true,
-        "parameters": {
-            "jira_project_key": "WEBEXT",
-            "whiteboard_tag": "addons"
-        }
-    },
-    ...
-}
+[
+  {
+    "action_tag": "addons",
+    "contact": "example@allizom.com",
+    "description": "Addons whiteboard tag for AMO Team",
+    "enabled": true,
+    "module": "src.jbi.whiteboard_actions.default",
+    "parameters": {
+        "jira_project_key": "WEBEXT"
+  }
+  ...
+]
 ```
