@@ -36,12 +36,9 @@ jobs:
     needs: prepare
     environment:
         name: cloudops
-    outputs:
-      BUILD_TAG: ${{ steps.build.outputs.build-tag }}
 
     steps:
-      - name: Echo tag
-        id: echotag
+      - name: Docker image tag
         env:
           IMAGE_TAG: ${{ needs.prepare.outputs.FULL_IMAGE_TAG }}
         run: |
@@ -58,13 +55,11 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Extract metadata (tags, labels) for Docker
-        id: meta
         uses: docker/metadata-action@v3
         with:
           images: $GITHUB_REPOSITORY
 
       - name: Build Docker image
-        id: build
         env:
           IMAGE_TAG: ${{ needs.prepare.outputs.FULL_IMAGE_TAG }}
         run: |
@@ -112,7 +107,6 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build Docker image
-        id: push
         env:
           IMAGE_TAG: ${{ needs.prepare.outputs.FULL_IMAGE_TAG }}
         run: |
