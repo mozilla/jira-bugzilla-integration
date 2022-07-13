@@ -45,7 +45,7 @@ testpaths = [
 ]
 env_override_existing_values = true
 env_files = [
-    "infra/config/local_dev.env"
+    "config/local_dev.env"
 ]
 
 [tool.pylint]

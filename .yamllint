@@ -5,7 +5,7 @@ extends: default
 ignore: |
   src/
   tests/
-  infra/
+  bin/
   .github/
   docker-compose.yaml
   .pre-commit-config.yaml

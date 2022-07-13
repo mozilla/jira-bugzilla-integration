@@ -12,4 +12,4 @@ services:
     # among other things this helps shutdown be fast
     init: true
     env_file:
-      - infra/config/local_dev.env
+      - config/local_dev.env

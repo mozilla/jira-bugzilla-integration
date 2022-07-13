@@ -25,7 +25,7 @@ mypy () {
   $POETRY_RUN mypy src
 }
 yamllint () {
-  $POETRY_RUN yamllint -c .yamllint config/*
+  $POETRY_RUN yamllint -c .yamllint config/*.yaml
 }
 all () {
   echo "running black"
@@ -45,7 +45,7 @@ all () {
 }
 
 usage () {
-  echo "Usage: infra/lint.sh [OPTION]"
+  echo "Usage: bin/lint.sh [OPTION]"
   echo " run linting checks"
   echo "Options":
   echo "  bandit"

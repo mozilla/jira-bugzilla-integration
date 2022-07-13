@@ -16,4 +16,4 @@ jobs:
       - name: Install dependencies
         run: poetry install
       - name: Run tests
-        run: infra/test.sh
+        run: bin/test.sh

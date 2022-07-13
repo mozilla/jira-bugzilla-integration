@@ -15,4 +15,4 @@ jobs:
           cache: "poetry"
       - name: Install dependencies
         run: poetry install
-      - run: infra/lint.sh
+      - run: bin/lint.sh

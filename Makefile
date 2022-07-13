@@ -31,12 +31,12 @@ build:
 
 .PHONY: format
 format:
-	infra/lint.sh black --fix
-	infra/lint.sh isort --fix
+	bin/lint.sh black --fix
+	bin/lint.sh isort --fix
 
 .PHONY: lint
 lint:
-	docker-compose run --rm web infra/lint.sh
+	docker-compose run --rm web bin/lint.sh
 
 .PHONY: shell
 shell:
@@ -48,7 +48,7 @@ start:
 
 .PHONY: test
 test:
-	docker-compose run --rm web infra/test.sh
+	docker-compose run --rm web bin/test.sh
 
 .PHONY: test-shell
 test-shell:
