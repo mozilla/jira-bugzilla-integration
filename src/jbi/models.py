@@ -32,9 +32,7 @@ class Action(YamlModel):
         return initialized
 
     @root_validator
-    def validate_action_config(  # pylint: disable=no-self-argument
-        cls, values
-    ):
+    def validate_action_config(cls, values):  # pylint: disable=no-self-argument
         """Validate action: exists, has init function, and has expected params"""
         try:
             action: str = values["action"]  # type: ignore
