@@ -132,4 +132,4 @@ dmypy.json
 .isort.cfg
 
 # Don't check in your own Env
-*local_dev.env
+/config/local_dev.env
