@@ -7,7 +7,7 @@ import datetime
 import json
 import logging
 from functools import cached_property
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 from urllib.parse import ParseResult, urlparse
 
 from pydantic import BaseModel  # pylint: disable=no-name-in-module
@@ -148,7 +148,7 @@ class BugzillaBug(BaseModel):
         return ["bugzilla"] + wb_list + wb_bracket_list
 
     def get_potential_whiteboard_config_list(self) -> List[str]:
-        """Get all possible whiteboard_tag configuration values"""
+        """Get all possible tags from `whiteboard` field"""
         converted_list: List = []
         for whiteboard in self.get_whiteboard_as_list():
             first_tag = whiteboard.strip().lower().split(sep="-", maxsplit=1)[0]
@@ -198,13 +198,12 @@ class BugzillaBug(BaseModel):
 
         return None
 
-    def lookup_action(self, actions: Actions) -> Tuple[str, Action]:
+    def lookup_action(self, actions: Actions) -> Action:
         """Find first matching action from bug's whiteboard list"""
         tags: List[str] = self.get_potential_whiteboard_config_list()
         for tag in tags:
-            tag = tag.lower()
             if action := actions.get(tag):
-                return tag, action
+                return action
         raise ActionNotFoundError(", ".join(tags))
 
 

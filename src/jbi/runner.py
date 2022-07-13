@@ -56,32 +56,32 @@ def execute_action(
         log_context["bug"] = bug_obj.dict()
 
         try:
-            action_name, current_action = bug_obj.lookup_action(actions)
+            action = bug_obj.lookup_action(actions)
         except ActionNotFoundError as err:
             raise IgnoreInvalidRequestError(
                 f"no action matching bug whiteboard tags: {err}"
             ) from err
 
-        log_context["action"] = current_action.dict()
+        log_context["action"] = action.dict()
 
-        if bug_obj.is_private and not current_action.allow_private:
+        if bug_obj.is_private and not action.allow_private:
             raise IgnoreInvalidRequestError(
-                f"private bugs are not valid for action {action_name!r}"
+                f"private bugs are not valid for action {action.action_tag!r}"
             )
 
         logger.info(
             "Execute action '%s:%s' for Bug %s",
-            action_name,
-            current_action.action,
+            action.action_tag,
+            action.module,
             bug_obj.id,
             extra={"operation": Operations.EXECUTE, **log_context},
         )
 
-        content = current_action.callable(payload=request)
+        content = action.callable(payload=request)
 
         logger.info(
             "Action %r executed successfully for Bug %s",
-            action_name,
+            action.action_tag,
             bug_obj.id,
             extra={"operation": Operations.SUCCESS, **log_context},
         )

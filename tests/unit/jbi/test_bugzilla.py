@@ -59,8 +59,8 @@ def test_lookup_action(actions_example):
     bug = bugzilla.BugzillaBug.parse_obj(
         {"id": 1234, "whiteboard": "[example][DevTest]"}
     )
-    tag, action = bug.lookup_action(actions_example)
-    assert tag == "devtest"
+    action = bug.lookup_action(actions_example)
+    assert action.action_tag == "devtest"
     assert "test config" in action.description
 
 
