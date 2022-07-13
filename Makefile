@@ -4,6 +4,10 @@
 _UID ?= 10001
 _GID ?= 10001
 
+VENV := $(shell echo $${VIRTUAL_ENV-.venv})
+INSTALL_STAMP = $(VENV)/.install.stamp
+POETRY_VIRTUALENVS_IN_PROJECT = true
+
 .PHONY: help
 help:
 	@echo "Usage: make RULE"
@@ -20,6 +24,10 @@ help:
 	@echo ""
 	@echo "  help    - see this text"
 
+install: $(INSTALL_STAMP)
+$(INSTALL_STAMP): poetry.lock
+	poetry install
+	touch $(INSTALL_STAMP)
 
 .PHONY: build
 build:
@@ -27,13 +35,13 @@ build:
 		--build-arg userid=${_UID} --build-arg groupid=${_GID}
 
 .PHONY: format
-format:
+format: $(INSTALL_STAMP)
 	bin/lint.sh black --fix
 	bin/lint.sh isort --fix
 
 .PHONY: lint
-lint:
-	docker-compose run --rm web bin/lint.sh
+lint: $(INSTALL_STAMP)
+	bin/lint.sh
 
 .PHONY: shell
 shell:
@@ -44,5 +52,5 @@ start:
 	docker-compose up
 
 .PHONY: test
-test:
-	docker-compose run --rm web bin/test.sh
+test: $(INSTALL_STAMP)
+	bin/test.sh
