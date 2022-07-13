@@ -93,6 +93,11 @@ class Actions(YamlModel):
         if not actions:
             raise ValueError("no actions configured")
 
+        tags = [a.action_tag.lower() for a in actions]
+        duplicated_tags = [t for i, t in enumerate(tags) if t in tags[:i]]
+        if duplicated_tags:
+            raise ValueError(f"actions have duplicated lookup tags: {duplicated_tags}")
+
         for action in actions:
             if action.contact == "tbd":
                 warnings.warn(f"Provide contact data for `{action.action_tag}` action.")

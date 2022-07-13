@@ -35,3 +35,21 @@ def test_bad_module_fails():
     with pytest.raises(ValueError) as exc_info:
         Actions.parse_obj([{"action_tag": "x", "module": "src.jbi.runner"}])
     assert "action is not properly setup" in str(exc_info.value)
+
+
+def test_duplicated_action_tag_fails():
+    action = {
+        "action_tag": "x",
+        "contact": "tbd",
+        "description": "foo",
+        "module": "tests.unit.jbi.noop_action",
+    }
+    with pytest.raises(ValueError) as exc_info:
+        Actions.parse_obj(
+            [
+                action,
+                {**action, "action_tag": "y"},
+                action,
+            ]
+        )
+    assert "actions have duplicated lookup tags: ['x']" in str(exc_info.value)
