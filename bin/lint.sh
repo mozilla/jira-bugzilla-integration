@@ -25,7 +25,7 @@ mypy () {
   $POETRY_RUN mypy src
 }
 yamllint () {
-  $POETRY_RUN yamllint -c .yamllint config/*
+  $POETRY_RUN yamllint -c .yamllint config/*.yaml
 }
 all () {
   echo "running black"
