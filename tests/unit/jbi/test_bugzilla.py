@@ -60,7 +60,7 @@ def test_lookup_action(actions_example):
         {"id": 1234, "whiteboard": "[example][DevTest]"}
     )
     action = bug.lookup_action(actions_example)
-    assert action.action_tag == "devtest"
+    assert action.whiteboard_tag == "devtest"
     assert "test config" in action.description
 
 

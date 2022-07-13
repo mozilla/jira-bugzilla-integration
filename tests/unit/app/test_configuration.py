@@ -27,19 +27,19 @@ def test_no_actions_fails():
 
 def test_unknown_module_fails():
     with pytest.raises(ValueError) as exc_info:
-        Actions.parse_obj([{"action_tag": "x", "module": "path.to.unknown"}])
+        Actions.parse_obj([{"whiteboard_tag": "x", "module": "path.to.unknown"}])
     assert "unknown Python module `path.to.unknown`" in str(exc_info.value)
 
 
 def test_bad_module_fails():
     with pytest.raises(ValueError) as exc_info:
-        Actions.parse_obj([{"action_tag": "x", "module": "src.jbi.runner"}])
+        Actions.parse_obj([{"whiteboard_tag": "x", "module": "src.jbi.runner"}])
     assert "action is not properly setup" in str(exc_info.value)
 
 
-def test_duplicated_action_tag_fails():
+def test_duplicated_whiteboard_tag_fails():
     action = {
-        "action_tag": "x",
+        "whiteboard_tag": "x",
         "contact": "tbd",
         "description": "foo",
         "module": "tests.unit.jbi.noop_action",
@@ -48,7 +48,7 @@ def test_duplicated_action_tag_fails():
         Actions.parse_obj(
             [
                 action,
-                {**action, "action_tag": "y"},
+                {**action, "whiteboard_tag": "y"},
                 action,
             ]
         )

@@ -1,6 +1,6 @@
 ---
 # Action Config
-- action_tag: A
+- whiteboard_tag: A
   contact: foobar
   description: test config
   enabled: true

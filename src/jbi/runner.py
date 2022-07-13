@@ -66,12 +66,12 @@ def execute_action(
 
         if bug_obj.is_private and not action.allow_private:
             raise IgnoreInvalidRequestError(
-                f"private bugs are not valid for action {action.action_tag!r}"
+                f"private bugs are not valid for action {action.whiteboard_tag!r}"
             )
 
         logger.info(
             "Execute action '%s:%s' for Bug %s",
-            action.action_tag,
+            action.whiteboard_tag,
             action.module,
             bug_obj.id,
             extra={"operation": Operations.EXECUTE, **log_context},
@@ -81,7 +81,7 @@ def execute_action(
 
         logger.info(
             "Action %r executed successfully for Bug %s",
-            action.action_tag,
+            action.whiteboard_tag,
             bug_obj.id,
             extra={"operation": Operations.SUCCESS, **log_context},
         )

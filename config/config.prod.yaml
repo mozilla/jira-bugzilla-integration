@@ -1,6 +1,6 @@
 ---
 # Action Config
-- action_tag: addons
+- whiteboard_tag: addons
   contact: tbd
   description: Addons whiteboard tag for AMO Team
   enabled: true
@@ -8,21 +8,21 @@
   parameters:
     jira_project_key: WEBEXT
 
-- action_tag: fidedi
+- whiteboard_tag: fidedi
   contact: tbd
   description: Firefox Desktop Integration whiteboard tag
   enabled: true
   parameters:
     jira_project_key: FIDEDI
 
-- action_tag: fidefe
+- whiteboard_tag: fidefe
   contact: tbd
   description: Firefox Front End whiteboard tag
   enabled: true
   parameters:
     jira_project_key: FIDEFE
 
-- action_tag: flowstate
+- whiteboard_tag: flowstate
   allow_private: true
   contact: dtownsend@mozilla.com
   description: Flowstate whiteboard tag
@@ -35,70 +35,70 @@
       FIXED: In Review
       REOPENED: In Progress
 
-- action_tag: fxatps
+- whiteboard_tag: fxatps
   contact: tbd
   description: Privacy & Security and Anti-Tracking Team whiteboard tag
   enabled: true
   parameters:
     jira_project_key: FXATPS
 
-- action_tag: fxcm
+- whiteboard_tag: fxcm
   contact: tbd
   description: Firefox Credential Management Team whiteboard tag
   enabled: true
   parameters:
     jira_project_key: FXCM
 
-- action_tag: fxsync
+- whiteboard_tag: fxsync
   contact: tbd
   description: Firefox Sync Team whiteboard tag
   enabled: true
   parameters:
     jira_project_key: SYNC
 
-- action_tag: gv
+- whiteboard_tag: gv
   contact: tbd
   description: GeckoView Team whiteboard tag
   enabled: true
   parameters:
     jira_project_key: ANDP
 
-- action_tag: mv3
+- whiteboard_tag: mv3
   contact: tbd
   description: MV3 whiteboard tag
   enabled: true
   parameters:
     jira_project_key: WEBEXT
 
-- action_tag: nimbus
+- whiteboard_tag: nimbus
   contact: tbd
   description: Nimbus whiteboard tag
   enabled: true
   parameters:
     jira_project_key: EXP
 
-- action_tag: prodtest
+- whiteboard_tag: prodtest
   contact: tbd
   description: ProdTest tag
   enabled: true
   parameters:
     jira_project_key: OSS
 
-- action_tag: proton
+- whiteboard_tag: proton
   contact: tbd
   description: Proton whiteboard tag for Firefox Frontend
   enabled: true
   parameters:
     jira_project_key: FIDEFE
 
-- action_tag: relops
+- whiteboard_tag: relops
   contact: tbd
   description: Release Operations Team Tag
   enabled: true
   parameters:
     jira_project_key: RELOPS
 
-- action_tag: snt
+- whiteboard_tag: snt
   contact: tbd
   description: Search/NewTab Team Tag
   enabled: true

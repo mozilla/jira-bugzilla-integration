@@ -22,7 +22,7 @@
                     {% for action in actions %}
                         {% if enable_query == none or action.enabled == enable_query %}
                         <tr>
-                            <td class="identifier">{{action.action_tag}}</td>
+                            <td class="identifier">{{action.whiteboard_tag}}</td>
                             <td class="contact">{{action.contact}}</td>
                             <td class="description">{{action.description}}</td>
                             <td class="enabled">{{action.enabled}}</td>

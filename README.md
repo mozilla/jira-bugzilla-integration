@@ -17,7 +17,7 @@ The system reads the actions configuration from a YAML file, one per environment
 
 Below is a full example of an action configuration:
 ```yaml
-- action_tag: example
+- whiteboard_tag: example
   allow_private: false
   contact: example@allizom.com
   description: example configuration
@@ -28,7 +28,7 @@ Below is a full example of an action configuration:
 ```
 
 A bit more about the different fields...
-- `action_tag`
+- `whiteboard_tag`
     - string
     - The tag to be matched in the Bugzilla `whiteboard` field
 - `allow_private` (optional)
@@ -77,7 +77,7 @@ It will also set the Jira issue URL in the Bugzilla bug `see_also` field.
 
 Example configuration:
 ```yaml
-    action_tag: example
+    whiteboard_tag: example
     contact: example@allizom.com
     description: example configuration
     module: src.jbi.whiteboard_actions.default
@@ -106,7 +106,7 @@ If configured, the action supports setting the Jira issues's status when the Bug
 
 Example configuration:
 ```yaml
-    action_tag: example
+    whiteboard_tag: example
     contact: example@allizom.com
     description: example configuration
     enabled: true
@@ -196,7 +196,7 @@ For the list of configured whiteboard tags:
 GET /whiteboard_tags/
 {
     "addons": {
-        "action_tag": "addons",
+        "whiteboard_tag": "addons",
         "contact": "example@allizom.com",
         "description": "Addons whiteboard tag for AMO Team",
         "enabled": true,

@@ -16,7 +16,7 @@ class Action(YamlModel):
     """
     Action is the inner model for each action in the configuration file"""
 
-    action_tag: str
+    whiteboard_tag: str
     module: str = "src.jbi.whiteboard_actions.default"
     # TODO: Remove the tbd literal option when all actions have contact info # pylint: disable=fixme
     contact: Union[EmailStr, List[EmailStr], Literal["tbd"]]
@@ -68,7 +68,7 @@ class Actions(YamlModel):
     @functools.cached_property
     def by_tag(self) -> Mapping[str, Action]:
         """Build mapping of actions by lookup tag."""
-        return {a.action_tag: a for a in self.__root__}
+        return {a.whiteboard_tag: a for a in self.__root__}
 
     def __len__(self):
         return len(self.__root__)
@@ -93,14 +93,16 @@ class Actions(YamlModel):
         if not actions:
             raise ValueError("no actions configured")
 
-        tags = [a.action_tag.lower() for a in actions]
+        tags = [a.whiteboard_tag.lower() for a in actions]
         duplicated_tags = [t for i, t in enumerate(tags) if t in tags[:i]]
         if duplicated_tags:
             raise ValueError(f"actions have duplicated lookup tags: {duplicated_tags}")
 
         for action in actions:
             if action.contact == "tbd":
-                warnings.warn(f"Provide contact data for `{action.action_tag}` action.")
+                warnings.warn(
+                    f"Provide contact data for `{action.whiteboard_tag}` action."
+                )
 
         return actions
 

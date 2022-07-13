@@ -171,7 +171,7 @@ def actions_example() -> Actions:
     return Actions.parse_obj(
         [
             {
-                "action_tag": "devtest",
+                "whiteboard_tag": "devtest",
                 "contact": "contact@corp.com",
                 "description": "test config",
                 "module": "tests.unit.jbi.noop_action",
