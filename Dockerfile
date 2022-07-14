@@ -88,7 +88,7 @@ ENV FASTAPI_ENV=production \
     PROMETHEUS_MULTIPROC=1
 
 COPY --from=builder-base $VENV_PATH $VENV_PATH
-COPY ./bin/gunicorn_conf.py /gunicorn_conf.py
+COPY ./config/gunicorn_conf.py /gunicorn_conf.py
 
 COPY ./bin/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
