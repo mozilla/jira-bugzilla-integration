@@ -9,7 +9,7 @@ license = "MPL"
 python = ">=3.8, <3.11"
 fastapi = "^0.73.0"
 pydantic = {version = "^1.9.1", extras = ["email"]}
-uvicorn = {extras = ["standard"], version = "^0.17.4"}
+uvicorn = {extras = ["standard"], version = "^0.18.2"}
 gunicorn = "^20.1.0"
 prometheus-client = "^0.13.1"
 python-bugzilla = "^3.2.0"
@@ -23,9 +23,9 @@ orjson = "^3.7.7"
 
 [tool.poetry.dev-dependencies]
 pre-commit = "^2.17.0"
-black = "^22.1.0"
+black = "^22.6.0"
 isort = "^5.10.1"
-coverage = {extras = ["toml"], version = "^5.3"}
+coverage = {extras = ["toml"], version = "^6.4"}
 mypy = "^0.910"
 detect-secrets = "^1.2.0"
 bandit = "^1.7.0"
@@ -69,7 +69,7 @@ env_files = [
 profile = "black"
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.10"
 # Warn when returning Any from function with non-Any return
 warn_return_any = true
 

@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     """The Settings object extracts environment variables for convenience."""
 
     host: str = "0.0.0.0"
-    port: str = "80"
+    port: int = 8000
     app_reload: bool = True
     env: str = "nonprod"
 

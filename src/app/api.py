@@ -140,5 +140,9 @@ def powered_by_jbi(
 
 if __name__ == "__main__":
     uvicorn.run(
-        "app:app", host=settings.host, port=settings.port, reload=settings.app_reload
+        "src.app.api:app",
+        host=settings.host,
+        port=settings.port,
+        reload=settings.app_reload,
+        log_level=settings.log_level,
     )
