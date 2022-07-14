@@ -11,7 +11,7 @@ Let's create a `new_action`!
         return lambda payload: print(f"{optional_param}, going to {jira_project_key}!")
     ```
     1. In the above example the `jira_project_key` parameter is required
-    1. `optional_param`, which has a default value and is not required to run this action
+    1. `optional_param`, which has a default value, is not required to run this action
     1. `init()` returns a `__call__`able object that the system calls with the Bugzilla request payload
 1. Use the `payload` to perform the desired processing!
 1. Use the available service calls from `src/jbi/services.py' (or make new ones)
