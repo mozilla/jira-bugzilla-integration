@@ -18,7 +18,7 @@ def test_default_invalid_init():
 
 
 def test_default_returns_callable_without_data(mocked_bugzilla, mocked_jira):
-    callable_object = default.init(whiteboard_tag="", jira_project_key="")
+    callable_object = default.init(jira_project_key="")
     assert callable_object
     with pytest.raises(TypeError) as exc_info:
         assert callable_object()
@@ -27,7 +27,7 @@ def test_default_returns_callable_without_data(mocked_bugzilla, mocked_jira):
 
 
 def test_default_returns_callable_with_data(webhook_create_example, mocked_jira):
-    callable_object = default.init(whiteboard_tag="", jira_project_key="")
+    callable_object = default.init(jira_project_key="")
 
     value = callable_object(payload=webhook_create_example)
 
@@ -35,7 +35,7 @@ def test_default_returns_callable_with_data(webhook_create_example, mocked_jira)
 
 
 def test_created_public(webhook_create_example: BugzillaWebhookRequest, mocked_jira):
-    callable_object = default.init(whiteboard_tag="", jira_project_key="JBI")
+    callable_object = default.init(jira_project_key="JBI")
 
     value = callable_object(payload=webhook_create_example)
 
@@ -54,7 +54,7 @@ def test_created_public(webhook_create_example: BugzillaWebhookRequest, mocked_j
 def test_created_private(
     webhook_create_private_example: BugzillaWebhookRequest, mocked_jira
 ):
-    callable_object = default.init(whiteboard_tag="", jira_project_key="JBI")
+    callable_object = default.init(jira_project_key="JBI")
 
     value = callable_object(payload=webhook_create_private_example)
 
@@ -72,7 +72,7 @@ def test_created_private(
 
 def test_modified_public(webhook_modify_example: BugzillaWebhookRequest, mocked_jira):
     assert webhook_modify_example.bug
-    callable_object = default.init(whiteboard_tag="", jira_project_key="")
+    callable_object = default.init(jira_project_key="")
 
     value = callable_object(payload=webhook_modify_example)
 
@@ -88,7 +88,7 @@ def test_modified_public(webhook_modify_example: BugzillaWebhookRequest, mocked_
 def test_modified_private(
     webhook_modify_private_example: BugzillaWebhookRequest, mocked_jira
 ):
-    callable_object = default.init(whiteboard_tag="", jira_project_key="")
+    callable_object = default.init(jira_project_key="")
 
     value = callable_object(payload=webhook_modify_private_example)
 
@@ -101,7 +101,7 @@ def test_modified_private(
 
 def test_added_comment(webhook_comment_example: BugzillaWebhookRequest, mocked_jira):
 
-    callable_object = default.init(whiteboard_tag="", jira_project_key="")
+    callable_object = default.init(jira_project_key="")
 
     value = callable_object(payload=webhook_comment_example)
 
@@ -117,7 +117,7 @@ def test_added_comment_without_linked_issue(
 ):
     assert webhook_comment_example.bug
     webhook_comment_example.bug.see_also = []
-    callable_object = default.init(whiteboard_tag="", jira_project_key="")
+    callable_object = default.init(jira_project_key="")
 
     value = callable_object(payload=webhook_comment_example)
 
@@ -130,7 +130,7 @@ def test_jira_returns_an_error(
     mocked_jira().create_issue.return_value = [
         {"errors": ["Boom"]},
     ]
-    callable_object = default.init(whiteboard_tag="", jira_project_key="")
+    callable_object = default.init(jira_project_key="")
 
     with pytest.raises(ActionError) as exc_info:
         callable_object(payload=webhook_create_example)

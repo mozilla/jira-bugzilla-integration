@@ -111,7 +111,7 @@ def get_whiteboard_tag(
     """API for viewing whiteboard_tags and associated data"""
     if existing := actions.get(whiteboard_tag):
         return {whiteboard_tag: existing}
-    return actions
+    return actions.by_tag
 
 
 @app.get("/jira_projects/")
@@ -132,8 +132,7 @@ def powered_by_jbi(
     context = {
         "request": request,
         "title": "Powered by JBI",
-        "num_configs": len(actions),
-        "data": jsonable_encoder(actions),
+        "actions": jsonable_encoder(actions),
         "enable_query": enabled,
     }
     return templates.TemplateResponse("powered_by_template.html", context)

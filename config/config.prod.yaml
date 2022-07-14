@@ -1,107 +1,106 @@
 ---
 # Action Config
-addons:
-  #  action: src.jbi.whiteboard_actions.default
+- whiteboard_tag: addons
   contact: tbd
   description: Addons whiteboard tag for AMO Team
   enabled: true
+  # module: src.jbi.whiteboard_actions.default
   parameters:
     jira_project_key: WEBEXT
-    whiteboard_tag: addons
-fidedi:
+
+- whiteboard_tag: fidedi
   contact: tbd
   description: Firefox Desktop Integration whiteboard tag
   enabled: true
   parameters:
     jira_project_key: FIDEDI
-    whiteboard_tag: fidedi
-fidefe:
+
+- whiteboard_tag: fidefe
   contact: tbd
   description: Firefox Front End whiteboard tag
   enabled: true
   parameters:
     jira_project_key: FIDEFE
-    whiteboard_tag: fidefe
-flowstate:
-  action: src.jbi.whiteboard_actions.default_with_assignee_and_status
+
+- whiteboard_tag: flowstate
   allow_private: true
   contact: dtownsend@mozilla.com
   description: Flowstate whiteboard tag
   enabled: true
+  module: src.jbi.whiteboard_actions.default_with_assignee_and_status
   parameters:
     jira_project_key: MR2
     status_map:
       ASSIGNED: In Progress
       FIXED: In Review
       REOPENED: In Progress
-    whiteboard_tag: flowstate
-fxatps:
+
+- whiteboard_tag: fxatps
   contact: tbd
   description: Privacy & Security and Anti-Tracking Team whiteboard tag
   enabled: true
   parameters:
     jira_project_key: FXATPS
-    whiteboard_tag: fxatps
-fxcm:
+
+- whiteboard_tag: fxcm
   contact: tbd
   description: Firefox Credential Management Team whiteboard tag
   enabled: true
   parameters:
     jira_project_key: FXCM
-    whiteboard_tag: fxcm
-fxsync:
+
+- whiteboard_tag: fxsync
   contact: tbd
   description: Firefox Sync Team whiteboard tag
   enabled: true
   parameters:
     jira_project_key: SYNC
-    whiteboard_tag: fxsync
-gv:
+
+- whiteboard_tag: gv
   contact: tbd
   description: GeckoView Team whiteboard tag
   enabled: true
   parameters:
     jira_project_key: ANDP
-    whiteboard_tag: gv
-mv3:
+
+- whiteboard_tag: mv3
   contact: tbd
   description: MV3 whiteboard tag
   enabled: true
   parameters:
     jira_project_key: WEBEXT
-    whiteboard_tag: mv3
-nimbus:
+
+- whiteboard_tag: nimbus
   contact: tbd
   description: Nimbus whiteboard tag
   enabled: true
   parameters:
     jira_project_key: EXP
-    whiteboard_tag: nimbus
-prodtest:
+
+- whiteboard_tag: prodtest
   contact: tbd
   description: ProdTest tag
   enabled: true
   parameters:
     jira_project_key: OSS
-    whiteboard_tag: prodtest
-proton:
+
+- whiteboard_tag: proton
   contact: tbd
   description: Proton whiteboard tag for Firefox Frontend
   enabled: true
   parameters:
     jira_project_key: FIDEFE
-    whiteboard_tag: proton
-relops:
+
+- whiteboard_tag: relops
   contact: tbd
   description: Release Operations Team Tag
   enabled: true
   parameters:
     jira_project_key: RELOPS
-    whiteboard_tag: relops
-snt:
+
+- whiteboard_tag: snt
   contact: tbd
   description: Search/NewTab Team Tag
   enabled: true
   parameters:
     jira_project_key: SNT
-    whiteboard_tag: snt
