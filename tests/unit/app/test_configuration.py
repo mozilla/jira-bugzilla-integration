@@ -22,7 +22,7 @@ def test_actual_jbi_files():
 def test_no_actions_fails():
     with pytest.raises(ValueError) as exc_info:
         Actions.parse_obj([])
-    assert "no actions configured" in str(exc_info.value)
+    assert "ensure this value has at least 1 items" in str(exc_info.value)
 
 
 def test_unknown_module_fails():

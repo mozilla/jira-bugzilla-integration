@@ -8,7 +8,7 @@ from inspect import signature
 from types import ModuleType
 from typing import Any, Callable, Dict, List, Literal, Mapping, Optional, Union
 
-from pydantic import EmailStr, Extra, root_validator, validator
+from pydantic import EmailStr, Extra, Field, root_validator, validator
 from pydantic_yaml import YamlModel
 
 
@@ -63,7 +63,7 @@ class Actions(YamlModel):
     Actions is the container model for the list of actions in the configuration file
     """
 
-    __root__: List[Action]
+    __root__: List[Action] = Field(..., min_items=1)
 
     @functools.cached_property
     def by_tag(self) -> Mapping[str, Action]:
@@ -86,14 +86,10 @@ class Actions(YamlModel):
     ):
         """
         Inspect the list of actions:
-         - There is at least one action
          - Validate that lookup tags are uniques
          - If the action's contact is "tbd", emit a warning.
         """
-        if not actions:
-            raise ValueError("no actions configured")
-
-        tags = [a.whiteboard_tag.lower() for a in actions]
+        tags = [action.whiteboard_tag.lower() for action in actions]
         duplicated_tags = [t for i, t in enumerate(tags) if t in tags[:i]]
         if duplicated_tags:
             raise ValueError(f"actions have duplicated lookup tags: {duplicated_tags}")
