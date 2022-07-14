@@ -68,7 +68,7 @@ class Actions(YamlModel):
     @functools.cached_property
     def by_tag(self) -> Mapping[str, Action]:
         """Build mapping of actions by lookup tag."""
-        return {a.whiteboard_tag: a for a in self.__root__}
+        return {action.whiteboard_tag: action for action in self.__root__}
 
     def __len__(self):
         return len(self.__root__)
