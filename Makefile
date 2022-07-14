@@ -45,7 +45,7 @@ lint: $(INSTALL_STAMP)
 
 .PHONY: shell
 shell:
-	docker-compose run web /bin/sh
+	docker-compose run --rm web /bin/sh
 
 .PHONY: start
 start:
