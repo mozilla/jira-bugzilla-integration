@@ -17,9 +17,6 @@ help:
 	@echo ""
 	@echo "  test        - run test suite"
 	@echo "  shell       - open a shell in the web container"
-	@echo "  test-shell  - open a shell in test environment"
-	@echo ""
-	@echo "  generate    - create json file from TEMPLATE"
 	@echo ""
 	@echo "  help    - see this text"
 
@@ -49,7 +46,3 @@ start:
 .PHONY: test
 test:
 	docker-compose run --rm web bin/test.sh
-
-.PHONY: test-shell
-test-shell:
-	docker-compose run web
