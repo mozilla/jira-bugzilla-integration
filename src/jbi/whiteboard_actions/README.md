@@ -15,5 +15,5 @@ Let's create a `new_action`!
     1. `init()` returns a `__call__`able object that the system calls with the Bugzilla request payload
 1. Use the `payload` to perform the desired processing!
 1. Use the available service calls from `src/jbi/services.py' (or make new ones)
-1. Update the `README.md` to promote your action
+1. Update the `README.md` to document your action
 1. Now the action `src.jbi.whiteboard_actions.my_team_actions` can be used in the YAML configuration, under the `module` key.
