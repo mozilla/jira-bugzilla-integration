@@ -13,7 +13,6 @@ ignore: |
 
 rules:
   key-duplicates: enable
-  key-ordering: enable
 
 
 yaml-files:

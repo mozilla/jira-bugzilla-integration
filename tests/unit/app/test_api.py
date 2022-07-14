@@ -50,9 +50,9 @@ def test_request_summary_is_logged(caplog):
 
 def test_whiteboard_tags(anon_client):
     resp = anon_client.get("/whiteboard_tags")
-    infos = resp.json()
+    actions = resp.json()
 
-    assert infos["devtest"]["description"] == "DevTest whiteboard tag"
+    assert actions["devtest"]["description"] == "DevTest whiteboard tag"
 
 
 def test_jira_projects(anon_client, mocked_jira):

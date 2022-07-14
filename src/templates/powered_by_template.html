@@ -5,29 +5,35 @@
     </head>
     <body>
         <h1>{{title}}</h1>
-        <p>{{num_configs}} actions.</p>
+        <p>{{actions|length}} actions.</p>
         <div id="collections">
             <table>
                 <thead>
                     <tr>
-                        <th>Identifier</th>
-                        <th>Action</th>
+                        <th>Tag</th>
                         <th>Contact</th>
                         <th>Description </th>
                         <th>Enabled</th>
+                        <th>Module</th>
                         <th>Parameters</th>
                     </tr>
                 </thead>
                 <tbody class="list">
-                    {% for key, value in data.items() %}
-                        {% if enable_query == none or value.enabled == enable_query %}
+                    {% for action in actions %}
+                        {% if enable_query == none or action.enabled == enable_query %}
                         <tr>
-                            <td class="identifier">{{key}}</td>
-                            <td class="action">{{value.action}}</td>
-                            <td class="contact">{{value.contact}}</td>
-                            <td class="description">{{value.description}}</td>
-                            <td class="enabled">{{value.enabled}}</td>
-                            <td class="parameters">{% for key, value in value.parameters.items() %}{{key ~ ": " ~ value}}{{ ", " if not loop.last else "" }}{% endfor %}
+                            <td class="identifier">{{action.whiteboard_tag}}</td>
+                            <td class="contact">{{action.contact}}</td>
+                            <td class="description">{{action.description}}</td>
+                            <td class="enabled">{{action.enabled}}</td>
+                            <td class="module">{{action.module}}</td>
+                            <td class="parameters">
+                                <dl>
+                                    {% for param, value in action.parameters.items() %}
+                                    <dt>{{param}}</dt>
+                                    <dd>{{value}}</dd>
+                                    {% endfor %}
+                                </dl>
                             </td>
                         </tr>
                         {% endif %}
@@ -35,6 +41,5 @@
                 </tbody>
             </table>
         </div>
-
     </body>
 </html>

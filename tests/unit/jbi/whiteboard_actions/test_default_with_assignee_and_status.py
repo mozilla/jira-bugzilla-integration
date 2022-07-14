@@ -12,7 +12,7 @@ from src.jbi.whiteboard_actions import default_with_assignee_and_status as actio
 
 
 def test_create_with_no_assignee(webhook_create_example, mocked_jira):
-    callable_object = action.init(whiteboard_tag="", jira_project_key="JBI")
+    callable_object = action.init(jira_project_key="JBI")
     value = callable_object(payload=webhook_create_example)
 
     mocked_jira().create_issue.assert_called_once_with(
@@ -38,7 +38,7 @@ def test_create_with_assignee(webhook_create_example, mocked_jira, mocked_bugzil
         "bugs": {"654321": {"comments": [{"text": "Initial comment"}]}}
     }
 
-    callable_object = action.init(whiteboard_tag="", jira_project_key="JBI")
+    callable_object = action.init(jira_project_key="JBI")
     value = callable_object(payload=webhook_create_example)
 
     mocked_jira().create_issue.assert_called_once_with(
@@ -68,7 +68,7 @@ def test_clear_assignee(webhook_create_example, mocked_jira):
     webhook_create_example.event.action = "modify"
     webhook_create_example.event.routing_key = "bug.modify:assigned_to"
 
-    callable_object = action.init(whiteboard_tag="", jira_project_key="JBI")
+    callable_object = action.init(jira_project_key="JBI")
     value = callable_object(payload=webhook_create_example)
 
     mocked_jira().create_issue.assert_not_called()
@@ -98,7 +98,7 @@ def test_set_assignee(webhook_create_example, mocked_jira):
 
     mocked_jira().user_find_by_user_string.return_value = [{"accountId": "6254"}]
 
-    callable_object = action.init(whiteboard_tag="", jira_project_key="JBI")
+    callable_object = action.init(jira_project_key="JBI")
     value = callable_object(payload=webhook_create_example)
 
     mocked_jira().create_issue.assert_not_called()
@@ -130,7 +130,6 @@ def test_create_with_unknown_status(
     }
 
     callable_object = action.init(
-        whiteboard_tag="",
         jira_project_key="JBI",
         status_map={
             "ASSIGNED": "In Progress",
@@ -165,7 +164,6 @@ def test_create_with_known_status(webhook_create_example, mocked_jira, mocked_bu
     }
 
     callable_object = action.init(
-        whiteboard_tag="",
         jira_project_key="JBI",
         status_map={
             "ASSIGNED": "In Progress",
@@ -199,7 +197,6 @@ def test_change_to_unknown_status(webhook_create_example, mocked_jira):
     webhook_create_example.event.routing_key = "bug.modify:status"
 
     callable_object = action.init(
-        whiteboard_tag="",
         jira_project_key="JBI",
         status_map={
             "ASSIGNED": "In Progress",
@@ -231,7 +228,6 @@ def test_change_to_known_status(webhook_create_example, mocked_jira):
     webhook_create_example.event.routing_key = "bug.modify:status"
 
     callable_object = action.init(
-        whiteboard_tag="",
         jira_project_key="JBI",
         status_map={
             "ASSIGNED": "In Progress",
@@ -263,7 +259,6 @@ def test_change_to_known_resolution(webhook_create_example, mocked_jira):
     webhook_create_example.event.routing_key = "bug.modify:resolution"
 
     callable_object = action.init(
-        whiteboard_tag="",
         jira_project_key="JBI",
         status_map={
             "ASSIGNED": "In Progress",
