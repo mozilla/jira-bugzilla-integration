@@ -21,6 +21,7 @@ class GunicornSettings(BaseSettings):
     access_log: str = "-"
     error_log: str = "-"
     workers_per_core: float = 1.0
+    worker_tmp_dir: str = "/dev/shm"
     max_workers: Optional[int]
     web_concurrency: Optional[conint(gt=0)]
     workers: Optional[int]
@@ -53,7 +54,7 @@ loglevel = gunicorn_settings.log_level
 workers = gunicorn_settings.workers
 bind = gunicorn_settings.bind
 errorlog = gunicorn_settings.error_log
-worker_tmp_dir = "/dev/shm"
+worker_tmp_dir = gunicorn_settings.worker_tmp_dir
 accesslog = gunicorn_settings.access_log
 graceful_timeout = gunicorn_settings.graceful_timeout
 timeout = gunicorn_settings.timeout
