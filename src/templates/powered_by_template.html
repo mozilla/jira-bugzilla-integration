@@ -28,7 +28,12 @@
                             <td class="enabled">{{action.enabled}}</td>
                             <td class="module">{{action.module}}</td>
                             <td class="parameters">
-                                <dl>{% for param, value in action.parameters.items() %}<dt>{{param}}</dt><dd>{{value}}</dd>{% endfor %}</dl>
+                                <dl>
+                                    {% for param, value in action.parameters.items() %}
+                                    <dt>{{param}}</dt>
+                                    <dd>{{value}}</dd>
+                                    {% endfor %}
+                                </dl>
                             </td>
                         </tr>
                         {% endif %}
