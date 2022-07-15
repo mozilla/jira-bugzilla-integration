@@ -11,7 +11,7 @@ import sentry_sdk
 import uvicorn  # type: ignore
 from fastapi import Body, Depends, FastAPI, Request
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import HTMLResponse, ORJSONResponse
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
@@ -49,7 +49,7 @@ app.add_middleware(SentryAsgiMiddleware)
 
 
 @app.get("/", include_in_schema=False)
-def root(request: Request):
+def root():
     """Expose key configuration"""
     return {
         "title": app.title,
@@ -98,9 +98,9 @@ def bugzilla_webhook(
     """API endpoint that Bugzilla Webhook Events request"""
     try:
         result = execute_action(request, actions, settings)
-        return ORJSONResponse(content=result, status_code=200)
+        return result
     except IgnoreInvalidRequestError as exception:
-        return ORJSONResponse(content={"error": str(exception)}, status_code=200)
+        return {"error": str(exception)}
 
 
 @app.get("/whiteboard_tags/")
