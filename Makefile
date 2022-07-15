@@ -14,15 +14,18 @@ help:
 	@echo ""
 	@echo "JBI make rules:"
 	@echo ""
-	@echo "  build   - build docker containers"
-	@echo "  lint    - lint check for code"
-	@echo "  format  - run formatters (black, isort), fix in place"
-	@echo "  start   - run the API service"
+	@echo "Local"
+	@echo "  format        - run formatters (black, isort), fix in place"
+	@echo "  lint          - run linters"
+	@echo "  start         - run the API service locally"
+	@echo "  test          - run test suite"
 	@echo ""
-	@echo "  test        - run test suite"
-	@echo "  shell       - open a shell in the web container"
+	@echo "Docker"
+	@echo "  build         - build docker container"
+	@echo "  docker-start  - run the API service through docker"
+	@echo "  docker-shell  - open a shell in the web container"
 	@echo ""
-	@echo "  help    - see this text"
+	@echo "  help          - see this text"
 
 install: $(INSTALL_STAMP)
 $(INSTALL_STAMP): poetry.lock
@@ -44,12 +47,16 @@ format: $(INSTALL_STAMP)
 lint: $(INSTALL_STAMP)
 	bin/lint.sh
 
-.PHONY: shell
-shell:
-	docker-compose run --rm web /bin/sh
-
 .PHONY: start
 start:
+	poetry run python -m src.app.api
+
+.PHONY: docker-shell
+docker-shell:
+	docker-compose run --rm web /bin/sh
+
+.PHONY: docker-start
+docker-start:
 	docker-compose up
 
 .PHONY: test
