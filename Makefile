@@ -26,7 +26,8 @@ help:
 
 install: $(INSTALL_STAMP)
 $(INSTALL_STAMP): poetry.lock
-	poetry install
+	@if [ -z $(shell command -v poetry 2> /dev/null) ]; then echo "Poetry could not be found. See https://python-poetry.org/docs/"; exit 2; fi
+	poetry install --no-root
 	touch $(INSTALL_STAMP)
 
 .PHONY: build
