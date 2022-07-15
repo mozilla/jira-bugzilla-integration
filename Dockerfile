@@ -20,8 +20,7 @@ WORKDIR $PYSETUP_PATH
 COPY ./poetry.lock ./pyproject.toml ./
 RUN poetry install --no-dev --no-root
 
-# 'production' stage uses the clean 'base' stage and copyies
-# in only our runtime deps that were installed in the 'builder-base'
+# `production` stage uses the dependencies downloaded in the `base` stage
 FROM python:3.10.5-slim as production
 ENV PROMETHEUS_MULTIPROC=1 \
     PYTHONUNBUFFERED=1 \
