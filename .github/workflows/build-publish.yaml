@@ -62,7 +62,7 @@ jobs:
       - uses: actions/upload-artifact@v3
         with:
           name: container-image
-          path: /tmp/container-$IMAGE_TAG.tar.gz
+          path: /tmp/container-${{ env.IMAGE_TAG }}.tar.gz
           retention-days: 7 # Instead of default 90 days
 
   publish:
@@ -78,7 +78,7 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: container-image
-          path: /tmp/container-$IMAGE_TAG.tar.gz
+          path: /tmp/container-${{ env.IMAGE_TAG }}.tar.gz
 
       - name: Load container from artifact
         run: |
@@ -90,9 +90,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build Docker image
-        env:
-          IMAGE_TAG: ${{ needs.prepare.outputs.FULL_IMAGE_TAG }}
+      - name: Publish Docker image
         run: |
           docker image tag $GITHUB_REPOSITORY:$IMAGE_TAG $GITHUB_REPOSITORY:latest
           docker push $GITHUB_REPOSITORY:$IMAGE_TAG
