@@ -1,10 +1,15 @@
 """Services and functions that can be used to create custom actions"""
-import bugzilla as rh_bugzilla  # type: ignore
-from atlassian import Jira  # type: ignore
+from typing import TypedDict
+
+import bugzilla as rh_bugzilla
+from atlassian import Jira
 
 from src.app import environment
 
 settings = environment.get_settings()
+
+
+ServiceHealth = TypedDict("ServiceHealth", {"up": bool})
 
 
 def get_jira():
@@ -24,18 +29,18 @@ def get_bugzilla():
     )
 
 
-def bugzilla_check_health():
+def bugzilla_check_health() -> ServiceHealth:
     """Check health for Bugzilla Service"""
     bugzilla = get_bugzilla()
-    health = {"up": bugzilla.logged_in}
+    health: ServiceHealth = {"up": bugzilla.logged_in}
     return health
 
 
-def jira_check_health():
+def jira_check_health() -> ServiceHealth:
     """Check health for Jira Service"""
     jira = get_jira()
     server_info = jira.get_server_info(True)
-    health = {"up": server_info is not None}
+    health: ServiceHealth = {"up": server_info is not None}
     return health
 
 
