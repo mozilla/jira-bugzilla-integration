@@ -73,7 +73,7 @@ python_version = "3.10"
 warn_return_any = true
 
 [[tool.mypy.overrides]]
-module = ["ruamel"]
+module = ["ruamel", "bugzilla", "atlassian"]
 ignore_missing_imports = true
 
 [tool.coverage]

@@ -1,6 +1,6 @@
 """Services and functions that can be used to create custom actions"""
-import bugzilla as rh_bugzilla  # type: ignore
-from atlassian import Jira  # type: ignore
+import bugzilla as rh_bugzilla
+from atlassian import Jira
 
 from src.app import environment
 
