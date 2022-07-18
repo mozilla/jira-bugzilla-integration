@@ -1,8 +1,6 @@
 """
 Router dedicated to Dockerflow APIs
 """
-from typing import Dict
-
 from fastapi import APIRouter, Response
 
 from src.app import environment
@@ -15,12 +13,10 @@ api_router = APIRouter(tags=["Monitor"])
 @api_router.head("/__heartbeat__")
 def heartbeat(response: Response):
     """Return status of backing services, as required by Dockerflow."""
-    data: Dict = {**jbi_service_health_map()}
-    for _, health in data.items():
-        if not health.get("up"):
-            response.status_code = 503
-            break
-    return data
+    health_map = jbi_service_health_map()
+    if not all(health["up"] for health in health_map.values()):
+        response.status_code = 503
+    return health_map
 
 
 @api_router.get("/__lbheartbeat__")
