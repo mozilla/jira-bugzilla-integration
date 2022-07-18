@@ -1,17 +1,11 @@
 ---
 # Action Config
 - whiteboard_tag: devtest
-  allow_private: true
-  contact: dtownsend@mozilla.com
-  description: Flowstate whiteboard tag
+  contact: tbd
+  description: DevTest whiteboard tag
   enabled: true
-  module: src.jbi.whiteboard_actions.default_with_assignee_and_status
   parameters:
     jira_project_key: JST
-    status_map:
-      ASSIGNED: In Progress
-      FIXED: In Review
-      REOPENED: In Progress
 
 - whiteboard_tag: flowstate
   allow_private: true
@@ -20,7 +14,7 @@
   enabled: true
   module: src.jbi.whiteboard_actions.default_with_assignee_and_status
   parameters:
-    jira_project_key: MR2
+    jira_project_key: JST
     status_map:
       ASSIGNED: In Progress
       FIXED: In Review
