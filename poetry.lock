@@ -596,7 +596,7 @@ ruamel = ["ruamel.yaml (>=0.15,<0.18)"]
 
 [[package]]
 name = "pylint"
-version = "2.14.4"
+version = "2.14.5"
 description = "python code static checker"
 category = "dev"
 optional = false
@@ -1002,7 +1002,7 @@ pyyaml = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8, <3.11"
-content-hash = "f1728733a7f204817dc6eea1b62b2d968f019ae78601021dd1ecaf119ffa1a2b"
+content-hash = "837f140be91225484926b8c9388b274639e357fa443c0a7d714720ea630dfe5e"
 
 [metadata.files]
 anyio = [
@@ -1420,8 +1420,8 @@ pydantic-yaml = [
     {file = "pydantic_yaml-0.6.3.tar.gz", hash = "sha256:8bec8b6eee9889073b5461075d8b85efb00ba43bd34d5fb331fa394ec5a3b46f"},
 ]
 pylint = [
-    {file = "pylint-2.14.4-py3-none-any.whl", hash = "sha256:89b61867db16eefb7b3c5b84afc94081edaf11544189e2b238154677529ad69f"},
-    {file = "pylint-2.14.4.tar.gz", hash = "sha256:47705453aa9dce520e123a7d51843d5f0032cbfa06870f89f00927aa1f735a4a"},
+    {file = "pylint-2.14.5-py3-none-any.whl", hash = "sha256:fabe30000de7d07636d2e82c9a518ad5ad7908590fe135ace169b44839c15f90"},
+    {file = "pylint-2.14.5.tar.gz", hash = "sha256:487ce2192eee48211269a0e976421f334cf94de1806ca9d0a99449adcdf0285e"},
 ]
 pylint-pytest = [
     {file = "pylint_pytest-1.1.2-py2.py3-none-any.whl", hash = "sha256:fb20ef318081cee3d5febc631a7b9c40fa356b05e4f769d6e60a337e58c8879b"},
