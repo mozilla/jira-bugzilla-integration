@@ -29,7 +29,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: $GITHUB_REPOSITORY
+          images: ${{ env.GITHUB_REPOSITORY }}
           # https://github.com/marketplace/actions/docker-metadata-action#tags-input
           tags: |
             type=semver,pattern={{version}}
