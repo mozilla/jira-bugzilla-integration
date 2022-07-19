@@ -1,15 +1,14 @@
 version: "3.8"
 services:
   web:
-    build:
-      context: .
-      target: development
-    volumes:
-      - .:/app
-    ports:
-      - ${PORT:-8000}:${PORT:-8000}
+    build: .
+    command: python -m src.app.api
+    env_file:
+      - config/local_dev.env
     # Let the init system handle signals for us.
     # among other things this helps shutdown be fast
     init: true
-    env_file:
-      - config/local_dev.env
+    ports:
+      - ${PORT:-8000}:${PORT:-8000}
+    volumes:
+      - .:/app

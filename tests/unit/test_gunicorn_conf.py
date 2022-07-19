@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from bin.gunicorn_conf import GunicornSettings
+from config.gunicorn_conf import GunicornSettings
 
 
 def test_set_bind(monkeypatch):
