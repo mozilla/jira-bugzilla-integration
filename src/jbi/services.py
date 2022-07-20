@@ -1,6 +1,6 @@
 """Services and functions that can be used to create custom actions"""
 import logging
-from typing import Dict, List, TypedDict
+from typing import Dict, List
 
 import bugzilla as rh_bugzilla
 from atlassian import Jira
@@ -13,7 +13,7 @@ settings = environment.get_settings()
 logger = logging.getLogger(__name__)
 
 
-ServiceHealth = TypedDict("ServiceHealth", {"up": bool})
+ServiceHealth = Dict[str, bool]
 
 
 def get_jira():
@@ -29,7 +29,8 @@ def get_jira():
 def jira_visible_projects(jira=None) -> List[Dict]:
     """Return list of projects that are visible with the configured Jira credentials"""
     jira = jira or get_jira()
-    return jira.projects(included_archived=None)
+    projects: List[Dict] = jira.projects(included_archived=None)
+    return projects
 
 
 def get_bugzilla():
