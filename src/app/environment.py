@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     bugzilla_api_key: str
 
     # Logging
-    log_level: str = "info"
+    log_level: str = "debug"
 
     # Sentry
     sentry_dsn: Optional[SentryDsn]
