@@ -51,26 +51,23 @@ def _jira_check_health(actions: Actions) -> ServiceHealth:
     """Check health for Jira Service"""
     jira = get_jira()
     server_info = jira.get_server_info(True)
+    is_up = server_info is not None
     health: ServiceHealth = {
-        "up": server_info is not None,
+        "up": is_up,
+        "all_projects_are_visible": is_up and _all_jira_projects_visible(jira, actions),
     }
-    if server_info is None:
-        return health
+    return health
 
+
+def _all_jira_projects_visible(jira, actions: Actions) -> bool:
     visible_projects = {project["key"] for project in jira_visible_projects(jira)}
-    configured_projects = {
-        action.parameters["jira_project_key"]
-        for action in actions.__root__
-        if "jira_project_key" in action.parameters
-    }
-    missing_projects = configured_projects - visible_projects
+    missing_projects = actions.configured_jira_projects_keys - visible_projects
     if missing_projects:
         logger.error(
-            "Projects %s are not visible with configured credentials", missing_projects
+            "Jira projects %s are not visible with configured credentials",
+            missing_projects,
         )
-
-    health["all_projects_are_visible"] = not missing_projects
-    return health
+    return not missing_projects
 
 
 def jbi_service_health_map(actions: Actions):

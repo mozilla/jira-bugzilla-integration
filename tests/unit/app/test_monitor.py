@@ -32,6 +32,7 @@ def test_read_heartbeat_all_services_fail(anon_client, mocked_jira, mocked_bugzi
     assert resp.json() == {
         "jira": {
             "up": False,
+            "all_projects_are_visible": False,
         },
         "bugzilla": {
             "up": False,
@@ -50,6 +51,7 @@ def test_read_heartbeat_jira_services_fails(anon_client, mocked_jira, mocked_bug
     assert resp.json() == {
         "jira": {
             "up": False,
+            "all_projects_are_visible": False,
         },
         "bugzilla": {
             "up": True,
