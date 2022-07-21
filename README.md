@@ -91,7 +91,8 @@ features on top of the default.
 
 It will attempt to assign the Jira issue the same person as the bug is assigned to. This relies on
 the user using the same email address in both Bugzilla and Jira. If the user does not exist in Jira
-then the assignee is cleared from the Jira issue.
+then the assignee is cleared from the Jira issue. The Jira account that JBI uses requires the "Browse 
+users and groups" global permission in order to set the assignee.
 
 If configured, the action supports setting the Jira issues's status when the Bugzilla status and resolution change.
 
