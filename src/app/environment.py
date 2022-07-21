@@ -37,6 +37,8 @@ class Settings(BaseSettings):
     sentry_dsn: Optional[SentryDsn]
 
     class Config:
+        """Pydantic configuration"""
+
         env_file = ".env"
         env_file_encoding = "utf-8"
 
