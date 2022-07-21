@@ -53,7 +53,7 @@ start: $(INSTALL_STAMP) $(DOTENV_FILE)
 	poetry run python -m src.app.api
 
 $(DOTENV_FILE):
-	cp -n config/local_dev.env $(DOTENV_FILE)
+	cp -n .env.example $(DOTENV_FILE)
 
 .PHONY: docker-shell
 docker-shell: $(DOTENV_FILE)
