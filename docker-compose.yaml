@@ -4,7 +4,7 @@ services:
     build: .
     command: python -m src.app.api
     env_file:
-      - config/local_dev.env
+      - .env
     # Let the init system handle signals for us.
     # among other things this helps shutdown be fast
     init: true
