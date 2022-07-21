@@ -1,8 +1,8 @@
 ---
 # Action Config
-- whiteboard_tag: devtest
-  contact: tbd
-  description: DevTest whiteboard tag
+- whiteboard_tag: jst
+  contact: bsieber@mozilla.com
+  description: What does JST mean?
   enabled: true
   parameters:
     jira_project_key: JST
