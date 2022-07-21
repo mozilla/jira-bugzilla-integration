@@ -15,6 +15,7 @@ help:
 	@echo "JBI make rules:"
 	@echo ""
 	@echo "Local"
+	@echo "  clean         - clean local cache folders"
 	@echo "  format        - run formatters (black, isort), fix in place"
 	@echo "  lint          - run linters"
 	@echo "  start         - run the API service locally"
@@ -27,10 +28,16 @@ help:
 	@echo ""
 	@echo "  help          - see this text"
 
+.PHONY: clean
+clean:
+	find . -name "__pycache__" | xargs rm -rf
+	rm -rf .mypy_cache .pytest_cache .coverage .venv
+
+
 install: $(INSTALL_STAMP)
 $(INSTALL_STAMP): poetry.lock
 	@if [ -z $(shell command -v poetry 2> /dev/null) ]; then echo "Poetry could not be found. See https://python-poetry.org/docs/"; exit 2; fi
-	poetry install --no-root
+	POETRY_VIRTUALENVS_IN_PROJECT=1 poetry install --no-root
 	touch $(INSTALL_STAMP)
 
 .PHONY: build
