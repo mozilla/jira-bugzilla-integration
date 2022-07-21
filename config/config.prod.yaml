@@ -16,11 +16,16 @@
     jira_project_key: FIDEDI
 
 - whiteboard_tag: fidefe
-  contact: tbd
+  contact: gijs@mozilla.com
   description: Firefox Front End whiteboard tag
   enabled: true
+  module: src.jbi.whiteboard_actions.default_with_assignee_and_status
   parameters:
     jira_project_key: FIDEFE
+    status_map:
+      ASSIGNED: In Progress
+      FIXED: Closed
+      REOPENED: In Progress
 
 - whiteboard_tag: flowstate
   allow_private: true
