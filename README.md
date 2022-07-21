@@ -5,7 +5,7 @@
 # Jira Bugzilla Integration (JBI)
 System to sync Bugzilla bugs to Jira issues.
 
-### Caveats
+## Caveats
 - The system accepts webhook events from Bugzilla
 - Bugs' `whiteboard` tags are used to determine if they should be synchronized or ignored
 - The events are transformed into Jira issues
@@ -91,7 +91,7 @@ features on top of the default.
 
 It will attempt to assign the Jira issue the same person as the bug is assigned to. This relies on
 the user using the same email address in both Bugzilla and Jira. If the user does not exist in Jira
-then the assignee is cleared from the Jira issue. The Jira account that JBI uses requires the "Browse 
+then the assignee is cleared from the Jira issue. The Jira account that JBI uses requires the "Browse
 users and groups" global permission in order to set the assignee.
 
 If configured, the action supports setting the Jira issues's status when the Bugzilla status and resolution change.
@@ -145,6 +145,16 @@ graph TD
     end
 ```
 
+## Development
+
+- `make start`: run the application locally (http://localhost:8000)
+- `make test`: run the unit tests suites
+- `make lint`: static analysis of the code base
+
+You may consider:
+
+* Tweaking the application settings in the `.env` file (See `src/app/environment.py` for details)
+* Installing a pre-commit hook to lint your changes with `pre-commit install`
 
 ## Deployment
 

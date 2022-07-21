@@ -6,6 +6,7 @@ _GID ?= 10001
 
 VENV := $(shell echo $${VIRTUAL_ENV-.venv})
 INSTALL_STAMP = $(VENV)/.install.stamp
+DOTENV_FILE = ".env"
 
 .PHONY: help
 help:
@@ -54,15 +55,18 @@ lint: $(INSTALL_STAMP)
 	bin/lint.sh
 
 .PHONY: start
-start:
+start: $(INSTALL_STAMP) $(DOTENV_FILE)
 	poetry run python -m src.app.api
 
+$(DOTENV_FILE):
+	cp -n .env.example $(DOTENV_FILE)
+
 .PHONY: docker-shell
-docker-shell:
+docker-shell: $(DOTENV_FILE)
 	docker-compose run --rm web /bin/sh
 
 .PHONY: docker-start
-docker-start:
+docker-start: $(DOTENV_FILE)
 	docker-compose up
 
 .PHONY: test
