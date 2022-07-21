@@ -6,7 +6,7 @@ _GID ?= 10001
 
 VENV := $(shell echo $${VIRTUAL_ENV-.venv})
 INSTALL_STAMP = $(VENV)/.install.stamp
-DOTENV_FILE = ".env"
+DOTENV_FILE = .env
 
 .PHONY: help
 help:
@@ -59,7 +59,7 @@ start: $(INSTALL_STAMP) $(DOTENV_FILE)
 	poetry run python -m src.app.api
 
 $(DOTENV_FILE):
-	cp -n .env.example $(DOTENV_FILE)
+	cp .env.example $(DOTENV_FILE)
 
 .PHONY: docker-shell
 docker-shell: $(DOTENV_FILE)
