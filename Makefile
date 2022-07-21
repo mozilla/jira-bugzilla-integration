@@ -6,7 +6,6 @@ _GID ?= 10001
 
 VENV := $(shell echo $${VIRTUAL_ENV-.venv})
 INSTALL_STAMP = $(VENV)/.install.stamp
-POETRY_VIRTUALENVS_IN_PROJECT = true
 
 .PHONY: help
 help:
