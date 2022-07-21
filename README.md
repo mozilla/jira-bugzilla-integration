@@ -181,7 +181,7 @@ GET /
     "description": "JBI v2 Platform",
     "documentation": "/docs",
     "title": "Jira Bugzilla Integration (JBI)",
-    "version": "2.0.1"
+    "version": "X.Y.Z"
 }
 ```
 
@@ -192,8 +192,7 @@ GET /__version__
 
 {
   "commit": "1ea792a733d704e0094fe6065ee64b2a3435f280",
-  "version": "refs/tags/v2.0.1",
-  "image_tag": "v2.0.1",
+  "version": "refs/tags/vX.Y.Z",
   "source": "https://github.com/mozilla/jira-bugzilla-integration",
   "build": "https://github.com/mozilla/jira-bugzilla-integration/actions/runs/2315380477"
 }
