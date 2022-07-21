@@ -23,7 +23,7 @@ from src.app.monitor import api_router as monitor_router
 from src.jbi.bugzilla import BugzillaWebhookRequest
 from src.jbi.models import Actions
 from src.jbi.runner import IgnoreInvalidRequestError, execute_action
-from src.jbi.services import get_jira
+from src.jbi.services import jira_visible_projects
 
 SRC_DIR = Path(__file__).parents[1]
 
@@ -117,8 +117,7 @@ def get_whiteboard_tag(
 @app.get("/jira_projects/")
 def get_jira_projects():
     """API for viewing projects that are currently accessible by API"""
-    jira = get_jira()
-    visible_projects: List[Dict] = jira.projects(included_archived=None)
+    visible_projects: List[Dict] = jira_visible_projects()
     return [project["key"] for project in visible_projects]
 
 

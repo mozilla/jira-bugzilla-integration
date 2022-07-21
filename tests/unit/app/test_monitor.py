@@ -32,6 +32,7 @@ def test_read_heartbeat_all_services_fail(anon_client, mocked_jira, mocked_bugzi
     assert resp.json() == {
         "jira": {
             "up": False,
+            "all_projects_are_visible": False,
         },
         "bugzilla": {
             "up": False,
@@ -50,6 +51,7 @@ def test_read_heartbeat_jira_services_fails(anon_client, mocked_jira, mocked_bug
     assert resp.json() == {
         "jira": {
             "up": False,
+            "all_projects_are_visible": False,
         },
         "bugzilla": {
             "up": True,
@@ -63,6 +65,7 @@ def test_read_heartbeat_bugzilla_services_fails(
     """/__heartbeat__ returns 503 when one service is unavailable."""
     mocked_bugzilla().logged_in = False
     mocked_jira().get_server_info.return_value = {}
+    mocked_jira().projects.return_value = [{"key": "MR2"}, {"key": "JST"}]
 
     resp = anon_client.get("/__heartbeat__")
 
@@ -70,6 +73,7 @@ def test_read_heartbeat_bugzilla_services_fails(
     assert resp.json() == {
         "jira": {
             "up": True,
+            "all_projects_are_visible": True,
         },
         "bugzilla": {
             "up": False,
@@ -81,6 +85,7 @@ def test_read_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
     """/__heartbeat__ returns 200 when checks succeed."""
     mocked_bugzilla().logged_in = True
     mocked_jira().get_server_info.return_value = {}
+    mocked_jira().projects.return_value = [{"key": "MR2"}, {"key": "JST"}]
 
     resp = anon_client.get("/__heartbeat__")
 
@@ -88,6 +93,26 @@ def test_read_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
     assert resp.json() == {
         "jira": {
             "up": True,
+            "all_projects_are_visible": True,
+        },
+        "bugzilla": {
+            "up": True,
+        },
+    }
+
+
+def test_jira_heartbeat_visible_projects(anon_client, mocked_jira, mocked_bugzilla):
+    """/__heartbeat__ fails if configured projects don't match."""
+    mocked_bugzilla().logged_in = True
+    mocked_jira().get_server_info.return_value = {}
+
+    resp = anon_client.get("/__heartbeat__")
+
+    assert resp.status_code == 503
+    assert resp.json() == {
+        "jira": {
+            "up": True,
+            "all_projects_are_visible": False,
         },
         "bugzilla": {
             "up": True,
@@ -99,6 +124,7 @@ def test_head_heartbeat(anon_client, mocked_jira, mocked_bugzilla):
     """/__heartbeat__ support head requests"""
     mocked_bugzilla().logged_in = True
     mocked_jira().get_server_info.return_value = {}
+    mocked_jira().projects.return_value = [{"key": "MR2"}, {"key": "JST"}]
 
     resp = anon_client.head("/__heartbeat__")
 

@@ -6,7 +6,7 @@ import importlib
 import warnings
 from inspect import signature
 from types import ModuleType
-from typing import Any, Callable, Dict, List, Literal, Mapping, Optional, Union
+from typing import Any, Callable, Dict, List, Literal, Mapping, Optional, Set, Union
 
 from pydantic import EmailStr, Extra, Field, root_validator, validator
 from pydantic_yaml import YamlModel
@@ -70,6 +70,9 @@ class Actions(YamlModel):
         """Build mapping of actions by lookup tag."""
         return {action.whiteboard_tag: action for action in self.__root__}
 
+    def __iter__(self):
+        return iter(self.__root__)
+
     def __len__(self):
         return len(self.__root__)
 
@@ -79,6 +82,15 @@ class Actions(YamlModel):
     def get(self, tag: Optional[str]) -> Optional[Action]:
         """Lookup actions by whiteboard tag"""
         return self.by_tag.get(tag.lower()) if tag else None
+
+    @functools.cached_property
+    def configured_jira_projects_keys(self) -> Set[str]:
+        """Return the list of Jira project keys from all configured actions"""
+        return {
+            action.parameters["jira_project_key"]
+            for action in self.__root__
+            if "jira_project_key" in action.parameters
+        }
 
     @validator("__root__")
     def validate_actions(  # pylint: disable=no-self-argument
