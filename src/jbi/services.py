@@ -40,14 +40,14 @@ def get_bugzilla():
     )
 
 
-def bugzilla_check_health() -> ServiceHealth:
+def _bugzilla_check_health() -> ServiceHealth:
     """Check health for Bugzilla Service"""
     bugzilla = get_bugzilla()
     health: ServiceHealth = {"up": bugzilla.logged_in}
     return health
 
 
-def jira_check_health(actions: Actions) -> ServiceHealth:
+def _jira_check_health(actions: Actions) -> ServiceHealth:
     """Check health for Jira Service"""
     jira = get_jira()
     server_info = jira.get_server_info(True)
@@ -76,6 +76,6 @@ def jira_check_health(actions: Actions) -> ServiceHealth:
 def jbi_service_health_map(actions: Actions):
     """Returns dictionary of health check's for Bugzilla and Jira Services"""
     return {
-        "bugzilla": bugzilla_check_health(),
-        "jira": jira_check_health(actions),
+        "bugzilla": _bugzilla_check_health(),
+        "jira": _jira_check_health(actions),
     }
