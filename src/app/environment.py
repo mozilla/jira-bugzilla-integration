@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     # Sentry
     sentry_dsn: Optional[SentryDsn]
 
+    class Config:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+
 
 @lru_cache()
 def get_settings() -> Settings:
