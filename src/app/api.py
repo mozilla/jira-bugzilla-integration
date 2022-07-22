@@ -112,7 +112,7 @@ def get_whiteboard_tags(
         filtered = {whiteboard_tag: existing}
     else:
         filtered = actions.by_tag  # type: ignore
-    return {k: v.dict() for k, v in filtered.items()}
+    return {k: v.dict(exclude={"callable"}) for k, v in filtered.items()}
 
 
 @app.get("/jira_projects/")
@@ -132,7 +132,7 @@ def powered_by_jbi(
     context = {
         "request": request,
         "title": "Powered by JBI",
-        "actions": [action.dict() for action in actions],
+        "actions": [action.dict(exclude={"callable"}) for action in actions],
         "enable_query": enabled,
     }
     return templates.TemplateResponse("powered_by_template.html", context)
