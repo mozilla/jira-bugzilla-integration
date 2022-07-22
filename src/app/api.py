@@ -10,7 +10,6 @@ from typing import Dict, List, Optional
 import sentry_sdk
 import uvicorn  # type: ignore
 from fastapi import Body, Depends, FastAPI, Request
-from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -112,7 +111,7 @@ def get_whiteboard_tags(
     if existing := actions.get(whiteboard_tag):
         filtered = {whiteboard_tag: existing}
     else:
-        filtered = actions.by_tag
+        filtered = actions.by_tag  # type: ignore
     return {k: v.dict() for k, v in filtered.items()}
 
 
