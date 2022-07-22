@@ -56,6 +56,7 @@ class Action(YamlModel):
 
         extra = Extra.allow
         keep_untouched = (functools.cached_property,)
+        fields = {"callable": {"exclude": True}}
 
 
 class Actions(YamlModel):

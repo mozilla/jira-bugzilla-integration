@@ -10,7 +10,6 @@ from typing import Dict, List, Optional
 import sentry_sdk
 import uvicorn  # type: ignore
 from fastapi import Body, Depends, FastAPI, Request
-from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -104,14 +103,16 @@ def bugzilla_webhook(
 
 
 @app.get("/whiteboard_tags/")
-def get_whiteboard_tag(
+def get_whiteboard_tags(
     whiteboard_tag: Optional[str] = None,
     actions: Actions = Depends(configuration.get_actions),
 ):
     """API for viewing whiteboard_tags and associated data"""
     if existing := actions.get(whiteboard_tag):
-        return {whiteboard_tag: existing}
-    return actions.by_tag
+        filtered = {whiteboard_tag: existing}
+    else:
+        filtered = actions.by_tag  # type: ignore
+    return {k: v.dict() for k, v in filtered.items()}
 
 
 @app.get("/jira_projects/")
@@ -131,7 +132,7 @@ def powered_by_jbi(
     context = {
         "request": request,
         "title": "Powered by JBI",
-        "actions": jsonable_encoder(actions),
+        "actions": [action.dict() for action in actions],
         "enable_query": enabled,
     }
     return templates.TemplateResponse("powered_by_template.html", context)
