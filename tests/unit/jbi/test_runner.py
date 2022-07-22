@@ -130,3 +130,35 @@ def test_execution_logging_for_ignored_requests(
         "Handling incoming request",
         "Ignore incoming request: no action matching bug whiteboard tags: foo",
     ]
+
+
+def test_counter_is_incremented_on_ignored_requests(
+    webhook_create_example: BugzillaWebhookRequest,
+    actions_example: Actions,
+    settings: Settings,
+):
+    assert webhook_create_example.bug
+    webhook_create_example.bug.whiteboard = "foo"
+
+    with mock.patch("src.jbi.runner.counter_ignored") as mocked:
+        with pytest.raises(IgnoreInvalidRequestError):
+            execute_action(
+                request=webhook_create_example,
+                actions=actions_example,
+                settings=settings,
+            )
+    assert mocked.inc.called, "ignored counter was called"
+
+
+def test_counter_is_incremented_on_processed_requests(
+    webhook_create_example: BugzillaWebhookRequest,
+    actions_example: Actions,
+    settings: Settings,
+):
+    with mock.patch("src.jbi.runner.counter_processed") as mocked:
+        execute_action(
+            request=webhook_create_example,
+            actions=actions_example,
+            settings=settings,
+        )
+    assert mocked.inc.called, "processed counter was called"
