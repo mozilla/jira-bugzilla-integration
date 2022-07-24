@@ -10,6 +10,7 @@ from typing import Dict, List, Optional
 import sentry_sdk
 import uvicorn  # type: ignore
 from fastapi import Body, Depends, FastAPI, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -109,10 +110,8 @@ def get_whiteboard_tags(
 ):
     """API for viewing whiteboard_tags and associated data"""
     if existing := actions.get(whiteboard_tag):
-        filtered = {whiteboard_tag: existing}
-    else:
-        filtered = actions.by_tag  # type: ignore
-    return {k: v.dict(exclude={"callable"}) for k, v in filtered.items()}
+        return {whiteboard_tag: existing}
+    return actions.by_tag
 
 
 @app.get("/jira_projects/")
@@ -132,7 +131,7 @@ def powered_by_jbi(
     context = {
         "request": request,
         "title": "Powered by JBI",
-        "actions": [action.dict(exclude={"callable"}) for action in actions],
+        "actions": jsonable_encoder(actions),
         "enable_query": enabled,
     }
     return templates.TemplateResponse("powered_by_template.html", context)

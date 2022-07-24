@@ -8,9 +8,8 @@ from fastapi.testclient import TestClient
 
 from src.app.api import app
 from src.app.environment import Settings
-from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookComment, BugzillaWebhookRequest
-from src.jbi.models import Actions
-from src.jbi.services import get_bugzilla
+from src.jbi.bugzilla import BugzillaWebhookComment, BugzillaWebhookRequest
+from src.jbi.models import Action, Actions
 
 
 @pytest.fixture
@@ -25,13 +24,13 @@ def settings():
     return Settings()
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def mocked_bugzilla():
     with mock.patch("src.jbi.services.rh_bugzilla.Bugzilla") as mocked_bz:
         yield mocked_bz
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def mocked_jira():
     with mock.patch("src.jbi.services.Jira") as mocked_jira:
         yield mocked_jira
@@ -167,14 +166,17 @@ def webhook_modify_private_example(
 
 
 @pytest.fixture
-def actions_example() -> Actions:
-    return Actions.parse_obj(
-        [
-            {
-                "whiteboard_tag": "devtest",
-                "contact": "contact@corp.com",
-                "description": "test config",
-                "module": "tests.unit.jbi.noop_action",
-            }
-        ]
+def action_example() -> Action:
+    return Action.parse_obj(
+        {
+            "whiteboard_tag": "devtest",
+            "contact": "contact@corp.com",
+            "description": "test config",
+            "module": "tests.unit.jbi.noop_action",
+        }
     )
+
+
+@pytest.fixture
+def actions_example(action_example) -> Actions:
+    return Actions.parse_obj([action_example])
