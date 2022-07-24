@@ -8,7 +8,7 @@ from inspect import signature
 from types import ModuleType
 from typing import Any, Callable, Dict, List, Literal, Mapping, Optional, Set, Union
 
-from pydantic import EmailStr, Extra, Field, PrivateAttr, root_validator, validator
+from pydantic import EmailStr, Field, PrivateAttr, root_validator, validator
 from pydantic_yaml import YamlModel
 
 
@@ -55,12 +55,6 @@ class Action(YamlModel):
         except (TypeError, AttributeError) as exception:
             raise ValueError(f"action is not properly setup.{exception}") from exception
         return values
-
-    class Config:
-        """Pydantic configuration"""
-
-        extra = Extra.allow
-        keep_untouched = (functools.cached_property,)
 
 
 class Actions(YamlModel):
