@@ -15,21 +15,7 @@ def test_model_serializes():
             "module": "tests.unit.jbi.bugzilla_action",
         }
     )
-    action._initialize_caller()
+    action.caller(payload=action)
     serialized_action = jsonable_encoder(action)
     assert not serialized_action.get("_caller")
-
-
-def test_caller_initialization_defered(webhook_create_example, action_example):
-    with patch.object(
-        Action, "_initialize_caller", wraps=action_example._initialize_caller
-    ) as spy:
-        # when the action_example has not been called yet
-        # then the caller has not been initialized
-        assert not action_example._caller
-
-        # when the action is called
-        action_example.call(webhook_create_example)
-        action_example.call(webhook_create_example)
-        # then the caller is only initialized once
-        spy.assert_called_once()
+    assert not serialized_action.get("caller")

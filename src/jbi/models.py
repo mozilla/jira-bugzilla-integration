@@ -26,16 +26,14 @@ class Action(YamlModel):
     parameters: dict = {}
     _caller: Callable = PrivateAttr(default=None)
 
-    def _initialize_caller(self):
-        action_module: ModuleType = importlib.import_module(self.module)
-        initialized_caller: Callable = action_module.init(**self.parameters)  # type: ignore
-        self._caller = initialized_caller
-
-    def call(self, payload):
-        """Run action callable"""
+    @property
+    def caller(self) -> Callable:
+        """Return the initialized callable for this action."""
         if not self._caller:
-            self._initialize_caller()
-        return self._caller(payload)
+            action_module: ModuleType = importlib.import_module(self.module)
+            initialized: Callable = action_module.init(**self.parameters)  # type: ignore
+            self._caller = initialized
+        return self._caller
 
     @root_validator
     def validate_action_config(cls, values):  # pylint: disable=no-self-argument
