@@ -1,0 +1,8 @@
+---
+# Action Config
+- whiteboard_tag: devtest
+  contact: tbd
+  description: DevTest whiteboard tag
+  enabled: true
+  parameters:
+    jira_project_key: DevTest

@@ -71,7 +71,7 @@ def test_whiteboard_tags_filtered(anon_client):
 
     resp = anon_client.get("/whiteboard_tags/?whiteboard_tag=foo")
     infos = resp.json()
-    assert sorted(infos.keys()) == ["devtest", "flowstate"]
+    assert sorted(infos.keys()) == ["devtest"]
 
 
 def test_powered_by_jbi(exclude_middleware, anon_client):

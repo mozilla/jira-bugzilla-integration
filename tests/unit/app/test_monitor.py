@@ -65,7 +65,7 @@ def test_read_heartbeat_bugzilla_services_fails(
     """/__heartbeat__ returns 503 when one service is unavailable."""
     mocked_bugzilla().logged_in = False
     mocked_jira().get_server_info.return_value = {}
-    mocked_jira().projects.return_value = [{"key": "MR2"}, {"key": "JST"}]
+    mocked_jira().projects.return_value = [{"key": "DevTest"}]
 
     resp = anon_client.get("/__heartbeat__")
 
@@ -85,7 +85,7 @@ def test_read_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
     """/__heartbeat__ returns 200 when checks succeed."""
     mocked_bugzilla().logged_in = True
     mocked_jira().get_server_info.return_value = {}
-    mocked_jira().projects.return_value = [{"key": "MR2"}, {"key": "JST"}]
+    mocked_jira().projects.return_value = [{"key": "DevTest"}]
 
     resp = anon_client.get("/__heartbeat__")
 
@@ -124,7 +124,7 @@ def test_head_heartbeat(anon_client, mocked_jira, mocked_bugzilla):
     """/__heartbeat__ support head requests"""
     mocked_bugzilla().logged_in = True
     mocked_jira().get_server_info.return_value = {}
-    mocked_jira().projects.return_value = [{"key": "MR2"}, {"key": "JST"}]
+    mocked_jira().projects.return_value = [{"key": "DevTest"}]
 
     resp = anon_client.head("/__heartbeat__")
 

@@ -1,11 +1,11 @@
 ---
 # Action Config
-- whiteboard_tag: devtest
-  contact: tbd
-  description: DevTest whiteboard tag
+- whiteboard_tag: nonprodtest
+  contact: bsieber@mozilla.com
+  description: Nonprod testing whiteboard tag
   enabled: true
   parameters:
-    jira_project_key: JST
+    jira_project_key: OSS
 
 - whiteboard_tag: flowstate
   allow_private: true
