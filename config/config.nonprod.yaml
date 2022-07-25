@@ -2,10 +2,10 @@
 # Action Config
 - whiteboard_tag: nonprodtest
   contact: bsieber@mozilla.com
-  description: Nonprod testing whiteboard tag
+  description: Nonprod testing whiteboard tag (JBI Bin Project)
   enabled: true
   parameters:
-    jira_project_key: OSS
+    jira_project_key: JB
 
 - whiteboard_tag: flowstate
   allow_private: true
