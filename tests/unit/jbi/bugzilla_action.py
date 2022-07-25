@@ -4,13 +4,13 @@ from requests import Session
 session = Session()
 
 
-class TestBugzillaAction:
-    def __init__(self):
+class FakeBugzillaAction:
+    def __init__(self, **params):
         self.bz = Bugzilla(url=None, requests_session=session)
 
-    def __call__(self):
-        return lambda: "test"
+    def __call__(self, payload):
+        return {"payload": payload}
 
 
 def init():
-    return TestBugzillaAction()
+    return FakeBugzillaAction()
