@@ -1,5 +1,4 @@
 """Services and functions that can be used to create custom actions"""
-import contextlib
 import logging
 from typing import Dict, List
 
@@ -46,14 +45,18 @@ class InstrumentedClient:
         self.timer = self.timers[timer_name]
 
     def __getattr__(self, attr):
-        if attr in self.methods:
-            self.counter.labels(method=attr).inc()
-            timer_cm = self.timer.labels(method=attr).time()
-        else:
-            timer_cm = contextlib.nullcontext()
-
-        with timer_cm:
+        if attr not in self.methods:
             return getattr(self.wrapped, attr)
+
+        def wrapped_func(*args, **kwargs):
+            # Increment the call counter.
+            self.counter.labels(method=attr).inc()
+            # Time its execution.
+            with self.timer.labels(method=attr).time():
+                return getattr(self.wrapped, attr)(*args, **kwargs)
+
+        # The method was not called yet.
+        return wrapped_func
 
 
 def get_jira():
