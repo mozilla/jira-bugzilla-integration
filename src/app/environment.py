@@ -2,11 +2,20 @@
 Module dedicated to interacting with the environment (variables, version.json)
 """
 import json
+from enum import Enum
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
 from pydantic import AnyUrl, BaseSettings
+
+
+class Environment(str, Enum):
+    """Production environment choices"""
+
+    LOCAL = "local"
+    NONPROD = "nonprod"
+    PRODUCTION = "production"
 
 
 class SentryDsn(AnyUrl):
@@ -19,8 +28,8 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
     app_reload: bool = True
-    env: str = "nonprod"
     max_retries: int = 3
+    env: Environment = Environment.NONPROD
 
     # Jira
     jira_base_url: str = "https://mozit-test.atlassian.net/"
