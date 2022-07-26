@@ -83,11 +83,11 @@
     jira_project_key: EXP
 
 - whiteboard_tag: prodtest
-  contact: tbd
-  description: ProdTest tag
+  contact: bsieber@mozilla.com
+  description: Prod testing whiteboard tag (JBI Bin Project)
   enabled: true
   parameters:
-    jira_project_key: OSS
+    jira_project_key: JB
 
 - whiteboard_tag: proton
   contact: tbd
