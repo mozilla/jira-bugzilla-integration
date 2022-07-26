@@ -8,7 +8,7 @@ from inspect import signature
 from types import ModuleType
 from typing import Any, Callable, Dict, List, Literal, Mapping, Optional, Set, Union
 
-from pydantic import EmailStr, Extra, Field, root_validator, validator
+from pydantic import EmailStr, Field, PrivateAttr, root_validator, validator
 from pydantic_yaml import YamlModel
 
 
@@ -24,13 +24,16 @@ class Action(YamlModel):
     enabled: bool = False
     allow_private: bool = False
     parameters: dict = {}
+    _caller: Callable = PrivateAttr(default=None)
 
-    @functools.cached_property
-    def callable(self) -> Callable:
+    @property
+    def caller(self) -> Callable:
         """Return the initialized callable for this action."""
-        action_module: ModuleType = importlib.import_module(self.module)
-        initialized: Callable = action_module.init(**self.parameters)  # type: ignore
-        return initialized
+        if not self._caller:
+            action_module: ModuleType = importlib.import_module(self.module)
+            initialized: Callable = action_module.init(**self.parameters)  # type: ignore
+            self._caller = initialized
+        return self._caller
 
     @root_validator
     def validate_action_config(cls, values):  # pylint: disable=no-self-argument
@@ -50,13 +53,6 @@ class Action(YamlModel):
         except (TypeError, AttributeError) as exception:
             raise ValueError(f"action is not properly setup.{exception}") from exception
         return values
-
-    class Config:
-        """Pydantic configuration"""
-
-        extra = Extra.allow
-        keep_untouched = (functools.cached_property,)
-        fields = {"callable": {"exclude": True}}
 
 
 class Actions(YamlModel):

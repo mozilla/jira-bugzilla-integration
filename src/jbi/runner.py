@@ -77,7 +77,7 @@ def execute_action(
             extra={"operation": Operations.EXECUTE, **log_context},
         )
 
-        content = action.callable(payload=request)
+        content = action.caller(payload=request)
 
         logger.info(
             "Action %r executed successfully for Bug %s",
