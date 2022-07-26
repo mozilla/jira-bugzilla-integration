@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     port: int = 8000
     app_reload: bool = True
     env: str = "nonprod"
+    max_retries: int = 3
 
     # Jira
     jira_base_url: str = "https://mozit-test.atlassian.net/"

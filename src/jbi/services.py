@@ -2,8 +2,9 @@
 import logging
 from typing import Dict, List
 
+import backoff
 import bugzilla as rh_bugzilla
-from atlassian import Jira
+from atlassian import Jira, errors
 from prometheus_client import Counter, Summary
 
 from src.app import environment
@@ -18,16 +19,18 @@ ServiceHealth = Dict[str, bool]
 
 
 class InstrumentedClient:
-    """This class wraps an object and increments a counter everytime
-    the specieds methods are called, and times their execution.
+    """This class wraps an object and increments a counter every time
+    the specified methods are called, and times their execution.
+    It retries the methods if the specified exceptions are raised.
     """
 
     counters: Dict[str, Counter] = {}
     timers: Dict[str, Counter] = {}
 
-    def __init__(self, wrapped, prefix, methods):
+    def __init__(self, wrapped, prefix, methods, exceptions):
         self.wrapped = wrapped
         self.methods = methods
+        self.exceptions = exceptions
 
         # We have a single instrument per prefix. Methods are reported as labels.
         counter_name = prefix + "_methods_total"
@@ -48,6 +51,11 @@ class InstrumentedClient:
         if attr not in self.methods:
             return getattr(self.wrapped, attr)
 
+        @backoff.on_exception(
+            backoff.expo,
+            self.exceptions,
+            max_tries=settings.max_retries + 1,
+        )
         def wrapped_func(*args, **kwargs):
             # Increment the call counter.
             self.counter.labels(method=attr).inc()
@@ -74,7 +82,10 @@ def get_jira():
         "create_issue",
     )
     return InstrumentedClient(
-        wrapped=jira_client, prefix="jbi_jira", methods=instrumented_methods
+        wrapped=jira_client,
+        prefix="jbi_jira",
+        methods=instrumented_methods,
+        exceptions=(errors.ApiError,),
     )
 
 
@@ -96,7 +107,10 @@ def get_bugzilla():
         "update_bugs",
     )
     return InstrumentedClient(
-        wrapped=bugzilla_client, prefix="jbi_bugzilla", methods=instrumented_methods
+        wrapped=bugzilla_client,
+        prefix="jbi_bugzilla",
+        methods=instrumented_methods,
+        exceptions=(rh_bugzilla.BugzillaError,),
     )
 
 
