@@ -41,5 +41,4 @@ WORKDIR /app
 COPY . .
 
 EXPOSE $PORT
-ENTRYPOINT ["bin/docker-entrypoint.sh"]
 CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-c", "config/gunicorn_conf.py", "src.app.api:app"]
