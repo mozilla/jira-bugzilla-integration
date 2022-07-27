@@ -5,10 +5,9 @@ Default action is listed below.
 `init` should return a __call__able
 """
 import logging
-from typing import Dict, Tuple
 
 from src.app.environment import get_settings
-from src.jbi import Operation, Operations
+from src.jbi import ActionResult, Operations
 from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
 from src.jbi.errors import ActionError
 from src.jbi.services import get_bugzilla, get_jira
@@ -35,7 +34,7 @@ class DefaultExecutor:
 
     def __call__(  # pylint: disable=inconsistent-return-statements
         self, payload: BugzillaWebhookRequest
-    ) -> Tuple[Operation, Dict]:
+    ) -> ActionResult:
         """Called from BZ webhook when default action is used. All default-action webhook-events are processed here."""
         target = payload.event.target  # type: ignore
         if target == "comment":
@@ -52,9 +51,7 @@ class DefaultExecutor:
         )
         return Operations.IGNORE, {}
 
-    def comment_create_or_noop(
-        self, payload: BugzillaWebhookRequest
-    ) -> Tuple[Operation, Dict]:
+    def comment_create_or_noop(self, payload: BugzillaWebhookRequest) -> ActionResult:
         """Confirm issue is already linked, then apply comments; otherwise noop"""
         bug_obj = payload.bugzilla_object
         linked_issue_key = bug_obj.extract_from_see_also()
@@ -105,7 +102,7 @@ class DefaultExecutor:
 
     def bug_create_or_update(
         self, payload: BugzillaWebhookRequest
-    ) -> Tuple[Operation, Dict]:  # pylint: disable=too-many-locals
+    ) -> ActionResult:  # pylint: disable=too-many-locals
         """Create and link jira issue with bug, or update; rollback if multiple events fire"""
         bug_obj = payload.bugzilla_object
         linked_issue_key = bug_obj.extract_from_see_also()  # type: ignore
@@ -159,7 +156,7 @@ class DefaultExecutor:
 
     def create_and_link_issue(  # pylint: disable=too-many-locals
         self, payload, bug_obj
-    ) -> Tuple[Operation, Dict]:
+    ) -> ActionResult:
         """create jira issue and establish link between bug and issue; rollback/delete if required"""
         log_context = {
             "request": payload.dict(),
