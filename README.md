@@ -219,6 +219,21 @@ GET /whiteboard_tags/
 }
 ```
 
+## Troubleshooting
+
+### Bugzilla tickets are now showing up as issues on Jira
+
+Checklist:
+
+- The Bugzilla Webhook is setup to be executed for your project
+- The Bugzilla Webhook is still **enabled**
+- The whiteboard tag is listed in `GET /whiteboard_tags/`
+- The Jira project is listed in `GET /jira_projects/`
+
+For private bugs:
+
+- The Bugzilla account has permissions to read the private bugs
+
 ## Metrics
 
 The following metrics are sent via Prometheus:
