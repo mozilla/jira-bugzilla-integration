@@ -48,6 +48,42 @@ sentry_sdk.init(  # pylint: disable=abstract-class-instantiated  # noqa: E0110
 app.add_middleware(SentryAsgiMiddleware)
 
 
+def format_log_fields(request: Request, request_time: float, status_code: int) -> Dict:
+    """Prepare Fields for Mozlog request summary"""
+
+    current_time = time.time()
+    fields = {
+        "agent": request.headers.get("User-Agent"),
+        "path": request.url.path,
+        "method": request.method,
+        "lang": request.headers.get("Accept-Language"),
+        "querystring": dict(request.query_params),
+        "errno": 0,
+        "t": int((current_time - request_time) * 1000.0),
+        "time": datetime.fromtimestamp(current_time).isoformat(),
+        "status_code": status_code,
+    }
+    return fields
+
+
+@app.middleware("http")
+async def request_summary(request: Request, call_next):
+    """Middleware to log request info"""
+    summary_logger = logging.getLogger("request.summary")
+    request_time = time.time()
+    try:
+        response = await call_next(request)
+        log_fields = format_log_fields(
+            request, request_time, status_code=response.status_code
+        )
+        summary_logger.info("", extra=log_fields)
+        return response
+    except Exception as exc:
+        log_fields = format_log_fields(request, request_time, status_code=500)
+        summary_logger.info(exc, extra=log_fields)
+        raise
+
+
 @app.get("/", include_in_schema=False)
 def root():
     """Expose key configuration"""
@@ -61,33 +97,6 @@ def root():
             "bugzilla_base_url": settings.bugzilla_base_url,
         },
     }
-
-
-@app.middleware("http")
-async def request_summary(request: Request, call_next):
-    """Middleware to log request info"""
-    summary_logger = logging.getLogger("request.summary")
-    previous_time = time.time()
-
-    infos = {
-        "agent": request.headers.get("User-Agent"),
-        "path": request.url.path,
-        "method": request.method,
-        "lang": request.headers.get("Accept-Language"),
-        "querystring": dict(request.query_params),
-        "errno": 0,
-    }
-
-    response = await call_next(request)
-
-    current = time.time()
-    duration = int((current - previous_time) * 1000.0)
-    isotimestamp = datetime.fromtimestamp(current).isoformat()
-    infos = {"time": isotimestamp, "code": response.status_code, "t": duration, **infos}
-
-    summary_logger.info("", extra=infos)
-
-    return response
 
 
 @app.post("/bugzilla_webhook")
