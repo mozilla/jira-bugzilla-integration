@@ -80,16 +80,16 @@ def execute_action(
             extra={"operation": Operations.EXECUTE, **log_context},
         )
 
-        content = action.caller(payload=request)
+        operation, details = action.caller(payload=request)
 
         logger.info(
             "Action %r executed successfully for Bug %s",
             action.whiteboard_tag,
             bug_obj.id,
-            extra={"operation": Operations.SUCCESS, **log_context},
+            extra={"operation": operation, **log_context},
         )
         counter_processed.inc()
-        return content
+        return details
     except IgnoreInvalidRequestError as exception:
         logger.debug(
             "Ignore incoming request: %s",

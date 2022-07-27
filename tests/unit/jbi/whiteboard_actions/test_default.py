@@ -7,6 +7,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from src.jbi import Operations
 from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
 from src.jbi.errors import ActionError
 from src.jbi.whiteboard_actions import default
@@ -29,15 +30,15 @@ def test_default_returns_callable_without_data(mocked_bugzilla, mocked_jira):
 def test_default_returns_callable_with_data(webhook_create_example, mocked_jira):
     callable_object = default.init(jira_project_key="")
 
-    value = callable_object(payload=webhook_create_example)
+    operation, _ = callable_object(payload=webhook_create_example)
 
-    assert value["status"] == "create"
+    assert operation == Operations.CREATE
 
 
 def test_created_public(webhook_create_example: BugzillaWebhookRequest, mocked_jira):
     callable_object = default.init(jira_project_key="JBI")
 
-    value = callable_object(payload=webhook_create_example)
+    operation, _ = callable_object(payload=webhook_create_example)
 
     mocked_jira().create_issue.assert_called_once_with(
         fields={
@@ -48,7 +49,7 @@ def test_created_public(webhook_create_example: BugzillaWebhookRequest, mocked_j
             "project": {"key": "JBI"},
         },
     )
-    assert value["status"] == "create"
+    assert operation == Operations.CREATE
 
 
 def test_created_private(
@@ -56,7 +57,7 @@ def test_created_private(
 ):
     callable_object = default.init(jira_project_key="JBI")
 
-    value = callable_object(payload=webhook_create_private_example)
+    operation, _ = callable_object(payload=webhook_create_private_example)
 
     mocked_jira().create_issue.assert_called_once_with(
         fields={
@@ -67,14 +68,14 @@ def test_created_private(
             "project": {"key": "JBI"},
         },
     )
-    assert value["status"] == "create"
+    assert operation == Operations.CREATE
 
 
 def test_modified_public(webhook_modify_example: BugzillaWebhookRequest, mocked_jira):
     assert webhook_modify_example.bug
     callable_object = default.init(jira_project_key="")
 
-    value = callable_object(payload=webhook_modify_example)
+    operation, _ = callable_object(payload=webhook_modify_example)
 
     assert webhook_modify_example.bug.extract_from_see_also(), "see_also is not empty"
 
@@ -82,7 +83,7 @@ def test_modified_public(webhook_modify_example: BugzillaWebhookRequest, mocked_
         key="JBI-234",
         fields={"summary": "JBI Test", "labels": ["bugzilla", "devtest", "[devtest]"]},
     )
-    assert value["status"] == "update"
+    assert operation == Operations.UPDATE
 
 
 def test_modified_private(
@@ -90,26 +91,26 @@ def test_modified_private(
 ):
     callable_object = default.init(jira_project_key="")
 
-    value = callable_object(payload=webhook_modify_private_example)
+    operation, _ = callable_object(payload=webhook_modify_private_example)
 
     mocked_jira().update_issue_field.assert_called_once_with(
         key="JBI-234",
         fields={"summary": "JBI Test", "labels": ["bugzilla", "devtest", "[devtest]"]},
     )
-    assert value["status"] == "update"
+    assert operation == Operations.UPDATE
 
 
 def test_added_comment(webhook_comment_example: BugzillaWebhookRequest, mocked_jira):
 
     callable_object = default.init(jira_project_key="")
 
-    value = callable_object(payload=webhook_comment_example)
+    operation, _ = callable_object(payload=webhook_comment_example)
 
     mocked_jira().issue_add_comment.assert_called_once_with(
         issue_key="JBI-234",
         comment="*(mathieu@mozilla.org)* commented: \n{quote}hello{quote}",
     )
-    assert value["status"] == "comment"
+    assert operation == Operations.COMMENT
 
 
 def test_added_comment_without_linked_issue(
@@ -119,9 +120,9 @@ def test_added_comment_without_linked_issue(
     webhook_comment_example.bug.see_also = []
     callable_object = default.init(jira_project_key="")
 
-    value = callable_object(payload=webhook_comment_example)
+    operation, _ = callable_object(payload=webhook_comment_example)
 
-    assert value["status"] == "noop"
+    assert operation == Operations.IGNORE
 
 
 def test_jira_returns_an_error(

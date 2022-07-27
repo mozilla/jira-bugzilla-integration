@@ -5,9 +5,10 @@ Default action is listed below.
 `init` should return a __call__able
 """
 import logging
+from typing import Dict, Tuple
 
 from src.app.environment import get_settings
-from src.jbi import Operations
+from src.jbi import Operation, Operations
 from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
 from src.jbi.errors import ActionError
 from src.jbi.services import get_bugzilla, get_jira
@@ -34,7 +35,7 @@ class DefaultExecutor:
 
     def __call__(  # pylint: disable=inconsistent-return-statements
         self, payload: BugzillaWebhookRequest
-    ):
+    ) -> Tuple[Operation, Dict]:
         """Called from BZ webhook when default action is used. All default-action webhook-events are processed here."""
         target = payload.event.target  # type: ignore
         if target == "comment":
@@ -49,8 +50,11 @@ class DefaultExecutor:
                 "operation": Operations.IGNORE,
             },
         )
+        return Operations.IGNORE, {}
 
-    def comment_create_or_noop(self, payload: BugzillaWebhookRequest):
+    def comment_create_or_noop(
+        self, payload: BugzillaWebhookRequest
+    ) -> Tuple[Operation, Dict]:
         """Confirm issue is already linked, then apply comments; otherwise noop"""
         bug_obj = payload.bugzilla_object
         linked_issue_key = bug_obj.extract_from_see_also()
@@ -66,7 +70,7 @@ class DefaultExecutor:
                 bug_obj.id,
                 extra=log_context,
             )
-            return {"status": "noop"}
+            return Operations.IGNORE, {}
 
         jira_response = self.jira_client.issue_add_comment(
             issue_key=linked_issue_key,
@@ -77,7 +81,7 @@ class DefaultExecutor:
             linked_issue_key,
             extra=log_context,
         )
-        return {"status": "comment", "jira_response": jira_response}
+        return Operations.COMMENT, {"jira_response": jira_response}
 
     def jira_comments_for_update(
         self,
@@ -97,7 +101,7 @@ class DefaultExecutor:
 
     def bug_create_or_update(
         self, payload: BugzillaWebhookRequest
-    ):  # pylint: disable=too-many-locals
+    ) -> Tuple[Operation, Dict]:  # pylint: disable=too-many-locals
         """Create and link jira issue with bug, or update; rollback if multiple events fire"""
         bug_obj = payload.bugzilla_object
         linked_issue_key = bug_obj.extract_from_see_also()  # type: ignore
@@ -141,14 +145,13 @@ class DefaultExecutor:
 
         self.update_issue(payload, bug_obj, linked_issue_key, is_new=False)
 
-        return {
-            "status": "update",
-            "jira_responses": [jira_response_update, jira_response_comments],
+        return Operations.UPDATE, {
+            "jira_responses": [jira_response_update, jira_response_comments]
         }
 
-    def create_and_link_issue(
+    def create_and_link_issue(  # pylint: disable=too-many-locals
         self, payload, bug_obj
-    ):  # pylint: disable=too-many-locals
+    ) -> Tuple[Operation, Dict]:
         """create jira issue and establish link between bug and issue; rollback/delete if required"""
         log_context = {
             "request": payload.dict(),
@@ -208,7 +211,7 @@ class DefaultExecutor:
             jira_response_delete = self.jira_client.delete_issue(
                 issue_id_or_key=jira_key_in_response
             )
-            return {"status": "duplicate", "jira_response": jira_response_delete}
+            return Operations.DELETE, {"jira_response": jira_response_delete}
 
         jira_url = f"{settings.jira_base_url}browse/{jira_key_in_response}"
         logger.debug(
@@ -241,8 +244,7 @@ class DefaultExecutor:
 
         self.update_issue(payload, bug_obj, jira_key_in_response, is_new=True)
 
-        return {
-            "status": "create",
+        return Operations.CREATE, {
             "bugzilla_response": bugzilla_response,
             "jira_response": jira_response,
         }
