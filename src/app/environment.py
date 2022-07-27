@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
     app_reload: bool = False
+    app_debug: bool = False
     max_retries: int = 3
     env: Environment = Environment.NONPROD
 

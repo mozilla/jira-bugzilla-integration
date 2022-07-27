@@ -37,6 +37,7 @@ app = FastAPI(
     title="Jira Bugzilla Integration (JBI)",
     description="JBI v2 Platform",
     version="3.0.3",
+    debug=settings.app_debug,
 )
 
 app.include_router(monitor_router)
