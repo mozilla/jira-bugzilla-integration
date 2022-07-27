@@ -3,7 +3,7 @@ Execute actions from Webhook requests
 """
 import logging
 
-from prometheus_client import Counter, Summary
+from statsd.defaults.env import statsd
 
 from src.app.environment import Settings
 from src.jbi import Operations
@@ -13,16 +13,8 @@ from src.jbi.models import Actions
 
 logger = logging.getLogger(__name__)
 
-counter_ignored = Counter("jbi_bugzilla_ignored_total", "Bugzilla WebHooks ignored")
-counter_processed = Counter(
-    "jbi_bugzilla_processed_total", "Bugzilla WebHooks processed"
-)
-action_execution_timer = Summary(
-    "jbi_action_execution_milliseconds", "Action execution duration"
-)
 
-
-@action_execution_timer.time()
+@statsd.timer("jbi.action.execution.timer")
 def execute_action(
     request: BugzillaWebhookRequest,
     actions: Actions,
@@ -88,7 +80,7 @@ def execute_action(
             bug_obj.id,
             extra={"operation": operation, **log_context},
         )
-        counter_processed.inc()
+        statsd.incr("jbi.bugzilla.processed.count")
         return details
     except IgnoreInvalidRequestError as exception:
         logger.debug(
@@ -96,5 +88,5 @@ def execute_action(
             exception,
             extra={"operation": Operations.IGNORE, **log_context},
         )
-        counter_ignored.inc()
+        statsd.incr("jbi.bugzilla.ignored.count")
         raise

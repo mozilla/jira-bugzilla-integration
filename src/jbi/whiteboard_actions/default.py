@@ -63,6 +63,10 @@ class DefaultExecutor:
             "request": payload.dict(),
             "bug": bug_obj.dict(),
             "operation": Operations.COMMENT,
+            "jira": {
+                "issue": linked_issue_key,
+                "project": self.jira_project_key,
+            },
         }
         if not linked_issue_key:
             logger.debug(
@@ -111,6 +115,10 @@ class DefaultExecutor:
         log_context = {
             "request": payload.dict(),
             "bug": bug_obj.dict(),
+            "jira": {
+                "issue": linked_issue_key,
+                "project": self.jira_project_key,
+            },
         }
         logger.debug(
             "Update fields of Jira issue %s for Bug %s",
@@ -156,6 +164,9 @@ class DefaultExecutor:
         log_context = {
             "request": payload.dict(),
             "bug": bug_obj.dict(),
+            "jira": {
+                "project": self.jira_project_key,
+            },
         }
         logger.debug(
             "Create new Jira issue for Bug %s",
@@ -189,6 +200,8 @@ class DefaultExecutor:
                 raise ActionError(f"response contains error: {jira_response_create}")
 
         jira_key_in_response = jira_response_create.get("key")
+
+        log_context["jira"]["issue"] = jira_key_in_response
 
         # In the time taken to create the Jira issue the bug may have been updated so
         # re-retrieve it to ensure we have the latest data.
@@ -239,7 +252,7 @@ class DefaultExecutor:
         jira_response = self.jira_client.create_or_update_issue_remote_links(
             issue_key=jira_key_in_response,
             link_url=bugzilla_url,
-            title="Bugzilla Ticket",
+            title=f"Bugzilla Bug {bug_obj.id}",
         )
 
         self.update_issue(payload, bug_obj, jira_key_in_response, is_new=True)

@@ -6,7 +6,6 @@ https://github.com/tiangolo/uvicorn-gunicorn-docker/blob/2daa3e3873c837d5781feb4
 import multiprocessing
 from typing import Optional
 
-from prometheus_client import multiprocess
 from pydantic import BaseSettings, conint, root_validator, validator
 
 
@@ -77,7 +76,3 @@ log_data = {
     "host": gunicorn_settings.host,
     "port": gunicorn_settings.port,
 }
-
-
-def child_exit(server, worker):  # pylint: disable=missing-function-docstring
-    multiprocess.mark_process_dead(worker.pid)

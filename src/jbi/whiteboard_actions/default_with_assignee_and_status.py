@@ -54,7 +54,10 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
                 "resolution": bug_obj.resolution,
                 "assigned_to": bug_obj.assigned_to,
             },
-            "jira": linked_issue_key,
+            "jira": {
+                "issue": linked_issue_key,
+                "project": self.jira_project_key,
+            },
             "changed_fields": changed_fields,
             "operation": Operations.UPDATE,
         }
