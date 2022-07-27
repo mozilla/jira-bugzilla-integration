@@ -215,7 +215,7 @@ class DefaultExecutor:
         jira_response = self.jira_client.create_or_update_issue_remote_links(
             issue_key=jira_key_in_response,
             link_url=bugzilla_url,
-            title=f"Bug {bug_obj.id}",
+            title=f"Bugzilla Bug {bug_obj.id}",
         )
 
         self.update_issue(payload, bug_obj, jira_key_in_response, is_new=True)
