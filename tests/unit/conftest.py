@@ -1,6 +1,7 @@
 """
 Module for setting up pytest fixtures
 """
+import time
 from unittest import mock
 
 import pytest
@@ -180,3 +181,9 @@ def action_example() -> Action:
 @pytest.fixture
 def actions_example(action_example) -> Actions:
     return Actions.parse_obj([action_example])
+
+
+@pytest.fixture
+def sleepless(monkeypatch):
+    # https://stackoverflow.com/a/54829577
+    monkeypatch.setattr(time, "sleep", lambda s: None)
