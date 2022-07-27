@@ -140,14 +140,14 @@ def test_counter_is_incremented_on_ignored_requests(
     assert webhook_create_example.bug
     webhook_create_example.bug.whiteboard = "foo"
 
-    with mock.patch("src.jbi.runner.counter_ignored") as mocked:
+    with mock.patch("src.jbi.runner.statsd") as mocked:
         with pytest.raises(IgnoreInvalidRequestError):
             execute_action(
                 request=webhook_create_example,
                 actions=actions_example,
                 settings=settings,
             )
-    assert mocked.inc.called, "ignored counter was called"
+    mocked.incr.assert_called_with("jbi.bugzilla.ignored.count")
 
 
 def test_counter_is_incremented_on_processed_requests(
@@ -155,10 +155,10 @@ def test_counter_is_incremented_on_processed_requests(
     actions_example: Actions,
     settings: Settings,
 ):
-    with mock.patch("src.jbi.runner.counter_processed") as mocked:
+    with mock.patch("src.jbi.runner.statsd") as mocked:
         execute_action(
             request=webhook_create_example,
             actions=actions_example,
             settings=settings,
         )
-    assert mocked.inc.called, "processed counter was called"
+    mocked.incr.assert_called_with("jbi.bugzilla.processed.count")

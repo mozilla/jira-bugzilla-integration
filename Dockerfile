@@ -22,8 +22,7 @@ RUN poetry install --no-dev --no-root
 
 # `production` stage uses the dependencies downloaded in the `base` stage
 FROM python:3.10.5-slim as production
-ENV PROMETHEUS_MULTIPROC=1 \
-    PORT=8000 \
+ENV PORT=8000 \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     VIRTUAL_ENV=/opt/pysetup/.venv
@@ -42,5 +41,4 @@ WORKDIR /app
 COPY . .
 
 EXPOSE $PORT
-ENTRYPOINT ["bin/docker-entrypoint.sh"]
 CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-c", "config/gunicorn_conf.py", "src.app.api:app"]
