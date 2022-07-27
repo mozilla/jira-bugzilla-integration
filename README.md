@@ -221,7 +221,7 @@ GET /whiteboard_tags/
 
 ## Troubleshooting
 
-### Bugzilla tickets are now showing up as issues on Jira
+### Bugzilla tickets are not showing up as issues on Jira
 
 Checklist:
 
