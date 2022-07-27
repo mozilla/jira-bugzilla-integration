@@ -234,6 +234,44 @@ For private bugs:
 
 - The Bugzilla account has permissions to read the private bugs
 
+### Log Explorer Queries Examples
+
+* All incoming WebHooks:
+
+```
+jsonPayload.Type="request.summary"
+jsonPayload.Fields.path="/bugzilla_webhook"
+```
+
+* All action log entries:
+
+```
+jsonPayload.Type!="request.summary" AND
+(
+   NOT jsonPayload.Fields.operation:*  --Entries without `operation` field
+   OR (jsonPayload.Fields.operation!="handle" AND jsonPayload.Fields.operation!="ignore")
+)
+```
+
+* For bugs whose whiteboard contains a certain string:
+
+```
+jsonPayload.Fields.bug.whiteboard=~"flowstate"
+```
+
+* For a certain Bug number:
+
+```
+jsonPayload.Fields.bug.id=1780798
+```
+
+* For a certain Jira project:
+
+```
+jsonPayload.Fields.action.parameters.jira_project_key="MR"
+```
+
+
 ## Metrics
 
 The following metrics are sent via Prometheus:
