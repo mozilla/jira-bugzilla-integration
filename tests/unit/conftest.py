@@ -183,7 +183,7 @@ def actions_example(action_example) -> Actions:
     return Actions.parse_obj([action_example])
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def sleepless(monkeypatch):
     # https://stackoverflow.com/a/54829577
     monkeypatch.setattr(time, "sleep", lambda s: None)
