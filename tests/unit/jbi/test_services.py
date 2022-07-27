@@ -48,7 +48,7 @@ def test_timer_is_used_on_bugzilla_getcomments():
     assert mocked.called, "Timer was used on get_comments()"
 
 
-def test_bugzilla_methods_are_retried_if_raising(sleepless):
+def test_bugzilla_methods_are_retried_if_raising():
     with mock.patch(
         "src.jbi.services.rh_bugzilla.Bugzilla.return_value.get_comments"
     ) as mocked:
