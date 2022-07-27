@@ -6,6 +6,7 @@ import logging
 from prometheus_client import Counter, Summary
 
 from src.app.environment import Settings
+from src.jbi import Operations
 from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
 from src.jbi.errors import ActionNotFoundError, IgnoreInvalidRequestError
 from src.jbi.models import Actions
@@ -19,15 +20,6 @@ counter_processed = Counter(
 action_execution_timer = Summary(
     "jbi_action_execution_milliseconds", "Action execution duration"
 )
-
-
-class Operations:
-    """Track status of incoming requests in log entries."""
-
-    HANDLE = "handle"
-    EXECUTE = "execute"
-    IGNORE = "ignore"
-    SUCCESS = "success"
 
 
 @action_execution_timer.time()
