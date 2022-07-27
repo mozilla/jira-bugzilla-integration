@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 import sentry_sdk
-import uvicorn  # type: ignore
 from fastapi import Body, Depends, FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse
@@ -136,13 +135,3 @@ def powered_by_jbi(
         "enable_query": enabled,
     }
     return templates.TemplateResponse("powered_by_template.html", context)
-
-
-if __name__ == "__main__":
-    uvicorn.run(
-        "src.app.api:app",
-        host=settings.host,
-        port=settings.port,
-        reload=settings.app_reload,
-        log_level=settings.log_level,
-    )
