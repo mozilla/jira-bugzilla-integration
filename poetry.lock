@@ -69,6 +69,14 @@ tests = ["coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)"
 tests_no_zope = ["coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "mypy", "pytest-mypy-plugins", "cloudpickle"]
 
 [[package]]
+name = "backoff"
+version = "2.1.2"
+description = "Function decoration for backoff and retry"
+category = "main"
+optional = false
+python-versions = ">=3.7,<4.0"
+
+[[package]]
 name = "bandit"
 version = "1.7.4"
 description = "Security oriented static analyser for python code."
@@ -518,8 +526,8 @@ optional = false
 python-versions = ">=3.6"
 
 [package.extras]
-testing = ["pytest-benchmark", "pytest"]
-dev = ["tox", "pre-commit"]
+dev = ["pre-commit", "tox"]
+testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "pre-commit"
@@ -591,10 +599,10 @@ types-Deprecated = "*"
 types-PyYAML = {version = "*", optional = true, markers = "extra == \"pyyaml\""}
 
 [package.extras]
+dev = ["black", "flake8", "bump2version", "pytest", "mypy"]
+docs = ["mkdocs", "mkdocs-material", "mkdocstrings", "pymdown-extensions", "pygments"]
+pyyaml = ["pyyaml", "types-pyyaml"]
 ruamel = ["ruamel.yaml (>=0.15,<0.18)"]
-pyyaml = ["types-pyyaml", "pyyaml"]
-docs = ["pygments", "pymdown-extensions", "mkdocstrings", "mkdocs-material", "mkdocs"]
-dev = ["mypy", "pytest", "bump2version", "flake8", "black"]
 
 [[package]]
 name = "pylint"
@@ -1006,7 +1014,7 @@ pyyaml = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8, <3.11"
-content-hash = "5f81c13976b00cba429f6bdf31caa18642a64c1a4232c30889f2abed5ef66121"
+content-hash = "5e17426a50b4276bd0c3663db4c18485012f3b794bbafb2fe9e39ca4dc632232"
 
 [metadata.files]
 anyio = [
@@ -1027,6 +1035,10 @@ atomicwrites = [
 attrs = [
     {file = "attrs-21.4.0-py2.py3-none-any.whl", hash = "sha256:2d27e3784d7a565d36ab851fe94887c5eccd6a463168875832a1be79c82828b4"},
     {file = "attrs-21.4.0.tar.gz", hash = "sha256:626ba8234211db98e869df76230a137c4c40a12d72445c45d5f5b716f076e2fd"},
+]
+backoff = [
+    {file = "backoff-2.1.2-py3-none-any.whl", hash = "sha256:b135e6d7c7513ba2bfd6895bc32bc8c66c6f3b0279b4c6cd866053cfd7d3126b"},
+    {file = "backoff-2.1.2.tar.gz", hash = "sha256:407f1bc0f22723648a8880821b935ce5df8475cf04f7b6b5017ae264d30f6069"},
 ]
 bandit = [
     {file = "bandit-1.7.4-py3-none-any.whl", hash = "sha256:412d3f259dab4077d0e7f0c11f50f650cc7d10db905d98f6520a95a18049658a"},

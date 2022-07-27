@@ -3,6 +3,7 @@ Module for testing src/jbi/services.py
 """
 from unittest import mock
 
+import bugzilla
 import pytest
 
 from src.jbi.services import get_bugzilla, get_jira
@@ -45,3 +46,16 @@ def test_timer_is_used_on_bugzilla_getcomments():
             bugzilla_client.get_comments([])
 
     assert mocked.called, "Timer was used on get_comments()"
+
+
+def test_bugzilla_methods_are_retried_if_raising():
+    with mock.patch(
+        "src.jbi.services.rh_bugzilla.Bugzilla.return_value.get_comments"
+    ) as mocked:
+        mocked.side_effect = (bugzilla.BugzillaError("boom"), [mock.sentinel])
+        bugzilla_client = get_bugzilla()
+
+        # Not raising
+        bugzilla_client.get_comments([])
+
+    assert mocked.call_count == 2

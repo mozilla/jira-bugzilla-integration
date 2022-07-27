@@ -30,6 +30,7 @@ def configure_logging():
         },
         "loggers": {
             "request.summary": {"handlers": ["console"], "level": "INFO"},
+            "backoff": {"handlers": ["console"], "level": "INFO"},
             "src.jbi": {"handlers": ["console"], "level": "DEBUG"},
         },
     }
