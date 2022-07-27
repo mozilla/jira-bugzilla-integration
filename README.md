@@ -221,7 +221,7 @@ GET /whiteboard_tags/
 
 ## Metrics
 
-The following metrics are sent via Prometheus:
+The following metrics are sent via StatsD:
 
 - `jbi.bugzilla.ignored.count`
 - `jbi.bugzilla.processed.count`
