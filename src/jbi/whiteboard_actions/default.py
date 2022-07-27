@@ -56,6 +56,10 @@ class DefaultExecutor:
         log_context = {
             "request": payload.dict(),
             "bug": bug_obj.dict(),
+            "jira": {
+                "issue": linked_issue_key,
+                "project": self.jira_project_key,
+            },
         }
         if not linked_issue_key:
             logger.debug(
@@ -104,6 +108,10 @@ class DefaultExecutor:
         log_context = {
             "request": payload.dict(),
             "bug": bug_obj.dict(),
+            "jira": {
+                "issue": linked_issue_key,
+                "project": self.jira_project_key,
+            },
         }
         logger.debug(
             "Update fields of Jira issue %s for Bug %s",
@@ -144,6 +152,9 @@ class DefaultExecutor:
         log_context = {
             "request": payload.dict(),
             "bug": bug_obj.dict(),
+            "jira": {
+                "project": self.jira_project_key,
+            },
         }
         logger.debug(
             "Create new Jira issue for Bug %s",
@@ -174,6 +185,8 @@ class DefaultExecutor:
                 raise ActionError(f"response contains error: {jira_response_create}")
 
         jira_key_in_response = jira_response_create.get("key")
+
+        log_context["jira"]["issue"] = jira_key_in_response
 
         # In the time taken to create the Jira issue the bug may have been updated so
         # re-retrieve it to ensure we have the latest data.
