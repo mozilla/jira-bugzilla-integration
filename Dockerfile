@@ -41,4 +41,4 @@ WORKDIR /app
 COPY . .
 
 EXPOSE $PORT
-CMD ["python", "-m", "src.app.api"]
+CMD ["python", "-m", "asgi"]
