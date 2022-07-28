@@ -113,6 +113,39 @@ def test_added_comment(webhook_comment_example: BugzillaWebhookRequest, mocked_j
     assert operation == Operation.COMMENT
 
 
+def test_added_private_comment(
+    webhook_private_comment_example: BugzillaWebhookRequest, mocked_jira
+):
+
+    callable_object = default.init(jira_project_key="")
+
+    operation, _ = callable_object(payload=webhook_private_comment_example)
+
+    mocked_jira().issue_add_comment.assert_called_once_with(
+        issue_key="JBI-234",
+        comment="*(mathieu@mozilla.org)* commented: \n{quote}hello{quote}",
+    )
+    assert operation == Operation.COMMENT
+
+
+def test_added_missing_private_comment(
+    webhook_private_comment_example: BugzillaWebhookRequest,
+    mocked_jira,
+    mocked_bugzilla,
+):
+
+    callable_object = default.init(jira_project_key="")
+    mocked_bugzilla().get_comments.return_value = {
+        "bugs": {str(webhook_private_comment_example.bug.id): {"comments": []}},
+        "comments": {},
+    }
+
+    operation, _ = callable_object(payload=webhook_private_comment_example)
+
+    mocked_jira().issue_add_comment.assert_not_called()
+    assert operation == Operation.IGNORE
+
+
 def test_added_comment_without_linked_issue(
     webhook_comment_example: BugzillaWebhookRequest, mocked_jira
 ):

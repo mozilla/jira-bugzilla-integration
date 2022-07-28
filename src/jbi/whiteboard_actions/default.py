@@ -73,6 +73,14 @@ class DefaultExecutor:
             )
             return Operation.IGNORE, {}
 
+        comment = payload.map_as_jira_comment()
+        if comment is None:
+            logger.debug(
+                "No matching comment found in payload",
+                extra=log_context,
+            )
+            return Operation.IGNORE, {}
+
         jira_response = self.jira_client.issue_add_comment(
             issue_key=linked_issue_key,
             comment=payload.map_as_jira_comment(),

@@ -101,6 +101,59 @@ def webhook_comment_example(webhook_create_example) -> BugzillaWebhookRequest:
 
 
 @pytest.fixture
+def webhook_private_comment_example(
+    webhook_create_example, mocked_bugzilla
+) -> BugzillaWebhookRequest:
+    webhook_comment_example: BugzillaWebhookRequest = webhook_create_example
+    webhook_comment_example.event.target = "comment"
+    webhook_comment_example.event.user.login = "mathieu@mozilla.org"  # type: ignore
+    assert webhook_comment_example.bug
+    webhook_comment_example.bug.comment = BugzillaWebhookComment.parse_obj(
+        {"id": 344, "number": 2, "is_private": True}
+    )
+    webhook_comment_example.bug.see_also = [
+        "https://mozilla.atlassian.net/browse/JBI-234"
+    ]
+
+    # Call to Bugzilla returns the actual bug comments.
+    mocked_bugzilla().get_comments.return_value = {
+        "bugs": {
+            str(webhook_comment_example.bug.id): {
+                "comments": [
+                    {
+                        "id": 343,
+                        "text": "not this one",
+                        "bug_id": webhook_comment_example.bug.id,
+                        "count": 1,
+                        "is_private": True,
+                        "creator": "mathieu@mozilla.org",
+                    },
+                    {
+                        "id": 344,
+                        "text": "hello",
+                        "bug_id": webhook_comment_example.bug.id,
+                        "count": 2,
+                        "is_private": True,
+                        "creator": "mathieu@mozilla.org",
+                    },
+                    {
+                        "id": 345,
+                        "text": "or this one",
+                        "bug_id": webhook_comment_example.bug.id,
+                        "count": 3,
+                        "is_private": True,
+                        "creator": "mathieu@mozilla.org",
+                    },
+                ]
+            }
+        },
+        "comments": {},
+    }
+
+    return webhook_comment_example
+
+
+@pytest.fixture
 def webhook_create_private_example(
     webhook_create_example, mocked_bugzilla
 ) -> BugzillaWebhookRequest:
