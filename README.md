@@ -223,16 +223,17 @@ GET /whiteboard_tags/
 
 ### Bugzilla tickets are not showing up as issues on Jira
 
-Checklist:
+As a consumer, you can:
 
-- The Bugzilla Webhook is setup to be executed for your project
-- The Bugzilla Webhook is still **enabled**
-- The whiteboard tag is listed in `GET /whiteboard_tags/`
-- The Jira project is listed in `GET /jira_projects/`
+- Open https://jbi.services.mozilla.com/powered_by_jbi/ and check that your project is listed and enabled there
+- Open https://jbi.services.mozilla.com/__heartbeat__ and make sure everything is `true`
 
-For private bugs:
+If you have access to the configured Bugzilla account:
 
-- The Bugzilla account has permissions to read the private bugs
+- Open https://bugzilla.mozilla.org/userprefs.cgi?tab=webhooks
+- Check that Webhook is still **enabled**
+- Check that WebHook is setup to be executed for your product
+- (*if applies*) Check that account can read the private bugs
 
 ### Log Explorer Queries Examples
 
