@@ -17,7 +17,6 @@ from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 
 from src.app import configuration
 from src.app.environment import get_settings
-from src.app.log import configure_logging
 from src.app.monitor import api_router as monitor_router
 from src.jbi.bugzilla import BugzillaWebhookRequest
 from src.jbi.models import Actions
@@ -29,8 +28,6 @@ SRC_DIR = Path(__file__).parents[1]
 templates = Jinja2Templates(directory=SRC_DIR / "templates")
 
 settings = get_settings()
-
-configure_logging()
 
 app = FastAPI(
     title="Jira Bugzilla Integration (JBI)",

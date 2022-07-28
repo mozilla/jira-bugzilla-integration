@@ -1,6 +1,7 @@
 """
 Module for testing src/app/api.py
 """
+import logging
 from datetime import datetime
 
 # pylint: disable=cannot-enumerate-pytest-fixtures
@@ -36,16 +37,17 @@ def test_read_root(anon_client):
 
 
 def test_request_summary_is_logged(caplog):
-    with TestClient(app) as anon_client:
-        # https://fastapi.tiangolo.com/advanced/testing-events/
-        anon_client.get("/__lbheartbeat__")
+    with caplog.at_level(logging.INFO):
+        with TestClient(app) as anon_client:
+            # https://fastapi.tiangolo.com/advanced/testing-events/
+            anon_client.get("/__lbheartbeat__")
 
-        summary = caplog.records[-1]
+            summary = caplog.records[-1]
 
-        assert summary.name == "request.summary"
-        assert summary.method == "GET"
-        assert summary.path == "/__lbheartbeat__"
-        assert summary.querystring == {}
+            assert summary.name == "request.summary"
+            assert summary.method == "GET"
+            assert summary.path == "/__lbheartbeat__"
+            assert summary.querystring == {}
 
 
 def test_whiteboard_tags(anon_client):

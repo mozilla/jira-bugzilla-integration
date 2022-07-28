@@ -1,6 +1,8 @@
 """
 Module for testing src/jbi/runner.py
 """
+import logging
+
 # pylint: disable=cannot-enumerate-pytest-fixtures
 from unittest import mock
 
@@ -89,11 +91,12 @@ def test_execution_logging_for_successful_requests(
     actions_example: Actions,
     settings: Settings,
 ):
-    execute_action(
-        request=webhook_create_example,
-        actions=actions_example,
-        settings=settings,
-    )
+    with caplog.at_level(logging.DEBUG):
+        execute_action(
+            request=webhook_create_example,
+            actions=actions_example,
+            settings=settings,
+        )
 
     captured_log_msgs = [
         r.msg % r.args for r in caplog.records if r.name == "src.jbi.runner"
@@ -114,13 +117,13 @@ def test_execution_logging_for_ignored_requests(
 ):
     assert webhook_create_example.bug
     webhook_create_example.bug.whiteboard = "foo"
-
-    with pytest.raises(IgnoreInvalidRequestError):
-        execute_action(
-            request=webhook_create_example,
-            actions=actions_example,
-            settings=settings,
-        )
+    with caplog.at_level(logging.DEBUG):
+        with pytest.raises(IgnoreInvalidRequestError):
+            execute_action(
+                request=webhook_create_example,
+                actions=actions_example,
+                settings=settings,
+            )
 
     captured_log_msgs = [
         r.msg % r.args for r in caplog.records if r.name == "src.jbi.runner"
