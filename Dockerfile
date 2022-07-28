@@ -41,4 +41,4 @@ WORKDIR /app
 COPY . .
 
 EXPOSE $PORT
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-c", "config/gunicorn_conf.py", "src.app.api:app"]
+CMD ["python", "-m", "src.app.api"]
