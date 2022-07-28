@@ -56,7 +56,7 @@ lint: $(INSTALL_STAMP)
 
 .PHONY: start
 start: $(INSTALL_STAMP) $(DOTENV_FILE)
-	poetry run python -m src.app.api
+	poetry run python -m asgi
 
 $(DOTENV_FILE):
 	cp .env.example $(DOTENV_FILE)
