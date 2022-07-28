@@ -3,7 +3,6 @@ Core FastAPI app (setup, middleware)
 """
 import logging
 import time
-from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -17,6 +16,7 @@ from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 
 from src.app import configuration
 from src.app.environment import get_settings
+from src.app.log import format_request_summary_fields
 from src.app.monitor import api_router as monitor_router
 from src.jbi.bugzilla import BugzillaWebhookRequest
 from src.jbi.models import Actions
@@ -45,24 +45,6 @@ sentry_sdk.init(  # pylint: disable=abstract-class-instantiated  # noqa: E0110
 app.add_middleware(SentryAsgiMiddleware)
 
 
-def format_log_fields(request: Request, request_time: float, status_code: int) -> Dict:
-    """Prepare Fields for Mozlog request summary"""
-
-    current_time = time.time()
-    fields = {
-        "agent": request.headers.get("User-Agent"),
-        "path": request.url.path,
-        "method": request.method,
-        "lang": request.headers.get("Accept-Language"),
-        "querystring": dict(request.query_params),
-        "errno": 0,
-        "t": int((current_time - request_time) * 1000.0),
-        "time": datetime.fromtimestamp(current_time).isoformat(),
-        "status_code": status_code,
-    }
-    return fields
-
-
 @app.middleware("http")
 async def request_summary(request: Request, call_next):
     """Middleware to log request info"""
@@ -70,13 +52,15 @@ async def request_summary(request: Request, call_next):
     request_time = time.time()
     try:
         response = await call_next(request)
-        log_fields = format_log_fields(
+        log_fields = format_request_summary_fields(
             request, request_time, status_code=response.status_code
         )
         summary_logger.info("", extra=log_fields)
         return response
     except Exception as exc:
-        log_fields = format_log_fields(request, request_time, status_code=500)
+        log_fields = format_request_summary_fields(
+            request, request_time, status_code=500
+        )
         summary_logger.info(exc, extra=log_fields)
         raise
 
