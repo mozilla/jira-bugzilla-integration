@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from src.jbi import Operations
+from src.jbi import Operation
 from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
 from src.jbi.errors import ActionError
 from src.jbi.whiteboard_actions import default
@@ -32,7 +32,7 @@ def test_default_returns_callable_with_data(webhook_create_example, mocked_jira)
 
     operation, _ = callable_object(payload=webhook_create_example)
 
-    assert operation == Operations.CREATE
+    assert operation == Operation.CREATE
 
 
 def test_created_public(webhook_create_example: BugzillaWebhookRequest, mocked_jira):
@@ -49,7 +49,7 @@ def test_created_public(webhook_create_example: BugzillaWebhookRequest, mocked_j
             "project": {"key": "JBI"},
         },
     )
-    assert operation == Operations.CREATE
+    assert operation == Operation.CREATE
 
 
 def test_created_private(
@@ -68,7 +68,7 @@ def test_created_private(
             "project": {"key": "JBI"},
         },
     )
-    assert operation == Operations.CREATE
+    assert operation == Operation.CREATE
 
 
 def test_modified_public(webhook_modify_example: BugzillaWebhookRequest, mocked_jira):
@@ -83,7 +83,7 @@ def test_modified_public(webhook_modify_example: BugzillaWebhookRequest, mocked_
         key="JBI-234",
         fields={"summary": "JBI Test", "labels": ["bugzilla", "devtest", "[devtest]"]},
     )
-    assert operation == Operations.UPDATE
+    assert operation == Operation.UPDATE
 
 
 def test_modified_private(
@@ -97,7 +97,7 @@ def test_modified_private(
         key="JBI-234",
         fields={"summary": "JBI Test", "labels": ["bugzilla", "devtest", "[devtest]"]},
     )
-    assert operation == Operations.UPDATE
+    assert operation == Operation.UPDATE
 
 
 def test_added_comment(webhook_comment_example: BugzillaWebhookRequest, mocked_jira):
@@ -110,7 +110,7 @@ def test_added_comment(webhook_comment_example: BugzillaWebhookRequest, mocked_j
         issue_key="JBI-234",
         comment="*(mathieu@mozilla.org)* commented: \n{quote}hello{quote}",
     )
-    assert operation == Operations.COMMENT
+    assert operation == Operation.COMMENT
 
 
 def test_added_comment_without_linked_issue(
@@ -122,7 +122,7 @@ def test_added_comment_without_linked_issue(
 
     operation, _ = callable_object(payload=webhook_comment_example)
 
-    assert operation == Operations.IGNORE
+    assert operation == Operation.IGNORE
 
 
 def test_jira_returns_an_error(

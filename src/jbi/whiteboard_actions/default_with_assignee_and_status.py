@@ -9,7 +9,7 @@ Extended action that provides some additional features over the default:
 """
 import logging
 
-from src.jbi import Operations
+from src.jbi import Operation
 from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
 from src.jbi.whiteboard_actions.default import DefaultExecutor
 
@@ -59,7 +59,7 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
                 "project": self.jira_project_key,
             },
             "changed_fields": changed_fields,
-            "operation": Operations.UPDATE,
+            "operation": Operation.UPDATE,
         }
 
         def clear_assignee():
@@ -103,7 +103,7 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
                 else:
                     logger.debug(
                         "No assignee found",
-                        extra={**log_context, "operation": Operations.IGNORE},
+                        extra={**log_context, "operation": Operation.IGNORE},
                     )
                     clear_assignee()
 
@@ -128,6 +128,6 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
                     extra={
                         **log_context,
                         "status_map": self.status_map,
-                        "operation": Operations.IGNORE,
+                        "operation": Operation.IGNORE,
                     },
                 )

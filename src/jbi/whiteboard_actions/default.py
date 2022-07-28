@@ -7,7 +7,7 @@ Default action is listed below.
 import logging
 
 from src.app.environment import get_settings
-from src.jbi import ActionResult, Operations
+from src.jbi import ActionResult, Operation
 from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
 from src.jbi.errors import ActionError
 from src.jbi.services import get_bugzilla, get_jira
@@ -46,10 +46,10 @@ class DefaultExecutor:
             target,
             extra={
                 "request": payload.dict(),
-                "operation": Operations.IGNORE,
+                "operation": Operation.IGNORE,
             },
         )
-        return Operations.IGNORE, {}
+        return Operation.IGNORE, {}
 
     def comment_create_or_noop(self, payload: BugzillaWebhookRequest) -> ActionResult:
         """Confirm issue is already linked, then apply comments; otherwise noop"""
@@ -59,7 +59,7 @@ class DefaultExecutor:
         log_context = {
             "request": payload.dict(),
             "bug": bug_obj.dict(),
-            "operation": Operations.COMMENT,
+            "operation": Operation.COMMENT,
             "jira": {
                 "issue": linked_issue_key,
                 "project": self.jira_project_key,
@@ -71,7 +71,7 @@ class DefaultExecutor:
                 bug_obj.id,
                 extra=log_context,
             )
-            return Operations.IGNORE, {}
+            return Operation.IGNORE, {}
 
         jira_response = self.jira_client.issue_add_comment(
             issue_key=linked_issue_key,
@@ -82,7 +82,7 @@ class DefaultExecutor:
             linked_issue_key,
             extra=log_context,
         )
-        return Operations.COMMENT, {"jira_response": jira_response}
+        return Operation.COMMENT, {"jira_response": jira_response}
 
     def jira_comments_for_update(
         self,
@@ -123,7 +123,7 @@ class DefaultExecutor:
             bug_obj.id,
             extra={
                 **log_context,
-                "operation": Operations.LINK,
+                "operation": Operation.LINK,
             },
         )
         jira_response_update = self.jira_client.update_issue_field(
@@ -139,7 +139,7 @@ class DefaultExecutor:
                 linked_issue_key,
                 extra={
                     **log_context,
-                    "operation": Operations.COMMENT,
+                    "operation": Operation.COMMENT,
                 },
             )
             jira_response_comments.append(
@@ -150,7 +150,7 @@ class DefaultExecutor:
 
         self.update_issue(payload, bug_obj, linked_issue_key, is_new=False)
 
-        return Operations.UPDATE, {
+        return Operation.UPDATE, {
             "jira_responses": [jira_response_update, jira_response_comments]
         }
 
@@ -170,7 +170,7 @@ class DefaultExecutor:
             bug_obj.id,
             extra={
                 **log_context,
-                "operation": Operations.CREATE,
+                "operation": Operation.CREATE,
             },
         )
         comment_list = self.bugzilla_client.get_comments(idlist=[bug_obj.id])
@@ -215,13 +215,13 @@ class DefaultExecutor:
                 bug_obj.id,
                 extra={
                     **log_context,
-                    "operation": Operations.DELETE,
+                    "operation": Operation.DELETE,
                 },
             )
             jira_response_delete = self.jira_client.delete_issue(
                 issue_id_or_key=jira_key_in_response
             )
-            return Operations.DELETE, {"jira_response": jira_response_delete}
+            return Operation.DELETE, {"jira_response": jira_response_delete}
 
         jira_url = f"{settings.jira_base_url}browse/{jira_key_in_response}"
         logger.debug(
@@ -230,7 +230,7 @@ class DefaultExecutor:
             bug_obj.id,
             extra={
                 **log_context,
-                "operation": Operations.LINK,
+                "operation": Operation.LINK,
             },
         )
         update = self.bugzilla_client.build_update(see_also_add=jira_url)
@@ -243,7 +243,7 @@ class DefaultExecutor:
             jira_key_in_response,
             extra={
                 **log_context,
-                "operation": Operations.LINK,
+                "operation": Operation.LINK,
             },
         )
         jira_response = self.jira_client.create_or_update_issue_remote_links(
@@ -254,7 +254,7 @@ class DefaultExecutor:
 
         self.update_issue(payload, bug_obj, jira_key_in_response, is_new=True)
 
-        return Operations.CREATE, {
+        return Operation.CREATE, {
             "bugzilla_response": bugzilla_response,
             "jira_response": jira_response,
         }

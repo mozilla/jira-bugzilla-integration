@@ -7,13 +7,13 @@ Let's create a `new_action`!
 1. First, add a new Python file (eg. `my_team_action.py`) in the `src/jbi/whiteboard_actions/` directory.
 1. Add the Python function `init` to the module, for example:
     ```python
-    from src.jbi import ActionResult, Operations
+    from src.jbi import ActionResult, Operation
 
     def init(jira_project_key, optional_param=42):
 
         def execute(payload) -> ActionResult:
             print(f"{optional_param}, going to {jira_project_key}!")
-            return Operations.CREATE, {"result": 42}
+            return Operation.CREATE, {"result": 42}
 
         return execute
     ```

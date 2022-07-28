@@ -6,7 +6,7 @@ import logging
 from statsd.defaults.env import statsd
 
 from src.app.environment import Settings
-from src.jbi import Operations
+from src.jbi import Operation
 from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
 from src.jbi.errors import ActionNotFoundError, IgnoreInvalidRequestError
 from src.jbi.models import Actions
@@ -36,7 +36,7 @@ def execute_action(
     try:
         logger.debug(
             "Handling incoming request",
-            extra={"operation": Operations.HANDLE, **log_context},
+            extra={"operation": Operation.HANDLE, **log_context},
         )
         if not request.bug:
             raise IgnoreInvalidRequestError("no bug data received")
@@ -69,7 +69,7 @@ def execute_action(
             action.whiteboard_tag,
             action.module,
             bug_obj.id,
-            extra={"operation": Operations.EXECUTE, **log_context},
+            extra={"operation": Operation.EXECUTE, **log_context},
         )
 
         operation, details = action.caller(payload=request)
@@ -86,7 +86,7 @@ def execute_action(
         logger.debug(
             "Ignore incoming request: %s",
             exception,
-            extra={"operation": Operations.IGNORE, **log_context},
+            extra={"operation": Operation.IGNORE, **log_context},
         )
         statsd.incr("jbi.bugzilla.ignored.count")
         raise

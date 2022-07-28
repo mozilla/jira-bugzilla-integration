@@ -4,11 +4,11 @@ A no-op action for testing.
 
 `init` should return a __call__able
 """
-from src.jbi import Operations
+from src.jbi import Operation
 
 
 def init(**parameters):
     return lambda payload: (
-        Operations.CREATE,
+        Operation.CREATE,
         {"parameters": parameters, "payload": payload.json()},
     )
