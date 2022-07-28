@@ -5,7 +5,7 @@ from typing import Dict, List
 import backoff
 import bugzilla as rh_bugzilla
 from atlassian import Jira, errors
-from prometheus_client import Counter, Summary
+from statsd.defaults.env import statsd
 
 from src.app import environment
 from src.jbi.models import Actions
@@ -24,28 +24,11 @@ class InstrumentedClient:
     It retries the methods if the specified exceptions are raised.
     """
 
-    counters: Dict[str, Counter] = {}
-    timers: Dict[str, Counter] = {}
-
     def __init__(self, wrapped, prefix, methods, exceptions):
         self.wrapped = wrapped
+        self.prefix = prefix
         self.methods = methods
         self.exceptions = exceptions
-
-        # We have a single instrument per prefix. Methods are reported as labels.
-        counter_name = prefix + "_methods_total"
-        if counter_name not in self.counters:
-            self.counters[counter_name] = Counter(
-                counter_name, f"{prefix} method calls", labelnames=["method"]
-            )
-        self.counter = self.counters[counter_name]
-
-        timer_name = prefix + "_methods_milliseconds"
-        if timer_name not in self.timers:
-            self.timers[timer_name] = Summary(
-                timer_name, f"{prefix} method timing", labelnames=["method"]
-            )
-        self.timer = self.timers[timer_name]
 
     def __getattr__(self, attr):
         if attr not in self.methods:
@@ -58,9 +41,9 @@ class InstrumentedClient:
         )
         def wrapped_func(*args, **kwargs):
             # Increment the call counter.
-            self.counter.labels(method=attr).inc()
+            statsd.incr(f"jbi.{self.prefix}.methods.{attr}.count")
             # Time its execution.
-            with self.timer.labels(method=attr).time():
+            with statsd.timer(f"jbi.{self.prefix}.methods.{attr}.timer"):
                 return getattr(self.wrapped, attr)(*args, **kwargs)
 
         # The method was not called yet.
@@ -83,7 +66,7 @@ def get_jira():
     )
     return InstrumentedClient(
         wrapped=jira_client,
-        prefix="jbi_jira",
+        prefix="jira",
         methods=instrumented_methods,
         exceptions=(errors.ApiError,),
     )
@@ -108,7 +91,7 @@ def get_bugzilla():
     )
     return InstrumentedClient(
         wrapped=bugzilla_client,
-        prefix="jbi_bugzilla",
+        prefix="bugzilla",
         methods=instrumented_methods,
         exceptions=(rh_bugzilla.BugzillaError,),
     )

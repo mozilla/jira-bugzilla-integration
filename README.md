@@ -275,12 +275,12 @@ jsonPayload.Fields.action.parameters.jira_project_key="MR"
 
 ## Metrics
 
-The following metrics are sent via Prometheus:
+The following metrics are sent via StatsD:
 
-- `jbi_bugzilla_ignored_total`
-- `jbi_bugzilla_processed_total`
-- `jbi_action_execution_milliseconds`
-- `jbi_jira_methods_milliseconds`
-- `jbi_jira_methods_total`
-- `jbi_bugzilla_methods_total`
-- `jbi_bugzilla_methods_milliseconds`
+- `jbi.bugzilla.ignored.count`
+- `jbi.bugzilla.processed.count`
+- `jbi.action.execution.timer`
+- `jbi.jira.methods.*.count`
+- `jbi.jira.methods.*.timer`
+- `jbi.bugzilla.methods.*.count`
+- `jbi.bugzilla.methods.*.timer`
