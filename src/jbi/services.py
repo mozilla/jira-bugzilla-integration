@@ -112,6 +112,7 @@ def _jira_check_health(actions: Actions) -> ServiceHealth:
     health: ServiceHealth = {
         "up": is_up,
         "all_projects_are_visible": is_up and _all_jira_projects_visible(jira, actions),
+        "all_projects_have_permissions": _all_jira_projects_permissions(jira, actions),
     }
     return health
 
@@ -125,6 +126,35 @@ def _all_jira_projects_visible(jira, actions: Actions) -> bool:
             missing_projects,
         )
     return not missing_projects
+
+
+def _all_jira_projects_permissions(jira, actions: Actions):
+    required_permissions = {"CREATE_ISSUES", "DELETE_ISSUES", "EDIT_ISSUES"}
+
+    misconfigured = []
+
+    for project_key in actions.configured_jira_projects_keys:
+        response = jira.get_project_permission_scheme(project_key, expand="permissions")
+        missing = required_permissions - set(response["permissions"].keys())
+        has_all = all(
+            entry["havePermission"] for entry in response["permissions"].values()
+        )
+        if missing or not has_all:
+            misconfigured.append((project_key, missing))
+
+    for project_key, missing in misconfigured:
+        logger.error(
+            "Configured credentials don't have permissions %s on Jira project %s",
+            ",".join(missing),
+            project_key,
+            extra={
+                "jira": {
+                    "project": project_key,
+                }
+            },
+        )
+
+    return not misconfigured
 
 
 def jbi_service_health_map(actions: Actions):
