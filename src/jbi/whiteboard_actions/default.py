@@ -69,6 +69,10 @@ class DefaultExecutor:
             )
             return {"status": "noop"}
 
+        comment = payload.map_as_jira_comment()
+        if comment is None:
+            return {"status": "noop"}
+
         jira_response = self.jira_client.issue_add_comment(
             issue_key=linked_issue_key,
             comment=payload.map_as_jira_comment(),

@@ -227,6 +227,15 @@ class BugzillaWebhookRequest(BaseModel):
         comment: BugzillaWebhookComment = self.bug.comment
         commenter: BugzillaWebhookUser = self.event.user
         comment_body: str = comment.body
+
+        if comment.is_private:
+            bug_comments = get_bugzilla().get_comments([self.bug.id])
+            comment_list = bug_comments["bugs"][str(self.bug.id)]["comments"]
+            matching_comments = [c for c in comment_list if c["id"] == comment.id]
+            if len(matching_comments) != 1:
+                return None
+            comment_body = matching_comments[0]["text"]
+
         body = f"*({commenter.login})* commented: \n{{quote}}{comment_body}{{quote}}"
         return body
 
