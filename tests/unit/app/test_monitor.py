@@ -33,6 +33,7 @@ def test_read_heartbeat_all_services_fail(anon_client, mocked_jira, mocked_bugzi
         "jira": {
             "up": False,
             "all_projects_are_visible": False,
+            "all_projects_have_permissions": False,
         },
         "bugzilla": {
             "up": False,
@@ -52,6 +53,7 @@ def test_read_heartbeat_jira_services_fails(anon_client, mocked_jira, mocked_bug
         "jira": {
             "up": False,
             "all_projects_are_visible": False,
+            "all_projects_have_permissions": False,
         },
         "bugzilla": {
             "up": True,
@@ -74,6 +76,7 @@ def test_read_heartbeat_bugzilla_services_fails(
         "jira": {
             "up": True,
             "all_projects_are_visible": True,
+            "all_projects_have_permissions": False,
         },
         "bugzilla": {
             "up": False,
@@ -86,6 +89,13 @@ def test_read_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
     mocked_bugzilla().logged_in = True
     mocked_jira().get_server_info.return_value = {}
     mocked_jira().projects.return_value = [{"key": "DevTest"}]
+    mocked_jira().get_project_permission_scheme.return_value = {
+        "permissions": {
+            "CREATE_ISSUES": {"havePermission": True},
+            "EDIT_ISSUES": {"havePermission": True},
+            "DELETE_ISSUES": {"havePermission": True},
+        },
+    }
 
     resp = anon_client.get("/__heartbeat__")
 
@@ -94,6 +104,7 @@ def test_read_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
         "jira": {
             "up": True,
             "all_projects_are_visible": True,
+            "all_projects_have_permissions": True,
         },
         "bugzilla": {
             "up": True,
@@ -113,6 +124,34 @@ def test_jira_heartbeat_visible_projects(anon_client, mocked_jira, mocked_bugzil
         "jira": {
             "up": True,
             "all_projects_are_visible": False,
+            "all_projects_have_permissions": False,
+        },
+        "bugzilla": {
+            "up": True,
+        },
+    }
+
+
+def test_jira_heartbeat_missing_permissions(anon_client, mocked_jira, mocked_bugzilla):
+    """/__heartbeat__ fails if configured projects don't match."""
+    mocked_bugzilla().logged_in = True
+    mocked_jira().get_server_info.return_value = {}
+    mocked_jira().get_project_permission_scheme.return_value = {
+        "permissions": {
+            "CREATE_ISSUES": {"havePermission": True},
+            "EDIT_ISSUES": {"havePermission": False},
+            "DELETE_ISSUES": {"havePermission": True},
+        },
+    }
+
+    resp = anon_client.get("/__heartbeat__")
+
+    assert resp.status_code == 503
+    assert resp.json() == {
+        "jira": {
+            "up": True,
+            "all_projects_are_visible": False,
+            "all_projects_have_permissions": False,
         },
         "bugzilla": {
             "up": True,
@@ -125,6 +164,13 @@ def test_head_heartbeat(anon_client, mocked_jira, mocked_bugzilla):
     mocked_bugzilla().logged_in = True
     mocked_jira().get_server_info.return_value = {}
     mocked_jira().projects.return_value = [{"key": "DevTest"}]
+    mocked_jira().get_project_permission_scheme.return_value = {
+        "permissions": {
+            "CREATE_ISSUES": {"havePermission": True},
+            "EDIT_ISSUES": {"havePermission": True},
+            "DELETE_ISSUES": {"havePermission": True},
+        },
+    }
 
     resp = anon_client.head("/__heartbeat__")
 
