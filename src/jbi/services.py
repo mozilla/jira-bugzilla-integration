@@ -85,7 +85,7 @@ def get_bugzilla():
         settings.bugzilla_base_url, api_key=str(settings.bugzilla_api_key)
     )
     instrumented_methods = (
-        "get_bug",
+        "getbug",
         "get_comments",
         "update_bugs",
     )
