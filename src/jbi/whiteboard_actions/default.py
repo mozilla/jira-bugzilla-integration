@@ -7,6 +7,7 @@ Default action is listed below.
 import logging
 
 from src.app.environment import get_settings
+from src.jbi import ActionResult, Operation
 from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
 from src.jbi.errors import ActionError
 from src.jbi.services import get_bugzilla, get_jira
@@ -33,7 +34,7 @@ class DefaultExecutor:
 
     def __call__(  # pylint: disable=inconsistent-return-statements
         self, payload: BugzillaWebhookRequest
-    ):
+    ) -> ActionResult:
         """Called from BZ webhook when default action is used. All default-action webhook-events are processed here."""
         target = payload.event.target  # type: ignore
         if target == "comment":
@@ -45,10 +46,12 @@ class DefaultExecutor:
             target,
             extra={
                 "request": payload.dict(),
+                "operation": Operation.IGNORE,
             },
         )
+        return False, {}
 
-    def comment_create_or_noop(self, payload: BugzillaWebhookRequest):
+    def comment_create_or_noop(self, payload: BugzillaWebhookRequest) -> ActionResult:
         """Confirm issue is already linked, then apply comments; otherwise noop"""
         bug_obj = payload.bugzilla_object
         linked_issue_key = bug_obj.extract_from_see_also()
@@ -56,6 +59,7 @@ class DefaultExecutor:
         log_context = {
             "request": payload.dict(),
             "bug": bug_obj.dict(),
+            "operation": Operation.COMMENT,
             "jira": {
                 "issue": linked_issue_key,
                 "project": self.jira_project_key,
@@ -67,11 +71,15 @@ class DefaultExecutor:
                 bug_obj.id,
                 extra=log_context,
             )
-            return {"status": "noop"}
+            return False, {}
 
         comment = payload.map_as_jira_comment()
         if comment is None:
-            return {"status": "noop"}
+            logger.debug(
+                "No matching comment found in payload",
+                extra=log_context,
+            )
+            return False, {}
 
         jira_response = self.jira_client.issue_add_comment(
             issue_key=linked_issue_key,
@@ -82,7 +90,7 @@ class DefaultExecutor:
             linked_issue_key,
             extra=log_context,
         )
-        return {"status": "comment", "jira_response": jira_response}
+        return True, {"jira_response": jira_response}
 
     def jira_comments_for_update(
         self,
@@ -102,7 +110,7 @@ class DefaultExecutor:
 
     def bug_create_or_update(
         self, payload: BugzillaWebhookRequest
-    ):  # pylint: disable=too-many-locals
+    ) -> ActionResult:  # pylint: disable=too-many-locals
         """Create and link jira issue with bug, or update; rollback if multiple events fire"""
         bug_obj = payload.bugzilla_object
         linked_issue_key = bug_obj.extract_from_see_also()  # type: ignore
@@ -121,7 +129,10 @@ class DefaultExecutor:
             "Update fields of Jira issue %s for Bug %s",
             linked_issue_key,
             bug_obj.id,
-            extra=log_context,
+            extra={
+                **log_context,
+                "operation": Operation.LINK,
+            },
         )
         jira_response_update = self.jira_client.update_issue_field(
             key=linked_issue_key, fields=bug_obj.map_as_jira_issue()
@@ -134,7 +145,10 @@ class DefaultExecutor:
                 "Create comment #%s on Jira issue %s",
                 i + 1,
                 linked_issue_key,
-                extra=log_context,
+                extra={
+                    **log_context,
+                    "operation": Operation.COMMENT,
+                },
             )
             jira_response_comments.append(
                 self.jira_client.issue_add_comment(
@@ -144,14 +158,11 @@ class DefaultExecutor:
 
         self.update_issue(payload, bug_obj, linked_issue_key, is_new=False)
 
-        return {
-            "status": "update",
-            "jira_responses": [jira_response_update, jira_response_comments],
-        }
+        return True, {"jira_responses": [jira_response_update, jira_response_comments]}
 
-    def create_and_link_issue(
+    def create_and_link_issue(  # pylint: disable=too-many-locals
         self, payload, bug_obj
-    ):  # pylint: disable=too-many-locals
+    ) -> ActionResult:
         """create jira issue and establish link between bug and issue; rollback/delete if required"""
         log_context = {
             "request": payload.dict(),
@@ -163,7 +174,10 @@ class DefaultExecutor:
         logger.debug(
             "Create new Jira issue for Bug %s",
             bug_obj.id,
-            extra=log_context,
+            extra={
+                **log_context,
+                "operation": Operation.CREATE,
+            },
         )
         comment_list = self.bugzilla_client.get_comments(idlist=[bug_obj.id])
         fields = {
@@ -205,19 +219,25 @@ class DefaultExecutor:
                 "Delete duplicated Jira issue %s from Bug %s",
                 jira_key_in_response,
                 bug_obj.id,
-                extra=log_context,
+                extra={
+                    **log_context,
+                    "operation": Operation.DELETE,
+                },
             )
             jira_response_delete = self.jira_client.delete_issue(
                 issue_id_or_key=jira_key_in_response
             )
-            return {"status": "duplicate", "jira_response": jira_response_delete}
+            return True, {"jira_response": jira_response_delete}
 
         jira_url = f"{settings.jira_base_url}browse/{jira_key_in_response}"
         logger.debug(
             "Link %r on Bug %s",
             jira_url,
             bug_obj.id,
-            extra=log_context,
+            extra={
+                **log_context,
+                "operation": Operation.LINK,
+            },
         )
         update = self.bugzilla_client.build_update(see_also_add=jira_url)
         bugzilla_response = self.bugzilla_client.update_bugs([bug_obj.id], update)
@@ -227,7 +247,10 @@ class DefaultExecutor:
             "Link %r on Jira issue %s",
             bugzilla_url,
             jira_key_in_response,
-            extra=log_context,
+            extra={
+                **log_context,
+                "operation": Operation.LINK,
+            },
         )
         jira_response = self.jira_client.create_or_update_issue_remote_links(
             issue_key=jira_key_in_response,
@@ -237,8 +260,7 @@ class DefaultExecutor:
 
         self.update_issue(payload, bug_obj, jira_key_in_response, is_new=True)
 
-        return {
-            "status": "create",
+        return True, {
             "bugzilla_response": bugzilla_response,
             "jira_response": jira_response,
         }

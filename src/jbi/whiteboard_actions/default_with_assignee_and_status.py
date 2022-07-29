@@ -9,6 +9,7 @@ Extended action that provides some additional features over the default:
 """
 import logging
 
+from src.jbi import Operation
 from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
 from src.jbi.whiteboard_actions.default import DefaultExecutor
 
@@ -58,6 +59,7 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
                 "project": self.jira_project_key,
             },
             "changed_fields": changed_fields,
+            "operation": Operation.UPDATE,
         }
 
         def clear_assignee():
@@ -99,7 +101,10 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
                         # assignee.
                         clear_assignee()
                 else:
-                    logger.debug("No assignee found", extra=log_context)
+                    logger.debug(
+                        "No assignee found",
+                        extra={**log_context, "operation": Operation.IGNORE},
+                    )
                     clear_assignee()
 
         # If this is a new issue or if the bug's status or resolution has
@@ -120,5 +125,9 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
             else:
                 logger.debug(
                     "Bug status was not in the status map.",
-                    extra={**log_context, "status_map": self.status_map},
+                    extra={
+                        **log_context,
+                        "status_map": self.status_map,
+                        "operation": Operation.IGNORE,
+                    },
                 )

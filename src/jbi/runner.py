@@ -6,20 +6,12 @@ import logging
 from statsd.defaults.env import statsd
 
 from src.app.environment import Settings
+from src.jbi import Operation
 from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
 from src.jbi.errors import ActionNotFoundError, IgnoreInvalidRequestError
 from src.jbi.models import Actions
 
 logger = logging.getLogger(__name__)
-
-
-class Operations:
-    """Track status of incoming requests in log entries."""
-
-    HANDLE = "handle"
-    EXECUTE = "execute"
-    IGNORE = "ignore"
-    SUCCESS = "success"
 
 
 @statsd.timer("jbi.action.execution.timer")
@@ -44,7 +36,7 @@ def execute_action(
     try:
         logger.debug(
             "Handling incoming request",
-            extra={"operation": Operations.HANDLE, **log_context},
+            extra={"operation": Operation.HANDLE, **log_context},
         )
         if not request.bug:
             raise IgnoreInvalidRequestError("no bug data received")
@@ -77,24 +69,27 @@ def execute_action(
             action.whiteboard_tag,
             action.module,
             bug_obj.id,
-            extra={"operation": Operations.EXECUTE, **log_context},
+            extra={"operation": Operation.EXECUTE, **log_context},
         )
 
-        content = action.caller(payload=request)
+        handled, details = action.caller(payload=request)
 
         logger.info(
             "Action %r executed successfully for Bug %s",
             action.whiteboard_tag,
             bug_obj.id,
-            extra={"operation": Operations.SUCCESS, **log_context},
+            extra={
+                "operation": Operation.SUCCESS if handled else Operation.IGNORE,
+                **log_context,
+            },
         )
         statsd.incr("jbi.bugzilla.processed.count")
-        return content
+        return details
     except IgnoreInvalidRequestError as exception:
         logger.debug(
             "Ignore incoming request: %s",
             exception,
-            extra={"operation": Operations.IGNORE, **log_context},
+            extra={"operation": Operation.IGNORE, **log_context},
         )
         statsd.incr("jbi.bugzilla.ignored.count")
         raise
