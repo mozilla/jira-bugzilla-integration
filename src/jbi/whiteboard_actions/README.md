@@ -13,14 +13,14 @@ Let's create a `new_action`!
 
         def execute(payload) -> ActionResult:
             print(f"{optional_param}, going to {jira_project_key}!")
-            return Operation.CREATE, {"result": 42}
+            return True, {"result": 42}
 
         return execute
     ```
     1. In the above example the `jira_project_key` parameter is required
     1. `optional_param`, which has a default value, is not required to run this action
     1. `init()` returns a `__call__`able object that the system calls with the Bugzilla request payload
-    1. The returned operation will be used for logging and the along side value will be returned by the WebHook endpoint
+    1.  The returned `ActionResult` features a boolean to indicate whether something was performed or not, along with a `Dict` (used as a response to the WebHook endpoint).
 1. Use the `payload` to perform the desired processing!
 1. Use the available service calls from `src/jbi/services.py` (or make new ones)
 1. Update the `README.md` to document your action
