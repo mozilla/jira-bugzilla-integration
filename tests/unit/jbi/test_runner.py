@@ -8,6 +8,7 @@ import pytest
 
 from src.app.api import app
 from src.app.environment import Settings
+from src.jbi import Operation
 from src.jbi.bugzilla import BugzillaWebhookRequest
 from src.jbi.errors import IgnoreInvalidRequestError
 from src.jbi.models import Action, Actions
@@ -129,6 +130,65 @@ def test_execution_logging_for_ignored_requests(
     assert captured_log_msgs == [
         "Handling incoming request",
         "Ignore incoming request: no action matching bug whiteboard tags: foo",
+    ]
+
+
+def test_action_is_logged_as_success_if_returns_true(
+    caplog,
+    webhook_create_example: BugzillaWebhookRequest,
+    actions_example: Actions,
+    settings: Settings,
+):
+    with mock.patch("src.jbi.models.Action.caller") as mocked:
+        mocked.return_value = True, {}
+        execute_action(
+            request=webhook_create_example,
+            actions=actions_example,
+            settings=settings,
+        )
+    captured_log_msgs = [
+        (r.msg % r.args, r.operation)
+        for r in caplog.records
+        if r.name == "src.jbi.runner"
+    ]
+
+    assert captured_log_msgs == [
+        ("Handling incoming request", Operation.HANDLE),
+        (
+            "Execute action 'devtest:tests.unit.jbi.noop_action' for Bug 654321",
+            Operation.EXECUTE,
+        ),
+        ("Action 'devtest' executed successfully for Bug 654321", Operation.SUCCESS),
+    ]
+
+
+def test_action_is_logged_as_ignore_if_returns_false(
+    caplog,
+    webhook_create_example: BugzillaWebhookRequest,
+    actions_example: Actions,
+    settings: Settings,
+):
+    with mock.patch("src.jbi.models.Action.caller") as mocked:
+        mocked.return_value = False, {}
+        execute_action(
+            request=webhook_create_example,
+            actions=actions_example,
+            settings=settings,
+        )
+
+    captured_log_msgs = [
+        (r.msg % r.args, r.operation)
+        for r in caplog.records
+        if r.name == "src.jbi.runner"
+    ]
+
+    assert captured_log_msgs == [
+        ("Handling incoming request", Operation.HANDLE),
+        (
+            "Execute action 'devtest:tests.unit.jbi.noop_action' for Bug 654321",
+            Operation.EXECUTE,
+        ),
+        ("Action 'devtest' executed successfully for Bug 654321", Operation.IGNORE),
     ]
 
 

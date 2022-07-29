@@ -9,6 +9,6 @@ from src.jbi import Operation
 
 def init(**parameters):
     return lambda payload: (
-        Operation.CREATE,
+        True,
         {"parameters": parameters, "payload": payload.json()},
     )

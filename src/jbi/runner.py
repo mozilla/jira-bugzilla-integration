@@ -72,13 +72,16 @@ def execute_action(
             extra={"operation": Operation.EXECUTE, **log_context},
         )
 
-        operation, details = action.caller(payload=request)
+        handled, details = action.caller(payload=request)
 
         logger.info(
             "Action %r executed successfully for Bug %s",
             action.whiteboard_tag,
             bug_obj.id,
-            extra={"operation": operation, **log_context},
+            extra={
+                "operation": Operation.SUCCESS if handled else Operation.IGNORE,
+                **log_context,
+            },
         )
         statsd.incr("jbi.bugzilla.processed.count")
         return details

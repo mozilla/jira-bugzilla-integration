@@ -49,7 +49,7 @@ class DefaultExecutor:
                 "operation": Operation.IGNORE,
             },
         )
-        return Operation.IGNORE, {}
+        return False, {}
 
     def comment_create_or_noop(self, payload: BugzillaWebhookRequest) -> ActionResult:
         """Confirm issue is already linked, then apply comments; otherwise noop"""
@@ -71,7 +71,7 @@ class DefaultExecutor:
                 bug_obj.id,
                 extra=log_context,
             )
-            return Operation.IGNORE, {}
+            return False, {}
 
         comment = payload.map_as_jira_comment()
         if comment is None:
@@ -79,7 +79,7 @@ class DefaultExecutor:
                 "No matching comment found in payload",
                 extra=log_context,
             )
-            return Operation.IGNORE, {}
+            return False, {}
 
         jira_response = self.jira_client.issue_add_comment(
             issue_key=linked_issue_key,
@@ -90,7 +90,7 @@ class DefaultExecutor:
             linked_issue_key,
             extra=log_context,
         )
-        return Operation.COMMENT, {"jira_response": jira_response}
+        return True, {"jira_response": jira_response}
 
     def jira_comments_for_update(
         self,
@@ -158,9 +158,7 @@ class DefaultExecutor:
 
         self.update_issue(payload, bug_obj, linked_issue_key, is_new=False)
 
-        return Operation.UPDATE, {
-            "jira_responses": [jira_response_update, jira_response_comments]
-        }
+        return True, {"jira_responses": [jira_response_update, jira_response_comments]}
 
     def create_and_link_issue(  # pylint: disable=too-many-locals
         self, payload, bug_obj
@@ -229,7 +227,7 @@ class DefaultExecutor:
             jira_response_delete = self.jira_client.delete_issue(
                 issue_id_or_key=jira_key_in_response
             )
-            return Operation.DELETE, {"jira_response": jira_response_delete}
+            return True, {"jira_response": jira_response_delete}
 
         jira_url = f"{settings.jira_base_url}browse/{jira_key_in_response}"
         logger.debug(
@@ -262,7 +260,7 @@ class DefaultExecutor:
 
         self.update_issue(payload, bug_obj, jira_key_in_response, is_new=True)
 
-        return Operation.CREATE, {
+        return True, {
             "bugzilla_response": bugzilla_response,
             "jira_response": jira_response,
         }

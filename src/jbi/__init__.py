@@ -13,6 +13,7 @@ class Operation(str, Enum):
     HANDLE = "handle"
     EXECUTE = "execute"
     IGNORE = "ignore"
+    SUCCESS = "success"
 
     CREATE = "create"
     UPDATE = "update"
@@ -21,4 +22,4 @@ class Operation(str, Enum):
     LINK = "link"
 
 
-ActionResult = Tuple[Operation, Dict]
+ActionResult = Tuple[bool, Dict]
