@@ -144,11 +144,14 @@ def test_action_is_logged_as_success_if_returns_true(
 ):
     with mock.patch("src.jbi.models.Action.caller") as mocked:
         mocked.return_value = True, {}
-        execute_action(
-            request=webhook_create_example,
-            actions=actions_example,
-            settings=settings,
-        )
+
+        with caplog.at_level(logging.DEBUG):
+            execute_action(
+                request=webhook_create_example,
+                actions=actions_example,
+                settings=settings,
+            )
+
     captured_log_msgs = [
         (r.msg % r.args, r.operation)
         for r in caplog.records
@@ -173,11 +176,13 @@ def test_action_is_logged_as_ignore_if_returns_false(
 ):
     with mock.patch("src.jbi.models.Action.caller") as mocked:
         mocked.return_value = False, {}
-        execute_action(
-            request=webhook_create_example,
-            actions=actions_example,
-            settings=settings,
-        )
+
+        with caplog.at_level(logging.DEBUG):
+            execute_action(
+                request=webhook_create_example,
+                actions=actions_example,
+                settings=settings,
+            )
 
     captured_log_msgs = [
         (r.msg % r.args, r.operation)
