@@ -9,30 +9,31 @@ from src.app.environment import get_settings
 
 settings = get_settings()
 
-
-def configure_logging():
-    """Configure logging; mozlog format for Dockerflow"""
-    logging_config = {
-        "version": 1,
-        "formatters": {
-            "mozlog_json": {
-                "()": "dockerflow.logging.JsonLogFormatter",
-                "logger_name": "jbi",
-            },
+CONFIG = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "mozlog_json": {
+            "()": "dockerflow.logging.JsonLogFormatter",
+            "logger_name": "jbi",
         },
-        "handlers": {
-            "console": {
-                "level": settings.log_level.upper(),
-                "class": "logging.StreamHandler",
-                "formatter": "mozlog_json",
-                "stream": sys.stdout,
-            }
+    },
+    "handlers": {
+        "console": {
+            "level": settings.log_level.upper(),
+            "class": "logging.StreamHandler",
+            "formatter": "mozlog_json",
+            "stream": sys.stdout,
         },
-        "loggers": {
-            "request.summary": {"handlers": ["console"], "level": "INFO"},
-            "backoff": {"handlers": ["console"], "level": "INFO"},
-            "src.jbi": {"handlers": ["console"], "level": "DEBUG"},
+        "null": {
+            "class": "logging.NullHandler",
         },
-    }
-
-    logging.config.dictConfig(logging_config)
+    },
+    "loggers": {
+        "": {"handlers": ["console"]},
+        "request.summary": {"level": logging.INFO},
+        "src": {"level": logging.DEBUG},
+        "uvicorn": {"level": logging.INFO},
+        "uvicorn.access": {"handlers": ["null"], "propagate": False},
+    },
+}

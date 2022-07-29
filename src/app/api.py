@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 import sentry_sdk
-import uvicorn  # type: ignore
 from fastapi import Body, Depends, FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse
@@ -18,7 +17,6 @@ from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 
 from src.app import configuration
 from src.app.environment import get_settings
-from src.app.log import configure_logging
 from src.app.monitor import api_router as monitor_router
 from src.jbi.bugzilla import BugzillaWebhookRequest
 from src.jbi.models import Actions
@@ -31,12 +29,11 @@ templates = Jinja2Templates(directory=SRC_DIR / "templates")
 
 settings = get_settings()
 
-configure_logging()
-
 app = FastAPI(
     title="Jira Bugzilla Integration (JBI)",
     description="JBI v2 Platform",
     version="3.0.3",
+    debug=settings.app_debug,
 )
 
 app.include_router(monitor_router)
@@ -46,6 +43,42 @@ sentry_sdk.init(  # pylint: disable=abstract-class-instantiated  # noqa: E0110
     dsn=settings.sentry_dsn
 )
 app.add_middleware(SentryAsgiMiddleware)
+
+
+def format_log_fields(request: Request, request_time: float, status_code: int) -> Dict:
+    """Prepare Fields for Mozlog request summary"""
+
+    current_time = time.time()
+    fields = {
+        "agent": request.headers.get("User-Agent"),
+        "path": request.url.path,
+        "method": request.method,
+        "lang": request.headers.get("Accept-Language"),
+        "querystring": dict(request.query_params),
+        "errno": 0,
+        "t": int((current_time - request_time) * 1000.0),
+        "time": datetime.fromtimestamp(current_time).isoformat(),
+        "status_code": status_code,
+    }
+    return fields
+
+
+@app.middleware("http")
+async def request_summary(request: Request, call_next):
+    """Middleware to log request info"""
+    summary_logger = logging.getLogger("request.summary")
+    request_time = time.time()
+    try:
+        response = await call_next(request)
+        log_fields = format_log_fields(
+            request, request_time, status_code=response.status_code
+        )
+        summary_logger.info("", extra=log_fields)
+        return response
+    except Exception as exc:
+        log_fields = format_log_fields(request, request_time, status_code=500)
+        summary_logger.info(exc, extra=log_fields)
+        raise
 
 
 @app.get("/", include_in_schema=False)
@@ -61,33 +94,6 @@ def root():
             "bugzilla_base_url": settings.bugzilla_base_url,
         },
     }
-
-
-@app.middleware("http")
-async def request_summary(request: Request, call_next):
-    """Middleware to log request info"""
-    summary_logger = logging.getLogger("request.summary")
-    previous_time = time.time()
-
-    infos = {
-        "agent": request.headers.get("User-Agent"),
-        "path": request.url.path,
-        "method": request.method,
-        "lang": request.headers.get("Accept-Language"),
-        "querystring": dict(request.query_params),
-        "errno": 0,
-    }
-
-    response = await call_next(request)
-
-    current = time.time()
-    duration = int((current - previous_time) * 1000.0)
-    isotimestamp = datetime.fromtimestamp(current).isoformat()
-    infos = {"time": isotimestamp, "code": response.status_code, "t": duration, **infos}
-
-    summary_logger.info("", extra=infos)
-
-    return response
 
 
 @app.post("/bugzilla_webhook")
@@ -135,13 +141,3 @@ def powered_by_jbi(
         "enable_query": enabled,
     }
     return templates.TemplateResponse("powered_by_template.html", context)
-
-
-if __name__ == "__main__":
-    uvicorn.run(
-        "src.app.api:app",
-        host=settings.host,
-        port=settings.port,
-        reload=settings.app_reload,
-        log_level=settings.log_level,
-    )
