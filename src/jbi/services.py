@@ -1,4 +1,5 @@
 """Services and functions that can be used to create custom actions"""
+import concurrent.futures
 import logging
 from typing import Dict, List
 
@@ -112,6 +113,7 @@ def _jira_check_health(actions: Actions) -> ServiceHealth:
     health: ServiceHealth = {
         "up": is_up,
         "all_projects_are_visible": is_up and _all_jira_projects_visible(jira, actions),
+        "all_projects_have_permissions": _all_jira_projects_permissions(jira, actions),
     }
     return health
 
@@ -125,6 +127,48 @@ def _all_jira_projects_visible(jira, actions: Actions) -> bool:
             missing_projects,
         )
     return not missing_projects
+
+
+def _all_jira_projects_permissions(jira, actions: Actions):
+    all_projects_perms = {}
+    # Query permissions for all configured projects in parallel threads.
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        futures_to_projects = {
+            executor.submit(
+                jira.get_project_permission_scheme, project_key, expand="permissions"
+            ): project_key
+            for project_key in actions.configured_jira_projects_keys
+        }
+        # Obtain futures' results unordered.
+        for future in concurrent.futures.as_completed(futures_to_projects):
+            project_key = futures_to_projects[future]
+            try:
+                response = future.result()
+                all_projects_perms[project_key] = response["permissions"]
+            except Exception as exc:
+                raise exc
+
+    required_permissions = {"CREATE_ISSUES", "DELETE_ISSUES", "EDIT_ISSUES"}
+    misconfigured = []
+    for project_key, permissions in all_projects_perms.items():
+        missing = required_permissions - set(permissions.keys())
+        has_all = all(entry["havePermission"] for entry in permissions.values())
+        if missing or not has_all:
+            misconfigured.append((project_key, missing))
+
+    for project_key, missing in misconfigured:
+        logger.error(
+            "Configured credentials don't have permissions %s on Jira project %s",
+            ",".join(missing),
+            project_key,
+            extra={
+                "jira": {
+                    "project": project_key,
+                }
+            },
+        )
+
+    return not misconfigured
 
 
 def jbi_service_health_map(actions: Actions):
