@@ -512,16 +512,16 @@ optional = false
 python-versions = ">=3.6"
 
 [package.extras]
-dev = ["pre-commit", "tox"]
-testing = ["pytest", "pytest-benchmark"]
+testing = ["pytest-benchmark", "pytest"]
+dev = ["tox", "pre-commit"]
 
 [[package]]
 name = "pre-commit"
-version = "2.17.0"
+version = "2.20.0"
 description = "A framework for managing and maintaining multi-language pre-commit hooks."
 category = "dev"
 optional = false
-python-versions = ">=3.6.1"
+python-versions = ">=3.7"
 
 [package.dependencies]
 cfgv = ">=2.0.0"
@@ -574,10 +574,10 @@ types-Deprecated = "*"
 types-PyYAML = {version = "*", optional = true, markers = "extra == \"pyyaml\""}
 
 [package.extras]
-dev = ["black", "flake8", "bump2version", "pytest", "mypy"]
-docs = ["mkdocs", "mkdocs-material", "mkdocstrings", "pymdown-extensions", "pygments"]
-pyyaml = ["pyyaml", "types-pyyaml"]
 ruamel = ["ruamel.yaml (>=0.15,<0.18)"]
+pyyaml = ["types-pyyaml", "pyyaml"]
+docs = ["pygments", "pymdown-extensions", "mkdocstrings", "mkdocs-material", "mkdocs"]
+dev = ["mypy", "pytest", "bump2version", "flake8", "black"]
 
 [[package]]
 name = "pylint"
@@ -997,7 +997,7 @@ pyyaml = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8, <3.11"
-content-hash = "f9503b355ebcd663abbde05798c460206525db36b8570f140a1a52f74b277ef2"
+content-hash = "8c40aa2536737159ac59134ba68f675dc417bb0b8df7efc6c3785bbec983deae"
 
 [metadata.files]
 anyio = [
@@ -1362,8 +1362,8 @@ pluggy = [
     {file = "pluggy-1.0.0.tar.gz", hash = "sha256:4224373bacce55f955a878bf9cfa763c1e360858e330072059e10bad68531159"},
 ]
 pre-commit = [
-    {file = "pre_commit-2.17.0-py2.py3-none-any.whl", hash = "sha256:725fa7459782d7bec5ead072810e47351de01709be838c2ce1726b9591dad616"},
-    {file = "pre_commit-2.17.0.tar.gz", hash = "sha256:c1a8040ff15ad3d648c70cc3e55b93e4d2d5b687320955505587fd79bbaed06a"},
+    {file = "pre_commit-2.20.0-py2.py3-none-any.whl", hash = "sha256:51a5ba7c480ae8072ecdb6933df22d2f812dc897d5fe848778116129a681aac7"},
+    {file = "pre_commit-2.20.0.tar.gz", hash = "sha256:a978dac7bc9ec0bcee55c18a277d553b0f419d259dadb4b9418ff2d00eb43959"},
 ]
 py = [
     {file = "py-1.11.0-py2.py3-none-any.whl", hash = "sha256:607c53218732647dff4acdfcd50cb62615cedf612e72d1724fb1a0cc6405b378"},
