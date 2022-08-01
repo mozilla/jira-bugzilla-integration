@@ -89,7 +89,7 @@ def test_read_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
     mocked_bugzilla().logged_in = True
     mocked_jira().get_server_info.return_value = {}
     mocked_jira().projects.return_value = [{"key": "DevTest"}]
-    mocked_jira().get_project_permission_scheme.return_value = {
+    mocked_jira().get_permissions.return_value = {
         "permissions": {
             "CREATE_ISSUES": {"havePermission": True},
             "EDIT_ISSUES": {"havePermission": True},
@@ -164,7 +164,7 @@ def test_head_heartbeat(anon_client, mocked_jira, mocked_bugzilla):
     mocked_bugzilla().logged_in = True
     mocked_jira().get_server_info.return_value = {}
     mocked_jira().projects.return_value = [{"key": "DevTest"}]
-    mocked_jira().get_project_permission_scheme.return_value = {
+    mocked_jira().get_permissions.return_value = {
         "permissions": {
             "CREATE_ISSUES": {"havePermission": True},
             "EDIT_ISSUES": {"havePermission": True},
