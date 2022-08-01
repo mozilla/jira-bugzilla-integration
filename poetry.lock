@@ -558,7 +558,7 @@ email = ["email-validator (>=1.0.3)"]
 
 [[package]]
 name = "pydantic-yaml"
-version = "0.6.3"
+version = "0.8.0"
 description = "\"Adds some YAML functionality to the excellent `pydantic` library.\""
 category = "main"
 optional = false
@@ -997,7 +997,7 @@ pyyaml = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8, <3.11"
-content-hash = "0b77dba2048e616a343e024a26b0d9176a9b8276da8be300241ce14dbcc9dfe2"
+content-hash = "73083050dd044f12b322663d6a00a8ed6047b7d9c4dd1948c3c76283d91ebb01"
 
 [metadata.files]
 anyio = [
@@ -1407,8 +1407,8 @@ pydantic = [
     {file = "pydantic-1.9.1.tar.gz", hash = "sha256:1ed987c3ff29fff7fd8c3ea3a3ea877ad310aae2ef9889a119e22d3f2db0691a"},
 ]
 pydantic-yaml = [
-    {file = "pydantic_yaml-0.6.3-py3-none-any.whl", hash = "sha256:aaa3e9c55eeebc203dacd461ff635932d10a440bfda7f77f596351094c85322b"},
-    {file = "pydantic_yaml-0.6.3.tar.gz", hash = "sha256:8bec8b6eee9889073b5461075d8b85efb00ba43bd34d5fb331fa394ec5a3b46f"},
+    {file = "pydantic_yaml-0.8.0-py3-none-any.whl", hash = "sha256:aea6b108c9dd6e8d55829e24c48741332dd8b2bd14ed5d7e480e75eff2ed4d7b"},
+    {file = "pydantic_yaml-0.8.0.tar.gz", hash = "sha256:324d75c84c068f64fefd5910967a83735231296c8eaba0dd48d721b7eccae8db"},
 ]
 pylint = [
     {file = "pylint-2.14.5-py3-none-any.whl", hash = "sha256:fabe30000de7d07636d2e82c9a518ad5ad7908590fe135ace169b44839c15f90"},
