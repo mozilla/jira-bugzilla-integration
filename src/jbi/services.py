@@ -135,7 +135,9 @@ def _all_jira_projects_permissions(jira, actions: Actions):
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
         futures_to_projects = {
             executor.submit(
-                jira.get_project_permission_scheme, project_key, expand="permissions"
+                jira.get_permissions,
+                project_key=project_key,
+                permissions="CREATE_ISSUES,DELETE_ISSUES,EDIT_ISSUES",
             ): project_key
             for project_key in actions.configured_jira_projects_keys
         }
