@@ -1,6 +1,3 @@
-"""
-Module for testing src/app/api.py
-"""
 import logging
 from datetime import datetime
 
@@ -10,7 +7,7 @@ from unittest import mock
 import pytest
 from fastapi.testclient import TestClient
 
-from src.app.api import app
+from src.app.main import app
 from src.jbi.bugzilla import BugzillaWebhookRequest
 from src.jbi.errors import IgnoreInvalidRequestError
 from src.jbi.models import Actions

@@ -9,7 +9,7 @@ settings = get_settings()
 if __name__ == "__main__":
     server = uvicorn.Server(
         uvicorn.Config(
-            "src.app.api:app",
+            "src.app.main:app",
             host=settings.host,
             port=settings.port,
             reload=settings.app_reload,

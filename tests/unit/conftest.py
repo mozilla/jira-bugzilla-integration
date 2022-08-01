@@ -7,8 +7,8 @@ from unittest import mock
 import pytest
 from fastapi.testclient import TestClient
 
-from src.app.api import app
 from src.app.environment import Settings
+from src.app.main import app
 from src.jbi.bugzilla import BugzillaWebhookComment, BugzillaWebhookRequest
 from src.jbi.models import Action, Actions
 
