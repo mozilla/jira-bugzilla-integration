@@ -5,7 +5,7 @@ import json
 from enum import Enum
 from functools import lru_cache
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Set
 
 from pydantic import AnyUrl, BaseSettings
 
@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     jira_base_url: str = "https://mozit-test.atlassian.net/"
     jira_username: str
     jira_api_key: str
+    jira_required_permissions: Set[str] = {
+        "CREATE_ISSUES",
+        "DELETE_ISSUES",
+        "EDIT_ISSUES",
+    }
 
     # Bugzilla
     bugzilla_base_url: str = "https://bugzilla-dev.allizom.org"
