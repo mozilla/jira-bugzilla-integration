@@ -1,5 +1,5 @@
 """
-Module for testing jbi/whiteboard_actions/default.py functionality
+Module for testing jbi/actions/default.py functionality
 """
 # pylint: disable=cannot-enumerate-pytest-fixtures
 from unittest import mock
@@ -8,9 +8,9 @@ from unittest.mock import MagicMock
 import pytest
 
 from jbi import Operation
+from jbi.actions import default
 from jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
 from jbi.errors import ActionError
-from jbi.whiteboard_actions import default
 
 
 def test_default_invalid_init():

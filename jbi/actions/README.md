@@ -7,7 +7,7 @@ can be run by updating the `module` attribute of the YAML config file.
 
 Let's create a `new_action`!
 
-1. First, add a new Python file (eg. `my_team_action.py`) in the `jbi/whiteboard_actions/` directory.
+1. First, add a new Python file (eg. `my_team_action.py`) in the `jbi/actions/` directory.
 1. Add the Python function `init` to the module, for example:
 
    ```python
@@ -30,4 +30,4 @@ Let's create a `new_action`!
 1. Use the `payload` to perform the desired processing!
 1. Use the available service calls from `jbi/services.py` (or make new ones)
 1. Update the `README.md` to document your action
-1. Now the action `jbi.whiteboard_actions.my_team_actions` can be used in the YAML configuration, under the `module` key.
+1. Now the action `jbi.actions.my_team_actions` can be used in the YAML configuration, under the `module` key.

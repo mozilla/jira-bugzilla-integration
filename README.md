@@ -22,7 +22,7 @@ Below is a full example of an action configuration:
   contact: example@allizom.com
   description: example configuration
   enabled: true
-  module: jbi.whiteboard_actions.default
+  module: jbi.actions.default
   parameters:
     jira_project_key: EXMPL
 ```
@@ -50,7 +50,7 @@ A bit more about the different fields...
     - If false, matching events will not be synchronized
 - `module` (optional)
     - string
-    - default: [jbi.whiteboard_actions.default](jbi/whiteboard_actions/default.py)
+    - default: [jbi.actions.default](jbi/actions/default.py)
     - The specified Python module must be available in the `PYTHONPATH`
 - `parameters` (optional)
     - dict
@@ -66,7 +66,7 @@ A bit more about the different fields...
 ## Available Actions
 
 ### Default
-The `jbi.whiteboard_actions.default` action will create or update the Jira issue and its comments.
+The `jbi.actions.default` action will create or update the Jira issue and its comments.
 It will also set the Jira issue URL in the Bugzilla bug `see_also` field.
 
 **Parameters**
@@ -80,13 +80,13 @@ Example configuration:
     whiteboard_tag: example
     contact: example@allizom.com
     description: example configuration
-    module: jbi.whiteboard_actions.default
+    module: jbi.actions.default
     parameters:
       jira_project_key: EXMPL
 ```
 
 ### Default with assignee and status action
-The `jbi.whiteboard_actions.default_with_assignee_and_status` action adds some additional
+The `jbi.actions.default_with_assignee_and_status` action adds some additional
 features on top of the default.
 
 It will attempt to assign the Jira issue the same person as the bug is assigned to. This relies on
@@ -111,7 +111,7 @@ Example configuration:
     contact: example@allizom.com
     description: example configuration
     enabled: true
-    module: jbi.whiteboard_actions.default_with_assignee_and_status
+    module: jbi.actions.default_with_assignee_and_status
     parameters:
       jira_project_key: EXMPL
       status_map:
@@ -125,7 +125,7 @@ linked Jira issue status to "Closed". If the bug changes to a status not listed 
 no change will be made to the Jira issue.
 
 ### Custom Actions
-If you're looking for a unique capability for your team's data flow, you can add your own Python methods and functionality[...read more here.](jbi/whiteboard_actions/README.md)
+If you're looking for a unique capability for your team's data flow, you can add your own Python methods and functionality[...read more here.](jbi/actions/README.md)
 
 
 ## Diagram Overview
@@ -210,7 +210,7 @@ GET /whiteboard_tags/
         "contact": "example@allizom.com",
         "description": "Addons whiteboard tag for AMO Team",
         "enabled": true,
-        "module": "jbi.whiteboard_actions.default",
+        "module": "jbi.actions.default",
         "parameters": {
             "jira_project_key": "WEBEXT"
         }

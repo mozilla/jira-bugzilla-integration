@@ -10,8 +10,8 @@ Extended action that provides some additional features over the default:
 import logging
 
 from jbi import Operation
+from jbi.actions.default import DefaultExecutor
 from jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
-from jbi.whiteboard_actions.default import DefaultExecutor
 
 logger = logging.getLogger(__name__)
 

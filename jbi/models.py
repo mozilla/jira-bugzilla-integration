@@ -17,7 +17,7 @@ class Action(YamlModel):
     Action is the inner model for each action in the configuration file"""
 
     whiteboard_tag: str
-    module: str = "jbi.whiteboard_actions.default"
+    module: str = "jbi.actions.default"
     # TODO: Remove the tbd literal option when all actions have contact info # pylint: disable=fixme
     contact: Union[EmailStr, List[EmailStr], Literal["tbd"]]
     description: str
