@@ -7,9 +7,9 @@ Default action is listed below.
 import logging
 
 from jbi import ActionResult, Operation
-from jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
 from jbi.environment import get_settings
 from jbi.errors import ActionError
+from jbi.models import BugzillaBug, BugzillaWebhookRequest
 from jbi.services import get_bugzilla, get_jira
 
 settings = get_settings()

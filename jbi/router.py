@@ -9,10 +9,9 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from jbi.bugzilla import BugzillaWebhookRequest
 from jbi.configuration import get_actions
 from jbi.environment import Settings, get_settings, get_version
-from jbi.models import Actions
+from jbi.models import Actions, BugzillaWebhookRequest
 from jbi.runner import IgnoreInvalidRequestError, execute_action
 from jbi.services import jbi_service_health_map, jira_visible_projects
 

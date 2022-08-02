@@ -5,7 +5,7 @@ from datetime import datetime
 from fastapi.testclient import TestClient
 
 from jbi.app import app
-from jbi.bugzilla import BugzillaWebhookRequest
+from jbi.models import BugzillaWebhookRequest
 
 
 def test_read_root(anon_client):

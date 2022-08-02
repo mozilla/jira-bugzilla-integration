@@ -1,7 +1,9 @@
 """Services and functions that can be used to create custom actions"""
+from __future__ import annotations
+
 import concurrent.futures
 import logging
-from typing import Dict, List
+from typing import TYPE_CHECKING, Dict, List
 
 import backoff
 import bugzilla as rh_bugzilla
@@ -9,7 +11,9 @@ from atlassian import Jira, errors
 from statsd.defaults.env import statsd
 
 from jbi import environment
-from jbi.models import Actions
+
+if TYPE_CHECKING:
+    from jbi.models import Actions
 
 settings = environment.get_settings()
 

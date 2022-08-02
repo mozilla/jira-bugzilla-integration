@@ -14,7 +14,7 @@ from jbi.actions.default import (
     JIRA_REQUIRED_PERMISSIONS as DEFAULT_JIRA_REQUIRED_PERMISSIONS,
 )
 from jbi.actions.default import DefaultExecutor
-from jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
+from jbi.models import BugzillaBug, BugzillaWebhookRequest
 
 logger = logging.getLogger(__name__)
 

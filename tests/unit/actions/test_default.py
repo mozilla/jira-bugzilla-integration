@@ -9,8 +9,8 @@ import pytest
 
 from jbi import Operation
 from jbi.actions import default
-from jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
 from jbi.errors import ActionError
+from jbi.models import BugzillaBug, BugzillaWebhookRequest
 
 
 def test_default_invalid_init():
