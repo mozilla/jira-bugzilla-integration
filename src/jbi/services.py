@@ -186,9 +186,13 @@ def _validate_jira_permissions(all_projects_perms):
     misconfigured = []
     for project_key, (required_perms, obtained_perms) in all_projects_perms.items():
         missing = required_perms - set(obtained_perms.keys())
-        has_all = all(entry["havePermission"] for entry in obtained_perms.values())
-        if missing or not has_all:
-            misconfigured.append((project_key, missing))
+        not_given = set(
+            entry["key"]
+            for entry in obtained_perms.values()
+            if not entry["havePermission"]
+        )
+        if missing | not_given:
+            misconfigured.append((project_key, missing | not_given))
     for project_key, missing in misconfigured:
         logger.error(
             "Configured credentials don't have permissions %s on Jira project %s",
