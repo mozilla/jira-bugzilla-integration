@@ -240,3 +240,15 @@ def actions_example(action_example) -> Actions:
 def sleepless(monkeypatch):
     # https://stackoverflow.com/a/54829577
     monkeypatch.setattr(time, "sleep", lambda s: None)
+
+
+@pytest.fixture
+def exclude_middleware():
+    # Hack to work around issue with Starlette issue on Jinja templates
+    # https://github.com/encode/starlette/issues/472#issuecomment-704188037
+    user_middleware = app.user_middleware.copy()
+    app.user_middleware = []
+    app.middleware_stack = app.build_middleware_stack()
+    yield
+    app.user_middleware = user_middleware
+    app.middleware_stack = app.build_middleware_stack()
