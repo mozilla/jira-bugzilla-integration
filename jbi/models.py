@@ -201,19 +201,6 @@ class BugzillaWebhookComment(BaseModel):
     is_private: Optional[bool]
     creation_time: Optional[datetime.datetime]
 
-    def is_comment_description(self) -> bool:
-        """Used to determine if `self` is a description or comment."""
-        return self.number == 0
-
-    def is_comment_generic(self) -> bool:
-        """All comments after comment-0 are generic"""
-        is_description = self.is_comment_description()
-        return not is_description
-
-    def is_private_comment(self) -> bool:
-        """Helper function to determine if this comment private--not accessible or open"""
-        return bool(self.is_private)
-
 
 class BugzillaBug(BaseModel):
     """Bugzilla Bug Object"""

@@ -69,12 +69,6 @@ def test_lookup_action_missing(actions_example):
     assert str(exc_info.value) == "example devtest"
 
 
-def test_comment(webhook_comment_example):
-    assert not webhook_comment_example.bug.comment.is_comment_description()
-    assert webhook_comment_example.bug.comment.is_comment_generic()
-    assert not webhook_comment_example.bug.comment.is_private_comment()
-
-
 def test_map_jira_description(webhook_comment_example):
     desc = webhook_comment_example.map_as_jira_description()
     assert desc == "*(description)*: \n{quote}hello{quote}"
