@@ -1,9 +1,10 @@
 # ignore everything
 *
 # use exceptions to create an "allow list"
-!/config
-!/src
+!/asgi.py
 !/bin
+!/config
 !/poetry.lock
 !/pyproject.toml
+!/src
 !/version.json
