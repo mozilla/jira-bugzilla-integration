@@ -1,11 +1,113 @@
-"""
-Module for testing src/app/monitor.py
-"""
-# pylint: disable=cannot-enumerate-pytest-fixtures
-
 import json
-import os.path
-from unittest.mock import patch
+import os
+from datetime import datetime
+
+from fastapi.testclient import TestClient
+
+from src.app.main import app
+from src.jbi.bugzilla import BugzillaWebhookRequest
+
+
+def test_read_root(anon_client):
+    """The root URL provides information"""
+    resp = anon_client.get("/")
+    infos = resp.json()
+
+    assert "atlassian.net" in infos["configuration"]["jira_base_url"]
+
+
+def test_whiteboard_tags(anon_client):
+    resp = anon_client.get("/whiteboard_tags")
+    actions = resp.json()
+
+    assert actions["devtest"]["description"] == "DevTest whiteboard tag"
+
+
+def test_jira_projects(anon_client, mocked_jira):
+    mocked_jira().projects.return_value = [{"key": "Firefox"}, {"key": "Fenix"}]
+
+    resp = anon_client.get("/jira_projects/")
+    infos = resp.json()
+
+    assert infos == ["Firefox", "Fenix"]
+
+
+def test_whiteboard_tags_filtered(anon_client):
+    resp = anon_client.get("/whiteboard_tags/?whiteboard_tag=devtest")
+    infos = resp.json()
+    assert sorted(infos.keys()) == ["devtest"]
+
+    resp = anon_client.get("/whiteboard_tags/?whiteboard_tag=foo")
+    infos = resp.json()
+    assert sorted(infos.keys()) == ["devtest"]
+
+
+def test_powered_by_jbi(exclude_middleware, anon_client):
+    resp = anon_client.get("/powered_by_jbi/")
+    html = resp.text
+    assert "<title>Powered by JBI</title>" in html
+    assert 'href="/static/styles.css"' in html
+    assert "DevTest" in html
+
+
+def test_powered_by_jbi_filtered(exclude_middleware, anon_client):
+    resp = anon_client.get("/powered_by_jbi/?enabled=false")
+    html = resp.text
+    assert "DevTest" not in html
+
+
+def test_statics_are_served(anon_client):
+    resp = anon_client.get("/static/styles.css")
+    assert resp.status_code == 200
+
+
+def test_webhook_is_200_if_action_succeeds(
+    webhook_create_example: BugzillaWebhookRequest,
+    mocked_jira,
+    mocked_bugzilla,
+):
+    mocked_bugzilla().update_bugs.return_value = {
+        "bugs": [
+            {
+                "changes": {
+                    "see_also": {
+                        "added": "https://mozilla.atlassian.net/browse/JBI-1922",
+                        "removed": "",
+                    }
+                },
+                "last_change_time": datetime.now(),
+            }
+        ]
+    }
+    mocked_jira().create_or_update_issue_remote_links.return_value = {
+        "id": 18936,
+        "self": "https://mozilla.atlassian.net/rest/api/2/issue/JBI-1922/remotelink/18936",
+    }
+
+    with TestClient(app) as anon_client:
+        response = anon_client.post(
+            "/bugzilla_webhook", data=webhook_create_example.json()
+        )
+        assert response
+        assert response.status_code == 200
+
+
+def test_webhook_is_200_if_action_raises_IgnoreInvalidRequestError(
+    webhook_create_example: BugzillaWebhookRequest,
+):
+    assert webhook_create_example.bug
+    webhook_create_example.bug.whiteboard = "unmatched"
+
+    with TestClient(app) as anon_client:
+        response = anon_client.post(
+            "/bugzilla_webhook", data=webhook_create_example.json()
+        )
+        assert response
+        assert response.status_code == 200
+        assert (
+            response.json()["error"]
+            == "no action matching bug whiteboard tags: unmatched"
+        )
 
 
 def test_read_version(anon_client):
