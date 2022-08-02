@@ -4,7 +4,7 @@
   contact: tbd
   description: Addons whiteboard tag for AMO Team
   enabled: true
-  # module: src.jbi.whiteboard_actions.default
+  # module: jbi.actions.default
   parameters:
     jira_project_key: WEBEXT
 
@@ -19,7 +19,7 @@
   contact: gijs@mozilla.com
   description: Firefox Front End whiteboard tag
   enabled: true
-  module: src.jbi.whiteboard_actions.default_with_assignee_and_status
+  module: jbi.actions.default_with_assignee_and_status
   parameters:
     jira_project_key: FIDEFE
     status_map:
@@ -32,7 +32,7 @@
   contact: dtownsend@mozilla.com
   description: Flowstate whiteboard tag
   enabled: true
-  module: src.jbi.whiteboard_actions.default_with_assignee_and_status
+  module: jbi.actions.default_with_assignee_and_status
   parameters:
     jira_project_key: MR2
     status_map:
