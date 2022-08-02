@@ -13,6 +13,9 @@ on:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
+    env:
+      TEST_TAG: ${{ github.repository }}:test
+      TEST_CONTAINER_NAME: jbi-healthcheck
     steps:
       - name: Check out the repo
         uses: actions/checkout@v3
@@ -42,6 +45,31 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and export to Docker
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          load: true
+          push: false
+          tags: ${{ env.TEST_TAG }}
+
+      - name: Spin up container
+        run: |
+          docker run \
+          --name ${{ env.TEST_CONTAINER_NAME }} \
+          --detach \
+          --env-file .env.example \
+          --publish 8000:8000 \
+          ${{ env.TEST_TAG }}
+
+      - name: Check that container is running
+        run: |
+          docker exec ${{ env.TEST_CONTAINER_NAME }} python bin/healthcheck.py
+
+      - name: Spin down container
+        run: |
+          docker rm -f ${{ env.TEST_CONTAINER_NAME }}
 
       - name: Build and push
         uses: docker/build-push-action@v3
