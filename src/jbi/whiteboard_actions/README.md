@@ -9,6 +9,8 @@ Let's create a `new_action`!
     ```python
     from src.jbi import ActionResult, Operation
 
+    JIRA_REQUIRED_PERMISSIONS = {"CREATE_ISSUES"}
+
     def init(jira_project_key, optional_param=42):
 
         def execute(payload) -> ActionResult:
@@ -22,6 +24,7 @@ Let's create a `new_action`!
     1. `init()` returns a `__call__`able object that the system calls with the Bugzilla request payload
     1.  The returned `ActionResult` features a boolean to indicate whether something was performed or not, along with a `Dict` (used as a response to the WebHook endpoint).
 1. Use the `payload` to perform the desired processing!
+1. List the required Jira permissions to be set on projects that will use this action in the `JIRA_REQUIRED_PERMISSIONS` constant. The list of built-in permissions is [available on Atlanssian API docs](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-permission-schemes/#built-in-permissions).
 1. Use the available service calls from `src/jbi/services.py` (or make new ones)
 1. Update the `README.md` to document your action
 1. Now the action `src.jbi.whiteboard_actions.my_team_actions` can be used in the YAML configuration, under the `module` key.

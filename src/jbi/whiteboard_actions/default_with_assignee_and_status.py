@@ -11,9 +11,15 @@ import logging
 
 from src.jbi import Operation
 from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
+from src.jbi.whiteboard_actions.default import (
+    JIRA_REQUIRED_PERMISSIONS as DEFAULT_JIRA_REQUIRED_PERMISSIONS,
+)
 from src.jbi.whiteboard_actions.default import DefaultExecutor
 
 logger = logging.getLogger(__name__)
+
+
+JIRA_REQUIRED_PERMISSIONS = DEFAULT_JIRA_REQUIRED_PERMISSIONS
 
 
 def init(status_map=None, **kwargs):
