@@ -5,10 +5,10 @@ set -e
 POETRY_RUN="poetry run"
 
 bandit () {
-  $POETRY_RUN bandit -lll --recursive src
+  $POETRY_RUN bandit -lll --recursive jbi
 }
 black () {
-  $POETRY_RUN black ${check:+--check} src tests
+  $POETRY_RUN black ${check:+--check} jbi tests
 }
 detect_secrets () {
   # Scan only files fixed into the repo, omit poetry.lock
@@ -19,10 +19,10 @@ isort () {
   $POETRY_RUN isort ${check:+--check-only} .
 }
 pylint () {
-  $POETRY_RUN pylint src tests
+  $POETRY_RUN pylint jbi tests
 }
 mypy () {
-  $POETRY_RUN mypy src
+  $POETRY_RUN mypy jbi
 }
 yamllint () {
   $POETRY_RUN yamllint -c .yamllint config/*.yaml

@@ -7,10 +7,10 @@ from unittest import mock
 import pytest
 from fastapi.testclient import TestClient
 
-from src.app.environment import Settings
-from src.app.main import app
-from src.jbi.bugzilla import BugzillaWebhookComment, BugzillaWebhookRequest
-from src.jbi.models import Action, Actions
+from jbi.app import app
+from jbi.bugzilla import BugzillaWebhookComment, BugzillaWebhookRequest
+from jbi.environment import Settings
+from jbi.models import Action, Actions
 
 
 @pytest.fixture
@@ -27,13 +27,13 @@ def settings():
 
 @pytest.fixture(autouse=True)
 def mocked_bugzilla():
-    with mock.patch("src.jbi.services.rh_bugzilla.Bugzilla") as mocked_bz:
+    with mock.patch("jbi.services.rh_bugzilla.Bugzilla") as mocked_bz:
         yield mocked_bz
 
 
 @pytest.fixture(autouse=True)
 def mocked_jira():
-    with mock.patch("src.jbi.services.Jira") as mocked_jira:
+    with mock.patch("jbi.services.Jira") as mocked_jira:
         yield mocked_jira
 
 
@@ -226,7 +226,7 @@ def action_example() -> Action:
             "whiteboard_tag": "devtest",
             "contact": "contact@corp.com",
             "description": "test config",
-            "module": "tests.unit.jbi.noop_action",
+            "module": "tests.fixtures.noop_action",
         }
     )
 

@@ -1,11 +1,11 @@
 """
-Module for testing src/jbi/configuration.py functionality
+Module for testing jbi/configuration.py functionality
 """
 # pylint: disable=cannot-enumerate-pytest-fixtures
 import pytest
 
-from src.jbi import bugzilla
-from src.jbi.errors import ActionNotFoundError
+from jbi import bugzilla
+from jbi.errors import ActionNotFoundError
 
 
 @pytest.mark.parametrize(

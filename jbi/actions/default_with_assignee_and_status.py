@@ -9,9 +9,9 @@ Extended action that provides some additional features over the default:
 """
 import logging
 
-from src.jbi import Operation
-from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
-from src.jbi.whiteboard_actions.default import DefaultExecutor
+from jbi import Operation
+from jbi.actions.default import DefaultExecutor
+from jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
 
 logger = logging.getLogger(__name__)
 

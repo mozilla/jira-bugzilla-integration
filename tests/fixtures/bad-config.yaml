@@ -4,6 +4,6 @@
   contact: foobar
   description: test config
   enabled: true
-  module: src.jbi.whiteboard_actions.default
+  module: jbi.actions.default
   parameters:
     jira_project_key: KEY

@@ -4,8 +4,8 @@ from datetime import datetime
 
 from fastapi.testclient import TestClient
 
-from src.app.main import app
-from src.jbi.bugzilla import BugzillaWebhookRequest
+from jbi.app import app
+from jbi.bugzilla import BugzillaWebhookRequest
 
 
 def test_read_root(anon_client):
@@ -113,7 +113,7 @@ def test_webhook_is_200_if_action_raises_IgnoreInvalidRequestError(
 def test_read_version(anon_client):
     """__version__ returns the contents of version.json."""
     here = os.path.dirname(__file__)
-    root_dir = os.path.dirname(os.path.dirname(os.path.dirname(here)))
+    root_dir = os.path.dirname(os.path.dirname(here))
     version_path = os.path.join(root_dir, "version.json")
     with open(version_path, "r", encoding="utf8") as vp_file:
         version_contents = vp_file.read()

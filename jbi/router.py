@@ -9,12 +9,12 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from src.app.configuration import get_actions
-from src.app.environment import Settings, get_settings, get_version
-from src.jbi.bugzilla import BugzillaWebhookRequest
-from src.jbi.models import Actions
-from src.jbi.runner import IgnoreInvalidRequestError, execute_action
-from src.jbi.services import jbi_service_health_map, jira_visible_projects
+from jbi.bugzilla import BugzillaWebhookRequest
+from jbi.configuration import get_actions
+from jbi.environment import Settings, get_settings, get_version
+from jbi.models import Actions
+from jbi.runner import IgnoreInvalidRequestError, execute_action
+from jbi.services import jbi_service_health_map, jira_visible_projects
 
 router = APIRouter()
 
@@ -92,7 +92,7 @@ def get_jira_projects():
     return [project["key"] for project in visible_projects]
 
 
-SRC_DIR = Path(__file__).parents[1]
+SRC_DIR = Path(__file__).parent
 templates = Jinja2Templates(directory=SRC_DIR / "templates")
 
 

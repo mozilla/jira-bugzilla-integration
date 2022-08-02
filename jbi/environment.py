@@ -64,7 +64,7 @@ def get_settings() -> Settings:
 def get_version():
     """Return contents of version.json. This has generic data in repo, but gets the build details in CI."""
     info = {}
-    version_path = Path(__file__).parents[2] / "version.json"
+    version_path = Path(__file__).parents[1] / "version.json"
     if version_path.exists():
         info = json.loads(version_path.read_text(encoding="utf8"))
     return info

@@ -3,7 +3,7 @@
 extends: default
 
 ignore: |
-  src/
+  jbi/
   tests/
   bin/
   .github/

@@ -4,7 +4,7 @@
 !/asgi.py
 !/bin
 !/config
+!/jbi
 !/poetry.lock
 !/pyproject.toml
-!/src
 !/version.json
