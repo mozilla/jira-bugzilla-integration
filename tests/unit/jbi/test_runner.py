@@ -8,7 +8,6 @@ from unittest import mock
 
 import pytest
 
-from src.app.api import app
 from src.app.environment import Settings
 from src.jbi import Operation
 from src.jbi.bugzilla import BugzillaWebhookRequest
