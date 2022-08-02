@@ -73,7 +73,7 @@ jobs:
           --retry 5 \
           --retry-delay 0 \
           --retry-max-time 10 \
-          0.0.0.0:8000/
+          localhost:8000/
 
       - name: Spin down container
         run: |
