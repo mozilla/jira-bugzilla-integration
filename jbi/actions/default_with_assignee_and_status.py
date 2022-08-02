@@ -10,10 +10,16 @@ Extended action that provides some additional features over the default:
 import logging
 
 from jbi import Operation
+from jbi.actions.default import (
+    JIRA_REQUIRED_PERMISSIONS as DEFAULT_JIRA_REQUIRED_PERMISSIONS,
+)
 from jbi.actions.default import DefaultExecutor
 from jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
 
 logger = logging.getLogger(__name__)
+
+
+JIRA_REQUIRED_PERMISSIONS = DEFAULT_JIRA_REQUIRED_PERMISSIONS
 
 
 def init(status_map=None, **kwargs):

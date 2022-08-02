@@ -16,6 +16,13 @@ settings = get_settings()
 
 logger = logging.getLogger(__name__)
 
+JIRA_REQUIRED_PERMISSIONS = {
+    "ADD_COMMENTS",
+    "CREATE_ISSUES",
+    "DELETE_ISSUES",
+    "EDIT_ISSUES",
+}
+
 
 def init(jira_project_key, **kwargs):
     """Function that takes required and optional params and returns a callable object"""
