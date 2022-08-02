@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TEST_TAG: ${{ github.repository }}:test
+      TEST_CONTAINER_NAME: jbi-healthcheck
     steps:
       - name: Check out the repo
         uses: actions/checkout@v3
@@ -56,6 +57,7 @@ jobs:
       - name: Spin up container
         run: |
           docker run \
+          --name ${{ env.TEST_CONTAINER_NAME }} \
           --detach \
           --env-file .env.example \
           --publish 8000:8000 \
@@ -63,21 +65,11 @@ jobs:
 
       - name: Check that container is running
         run: |
-          curl \
-          --show-error \
-          --silent \
-          --output /dev/null \
-          --connect-timeout 5 \
-          --max-time 10 \
-          --retry-connrefused \
-          --retry 5 \
-          --retry-delay 0 \
-          --retry-max-time 10 \
-          localhost:8000/
+          docker exec ${{ env.TEST_CONTAINER_NAME }} python bin/healthcheck.py
 
       - name: Spin down container
         run: |
-          docker rm $(docker stop $(docker ps -a -q --filter='ancestor=${{ env.TEST_TAG }}'))
+          docker rm -f ${{ env.TEST_CONTAINER_NAME }}
 
       - name: Build and push
         uses: docker/build-push-action@v3
