@@ -12,9 +12,9 @@ from urllib.parse import ParseResult, urlparse
 
 from pydantic import BaseModel  # pylint: disable=no-name-in-module
 
-from src.jbi.errors import ActionNotFoundError
-from src.jbi.models import Action, Actions
-from src.jbi.services import get_bugzilla
+from jbi.errors import ActionNotFoundError
+from jbi.models import Action, Actions
+from jbi.services import get_bugzilla
 
 logger = logging.getLogger(__name__)
 

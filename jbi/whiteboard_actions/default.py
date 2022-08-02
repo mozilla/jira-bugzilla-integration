@@ -6,11 +6,11 @@ Default action is listed below.
 """
 import logging
 
-from src.app.environment import get_settings
-from src.jbi import ActionResult, Operation
-from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
-from src.jbi.errors import ActionError
-from src.jbi.services import get_bugzilla, get_jira
+from jbi import ActionResult, Operation
+from jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
+from jbi.environment import get_settings
+from jbi.errors import ActionError
+from jbi.services import get_bugzilla, get_jira
 
 settings = get_settings()
 

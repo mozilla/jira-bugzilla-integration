@@ -12,7 +12,7 @@
   contact: dtownsend@mozilla.com
   description: Flowstate whiteboard tag
   enabled: true
-  module: src.jbi.whiteboard_actions.default_with_assignee_and_status
+  module: jbi.whiteboard_actions.default_with_assignee_and_status
   parameters:
     jira_project_key: MR2
     status_map:

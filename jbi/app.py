@@ -10,11 +10,11 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 
-from src.app.environment import get_settings
-from src.app.log import format_request_summary_fields
-from src.app.router import router
+from jbi.environment import get_settings
+from jbi.log import format_request_summary_fields
+from jbi.router import router
 
-SRC_DIR = Path(__file__).parents[1]
+SRC_DIR = Path(__file__).parent
 
 settings = get_settings()
 

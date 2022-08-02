@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 from fastapi.encoders import jsonable_encoder
 
-from src.jbi.models import Action
+from jbi.models import Action
 
 
 def test_model_serializes():
@@ -12,7 +12,7 @@ def test_model_serializes():
             "whiteboard_tag": "devtest",
             "contact": "person@example.com",
             "description": "test config",
-            "module": "tests.unit.jbi.bugzilla_action",
+            "module": "tests.fixtures.bugzilla_action",
         }
     )
     action.caller(payload=action)

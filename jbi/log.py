@@ -10,7 +10,7 @@ from typing import Dict
 
 from fastapi import Request
 
-from src.app.environment import get_settings
+from jbi.environment import get_settings
 
 settings = get_settings()
 
@@ -37,7 +37,7 @@ CONFIG = {
     "loggers": {
         "": {"handlers": ["console"]},
         "request.summary": {"level": logging.INFO},
-        "src": {"level": logging.DEBUG},
+        "jbi": {"level": logging.DEBUG},
         "uvicorn": {"level": logging.INFO},
         "uvicorn.access": {"handlers": ["null"], "propagate": False},
     },

@@ -7,8 +7,8 @@ import bugzilla as rh_bugzilla
 from atlassian import Jira, errors
 from statsd.defaults.env import statsd
 
-from src.app import environment
-from src.jbi.models import Actions
+from jbi import environment
+from jbi.models import Actions
 
 settings = environment.get_settings()
 

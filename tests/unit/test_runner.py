@@ -1,5 +1,5 @@
 """
-Module for testing src/jbi/runner.py
+Module for testing jbi/runner.py
 """
 import logging
 
@@ -8,12 +8,12 @@ from unittest import mock
 
 import pytest
 
-from src.app.environment import Settings
-from src.jbi import Operation
-from src.jbi.bugzilla import BugzillaWebhookRequest
-from src.jbi.errors import IgnoreInvalidRequestError
-from src.jbi.models import Action, Actions
-from src.jbi.runner import execute_action
+from jbi import Operation
+from jbi.bugzilla import BugzillaWebhookRequest
+from jbi.environment import Settings
+from jbi.errors import IgnoreInvalidRequestError
+from jbi.models import Action, Actions
+from jbi.runner import execute_action
 
 
 def test_request_is_ignored_because_private(
@@ -99,12 +99,12 @@ def test_execution_logging_for_successful_requests(
         )
 
     captured_log_msgs = [
-        r.msg % r.args for r in caplog.records if r.name == "src.jbi.runner"
+        r.msg % r.args for r in caplog.records if r.name == "jbi.runner"
     ]
 
     assert captured_log_msgs == [
         "Handling incoming request",
-        "Execute action 'devtest:tests.unit.jbi.noop_action' for Bug 654321",
+        "Execute action 'devtest:tests.fixtures.noop_action' for Bug 654321",
         "Action 'devtest' executed successfully for Bug 654321",
     ]
 
@@ -126,7 +126,7 @@ def test_execution_logging_for_ignored_requests(
             )
 
     captured_log_msgs = [
-        r.msg % r.args for r in caplog.records if r.name == "src.jbi.runner"
+        r.msg % r.args for r in caplog.records if r.name == "jbi.runner"
     ]
 
     assert captured_log_msgs == [
@@ -141,7 +141,7 @@ def test_action_is_logged_as_success_if_returns_true(
     actions_example: Actions,
     settings: Settings,
 ):
-    with mock.patch("src.jbi.models.Action.caller") as mocked:
+    with mock.patch("jbi.models.Action.caller") as mocked:
         mocked.return_value = True, {}
 
         with caplog.at_level(logging.DEBUG):
@@ -152,15 +152,13 @@ def test_action_is_logged_as_success_if_returns_true(
             )
 
     captured_log_msgs = [
-        (r.msg % r.args, r.operation)
-        for r in caplog.records
-        if r.name == "src.jbi.runner"
+        (r.msg % r.args, r.operation) for r in caplog.records if r.name == "jbi.runner"
     ]
 
     assert captured_log_msgs == [
         ("Handling incoming request", Operation.HANDLE),
         (
-            "Execute action 'devtest:tests.unit.jbi.noop_action' for Bug 654321",
+            "Execute action 'devtest:tests.fixtures.noop_action' for Bug 654321",
             Operation.EXECUTE,
         ),
         ("Action 'devtest' executed successfully for Bug 654321", Operation.SUCCESS),
@@ -173,7 +171,7 @@ def test_action_is_logged_as_ignore_if_returns_false(
     actions_example: Actions,
     settings: Settings,
 ):
-    with mock.patch("src.jbi.models.Action.caller") as mocked:
+    with mock.patch("jbi.models.Action.caller") as mocked:
         mocked.return_value = False, {}
 
         with caplog.at_level(logging.DEBUG):
@@ -184,15 +182,13 @@ def test_action_is_logged_as_ignore_if_returns_false(
             )
 
     captured_log_msgs = [
-        (r.msg % r.args, r.operation)
-        for r in caplog.records
-        if r.name == "src.jbi.runner"
+        (r.msg % r.args, r.operation) for r in caplog.records if r.name == "jbi.runner"
     ]
 
     assert captured_log_msgs == [
         ("Handling incoming request", Operation.HANDLE),
         (
-            "Execute action 'devtest:tests.unit.jbi.noop_action' for Bug 654321",
+            "Execute action 'devtest:tests.fixtures.noop_action' for Bug 654321",
             Operation.EXECUTE,
         ),
         ("Action 'devtest' executed successfully for Bug 654321", Operation.IGNORE),
@@ -207,7 +203,7 @@ def test_counter_is_incremented_on_ignored_requests(
     assert webhook_create_example.bug
     webhook_create_example.bug.whiteboard = "foo"
 
-    with mock.patch("src.jbi.runner.statsd") as mocked:
+    with mock.patch("jbi.runner.statsd") as mocked:
         with pytest.raises(IgnoreInvalidRequestError):
             execute_action(
                 request=webhook_create_example,
@@ -222,7 +218,7 @@ def test_counter_is_incremented_on_processed_requests(
     actions_example: Actions,
     settings: Settings,
 ):
-    with mock.patch("src.jbi.runner.statsd") as mocked:
+    with mock.patch("jbi.runner.statsd") as mocked:
         execute_action(
             request=webhook_create_example,
             actions=actions_example,

@@ -2,7 +2,7 @@
 *
 # use exceptions to create an "allow list"
 !/config
-!/src
+!/jbi
 !/bin
 !/poetry.lock
 !/pyproject.toml

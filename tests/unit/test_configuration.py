@@ -1,16 +1,16 @@
 """
-Module for testing src/app/configuration.py functionality
+Module for testing jbi/configuration.py functionality
 """
 # pylint: disable=cannot-enumerate-pytest-fixtures
 import pytest
 
-from src.app import configuration
-from src.jbi.models import Actions
+from jbi import configuration
+from jbi.models import Actions
 
 
 def test_mock_jbi_files():
     with pytest.raises(configuration.ConfigError) as exc_info:
-        configuration.get_actions(jbi_config_file="tests/unit/app/bad-config.yaml")
+        configuration.get_actions(jbi_config_file="tests/fixtures/bad-config.yaml")
     assert "Errors exist" in str(exc_info.value)
 
 
@@ -33,7 +33,7 @@ def test_unknown_module_fails():
 
 def test_bad_module_fails():
     with pytest.raises(ValueError) as exc_info:
-        Actions.parse_obj([{"whiteboard_tag": "x", "module": "src.jbi.runner"}])
+        Actions.parse_obj([{"whiteboard_tag": "x", "module": "jbi.runner"}])
     assert "action is not properly setup" in str(exc_info.value)
 
 
@@ -42,7 +42,7 @@ def test_duplicated_whiteboard_tag_fails():
         "whiteboard_tag": "x",
         "contact": "tbd",
         "description": "foo",
-        "module": "tests.unit.jbi.noop_action",
+        "module": "tests.fixtures.noop_action",
     }
     with pytest.raises(ValueError) as exc_info:
         Actions.parse_obj(
