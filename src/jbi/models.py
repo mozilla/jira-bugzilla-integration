@@ -25,6 +25,7 @@ class Action(YamlModel):
     allow_private: bool = False
     parameters: dict = {}
     _caller: Callable = PrivateAttr(default=None)
+    _required_jira_permissions: Set[str] = PrivateAttr(default=None)
 
     @property
     def caller(self) -> Callable:
@@ -34,6 +35,15 @@ class Action(YamlModel):
             initialized: Callable = action_module.init(**self.parameters)  # type: ignore
             self._caller = initialized
         return self._caller
+
+    @property
+    def required_jira_permissions(self) -> Set[str]:
+        """Return the required Jira permissions for this action to be executed."""
+        if not self._required_jira_permissions:
+            action_module: ModuleType = importlib.import_module(self.module)
+            perms = getattr(action_module, "JIRA_REQUIRED_PERMISSIONS")
+            self._required_jira_permissions = perms
+        return self._required_jira_permissions
 
     @root_validator
     def validate_action_config(cls, values):  # pylint: disable=no-self-argument

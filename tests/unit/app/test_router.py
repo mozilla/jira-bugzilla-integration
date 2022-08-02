@@ -193,6 +193,7 @@ def test_read_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
     mocked_jira().projects.return_value = [{"key": "DevTest"}]
     mocked_jira().get_permissions.return_value = {
         "permissions": {
+            "ADD_COMMENTS": {"havePermission": True},
             "CREATE_ISSUES": {"havePermission": True},
             "EDIT_ISSUES": {"havePermission": True},
             "DELETE_ISSUES": {"havePermission": True},
@@ -240,6 +241,7 @@ def test_jira_heartbeat_missing_permissions(anon_client, mocked_jira, mocked_bug
     mocked_jira().get_server_info.return_value = {}
     mocked_jira().get_project_permission_scheme.return_value = {
         "permissions": {
+            "ADD_COMMENTS": {"havePermission": True},
             "CREATE_ISSUES": {"havePermission": True},
             "EDIT_ISSUES": {"havePermission": False},
             "DELETE_ISSUES": {"havePermission": True},
@@ -268,6 +270,7 @@ def test_head_heartbeat(anon_client, mocked_jira, mocked_bugzilla):
     mocked_jira().projects.return_value = [{"key": "DevTest"}]
     mocked_jira().get_permissions.return_value = {
         "permissions": {
+            "ADD_COMMENTS": {"havePermission": True},
             "CREATE_ISSUES": {"havePermission": True},
             "EDIT_ISSUES": {"havePermission": True},
             "DELETE_ISSUES": {"havePermission": True},

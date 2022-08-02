@@ -147,12 +147,18 @@ def _all_jira_projects_visible(jira, actions: Actions) -> bool:
 
 def _all_jira_projects_permissions(jira, actions: Actions):
     """Fetches and validates that required permissions exist for the configured projects"""
-    all_projects_perms = fetch_jira_project_permissions(actions, jira)
-    return validate_jira_permissions(all_projects_perms)
+    all_projects_perms = _fetch_jira_project_permissions(actions, jira)
+    return _validate_jira_permissions(all_projects_perms)
 
 
-def fetch_jira_project_permissions(actions, jira):
+def _fetch_jira_project_permissions(actions, jira):
     """Fetches permissions for the configured projects"""
+    required_perms_by_project = {
+        action.parameters["jira_project_key"]: action.required_jira_permissions
+        for action in actions
+        if "jira_project_key" in action.parameters
+    }
+
     all_projects_perms = {}
     # Query permissions for all configured projects in parallel threads.
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
@@ -160,24 +166,27 @@ def fetch_jira_project_permissions(actions, jira):
             executor.submit(
                 jira.get_permissions,
                 project_key=project_key,
-                permissions=",".join(settings.jira_required_permissions),
+                permissions=",".join(required_permissions),
             ): project_key
-            for project_key in actions.configured_jira_projects_keys
+            for project_key, required_permissions in required_perms_by_project.items()
         }
         # Obtain futures' results unordered.
         for future in concurrent.futures.as_completed(futures_to_projects):
             project_key = futures_to_projects[future]
             response = future.result()
-            all_projects_perms[project_key] = response["permissions"]
+            all_projects_perms[project_key] = (
+                required_perms_by_project[project_key],
+                response["permissions"],
+            )
     return all_projects_perms
 
 
-def validate_jira_permissions(all_projects_perms):
+def _validate_jira_permissions(all_projects_perms):
     """Validates permissions for the configured projects"""
     misconfigured = []
-    for project_key, permissions in all_projects_perms.items():
-        missing = settings.jira_required_permissions - set(permissions.keys())
-        has_all = all(entry["havePermission"] for entry in permissions.values())
+    for project_key, (required_perms, obtained_perms) in all_projects_perms.items():
+        missing = required_perms - set(obtained_perms.keys())
+        has_all = all(entry["havePermission"] for entry in obtained_perms.values())
         if missing or not has_all:
             misconfigured.append((project_key, missing))
     for project_key, missing in misconfigured:
