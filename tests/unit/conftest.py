@@ -33,7 +33,7 @@ def mocked_bugzilla():
 
 @pytest.fixture(autouse=True)
 def mocked_jira():
-    with mock.patch("src.jbi.services.Jira") as mocked_jira:
+    with mock.patch("src.jbi.services.CustomJira") as mocked_jira:
         yield mocked_jira
 
 

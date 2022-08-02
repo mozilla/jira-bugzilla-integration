@@ -52,7 +52,12 @@ class InstrumentedClient:
 
 
 class CustomJira(Jira):
-    def get_permissions(self, permissions, project_key, **kwargs):
+    """Custom Jira client to overcome limitation of upstream library."""
+
+    def get_permissions(
+        self, permissions, project_key, *args, **kwargs
+    ):  # pylint: disable=arguments-differ
+        """Return response of GET /mypermissions"""
         # Waiting for https://github.com/atlassian-api/atlassian-python-api/pull/1016/
         # to be released.
         url = self.resource_url("mypermissions")
