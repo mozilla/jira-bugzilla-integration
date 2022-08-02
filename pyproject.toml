@@ -11,7 +11,7 @@ fastapi = "^0.79.0"
 pydantic = {version = "^1.9.1", extras = ["dotenv", "email"]}
 uvicorn = {extras = ["standard"], version = "^0.18.2"}
 python-bugzilla = "^3.2.0"
-atlassian-python-api = "^3.25.0"
+atlassian-python-api = { git = "https://github.com/atlassian-api/atlassian-python-api.git", rev = "82293a2ac9bfa" }
 dockerflow = "2022.7.0"
 Jinja2 = "^3.1.2"
 pydantic-yaml = {extras = ["pyyaml","ruamel"], version = "^0.8.0"}

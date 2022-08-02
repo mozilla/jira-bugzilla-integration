@@ -51,25 +51,9 @@ class InstrumentedClient:
         return wrapped_func
 
 
-class CustomJira(Jira):
-    """Custom Jira client to overcome limitation of upstream library."""
-
-    def get_permissions(
-        self, permissions, project_key, *args, **kwargs
-    ):  # pylint: disable=arguments-differ
-        """Return response of GET /mypermissions"""
-        # Waiting for https://github.com/atlassian-api/atlassian-python-api/pull/1016/
-        # to be released.
-        url = self.resource_url("mypermissions")
-        params = {"permissions": permissions}
-        if project_key:
-            params["projectKey"] = project_key
-        return self.get(url, params=params)
-
-
 def get_jira():
     """Get atlassian Jira Service"""
-    jira_client = CustomJira(
+    jira_client = Jira(
         url=settings.jira_base_url,
         username=settings.jira_username,
         password=settings.jira_api_key,  # package calls this param 'password' but actually expects an api key
