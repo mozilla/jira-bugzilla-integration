@@ -7,3 +7,4 @@
 !/poetry.lock
 !/pyproject.toml
 !/version.json
+!/asgi.py
