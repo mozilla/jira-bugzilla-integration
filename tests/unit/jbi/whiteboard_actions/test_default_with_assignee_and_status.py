@@ -7,14 +7,16 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from src.jbi import Operation
 from src.jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
 from src.jbi.whiteboard_actions import default_with_assignee_and_status as action
 
 
 def test_create_with_no_assignee(webhook_create_example, mocked_jira):
     callable_object = action.init(jira_project_key="JBI")
-    value = callable_object(payload=webhook_create_example)
+    handled, _ = callable_object(payload=webhook_create_example)
 
+    assert handled
     mocked_jira().create_issue.assert_called_once_with(
         fields={
             "summary": "JBI Test",
@@ -27,7 +29,6 @@ def test_create_with_no_assignee(webhook_create_example, mocked_jira):
     mocked_jira().user_find_by_user_string.assert_not_called()
     mocked_jira().update_issue_field.assert_not_called()
     mocked_jira().set_issue_status.assert_not_called()
-    assert value["status"] == "create"
 
 
 def test_create_with_assignee(webhook_create_example, mocked_jira, mocked_bugzilla):
@@ -39,7 +40,7 @@ def test_create_with_assignee(webhook_create_example, mocked_jira, mocked_bugzil
     }
 
     callable_object = action.init(jira_project_key="JBI")
-    value = callable_object(payload=webhook_create_example)
+    callable_object(payload=webhook_create_example)
 
     mocked_jira().create_issue.assert_called_once_with(
         fields={
@@ -58,7 +59,6 @@ def test_create_with_assignee(webhook_create_example, mocked_jira, mocked_bugzil
         fields={"assignee": {"accountId": "6254"}},
     )
     mocked_jira().set_issue_status.assert_not_called()
-    assert value["status"] == "create"
 
 
 def test_clear_assignee(webhook_create_example, mocked_jira):
@@ -69,7 +69,7 @@ def test_clear_assignee(webhook_create_example, mocked_jira):
     webhook_create_example.event.routing_key = "bug.modify:assigned_to"
 
     callable_object = action.init(jira_project_key="JBI")
-    value = callable_object(payload=webhook_create_example)
+    callable_object(payload=webhook_create_example)
 
     mocked_jira().create_issue.assert_not_called()
     mocked_jira().user_find_by_user_string.assert_not_called()
@@ -85,7 +85,6 @@ def test_clear_assignee(webhook_create_example, mocked_jira):
         fields={"assignee": None},
     )
     mocked_jira().set_issue_status.assert_not_called()
-    assert value["status"] == "update"
 
 
 def test_set_assignee(webhook_create_example, mocked_jira):
@@ -99,7 +98,7 @@ def test_set_assignee(webhook_create_example, mocked_jira):
     mocked_jira().user_find_by_user_string.return_value = [{"accountId": "6254"}]
 
     callable_object = action.init(jira_project_key="JBI")
-    value = callable_object(payload=webhook_create_example)
+    callable_object(payload=webhook_create_example)
 
     mocked_jira().create_issue.assert_not_called()
     mocked_jira().user_find_by_user_string.assert_called_once_with(
@@ -117,7 +116,6 @@ def test_set_assignee(webhook_create_example, mocked_jira):
         fields={"assignee": {"accountId": "6254"}},
     )
     mocked_jira().set_issue_status.assert_not_called()
-    assert value["status"] == "update"
 
 
 def test_create_with_unknown_status(
@@ -136,7 +134,7 @@ def test_create_with_unknown_status(
             "FIXED": "Closed",
         },
     )
-    value = callable_object(payload=webhook_create_example)
+    callable_object(payload=webhook_create_example)
 
     mocked_jira().create_issue.assert_called_once_with(
         fields={
@@ -150,7 +148,6 @@ def test_create_with_unknown_status(
     mocked_jira().user_find_by_user_string.assert_not_called()
     mocked_jira().update_issue_field.assert_not_called()
     mocked_jira().set_issue_status.assert_not_called()
-    assert value["status"] == "create"
 
 
 def test_create_with_known_status(webhook_create_example, mocked_jira, mocked_bugzilla):
@@ -170,7 +167,7 @@ def test_create_with_known_status(webhook_create_example, mocked_jira, mocked_bu
             "FIXED": "Closed",
         },
     )
-    value = callable_object(payload=webhook_create_example)
+    callable_object(payload=webhook_create_example)
 
     mocked_jira().create_issue.assert_called_once_with(
         fields={
@@ -184,7 +181,6 @@ def test_create_with_known_status(webhook_create_example, mocked_jira, mocked_bu
     mocked_jira().user_find_by_user_string.assert_not_called()
     mocked_jira().update_issue_field.assert_not_called()
     mocked_jira().set_issue_status.assert_called_once_with("JBI-534", "In Progress")
-    assert value["status"] == "create"
 
 
 def test_change_to_unknown_status(webhook_create_example, mocked_jira):
@@ -203,7 +199,7 @@ def test_change_to_unknown_status(webhook_create_example, mocked_jira):
             "FIXED": "Closed",
         },
     )
-    value = callable_object(payload=webhook_create_example)
+    callable_object(payload=webhook_create_example)
 
     mocked_jira().create_issue.assert_not_called()
     mocked_jira().user_find_by_user_string.assert_not_called()
@@ -215,7 +211,6 @@ def test_change_to_unknown_status(webhook_create_example, mocked_jira):
         },
     )
     mocked_jira().set_issue_status.assert_not_called()
-    assert value["status"] == "update"
 
 
 def test_change_to_known_status(webhook_create_example, mocked_jira):
@@ -234,7 +229,7 @@ def test_change_to_known_status(webhook_create_example, mocked_jira):
             "FIXED": "Closed",
         },
     )
-    value = callable_object(payload=webhook_create_example)
+    callable_object(payload=webhook_create_example)
 
     mocked_jira().create_issue.assert_not_called()
     mocked_jira().user_find_by_user_string.assert_not_called()
@@ -246,7 +241,6 @@ def test_change_to_known_status(webhook_create_example, mocked_jira):
         },
     )
     mocked_jira().set_issue_status.assert_called_once_with("JBI-234", "In Progress")
-    assert value["status"] == "update"
 
 
 def test_change_to_known_resolution(webhook_create_example, mocked_jira):
@@ -265,7 +259,7 @@ def test_change_to_known_resolution(webhook_create_example, mocked_jira):
             "FIXED": "Closed",
         },
     )
-    value = callable_object(payload=webhook_create_example)
+    callable_object(payload=webhook_create_example)
 
     mocked_jira().create_issue.assert_not_called()
     mocked_jira().user_find_by_user_string.assert_not_called()
@@ -277,4 +271,3 @@ def test_change_to_known_resolution(webhook_create_example, mocked_jira):
         },
     )
     mocked_jira().set_issue_status.assert_called_once_with("JBI-234", "Closed")
-    assert value["status"] == "update"
