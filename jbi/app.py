@@ -22,7 +22,7 @@ settings = get_settings()
 app = FastAPI(
     title="Jira Bugzilla Integration (JBI)",
     description="JBI v2 Platform",
-    version="3.2.1",
+    version="3.2.2",
     debug=settings.app_debug,
 )
 
