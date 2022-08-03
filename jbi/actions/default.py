@@ -16,6 +16,7 @@ settings = get_settings()
 
 logger = logging.getLogger(__name__)
 
+JIRA_DESCRIPTION_CHAR_LIMIT = 32767
 JIRA_REQUIRED_PERMISSIONS = {
     "ADD_COMMENTS",
     "CREATE_ISSUES",
@@ -187,10 +188,14 @@ class DefaultExecutor:
             },
         )
         comment_list = self.bugzilla_client.get_comments(idlist=[bug_obj.id])
+        description = comment_list["bugs"][str(bug_obj.id)]["comments"][0]["text"][
+            :JIRA_DESCRIPTION_CHAR_LIMIT
+        ]
+
         fields = {
             **bug_obj.map_as_jira_issue(),  # type: ignore
             "issuetype": {"name": bug_obj.issue_type()},
-            "description": comment_list["bugs"][str(bug_obj.id)]["comments"][0]["text"],
+            "description": description,
             "project": {"key": self.jira_project_key},
         }
 
