@@ -9,10 +9,9 @@ from unittest import mock
 import pytest
 
 from jbi import Operation
-from jbi.bugzilla import BugzillaWebhookRequest
 from jbi.environment import Settings
 from jbi.errors import IgnoreInvalidRequestError
-from jbi.models import Action, Actions
+from jbi.models import Action, Actions, BugzillaWebhookRequest
 from jbi.runner import execute_action
 
 

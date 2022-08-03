@@ -8,9 +8,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from jbi.app import app
-from jbi.bugzilla import BugzillaWebhookComment, BugzillaWebhookRequest
 from jbi.environment import Settings
-from jbi.models import Action, Actions
+from jbi.models import Action, Actions, BugzillaWebhookComment, BugzillaWebhookRequest
 
 
 @pytest.fixture

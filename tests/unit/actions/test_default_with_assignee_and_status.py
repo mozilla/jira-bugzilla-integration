@@ -1,15 +1,4 @@
-"""
-Module for testing jbi/actions/extended.py functionality
-"""
-# pylint: disable=cannot-enumerate-pytest-fixtures
-from unittest import mock
-from unittest.mock import MagicMock
-
-import pytest
-
-from jbi import Operation
 from jbi.actions import default_with_assignee_and_status as action
-from jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
 
 
 def test_create_with_no_assignee(webhook_create_example, mocked_jira):

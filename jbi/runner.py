@@ -6,10 +6,9 @@ import logging
 from statsd.defaults.env import statsd
 
 from jbi import Operation
-from jbi.bugzilla import BugzillaBug, BugzillaWebhookRequest
 from jbi.environment import Settings
 from jbi.errors import ActionNotFoundError, IgnoreInvalidRequestError
-from jbi.models import Actions
+from jbi.models import Actions, BugzillaBug, BugzillaWebhookRequest
 
 logger = logging.getLogger(__name__)
 
