@@ -15,7 +15,7 @@ class Environment(str, Enum):
 
     LOCAL = "local"
     NONPROD = "nonprod"
-    PRODUCTION = "production"
+    PROD = "prod"
 
 
 class SentryDsn(AnyUrl):
