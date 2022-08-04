@@ -45,11 +45,20 @@ class InstrumentedClient:
             max_tries=settings.max_retries + 1,
         )
         def wrapped_func(*args, **kwargs):
+            metric_label = f"jbi.{self.prefix}.methods.{attr}"
             # Increment the call counter.
-            statsd.incr(f"jbi.{self.prefix}.methods.{attr}.count")
+            statsd.incr(f"{metric_label}.count")
             # Time its execution.
-            with statsd.timer(f"jbi.{self.prefix}.methods.{attr}.timer"):
-                return getattr(self.wrapped, attr)(*args, **kwargs)
+            with statsd.timer(f"{metric_label}.timer"):
+                try:
+                    response = getattr(self.wrapped, attr)(*args, **kwargs)
+                    # Increment the returned counter.
+                    statsd.incr(f"{metric_label}.returned.count")
+                except Exception as exception:  # pylint: disable=broad-except
+                    # Increment the exception counter.
+                    statsd.incr(f"{metric_label}.exception.count")
+                    raise exception
+                return response
 
         # The method was not called yet.
         return wrapped_func
