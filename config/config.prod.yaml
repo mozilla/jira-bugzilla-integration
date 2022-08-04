@@ -104,7 +104,7 @@
     jira_project_key: RELOPS
 
 - whiteboard_tag: snt
-  contact: tbd
+  contact: cbellini@mozilla.com
   description: Search/NewTab Team Tag
   enabled: true
   parameters:
