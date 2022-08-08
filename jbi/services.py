@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import logging
-from typing import TYPE_CHECKING, Dict, List
+from typing import TYPE_CHECKING
 
 import backoff
 import bugzilla as rh_bugzilla
@@ -20,7 +20,7 @@ settings = environment.get_settings()
 logger = logging.getLogger(__name__)
 
 
-ServiceHealth = Dict[str, bool]
+ServiceHealth = dict[str, bool]
 
 
 class InstrumentedClient:
@@ -77,10 +77,10 @@ def get_jira():
     )
 
 
-def jira_visible_projects(jira=None) -> List[Dict]:
+def jira_visible_projects(jira=None) -> list[dict]:
     """Return list of projects that are visible with the configured Jira credentials"""
     jira = jira or get_jira()
-    projects: List[Dict] = jira.projects(included_archived=None)
+    projects: list[dict] = jira.projects(included_archived=None)
     return projects
 
 

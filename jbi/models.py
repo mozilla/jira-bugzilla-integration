@@ -9,7 +9,7 @@ import logging
 import warnings
 from inspect import signature
 from types import ModuleType
-from typing import Any, Callable, Dict, List, Literal, Mapping, Optional, Set, Union
+from typing import Any, Callable, Literal, Mapping, Optional
 from urllib.parse import ParseResult, urlparse
 
 from pydantic import BaseModel, EmailStr, Field, PrivateAttr, root_validator, validator
@@ -30,13 +30,13 @@ class Action(YamlModel):
     whiteboard_tag: str
     module: str = "jbi.actions.default"
     # TODO: Remove the tbd literal option when all actions have contact info # pylint: disable=fixme
-    contact: Union[EmailStr, List[EmailStr], Literal["tbd"]]
+    contact: EmailStr | list[EmailStr] | Literal["tbd"]
     description: str
     enabled: bool = False
     allow_private: bool = False
     parameters: dict = {}
     _caller: Callable = PrivateAttr(default=None)
-    _required_jira_permissions: Set[str] = PrivateAttr(default=None)
+    _required_jira_permissions: set[str] = PrivateAttr(default=None)
 
     @property
     def caller(self) -> Callable:
@@ -48,7 +48,7 @@ class Action(YamlModel):
         return self._caller
 
     @property
-    def required_jira_permissions(self) -> Set[str]:
+    def required_jira_permissions(self) -> set[str]:
         """Return the required Jira permissions for this action to be executed."""
         if not self._required_jira_permissions:
             action_module: ModuleType = importlib.import_module(self.module)
@@ -61,7 +61,7 @@ class Action(YamlModel):
         """Validate action: exists, has init function, and has expected params"""
         try:
             module: str = values["module"]  # type: ignore
-            action_parameters: Optional[Dict[str, Any]] = values["parameters"]
+            action_parameters: Optional[dict[str, Any]] = values["parameters"]
             action_module: ModuleType = importlib.import_module(module)
             if not action_module:
                 raise TypeError("Module is not found.")
@@ -81,7 +81,7 @@ class Actions(YamlModel):
     Actions is the container model for the list of actions in the configuration file
     """
 
-    __root__: List[Action] = Field(..., min_items=1)
+    __root__: list[Action] = Field(..., min_items=1)
 
     @functools.cached_property
     def by_tag(self) -> Mapping[str, Action]:
@@ -102,7 +102,7 @@ class Actions(YamlModel):
         return self.by_tag.get(tag.lower()) if tag else None
 
     @functools.cached_property
-    def configured_jira_projects_keys(self) -> Set[str]:
+    def configured_jira_projects_keys(self) -> set[str]:
         """Return the list of Jira project keys from all configured actions"""
         return {
             action.parameters["jira_project_key"]
@@ -112,7 +112,7 @@ class Actions(YamlModel):
 
     @validator("__root__")
     def validate_actions(  # pylint: disable=no-self-argument
-        cls, actions: List[Action]
+        cls, actions: list[Action]
     ):
         """
         Inspect the list of actions:
@@ -160,11 +160,11 @@ class BugzillaWebhookEvent(BaseModel):
     action: str
     time: Optional[datetime.datetime]
     user: Optional[BugzillaWebhookUser]
-    changes: Optional[List[BugzillaWebhookEventChange]]
+    changes: Optional[list[BugzillaWebhookEventChange]]
     target: Optional[str]
     routing_key: Optional[str]
 
-    def changed_fields(self) -> Optional[List[str]]:
+    def changed_fields(self) -> Optional[list[str]]:
         """Returns the names of changed fields in a bug"""
         if self.changes:
             return [c.field for c in self.changes]
@@ -184,7 +184,7 @@ class BugzillaWebhookAttachment(BaseModel):
     creation_time: Optional[datetime.datetime]
     description: Optional[str]
     file_name: Optional[str]
-    flags: Optional[List]
+    flags: Optional[list]
     id: int
     is_obsolete: Optional[bool]
     is_patch: Optional[bool]
@@ -211,12 +211,12 @@ class BugzillaBug(BaseModel):
     product: Optional[str]
     component: Optional[str]
     whiteboard: Optional[str]
-    keywords: Optional[List]
-    flags: Optional[List]
-    groups: Optional[List]
+    keywords: Optional[list]
+    flags: Optional[list]
+    groups: Optional[list]
     status: Optional[str]
     resolution: Optional[str]
-    see_also: Optional[List]
+    see_also: Optional[list]
     summary: Optional[str]
     severity: Optional[str]
     priority: Optional[str]
@@ -224,21 +224,21 @@ class BugzillaBug(BaseModel):
     assigned_to: Optional[str]
     comment: Optional[BugzillaWebhookComment]
 
-    def get_whiteboard_as_list(self) -> List[str]:
+    def get_whiteboard_as_list(self) -> list[str]:
         """Convert string whiteboard into list, splitting on ']' and removing '['."""
         if self.whiteboard is not None:
             split_list = self.whiteboard.replace("[", "").split("]")
             return [x.strip() for x in split_list if x not in ["", " "]]
         return []
 
-    def get_whiteboard_with_brackets_as_list(self) -> List[str]:
+    def get_whiteboard_with_brackets_as_list(self) -> list[str]:
         """Convert string whiteboard into list, splitting on ']' and removing '['; then re-adding."""
         wb_list = self.get_whiteboard_as_list()
         if wb_list is not None and len(wb_list) > 0:
             return [f"[{element}]" for element in wb_list]
         return []
 
-    def get_jira_labels(self) -> List[str]:
+    def get_jira_labels(self) -> list[str]:
         """
         whiteboard labels are added as a convenience for users to search in jira;
         bugzilla is an expected label in Jira
@@ -251,9 +251,9 @@ class BugzillaBug(BaseModel):
 
         return ["bugzilla"] + wb_list + wb_bracket_list
 
-    def get_potential_whiteboard_config_list(self) -> List[str]:
+    def get_potential_whiteboard_config_list(self) -> list[str]:
         """Get all possible tags from `whiteboard` field"""
-        converted_list: List = []
+        converted_list: list = []
         for whiteboard in self.get_whiteboard_as_list():
             first_tag = whiteboard.strip().lower().split(sep="-", maxsplit=1)[0]
             if first_tag:
@@ -266,7 +266,7 @@ class BugzillaBug(BaseModel):
         type_map: dict = {"enhancement": "Task", "task": "Task", "defect": "Bug"}
         return type_map.get(self.type, "Task")
 
-    def map_as_jira_issue(self) -> Dict:
+    def map_as_jira_issue(self) -> dict:
         """Extract bug info as jira issue dictionary"""
         return {
             "summary": self.summary,
@@ -304,7 +304,7 @@ class BugzillaBug(BaseModel):
 
     def lookup_action(self, actions: Actions) -> Action:
         """Find first matching action from bug's whiteboard list"""
-        tags: List[str] = self.get_potential_whiteboard_config_list()
+        tags: list[str] = self.get_potential_whiteboard_config_list()
         for tag in tags:
             if action := actions.get(tag):
                 return action
@@ -354,10 +354,10 @@ class BugzillaWebhookRequest(BaseModel):
         self,
         status_log_enabled: bool = True,
         assignee_log_enabled: bool = True,
-    ) -> List[str]:
+    ) -> list[str]:
         """Extract update dict and comment list from Webhook Event"""
 
-        comments: List = []
+        comments: list = []
         bug: BugzillaBug = self.bug  # type: ignore
 
         if self.event.changes:
@@ -396,5 +396,5 @@ class BugzillaWebhookRequest(BaseModel):
 class BugzillaApiResponse(BaseModel):
     """Bugzilla Response Object"""
 
-    faults: Optional[List]
-    bugs: Optional[List[BugzillaBug]]
+    faults: Optional[list]
+    bugs: Optional[list[BugzillaBug]]

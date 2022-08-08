@@ -6,7 +6,6 @@ import logging.config
 import sys
 import time
 from datetime import datetime
-from typing import Dict
 
 from fastapi import Request
 
@@ -46,7 +45,7 @@ CONFIG = {
 
 def format_request_summary_fields(
     request: Request, request_time: float, status_code: int
-) -> Dict:
+) -> dict:
     """Prepare Fields for Mozlog request summary"""
 
     current_time = time.time()
