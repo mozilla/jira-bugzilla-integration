@@ -25,6 +25,11 @@
     status_map:
       ASSIGNED: In Progress
       FIXED: Closed
+      WONTFIX: Closed
+      DUPLICATE: Closed
+      INVALID: Closed
+      INCOMPLETE: Closed
+      WORKSFORME: Closed
       REOPENED: In Progress
 
 - whiteboard_tag: flowstate
