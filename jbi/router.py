@@ -2,7 +2,7 @@
 Core FastAPI app (setup, middleware)
 """
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Optional
 
 from fastapi import APIRouter, Body, Depends, Request, Response
 from fastapi.encoders import jsonable_encoder
@@ -87,7 +87,7 @@ def get_whiteboard_tags(
 @router.get("/jira_projects/")
 def get_jira_projects():
     """API for viewing projects that are currently accessible by API"""
-    visible_projects: List[Dict] = jira_visible_projects()
+    visible_projects: list[dict] = jira_visible_projects()
     return [project["key"] for project in visible_projects]
 
 
