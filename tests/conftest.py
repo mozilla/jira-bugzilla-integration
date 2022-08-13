@@ -33,13 +33,13 @@ def settings():
 @pytest.fixture(autouse=True)
 def mocked_bugzilla():
     with mock.patch("jbi.services.rh_bugzilla.Bugzilla") as mocked_bz:
-        yield mocked_bz
+        yield mocked_bz()
 
 
 @pytest.fixture(autouse=True)
 def mocked_jira():
     with mock.patch("jbi.services.Jira") as mocked_jira:
-        yield mocked_jira
+        yield mocked_jira()
 
 
 @pytest.fixture

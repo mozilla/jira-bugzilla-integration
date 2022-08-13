@@ -24,7 +24,7 @@ def test_whiteboard_tags(anon_client):
 
 
 def test_jira_projects(anon_client, mocked_jira):
-    mocked_jira().projects.return_value = [{"key": "Firefox"}, {"key": "Fenix"}]
+    mocked_jira.projects.return_value = [{"key": "Firefox"}, {"key": "Fenix"}]
 
     resp = anon_client.get("/jira_projects/")
     infos = resp.json()
@@ -66,8 +66,8 @@ def test_webhook_is_200_if_action_succeeds(
     mocked_jira,
     mocked_bugzilla,
 ):
-    mocked_bugzilla().getbug.return_value = webhook_create_example.bug
-    mocked_bugzilla().update_bugs.return_value = {
+    mocked_bugzilla.getbug.return_value = webhook_create_example.bug
+    mocked_bugzilla.update_bugs.return_value = {
         "bugs": [
             {
                 "changes": {
@@ -80,7 +80,7 @@ def test_webhook_is_200_if_action_succeeds(
             }
         ]
     }
-    mocked_jira().create_or_update_issue_remote_links.return_value = {
+    mocked_jira.create_or_update_issue_remote_links.return_value = {
         "id": 18936,
         "self": "https://mozilla.atlassian.net/rest/api/2/issue/JBI-1922/remotelink/18936",
     }
@@ -126,8 +126,8 @@ def test_read_version(anon_client):
 
 def test_read_heartbeat_all_services_fail(anon_client, mocked_jira, mocked_bugzilla):
     """/__heartbeat__ returns 503 when all the services are unavailable."""
-    mocked_bugzilla().logged_in = False
-    mocked_jira().get_server_info.return_value = None
+    mocked_bugzilla.logged_in = False
+    mocked_jira.get_server_info.return_value = None
 
     resp = anon_client.get("/__heartbeat__")
 
@@ -146,8 +146,8 @@ def test_read_heartbeat_all_services_fail(anon_client, mocked_jira, mocked_bugzi
 
 def test_read_heartbeat_jira_services_fails(anon_client, mocked_jira, mocked_bugzilla):
     """/__heartbeat__ returns 503 when one service is unavailable."""
-    mocked_bugzilla().logged_in = True
-    mocked_jira().get_server_info.return_value = None
+    mocked_bugzilla.logged_in = True
+    mocked_jira.get_server_info.return_value = None
 
     resp = anon_client.get("/__heartbeat__")
 
@@ -168,9 +168,9 @@ def test_read_heartbeat_bugzilla_services_fails(
     anon_client, mocked_jira, mocked_bugzilla
 ):
     """/__heartbeat__ returns 503 when one service is unavailable."""
-    mocked_bugzilla().logged_in = False
-    mocked_jira().get_server_info.return_value = {}
-    mocked_jira().projects.return_value = [{"key": "DevTest"}]
+    mocked_bugzilla.logged_in = False
+    mocked_jira.get_server_info.return_value = {}
+    mocked_jira.projects.return_value = [{"key": "DevTest"}]
 
     resp = anon_client.get("/__heartbeat__")
 
@@ -189,10 +189,10 @@ def test_read_heartbeat_bugzilla_services_fails(
 
 def test_read_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
     """/__heartbeat__ returns 200 when checks succeed."""
-    mocked_bugzilla().logged_in = True
-    mocked_jira().get_server_info.return_value = {}
-    mocked_jira().projects.return_value = [{"key": "DevTest"}]
-    mocked_jira().get_permissions.return_value = {
+    mocked_bugzilla.logged_in = True
+    mocked_jira.get_server_info.return_value = {}
+    mocked_jira.projects.return_value = [{"key": "DevTest"}]
+    mocked_jira.get_permissions.return_value = {
         "permissions": {
             "ADD_COMMENTS": {"havePermission": True},
             "CREATE_ISSUES": {"havePermission": True},
@@ -218,8 +218,8 @@ def test_read_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
 
 def test_jira_heartbeat_visible_projects(anon_client, mocked_jira, mocked_bugzilla):
     """/__heartbeat__ fails if configured projects don't match."""
-    mocked_bugzilla().logged_in = True
-    mocked_jira().get_server_info.return_value = {}
+    mocked_bugzilla.logged_in = True
+    mocked_jira.get_server_info.return_value = {}
 
     resp = anon_client.get("/__heartbeat__")
 
@@ -238,9 +238,9 @@ def test_jira_heartbeat_visible_projects(anon_client, mocked_jira, mocked_bugzil
 
 def test_jira_heartbeat_missing_permissions(anon_client, mocked_jira, mocked_bugzilla):
     """/__heartbeat__ fails if configured projects don't match."""
-    mocked_bugzilla().logged_in = True
-    mocked_jira().get_server_info.return_value = {}
-    mocked_jira().get_project_permission_scheme.return_value = {
+    mocked_bugzilla.logged_in = True
+    mocked_jira.get_server_info.return_value = {}
+    mocked_jira.get_project_permission_scheme.return_value = {
         "permissions": {
             "ADD_COMMENTS": {"havePermission": True},
             "CREATE_ISSUES": {"havePermission": True},
@@ -266,10 +266,10 @@ def test_jira_heartbeat_missing_permissions(anon_client, mocked_jira, mocked_bug
 
 def test_head_heartbeat(anon_client, mocked_jira, mocked_bugzilla):
     """/__heartbeat__ support head requests"""
-    mocked_bugzilla().logged_in = True
-    mocked_jira().get_server_info.return_value = {}
-    mocked_jira().projects.return_value = [{"key": "DevTest"}]
-    mocked_jira().get_permissions.return_value = {
+    mocked_bugzilla.logged_in = True
+    mocked_jira.get_server_info.return_value = {}
+    mocked_jira.projects.return_value = [{"key": "DevTest"}]
+    mocked_jira.get_permissions.return_value = {
         "permissions": {
             "ADD_COMMENTS": {"havePermission": True},
             "CREATE_ISSUES": {"havePermission": True},

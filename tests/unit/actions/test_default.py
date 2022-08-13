@@ -30,8 +30,8 @@ def test_default_returns_callable_with_data(
     webhook_create_example, mocked_jira, mocked_bugzilla
 ):
     sentinel = mock.sentinel
-    mocked_jira().create_or_update_issue_remote_links.return_value = sentinel
-    mocked_bugzilla().getbug.return_value = webhook_create_example.bug
+    mocked_jira.create_or_update_issue_remote_links.return_value = sentinel
+    mocked_bugzilla.getbug.return_value = webhook_create_example.bug
     callable_object = default.init(jira_project_key="")
 
     handled, details = callable_object(payload=webhook_create_example)
@@ -43,15 +43,15 @@ def test_default_returns_callable_with_data(
 def test_created_public(
     webhook_create_example: BugzillaWebhookRequest, mocked_jira, mocked_bugzilla
 ):
-    mocked_bugzilla().getbug.return_value = webhook_create_example.bug
-    mocked_bugzilla().get_comments.return_value = {
+    mocked_bugzilla.getbug.return_value = webhook_create_example.bug
+    mocked_bugzilla.get_comments.return_value = {
         "bugs": {"654321": {"comments": [{"text": "Initial comment"}]}}
     }
     callable_object = default.init(jira_project_key="JBI")
 
     callable_object(payload=webhook_create_example)
 
-    mocked_jira().create_issue.assert_called_once_with(
+    mocked_jira.create_issue.assert_called_once_with(
         fields={
             "summary": "JBI Test",
             "labels": ["bugzilla", "devtest", "[devtest]"],
@@ -69,15 +69,15 @@ def test_created_private(
         id=webhook_create_private_example.bug.id,
         is_private=webhook_create_private_example.bug.is_private,
     )
-    mocked_bugzilla().getbug.return_value = fetched_private_bug
-    mocked_bugzilla().get_comments.return_value = {
+    mocked_bugzilla.getbug.return_value = fetched_private_bug
+    mocked_bugzilla.get_comments.return_value = {
         "bugs": {"654321": {"comments": [{"text": "Initial comment"}]}}
     }
     callable_object = default.init(jira_project_key="JBI")
 
     callable_object(payload=webhook_create_private_example)
 
-    mocked_jira().create_issue.assert_called_once_with(
+    mocked_jira.create_issue.assert_called_once_with(
         fields={
             "summary": "JBI Test",
             "labels": ["bugzilla", "devtest", "[devtest]"],
@@ -96,7 +96,7 @@ def test_modified_public(webhook_modify_example: BugzillaWebhookRequest, mocked_
 
     assert webhook_modify_example.bug.extract_from_see_also(), "see_also is not empty"
 
-    mocked_jira().update_issue_field.assert_called_once_with(
+    mocked_jira.update_issue_field.assert_called_once_with(
         key="JBI-234",
         fields={"summary": "JBI Test", "labels": ["bugzilla", "devtest", "[devtest]"]},
     )
@@ -110,12 +110,12 @@ def test_modified_private(
         is_private=webhook_modify_private_example.bug.is_private,
         see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
     )
-    mocked_bugzilla().getbug.return_value = fetched_private_bug
+    mocked_bugzilla.getbug.return_value = fetched_private_bug
     callable_object = default.init(jira_project_key="")
 
     callable_object(payload=webhook_modify_private_example)
 
-    mocked_jira().update_issue_field.assert_called_once_with(
+    mocked_jira.update_issue_field.assert_called_once_with(
         key="JBI-234",
         fields={"summary": "JBI Test", "labels": ["bugzilla", "devtest", "[devtest]"]},
     )
@@ -127,7 +127,7 @@ def test_added_comment(webhook_comment_example: BugzillaWebhookRequest, mocked_j
 
     callable_object(payload=webhook_comment_example)
 
-    mocked_jira().issue_add_comment.assert_called_once_with(
+    mocked_jira.issue_add_comment.assert_called_once_with(
         issue_key="JBI-234",
         comment="*(mathieu@mozilla.org)* commented: \n{quote}hello{quote}",
     )
@@ -143,7 +143,7 @@ def test_added_private_comment(
         comment_factory(id=345, text="not this one", count=3),
     ]
 
-    mocked_bugzilla().get_comments.return_value = {
+    mocked_bugzilla.get_comments.return_value = {
         "bugs": {"654321": {"comments": comments}},
         "comments": {},
     }
@@ -154,7 +154,7 @@ def test_added_private_comment(
     callable_object(payload=webhook_private_comment_example)
 
     # then
-    mocked_jira().issue_add_comment.assert_called_once_with(
+    mocked_jira.issue_add_comment.assert_called_once_with(
         issue_key="JBI-234",
         comment="*(mathieu@mozilla.org)* commented: \n{quote}hello{quote}",
     )
@@ -167,14 +167,14 @@ def test_added_missing_private_comment(
 ):
 
     callable_object = default.init(jira_project_key="")
-    mocked_bugzilla().get_comments.return_value = {
+    mocked_bugzilla.get_comments.return_value = {
         "bugs": {str(webhook_private_comment_example.bug.id): {"comments": []}},
         "comments": {},
     }
 
     handled, _ = callable_object(payload=webhook_private_comment_example)
 
-    mocked_jira().issue_add_comment.assert_not_called()
+    mocked_jira.issue_add_comment.assert_not_called()
     assert not handled
 
 
@@ -193,7 +193,7 @@ def test_added_comment_without_linked_issue(
 def test_jira_returns_an_error(
     webhook_create_example: BugzillaWebhookRequest, mocked_jira
 ):
-    mocked_jira().create_issue.return_value = [
+    mocked_jira.create_issue.return_value = [
         {"errors": ["Boom"]},
     ]
     callable_object = default.init(jira_project_key="")

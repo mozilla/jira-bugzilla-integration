@@ -23,7 +23,7 @@ def test_request_is_ignored_because_private(
     mocked_bugzilla,
 ):
     bug = bug_factory(id=webhook_create_private_example.bug.id, is_private=True)
-    mocked_bugzilla().getbug.return_value = bug
+    mocked_bugzilla.getbug.return_value = bug
     with pytest.raises(IgnoreInvalidRequestError) as exc_info:
         execute_action(
             request=webhook_create_private_example,
@@ -41,7 +41,7 @@ def test_private_request_is_allowed(
     mocked_bugzilla,
 ):
     bug = bug_factory(id=webhook_create_private_example.bug.id, is_private=True)
-    mocked_bugzilla().getbug.return_value = bug
+    mocked_bugzilla.getbug.return_value = bug
 
     actions_example["devtest"].allow_private = True
 
