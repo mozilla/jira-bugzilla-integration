@@ -6,6 +6,7 @@ import pytest
 
 from jbi.errors import ActionNotFoundError
 from jbi.models import BugzillaBug
+from tests.fixtures.factories import bug_factory
 
 
 @pytest.mark.parametrize(
@@ -115,12 +116,24 @@ def test_payload_bugzilla_object_public(mocked_bugzilla, webhook_modify_example)
 
 
 def test_bugzilla_object_private(mocked_bugzilla, webhook_modify_private_example):
-    bug_obj = webhook_modify_private_example.bugzilla_object
+    # given
+    fetched_private_bug = bug_factory(
+        id=webhook_modify_private_example.bug.id,
+        is_private=webhook_modify_private_example.bug.is_private,
+        see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+    )
+    mocked_bugzilla().getbug.return_value = fetched_private_bug
+
+    # when a private bug's bugzilla_object property is accessed
+    webhook_modify_private_example.bugzilla_object
+    # then
     mocked_bugzilla().getbug.assert_called_once_with(
         webhook_modify_private_example.bug.id
     )
-    assert bug_obj.product == "JBI"
-    assert bug_obj.status == "NEW"
+    assert fetched_private_bug.product == "JBI"
+    assert fetched_private_bug.status == "NEW"
 
-    bug_obj = webhook_modify_private_example.bugzilla_object
+    # when it is accessed again
+    fetched_private_bug = webhook_modify_private_example.bugzilla_object
+    # getbug was still only called once
     mocked_bugzilla().getbug.assert_called_once()

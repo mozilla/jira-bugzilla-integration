@@ -1,7 +1,11 @@
 from jbi.actions import default_with_assignee_and_status as action
 
 
-def test_create_with_no_assignee(webhook_create_example, mocked_jira):
+def test_create_with_no_assignee(webhook_create_example, mocked_jira, mocked_bugzilla):
+    mocked_bugzilla().getbug.return_value = webhook_create_example.bug
+    mocked_bugzilla().get_comments.return_value = {
+        "bugs": {"654321": {"comments": [{"text": "Initial comment"}]}}
+    }
     callable_object = action.init(jira_project_key="JBI")
     handled, _ = callable_object(payload=webhook_create_example)
 
@@ -22,6 +26,7 @@ def test_create_with_no_assignee(webhook_create_example, mocked_jira):
 
 def test_create_with_assignee(webhook_create_example, mocked_jira, mocked_bugzilla):
     webhook_create_example.bug.assigned_to = "dtownsend@mozilla.com"
+    mocked_bugzilla().getbug.return_value = webhook_create_example.bug
     mocked_jira().create_issue.return_value = {"key": "JBI-534"}
     mocked_jira().user_find_by_user_string.return_value = [{"accountId": "6254"}]
     mocked_bugzilla().get_comments.return_value = {
@@ -112,6 +117,7 @@ def test_create_with_unknown_status(
 ):
     webhook_create_example.bug.status = "NEW"
     webhook_create_example.bug.resolution = ""
+    mocked_bugzilla().getbug.return_value = webhook_create_example.bug
     mocked_bugzilla().get_comments.return_value = {
         "bugs": {"654321": {"comments": [{"text": "Initial comment"}]}}
     }
@@ -145,6 +151,7 @@ def test_create_with_known_status(webhook_create_example, mocked_jira, mocked_bu
 
     mocked_jira().create_issue.return_value = {"key": "JBI-534"}
 
+    mocked_bugzilla().getbug.return_value = webhook_create_example.bug
     mocked_bugzilla().get_comments.return_value = {
         "bugs": {"654321": {"comments": [{"text": "Initial comment"}]}}
     }
