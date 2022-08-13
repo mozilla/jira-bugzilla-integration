@@ -11,6 +11,7 @@ from jbi.app import app
 from jbi.environment import Settings
 from jbi.models import Action, Actions, BugzillaWebhookComment, BugzillaWebhookRequest
 from tests.fixtures.factories import (
+    action_factory,
     bug_factory,
     webhook_event_factory,
     webhook_factory,
@@ -121,14 +122,7 @@ def webhook_modify_private_example() -> BugzillaWebhookRequest:
 
 @pytest.fixture
 def action_example() -> Action:
-    return Action.parse_obj(
-        {
-            "whiteboard_tag": "devtest",
-            "contact": "contact@corp.com",
-            "description": "test config",
-            "module": "tests.fixtures.noop_action",
-        }
-    )
+    return action_factory()
 
 
 @pytest.fixture

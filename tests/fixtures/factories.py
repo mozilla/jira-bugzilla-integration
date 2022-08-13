@@ -1,9 +1,21 @@
 from jbi.models import (
+    Action,
     BugzillaBug,
     BugzillaWebhookEvent,
     BugzillaWebhookRequest,
     BugzillaWebhookUser,
 )
+
+
+def action_factory(**overrides):
+    action = {
+        "whiteboard_tag": "devtest",
+        "contact": "tbd",
+        "description": "test config",
+        "module": "tests.fixtures.noop_action",
+        **overrides,
+    }
+    return Action.parse_obj(action)
 
 
 def bug_factory(**overrides):
