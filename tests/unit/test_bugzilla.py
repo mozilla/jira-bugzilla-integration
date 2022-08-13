@@ -1,11 +1,6 @@
-"""
-Module for testing jbi/configuration.py functionality
-"""
-# pylint: disable=cannot-enumerate-pytest-fixtures
 import pytest
 
 from jbi.errors import ActionNotFoundError
-from jbi.models import BugzillaBug
 from tests.fixtures.factories import bug_factory
 
 
@@ -30,7 +25,7 @@ from tests.fixtures.factories import bug_factory
     ],
 )
 def test_jira_labels(whiteboard, expected):
-    bug = BugzillaBug(id=0, whiteboard=whiteboard)
+    bug = bug_factory(whiteboard=whiteboard)
     assert bug.get_jira_labels() == expected
 
 
@@ -52,19 +47,19 @@ def test_jira_labels(whiteboard, expected):
     ],
 )
 def test_extract_see_also(see_also, expected):
-    test_bug = BugzillaBug(id=0, see_also=see_also)
-    assert test_bug.extract_from_see_also() == expected
+    bug = bug_factory(see_also=see_also)
+    assert bug.extract_from_see_also() == expected
 
 
 def test_lookup_action(actions_example):
-    bug = BugzillaBug.parse_obj({"id": 1234, "whiteboard": "[example][DevTest]"})
+    bug = bug_factory(id=1234, whiteboard="[example][DevTest]")
     action = bug.lookup_action(actions_example)
     assert action.whiteboard_tag == "devtest"
     assert "test config" in action.description
 
 
 def test_lookup_action_missing(actions_example):
-    bug = BugzillaBug.parse_obj({"id": 1234, "whiteboard": "example DevTest"})
+    bug = bug_factory(id=1234, whiteboard="example DevTest")
     with pytest.raises(ActionNotFoundError) as exc_info:
         bug.lookup_action(actions_example)
     assert str(exc_info.value) == "example devtest"
