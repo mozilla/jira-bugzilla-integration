@@ -8,7 +8,7 @@ license = "MPL"
 [tool.poetry.dependencies]
 python = ">=3.8, <3.11"
 fastapi = "^0.79.0"
-pydantic = {version = "^1.9.1", extras = ["dotenv", "email"]}
+pydantic = {version = "^1.9.2", extras = ["dotenv", "email"]}
 uvicorn = {extras = ["standard"], version = "^0.18.2"}
 python-bugzilla = "^3.2.0"
 atlassian-python-api = { git = "https://github.com/atlassian-api/atlassian-python-api.git", rev = "82293a2ac9bfa" }
