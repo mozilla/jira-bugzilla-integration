@@ -21,7 +21,7 @@ COPY ./poetry.lock ./pyproject.toml ./
 RUN poetry install --no-dev --no-root
 
 # `production` stage uses the dependencies downloaded in the `base` stage
-FROM python:3.10.6 as production
+FROM python:3.10.6-slim as production
 ENV PORT=8000 \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
