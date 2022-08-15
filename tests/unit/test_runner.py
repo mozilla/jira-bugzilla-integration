@@ -13,14 +13,17 @@ from jbi.environment import Settings
 from jbi.errors import IgnoreInvalidRequestError
 from jbi.models import Action, Actions, BugzillaWebhookRequest
 from jbi.runner import execute_action
+from tests.fixtures.factories import bug_factory
 
 
 def test_request_is_ignored_because_private(
-    caplog,
     webhook_create_private_example: BugzillaWebhookRequest,
     actions_example: Actions,
     settings: Settings,
+    mocked_bugzilla,
 ):
+    bug = bug_factory(id=webhook_create_private_example.bug.id, is_private=True)
+    mocked_bugzilla.getbug.return_value = bug
     with pytest.raises(IgnoreInvalidRequestError) as exc_info:
         execute_action(
             request=webhook_create_private_example,
@@ -32,11 +35,13 @@ def test_request_is_ignored_because_private(
 
 
 def test_private_request_is_allowed(
-    caplog,
     webhook_create_private_example: BugzillaWebhookRequest,
     settings: Settings,
     actions_example,
+    mocked_bugzilla,
 ):
+    bug = bug_factory(id=webhook_create_private_example.bug.id, is_private=True)
+    mocked_bugzilla.getbug.return_value = bug
 
     actions_example["devtest"].allow_private = True
 
