@@ -54,7 +54,7 @@ def format_request_summary_fields(
         "path": request.url.path,
         "method": request.method,
         "lang": request.headers.get("Accept-Language"),
-        "querystring": dict(request.query_params),
+        "querystring": str(dict(request.query_params)),
         "errno": 0,
         "t": int((current_time - request_time) * 1000.0),
         "time": datetime.fromtimestamp(current_time).isoformat(),
