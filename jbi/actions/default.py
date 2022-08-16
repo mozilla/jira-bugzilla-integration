@@ -1,10 +1,13 @@
 """
 Default action is listed below.
 `init` is required; and requires at minimum the `jira_project_key` parameter.
+The `label_field` parameter configures which Jira field is used to store the
+labels generated from the Bugzilla status whiteboard.
 
 `init` should return a __call__able
 """
 import logging
+from typing import Any
 
 from jbi import ActionResult, Operation
 from jbi.environment import get_settings
@@ -25,9 +28,13 @@ JIRA_REQUIRED_PERMISSIONS = {
 }
 
 
-def init(jira_project_key, **kwargs):
+def init(jira_project_key, sync_whiteboard_labels=True, **kwargs):
     """Function that takes required and optional params and returns a callable object"""
-    return DefaultExecutor(jira_project_key=jira_project_key, **kwargs)
+    return DefaultExecutor(
+        jira_project_key=jira_project_key,
+        sync_whiteboard_labels=sync_whiteboard_labels,
+        **kwargs,
+    )
 
 
 class DefaultExecutor:
@@ -36,6 +43,7 @@ class DefaultExecutor:
     def __init__(self, jira_project_key, **kwargs):
         """Initialize DefaultExecutor Object"""
         self.jira_project_key = jira_project_key
+        self.sync_whiteboard_labels = kwargs.get("sync_whiteboard_labels", True)
 
         self.bugzilla_client = get_bugzilla()
         self.jira_client = get_jira()
@@ -100,6 +108,17 @@ class DefaultExecutor:
         )
         return True, {"jira_response": jira_response}
 
+    def jira_fields(self, bug_obj: BugzillaBug):
+        """Extract bug info as jira issue dictionary"""
+        fields: dict[str, Any] = {
+            "summary": bug_obj.summary,
+        }
+
+        if self.sync_whiteboard_labels:
+            fields["labels"] = bug_obj.get_jira_labels()
+
+        return fields
+
     def jira_comments_for_update(
         self,
         payload: BugzillaWebhookRequest,
@@ -143,7 +162,7 @@ class DefaultExecutor:
             },
         )
         jira_response_update = self.jira_client.update_issue_field(
-            key=linked_issue_key, fields=bug_obj.map_as_jira_issue()
+            key=linked_issue_key, fields=self.jira_fields(bug_obj)
         )
 
         comments = self.jira_comments_for_update(payload)
@@ -193,7 +212,7 @@ class DefaultExecutor:
         ]
 
         fields = {
-            **bug_obj.map_as_jira_issue(),  # type: ignore
+            **self.jira_fields(bug_obj),  # type: ignore
             "issuetype": {"name": bug_obj.issue_type()},
             "description": description,
             "project": {"key": self.jira_project_key},
