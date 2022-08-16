@@ -13,7 +13,7 @@ from jbi.configuration import get_actions
 from jbi.environment import Settings, get_settings, get_version
 from jbi.models import Actions, BugzillaWebhookRequest
 from jbi.runner import IgnoreInvalidRequestError, execute_action
-from jbi.services import jbi_service_health_map, jira_visible_projects
+from jbi.services import jbi_service_health_map, jira
 
 router = APIRouter()
 
@@ -87,7 +87,7 @@ def get_whiteboard_tags(
 @router.get("/jira_projects/")
 def get_jira_projects():
     """API for viewing projects that are currently accessible by API"""
-    visible_projects: list[dict] = jira_visible_projects()
+    visible_projects: list[dict] = jira.fetch_visible_projects()
     return [project["key"] for project in visible_projects]
 
 

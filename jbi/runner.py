@@ -9,7 +9,7 @@ from jbi import Operation
 from jbi.environment import Settings
 from jbi.errors import ActionNotFoundError, IgnoreInvalidRequestError
 from jbi.models import Actions, BugzillaWebhookRequest, RunnerLogContext
-from jbi.services import get_bugzilla
+from jbi.services.bugzilla import get_bugzilla
 
 logger = logging.getLogger(__name__)
 

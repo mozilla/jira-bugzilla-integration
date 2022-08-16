@@ -37,13 +37,13 @@ def mocked_bugzilla(request):
     if "no_mocked_bugzilla" in request.keywords:
         yield None
     else:
-        with mock.patch("jbi.services.BugzillaClient") as mocked_bz:
+        with mock.patch("jbi.services.bugzilla.BugzillaClient") as mocked_bz:
             yield mocked_bz()
 
 
 @pytest.fixture(autouse=True)
 def mocked_jira():
-    with mock.patch("jbi.services.Jira") as mocked_jira:
+    with mock.patch("jbi.services.jira.Jira") as mocked_jira:
         yield mocked_jira()
 
 

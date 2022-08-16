@@ -31,6 +31,6 @@ Let's create a `new_action`!
 
 1. Use the `payload` to perform the desired processing!
 1. List the required Jira permissions to be set on projects that will use this action in the `JIRA_REQUIRED_PERMISSIONS` constant. The list of built-in permissions is [available on Atlanssian API docs](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-permission-schemes/#built-in-permissions).
-1. Use the available service calls from `jbi/services.py` (or make new ones)
+1. Use the available service calls from `jbi/services` (or make new ones)
 1. Update the `README.md` to document your action
 1. Now the action `jbi.actions.my_team_actions` can be used in the YAML configuration, under the `module` key.

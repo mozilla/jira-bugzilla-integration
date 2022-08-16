@@ -1,39 +1,16 @@
-"""
-Module for testing jbi/services.py
-"""
-from sys import exc_info
 from unittest import mock
 
 import pytest
 import responses
 
 from jbi.environment import get_settings
-from jbi.services import BugzillaClientError, get_bugzilla, get_jira
-from tests.fixtures.factories import comment_factory
-
-
-def test_counter_is_incremented_on_jira_create_issue():
-    jira_client = get_jira()
-
-    with mock.patch("jbi.services.statsd") as mocked:
-        jira_client.create_issue({})
-
-    mocked.incr.assert_called_with("jbi.jira.methods.create_issue.count")
-
-
-def test_timer_is_used_on_jira_create_issue():
-    jira_client = get_jira()
-
-    with mock.patch("jbi.services.statsd") as mocked:
-        jira_client.create_issue({})
-
-    mocked.timer.assert_called_with("jbi.jira.methods.create_issue.timer")
+from jbi.services.bugzilla import BugzillaClientError, get_bugzilla
 
 
 def test_timer_is_used_on_bugzilla_get_comments():
     bugzilla_client = get_bugzilla()
 
-    with mock.patch("jbi.services.statsd") as mocked:
+    with mock.patch("jbi.services.common.statsd") as mocked:
         bugzilla_client.get_comments([])
 
     mocked.timer.assert_called_with("jbi.bugzilla.methods.get_comments.timer")

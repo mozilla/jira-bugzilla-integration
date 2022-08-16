@@ -11,7 +11,7 @@ import pytest
 from jbi import Operation
 from jbi.environment import Settings
 from jbi.errors import IgnoreInvalidRequestError
-from jbi.models import Action, Actions, BugzillaWebhookRequest
+from jbi.models import Actions, BugzillaWebhookRequest
 from jbi.runner import execute_action
 from tests.fixtures.factories import bug_factory
 
