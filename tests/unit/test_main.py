@@ -19,7 +19,7 @@ def test_request_summary_is_logged(caplog):
             assert summary.name == "request.summary"
             assert summary.method == "GET"
             assert summary.path == "/"
-            assert summary.querystring == {}
+            assert summary.querystring == "{}"
 
 
 def test_errors_are_reported_to_sentry(
