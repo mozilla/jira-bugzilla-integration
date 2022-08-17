@@ -40,6 +40,7 @@
   module: jbi.actions.default_with_assignee_and_status
   parameters:
     jira_project_key: MR2
+    sync_whiteboard_labels: false
     status_map:
       ASSIGNED: In Progress
       FIXED: In Review
