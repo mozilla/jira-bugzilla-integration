@@ -46,6 +46,7 @@ class Settings(BaseSettings):
 
     # Sentry
     sentry_dsn: Optional[SentryDsn]
+    sentry_traces_sample_rate: float = 1.0
 
     class Config:
         """Pydantic configuration"""

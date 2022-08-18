@@ -25,9 +25,7 @@ sentry_sdk.init(
         StarletteIntegration(),
         FastApiIntegration(),
     ],
-    # Set traces_sample_rate to 1.0 to capture 100% of transactions for performance monitoring.
-    # TODO: Sentry recommends adjusting this value in production # pylint: disable=fixme
-    traces_sample_rate=1.0,
+    traces_sample_rate=settings.sentry_traces_sample_rate,
 )
 
 
