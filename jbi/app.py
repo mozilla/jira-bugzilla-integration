@@ -8,7 +8,8 @@ from pathlib import Path
 import sentry_sdk
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.starlette import StarletteIntegration
 
 from jbi.environment import get_settings
 from jbi.log import format_request_summary_fields
@@ -17,6 +18,15 @@ from jbi.router import router
 SRC_DIR = Path(__file__).parent
 
 settings = get_settings()
+
+sentry_sdk.init(
+    dsn=settings.sentry_dsn,
+    integrations=[
+        StarletteIntegration(),
+        FastApiIntegration(),
+    ],
+    traces_sample_rate=settings.sentry_traces_sample_rate,
+)
 
 
 app = FastAPI(
@@ -28,11 +38,6 @@ app = FastAPI(
 
 app.include_router(router)
 app.mount("/static", StaticFiles(directory=SRC_DIR / "static"), name="static")
-
-sentry_sdk.init(  # pylint: disable=abstract-class-instantiated  # noqa: E0110
-    dsn=settings.sentry_dsn
-)
-app.add_middleware(SentryAsgiMiddleware)
 
 
 @app.middleware("http")
