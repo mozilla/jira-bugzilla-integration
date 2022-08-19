@@ -202,3 +202,24 @@ def test_jira_returns_an_error(
         callable_object(payload=webhook_create_example)
 
     assert str(exc_info.value) == "response contains error: {'errors': ['Boom']}"
+
+
+def test_disabled_label_field(
+    webhook_create_example: BugzillaWebhookRequest, mocked_jira, mocked_bugzilla
+):
+    mocked_bugzilla.getbug.return_value = webhook_create_example.bug
+    mocked_bugzilla.get_comments.return_value = {
+        "bugs": {"654321": {"comments": [{"text": "Initial comment"}]}}
+    }
+    callable_object = default.init(jira_project_key="JBI", sync_whiteboard_labels=False)
+
+    callable_object(payload=webhook_create_example)
+
+    mocked_jira.create_issue.assert_called_once_with(
+        fields={
+            "summary": "JBI Test",
+            "issuetype": {"name": "Bug"},
+            "description": "Initial comment",
+            "project": {"key": "JBI"},
+        },
+    )

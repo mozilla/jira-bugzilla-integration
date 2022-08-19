@@ -74,6 +74,9 @@ It will also set the Jira issue URL in the Bugzilla bug `see_also` field.
 - `jira_project_key`
     - string
     - The Jira project identifier
+- `sync_whiteboard_labels`
+    - boolean
+    - Whether to sync the Bugzilla status whiteboard labels to Jira. Defaults to `true`.
 
 Example configuration:
 ```yaml
@@ -83,6 +86,17 @@ Example configuration:
     module: jbi.actions.default
     parameters:
       jira_project_key: EXMPL
+```
+
+Example configuration that disables setting labels in Jira:
+```yaml
+    whiteboard_tag: example
+    contact: example@allizom.com
+    description: example configuration
+    module: jbi.actions.default
+    parameters:
+      jira_project_key: EXMPL
+      sync_whiteboard_labels: false
 ```
 
 ### Default with assignee and status action
@@ -101,6 +115,9 @@ If configured, the action supports setting the Jira issues's status when the Bug
 - `jira_project_key`
     - string
     - The Jira project identifier
+- `sync_whiteboard_labels`
+    - boolean
+    - Whether to sync the Bugzilla status whiteboard labels to Jira. Defaults to `true`.
 - `status_map` (optional)
     - mapping [str, str]
     - If defined, map the Bugzilla bug status to Jira issue status
