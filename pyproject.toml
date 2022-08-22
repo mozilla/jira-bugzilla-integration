@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "jira-bugzilla-integration"
-version = "3.2.2"
+version = "3.2.3"
 description = "jira-bugzilla-integration"
 authors = ["@mozilla/jbi-core"]
 license = "MPL"
