@@ -9,12 +9,13 @@ import logging
 import warnings
 from inspect import signature
 from types import ModuleType
-from typing import Any, Callable, Literal, Mapping, Optional
+from typing import Any, Callable, Literal, Mapping, Optional, TypedDict
 from urllib.parse import ParseResult, urlparse
 
 from pydantic import BaseModel, EmailStr, Field, PrivateAttr, root_validator, validator
 from pydantic_yaml import YamlModel
 
+from jbi import Operation
 from jbi.errors import ActionNotFoundError
 from jbi.services import get_bugzilla
 
@@ -391,3 +392,40 @@ class BugzillaApiResponse(BaseModel):
 
     faults: Optional[list]
     bugs: Optional[list[BugzillaBug]]
+
+
+class JiraContext(BaseModel):
+    """Logging context about Jira"""
+
+    project: str
+    issue: Optional[str]
+
+
+BugId = TypedDict("BugId", {"id": Optional[int]})
+
+
+class LogContext(BaseModel):
+    """Generic log context throughout JBI"""
+
+    def set(self, **kwargs):
+        """Set multiple attributes at once"""
+        for k, value in kwargs.items():
+            setattr(self, k, value)
+        return self
+
+
+class RunnerLogContext(LogContext):
+    """Logging context from runner"""
+
+    bug = BugId | BugzillaBug
+    operation: Operation
+    action: Optional[Action]
+
+
+class ActionLogContext(LogContext):
+    """Logging context from actions"""
+
+    operation: Operation
+    request: BugzillaWebhookRequest
+    jira: JiraContext
+    bug: BugzillaBug
