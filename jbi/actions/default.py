@@ -287,6 +287,7 @@ class DefaultExecutor:
             issue_key=jira_key_in_response,
             link_url=bugzilla_url,
             title=bugzilla_url,
+            icon_url=f"{settings.bugzilla_base_url}/favicon.ico",
         )
 
         self.update_issue(payload, bug_obj, jira_key_in_response, is_new=True)
