@@ -429,4 +429,4 @@ class ActionLogContext(LogContext):
     request: BugzillaWebhookRequest
     jira: JiraContext
     bug: BugzillaBug
-    extra: dict = {}
+    extra: dict[str, str] = {}
