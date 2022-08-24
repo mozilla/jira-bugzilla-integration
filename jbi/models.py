@@ -407,11 +407,9 @@ BugId = TypedDict("BugId", {"id": Optional[int]})
 class LogContext(BaseModel):
     """Generic log context throughout JBI"""
 
-    def set(self, **kwargs):
-        """Set multiple attributes at once"""
-        for k, value in kwargs.items():
-            setattr(self, k, value)
-        return self
+    def update(self, **kwargs):
+        """Return a copy with updated fields."""
+        return self.copy(update=kwargs)
 
 
 class RunnerLogContext(LogContext):

@@ -176,7 +176,7 @@ class DefaultExecutor:
                 "Create comment #%s on Jira issue %s",
                 i + 1,
                 linked_issue_key,
-                extra=log_context.set(operation=Operation.COMMENT).dict(),
+                extra=log_context.update(operation=Operation.COMMENT).dict(),
             )
             jira_response_comments.append(
                 self.jira_client.issue_add_comment(
@@ -249,7 +249,7 @@ class DefaultExecutor:
                 "Delete duplicated Jira issue %s from Bug %s",
                 jira_key_in_response,
                 bug_obj.id,
-                extra=log_context.set(operation=Operation.DELETE).dict(),
+                extra=log_context.update(operation=Operation.DELETE).dict(),
             )
             jira_response_delete = self.jira_client.delete_issue(
                 issue_id_or_key=jira_key_in_response
@@ -261,7 +261,7 @@ class DefaultExecutor:
             "Link %r on Bug %s",
             jira_url,
             bug_obj.id,
-            extra=log_context.set(operation=Operation.LINK).dict(),
+            extra=log_context.update(operation=Operation.LINK).dict(),
         )
         update = self.bugzilla_client.build_update(see_also_add=jira_url)
         bugzilla_response = self.bugzilla_client.update_bugs([bug_obj.id], update)
@@ -271,7 +271,7 @@ class DefaultExecutor:
             "Link %r on Jira issue %s",
             bugzilla_url,
             jira_key_in_response,
-            extra=log_context.set(operation=Operation.LINK).dict(),
+            extra=log_context.update(operation=Operation.LINK).dict(),
         )
         jira_response = self.jira_client.create_or_update_issue_remote_links(
             issue_key=jira_key_in_response,

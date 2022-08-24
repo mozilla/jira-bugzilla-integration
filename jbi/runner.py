@@ -48,7 +48,7 @@ def execute_action(
             raise IgnoreInvalidRequestError(
                 "bug not accessible or bugzilla down"
             ) from ex
-        log_context.set(bug=bug_obj)
+        log_context.update(bug=bug_obj)
 
         try:
             action = bug_obj.lookup_action(actions)
@@ -57,7 +57,7 @@ def execute_action(
                 f"no action matching bug whiteboard tags: {err}"
             ) from err
 
-        log_context.set(action=action)
+        log_context.update(action=action)
 
         if bug_obj.is_private and not action.allow_private:
             raise IgnoreInvalidRequestError(
@@ -69,7 +69,7 @@ def execute_action(
             action.whiteboard_tag,
             action.module,
             bug_obj.id,
-            extra=log_context.set(operation=Operation.EXECUTE).dict(),
+            extra=log_context.update(operation=Operation.EXECUTE).dict(),
         )
 
         handled, details = action.caller(payload=request)
@@ -78,7 +78,7 @@ def execute_action(
             "Action %r executed successfully for Bug %s",
             action.whiteboard_tag,
             bug_obj.id,
-            extra=log_context.set(
+            extra=log_context.update(
                 operation=Operation.SUCCESS if handled else Operation.IGNORE
             ).dict(),
         )
@@ -88,7 +88,7 @@ def execute_action(
         logger.debug(
             "Ignore incoming request: %s",
             exception,
-            extra=log_context.set(operation=Operation.IGNORE).dict(),
+            extra=log_context.update(operation=Operation.IGNORE).dict(),
         )
         statsd.incr("jbi.bugzilla.ignored.count")
         raise

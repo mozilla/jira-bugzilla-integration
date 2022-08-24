@@ -112,7 +112,7 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
                 else:
                     logger.debug(
                         "No assignee found",
-                        extra=log_context.set(operation=Operation.IGNORE).dict(),
+                        extra=log_context.update(operation=Operation.IGNORE).dict(),
                     )
                     clear_assignee()
 
@@ -134,7 +134,7 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
             else:
                 logger.debug(
                     "Bug status was not in the status map.",
-                    extra=log_context.set(
+                    extra=log_context.update(
                         operation=Operation.IGNORE,
                         extra={"status_map": self.status_map},
                     ).dict(),
