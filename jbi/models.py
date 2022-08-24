@@ -417,7 +417,7 @@ class LogContext(BaseModel):
 class RunnerLogContext(LogContext):
     """Logging context from runner"""
 
-    bug = BugId | BugzillaBug
+    bug: BugId | BugzillaBug
     operation: Operation
     action: Optional[Action]
 
@@ -429,3 +429,4 @@ class ActionLogContext(LogContext):
     request: BugzillaWebhookRequest
     jira: JiraContext
     bug: BugzillaBug
+    extra: dict = {}

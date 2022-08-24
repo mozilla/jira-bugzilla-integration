@@ -135,6 +135,7 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
                 logger.debug(
                     "Bug status was not in the status map.",
                     extra=log_context.set(
-                        operation=Operation.IGNORE, status_map=self.status_map
+                        operation=Operation.IGNORE,
+                        extra={"status_map": self.status_map},
                     ).dict(),
                 )
