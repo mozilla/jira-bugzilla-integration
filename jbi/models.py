@@ -12,7 +12,15 @@ from types import ModuleType
 from typing import Any, Callable, Literal, Mapping, Optional, TypedDict
 from urllib.parse import ParseResult, urlparse
 
-from pydantic import BaseModel, EmailStr, Field, PrivateAttr, root_validator, validator
+from pydantic import (
+    BaseModel,
+    EmailStr,
+    Extra,
+    Field,
+    PrivateAttr,
+    root_validator,
+    validator,
+)
 from pydantic_yaml import YamlModel
 
 from jbi import Operation
@@ -412,15 +420,16 @@ class LogContext(BaseModel):
         return self.copy(update=kwargs)
 
 
-class RunnerLogContext(LogContext):
+class RunnerLogContext(LogContext, extra=Extra.forbid):
     """Logging context from runner"""
 
-    bug: BugId | BugzillaBug
     operation: Operation
+    request: BugzillaWebhookRequest
     action: Optional[Action]
+    bug: BugId | BugzillaBug
 
 
-class ActionLogContext(LogContext):
+class ActionLogContext(LogContext, extra=Extra.forbid):
     """Logging context from actions"""
 
     operation: Operation

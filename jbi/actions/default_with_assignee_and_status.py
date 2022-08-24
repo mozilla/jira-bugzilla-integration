@@ -66,7 +66,9 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
                 project=self.jira_project_key,
                 issue=linked_issue_key,
             ),
-            changed_fields=changed_fields,
+            extra={
+                "changed_fields": ", ".join(changed_fields),
+            },
         )
 
         def clear_assignee():
@@ -136,6 +138,6 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
                     "Bug status was not in the status map.",
                     extra=log_context.update(
                         operation=Operation.IGNORE,
-                        extra={"status_map": self.status_map},
+                        extra={**log_context.extra, "status_map": self.status_map},
                     ).dict(),
                 )
