@@ -43,12 +43,12 @@ def execute_action(
 
         try:
             bug_obj: BugzillaBug = request.bugzilla_object
-        except Exception as ex:
-            logger.exception("Failed to get bug: %s", ex, extra=log_context.dict())
+        except Exception as err:
+            logger.exception("Failed to get bug: %s", err, extra=log_context.dict())
             raise IgnoreInvalidRequestError(
                 "bug not accessible or bugzilla down"
-            ) from ex
-        log_context.update(bug=bug_obj)
+            ) from err
+        log_context = log_context.update(bug=bug_obj)
 
         try:
             action = bug_obj.lookup_action(actions)
@@ -56,8 +56,7 @@ def execute_action(
             raise IgnoreInvalidRequestError(
                 f"no action matching bug whiteboard tags: {err}"
             ) from err
-
-        log_context.update(action=action)
+        log_context = log_context.update(action=action)
 
         if bug_obj.is_private and not action.allow_private:
             raise IgnoreInvalidRequestError(

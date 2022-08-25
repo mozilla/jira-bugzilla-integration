@@ -167,6 +167,8 @@ def test_action_is_logged_as_success_if_returns_true(
         ),
         ("Action 'devtest' executed successfully for Bug 654321", Operation.SUCCESS),
     ]
+    assert caplog.records[-1].bug["id"] == 654321
+    assert caplog.records[-1].action["whiteboard_tag"] == "devtest"
 
 
 def test_action_is_logged_as_ignore_if_returns_false(
