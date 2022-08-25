@@ -111,6 +111,17 @@ def test_webhook_is_200_if_action_raises_IgnoreInvalidRequestError(
         )
 
 
+def test_webhook_is_422_if_bug_information_missing(webhook_create_example):
+    webhook_create_example.bug = None
+
+    with TestClient(app) as anon_client:
+        response = anon_client.post(
+            "/bugzilla_webhook", data=webhook_create_example.json()
+        )
+        assert response.status_code == 422
+        assert response.json()["detail"][0]["msg"] == "none is not an allowed value"
+
+
 def test_read_version(anon_client):
     """__version__ returns the contents of version.json."""
     here = os.path.dirname(__file__)

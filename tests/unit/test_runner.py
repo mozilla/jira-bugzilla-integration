@@ -56,22 +56,6 @@ def test_private_request_is_allowed(
     assert payload.bug.id == 654321
 
 
-def test_request_is_ignored_because_no_bug(
-    webhook_create_example: BugzillaWebhookRequest,
-    actions_example: Actions,
-    settings: Settings,
-):
-    webhook_create_example.bug = None
-
-    with pytest.raises(IgnoreInvalidRequestError) as exc_info:
-        execute_action(
-            request=webhook_create_example,
-            actions=actions_example,
-            settings=settings,
-        )
-    assert str(exc_info.value) == "no bug data received"
-
-
 def test_request_is_ignored_because_no_action(
     webhook_create_example: BugzillaWebhookRequest,
     actions_example: Actions,

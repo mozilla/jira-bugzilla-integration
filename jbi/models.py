@@ -317,7 +317,7 @@ class BugzillaWebhookRequest(BaseModel):
     webhook_id: int
     webhook_name: str
     event: BugzillaWebhookEvent
-    bug: Optional[BugzillaBug]
+    bug: BugzillaBug
 
     def map_as_jira_comment(self):
         """Extract comment from Webhook Event"""
@@ -379,8 +379,6 @@ class BugzillaWebhookRequest(BaseModel):
     @functools.cached_property
     def bugzilla_object(self) -> BugzillaBug:
         """Returns the bugzilla bug object, querying the API as needed for private bugs"""
-        if not self.bug:
-            raise ValueError("missing bug reference")
         if not self.bug.is_private:
             return self.bug
         return self.getbug_as_bugzilla_object()
