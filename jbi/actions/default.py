@@ -273,11 +273,13 @@ class DefaultExecutor:
             jira_key_in_response,
             extra=log_context.update(operation=Operation.LINK).dict(),
         )
+        icon_url = f"{settings.bugzilla_base_url}/favicon.ico"
         jira_response = self.jira_client.create_or_update_issue_remote_links(
             issue_key=jira_key_in_response,
             link_url=bugzilla_url,
             title=bugzilla_url,
-            icon_url=f"{settings.bugzilla_base_url}/favicon.ico",
+            icon_url=icon_url,
+            icon_title=icon_url,
         )
 
         self.update_issue(payload, bug_obj, jira_key_in_response, is_new=True)
