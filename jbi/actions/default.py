@@ -12,7 +12,12 @@ from typing import Any
 from jbi import ActionResult, Operation
 from jbi.environment import get_settings
 from jbi.errors import ActionError
-from jbi.models import BugzillaBug, BugzillaWebhookRequest
+from jbi.models import (
+    ActionLogContext,
+    BugzillaBug,
+    BugzillaWebhookRequest,
+    JiraContext,
+)
 from jbi.services import get_bugzilla, get_jira
 
 settings = get_settings()
@@ -60,10 +65,10 @@ class DefaultExecutor:
         logger.debug(
             "Ignore event target %r",
             target,
-            extra={
-                "request": payload.dict(),
-                "operation": Operation.IGNORE,
-            },
+            extra=ActionLogContext(
+                request=payload,
+                operation=Operation.IGNORE,
+            ).dict(),
         )
         return False, {}
 
@@ -72,20 +77,20 @@ class DefaultExecutor:
         bug_obj = payload.bugzilla_object
         linked_issue_key = bug_obj.extract_from_see_also()
 
-        log_context = {
-            "request": payload.dict(),
-            "bug": bug_obj.dict(),
-            "operation": Operation.COMMENT,
-            "jira": {
-                "issue": linked_issue_key,
-                "project": self.jira_project_key,
-            },
-        }
+        log_context = ActionLogContext(
+            request=payload,
+            bug=bug_obj,
+            operation=Operation.COMMENT,
+            jira=JiraContext(
+                issue=linked_issue_key,
+                project=self.jira_project_key,
+            ),
+        )
         if not linked_issue_key:
             logger.debug(
                 "No Jira issue linked to Bug %s",
                 bug_obj.id,
-                extra=log_context,
+                extra=log_context.dict(),
             )
             return False, {}
 
@@ -93,7 +98,7 @@ class DefaultExecutor:
         if comment is None:
             logger.debug(
                 "No matching comment found in payload",
-                extra=log_context,
+                extra=log_context.dict(),
             )
             return False, {}
 
@@ -104,7 +109,7 @@ class DefaultExecutor:
         logger.debug(
             "Comment added to Jira issue %s",
             linked_issue_key,
-            extra=log_context,
+            extra=log_context.dict(),
         )
         return True, {"jira_response": jira_response}
 
@@ -144,22 +149,21 @@ class DefaultExecutor:
         if not linked_issue_key:
             return self.create_and_link_issue(payload, bug_obj)
 
-        log_context = {
-            "request": payload.dict(),
-            "bug": bug_obj.dict(),
-            "jira": {
-                "issue": linked_issue_key,
-                "project": self.jira_project_key,
-            },
-        }
+        log_context = ActionLogContext(
+            request=payload,
+            bug=bug_obj,
+            operation=Operation.LINK,
+            jira=JiraContext(
+                issue=linked_issue_key,
+                project=self.jira_project_key,
+            ),
+        )
+
         logger.debug(
             "Update fields of Jira issue %s for Bug %s",
             linked_issue_key,
             bug_obj.id,
-            extra={
-                **log_context,
-                "operation": Operation.LINK,
-            },
+            extra=log_context.dict(),
         )
         jira_response_update = self.jira_client.update_issue_field(
             key=linked_issue_key, fields=self.jira_fields(bug_obj)
@@ -172,10 +176,7 @@ class DefaultExecutor:
                 "Create comment #%s on Jira issue %s",
                 i + 1,
                 linked_issue_key,
-                extra={
-                    **log_context,
-                    "operation": Operation.COMMENT,
-                },
+                extra=log_context.update(operation=Operation.COMMENT).dict(),
             )
             jira_response_comments.append(
                 self.jira_client.issue_add_comment(
@@ -191,20 +192,18 @@ class DefaultExecutor:
         self, payload, bug_obj
     ) -> ActionResult:
         """create jira issue and establish link between bug and issue; rollback/delete if required"""
-        log_context = {
-            "request": payload.dict(),
-            "bug": bug_obj.dict(),
-            "jira": {
-                "project": self.jira_project_key,
-            },
-        }
+        log_context = ActionLogContext(
+            request=payload,
+            bug=bug_obj,
+            operation=Operation.CREATE,
+            jira=JiraContext(
+                project=self.jira_project_key,
+            ),
+        )
         logger.debug(
             "Create new Jira issue for Bug %s",
             bug_obj.id,
-            extra={
-                **log_context,
-                "operation": Operation.CREATE,
-            },
+            extra=log_context.dict(),
         )
         comment_list = self.bugzilla_client.get_comments(idlist=[bug_obj.id])
         description = comment_list["bugs"][str(bug_obj.id)]["comments"][0]["text"][
@@ -235,7 +234,7 @@ class DefaultExecutor:
 
         jira_key_in_response = jira_response_create.get("key")
 
-        log_context["jira"]["issue"] = jira_key_in_response
+        log_context.jira.issue = jira_key_in_response
 
         # In the time taken to create the Jira issue the bug may have been updated so
         # re-retrieve it to ensure we have the latest data.
@@ -250,10 +249,7 @@ class DefaultExecutor:
                 "Delete duplicated Jira issue %s from Bug %s",
                 jira_key_in_response,
                 bug_obj.id,
-                extra={
-                    **log_context,
-                    "operation": Operation.DELETE,
-                },
+                extra=log_context.update(operation=Operation.DELETE).dict(),
             )
             jira_response_delete = self.jira_client.delete_issue(
                 issue_id_or_key=jira_key_in_response
@@ -265,10 +261,7 @@ class DefaultExecutor:
             "Link %r on Bug %s",
             jira_url,
             bug_obj.id,
-            extra={
-                **log_context,
-                "operation": Operation.LINK,
-            },
+            extra=log_context.update(operation=Operation.LINK).dict(),
         )
         update = self.bugzilla_client.build_update(see_also_add=jira_url)
         bugzilla_response = self.bugzilla_client.update_bugs([bug_obj.id], update)
@@ -278,10 +271,7 @@ class DefaultExecutor:
             "Link %r on Jira issue %s",
             bugzilla_url,
             jira_key_in_response,
-            extra={
-                **log_context,
-                "operation": Operation.LINK,
-            },
+            extra=log_context.update(operation=Operation.LINK).dict(),
         )
         jira_response = self.jira_client.create_or_update_issue_remote_links(
             issue_key=jira_key_in_response,

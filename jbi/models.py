@@ -9,12 +9,21 @@ import logging
 import warnings
 from inspect import signature
 from types import ModuleType
-from typing import Any, Callable, Literal, Mapping, Optional
+from typing import Any, Callable, Literal, Mapping, Optional, TypedDict
 from urllib.parse import ParseResult, urlparse
 
-from pydantic import BaseModel, EmailStr, Field, PrivateAttr, root_validator, validator
+from pydantic import (
+    BaseModel,
+    EmailStr,
+    Extra,
+    Field,
+    PrivateAttr,
+    root_validator,
+    validator,
+)
 from pydantic_yaml import YamlModel
 
+from jbi import Operation
 from jbi.errors import ActionNotFoundError
 from jbi.services import get_bugzilla
 
@@ -391,3 +400,40 @@ class BugzillaApiResponse(BaseModel):
 
     faults: Optional[list]
     bugs: Optional[list[BugzillaBug]]
+
+
+class JiraContext(BaseModel):
+    """Logging context about Jira"""
+
+    project: str
+    issue: Optional[str]
+
+
+BugId = TypedDict("BugId", {"id": Optional[int]})
+
+
+class LogContext(BaseModel):
+    """Generic log context throughout JBI"""
+
+    def update(self, **kwargs):
+        """Return a copy with updated fields."""
+        return self.copy(update=kwargs)
+
+
+class RunnerLogContext(LogContext, extra=Extra.forbid):
+    """Logging context from runner"""
+
+    operation: Operation
+    request: BugzillaWebhookRequest
+    action: Optional[Action]
+    bug: BugId | BugzillaBug
+
+
+class ActionLogContext(LogContext, extra=Extra.forbid):
+    """Logging context from actions"""
+
+    operation: Operation
+    request: BugzillaWebhookRequest
+    jira: JiraContext
+    bug: BugzillaBug
+    extra: dict[str, str] = {}

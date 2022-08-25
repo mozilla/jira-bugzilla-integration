@@ -14,7 +14,12 @@ from jbi.actions.default import (
     JIRA_REQUIRED_PERMISSIONS as DEFAULT_JIRA_REQUIRED_PERMISSIONS,
 )
 from jbi.actions.default import DefaultExecutor
-from jbi.models import BugzillaBug, BugzillaWebhookRequest
+from jbi.models import (
+    ActionLogContext,
+    BugzillaBug,
+    BugzillaWebhookRequest,
+    JiraContext,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -53,25 +58,23 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
     ):
         changed_fields = payload.event.changed_fields() or []
 
-        log_context = {
-            "bug": {
-                "id": bug_obj.id,
-                "status": bug_obj.status,
-                "resolution": bug_obj.resolution,
-                "assigned_to": bug_obj.assigned_to,
+        log_context = ActionLogContext(
+            request=payload,
+            bug=bug_obj,
+            operation=Operation.UPDATE,
+            jira=JiraContext(
+                project=self.jira_project_key,
+                issue=linked_issue_key,
+            ),
+            extra={
+                "changed_fields": ", ".join(changed_fields),
             },
-            "jira": {
-                "issue": linked_issue_key,
-                "project": self.jira_project_key,
-            },
-            "changed_fields": changed_fields,
-            "operation": Operation.UPDATE,
-        }
+        )
 
         def clear_assignee():
             # New tickets already have no assignee.
             if not is_new:
-                logger.debug("Clearing assignee", extra=log_context)
+                logger.debug("Clearing assignee", extra=log_context.dict())
                 self.jira_client.update_issue_field(
                     key=linked_issue_key, fields={"assignee": None}
                 )
@@ -84,7 +87,7 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
             else:
                 logger.debug(
                     "Attempting to update assignee",
-                    extra=log_context,
+                    extra=log_context.dict(),
                 )
                 # Look up this user in Jira
                 users = self.jira_client.user_find_by_user_string(
@@ -101,7 +104,9 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
                         )
                     except IOError as exception:
                         logger.debug(
-                            "Setting assignee failed: %s", exception, extra=log_context
+                            "Setting assignee failed: %s",
+                            exception,
+                            extra=log_context.dict(),
                         )
                         # If that failed then just fall back to clearing the
                         # assignee.
@@ -109,7 +114,7 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
                 else:
                     logger.debug(
                         "No assignee found",
-                        extra={**log_context, "operation": Operation.IGNORE},
+                        extra=log_context.update(operation=Operation.IGNORE).dict(),
                     )
                     clear_assignee()
 
@@ -123,7 +128,7 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
                 logger.debug(
                     "Updating Jira status to %s",
                     self.status_map[status],
-                    extra=log_context,
+                    extra=log_context.dict(),
                 )
                 self.jira_client.set_issue_status(
                     linked_issue_key, self.status_map[status]
@@ -131,9 +136,8 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
             else:
                 logger.debug(
                     "Bug status was not in the status map.",
-                    extra={
-                        **log_context,
-                        "status_map": self.status_map,
-                        "operation": Operation.IGNORE,
-                    },
+                    extra=log_context.update(
+                        operation=Operation.IGNORE,
+                        extra={**log_context.extra, "status_map": self.status_map},
+                    ).dict(),
                 )

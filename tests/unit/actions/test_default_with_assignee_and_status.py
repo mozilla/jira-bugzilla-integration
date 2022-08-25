@@ -6,6 +6,7 @@ def test_create_with_no_assignee(webhook_create_example, mocked_jira, mocked_bug
     mocked_bugzilla.get_comments.return_value = {
         "bugs": {"654321": {"comments": [{"text": "Initial comment"}]}}
     }
+    mocked_jira.create_issue.return_value = {"key": "new-id"}
     callable_object = action.init(jira_project_key="JBI")
     handled, _ = callable_object(payload=webhook_create_example)
 
@@ -121,6 +122,7 @@ def test_create_with_unknown_status(
     mocked_bugzilla.get_comments.return_value = {
         "bugs": {"654321": {"comments": [{"text": "Initial comment"}]}}
     }
+    mocked_jira.create_issue.return_value = {"key": "new-id"}
 
     callable_object = action.init(
         jira_project_key="JBI",
