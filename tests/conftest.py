@@ -32,9 +32,12 @@ def settings():
 
 
 @pytest.fixture(autouse=True)
-def mocked_bugzilla():
-    with mock.patch("jbi.services.rh_bugzilla.Bugzilla") as mocked_bz:
-        yield mocked_bz()
+def mocked_bugzilla(request):
+    if "no_mocked_bugzilla" in request.keywords:
+        yield None
+    else:
+        with mock.patch("jbi.services.BugzillaClient") as mocked_bz:
+            yield mocked_bz()
 
 
 @pytest.fixture(autouse=True)

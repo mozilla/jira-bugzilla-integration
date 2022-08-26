@@ -44,9 +44,9 @@ def test_created_public(
     webhook_create_example: BugzillaWebhookRequest, mocked_jira, mocked_bugzilla
 ):
     mocked_bugzilla.getbug.return_value = webhook_create_example.bug
-    mocked_bugzilla.get_comments.return_value = {
-        "bugs": {"654321": {"comments": [{"text": "Initial comment"}]}}
-    }
+    mocked_bugzilla.get_comments.return_value = [
+        comment_factory(text="Initial comment")
+    ]
     callable_object = default.init(jira_project_key="JBI")
 
     callable_object(payload=webhook_create_example)
@@ -118,9 +118,9 @@ def test_disabled_label_field(
     webhook_create_example: BugzillaWebhookRequest, mocked_jira, mocked_bugzilla
 ):
     mocked_bugzilla.getbug.return_value = webhook_create_example.bug
-    mocked_bugzilla.get_comments.return_value = {
-        "bugs": {"654321": {"comments": [{"text": "Initial comment"}]}}
-    }
+    mocked_bugzilla.get_comments.return_value = [
+        comment_factory(text="Initial comment")
+    ]
     callable_object = default.init(jira_project_key="JBI", sync_whiteboard_labels=False)
 
     callable_object(payload=webhook_create_example)

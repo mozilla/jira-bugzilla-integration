@@ -205,10 +205,8 @@ class DefaultExecutor:
             bug_obj.id,
             extra=log_context.dict(),
         )
-        comment_list = self.bugzilla_client.get_comments(idlist=[bug_obj.id])
-        description = comment_list["bugs"][str(bug_obj.id)]["comments"][0]["text"][
-            :JIRA_DESCRIPTION_CHAR_LIMIT
-        ]
+        comment_list = self.bugzilla_client.get_comments(bug_obj.id)
+        description = comment_list[0].text[:JIRA_DESCRIPTION_CHAR_LIMIT]
 
         fields = {
             **self.jira_fields(bug_obj),  # type: ignore

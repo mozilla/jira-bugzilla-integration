@@ -371,6 +371,15 @@ class BugzillaWebhookRequest(BaseModel):
         return [json.dumps(comment, indent=4) for comment in comments]
 
 
+class BugzillaComment(BaseModel):
+    """Bugzilla Comment"""
+
+    id: int
+    text: str
+    is_private: bool
+    creator: str
+
+
 class BugzillaApiResponse(BaseModel):
     """Bugzilla Response Object"""
 

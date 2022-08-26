@@ -1,6 +1,7 @@
 from jbi.models import (
     Action,
     BugzillaBug,
+    BugzillaComment,
     BugzillaWebhookEvent,
     BugzillaWebhookRequest,
     BugzillaWebhookUser,
@@ -77,12 +78,14 @@ def webhook_factory(**overrides):
 
 
 def comment_factory(**overrides):
-    return {
-        "id": 343,
-        "text": "comment text",
-        "bug_id": 654321,
-        "count": 1,
-        "is_private": True,
-        "creator": "mathieu@mozilla.org",
-        **overrides,
-    }
+    return BugzillaComment.parse_obj(
+        {
+            "id": 343,
+            "text": "comment text",
+            "bug_id": 654321,
+            "count": 1,
+            "is_private": True,
+            "creator": "mathieu@mozilla.org",
+            **overrides,
+        }
+    )

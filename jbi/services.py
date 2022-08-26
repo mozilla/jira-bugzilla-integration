@@ -11,7 +11,7 @@ from atlassian import Jira, errors
 from statsd.defaults.env import statsd
 
 from jbi import environment
-from jbi.models import BugzillaBug
+from jbi.models import BugzillaBug, BugzillaComment
 
 if TYPE_CHECKING:
     from jbi.models import Actions
@@ -105,16 +105,17 @@ class BugzillaClient:
         bug = BugzillaBug.parse_obj(response)
         # If comment is private, then webhook does not have comment, fetch it from server
         if bug.comment and bug.comment.is_private:
-            bug_comments = self._client.get_comments([bugid])
-            comment_list = bug_comments["bugs"][str(bugid)]["comments"]
-            matching_comments = [c for c in comment_list if c["id"] == bug.comment.id]
+            comment_list = self.get_comments(bugid)
+            matching_comments = [c for c in comment_list if c.id == bug.comment.id]
             found = matching_comments[0] if matching_comments else None
             bug = bug.copy(update={"comment": found})
         return bug
 
-    def get_comments(self, *args, **kwargs):
+    def get_comments(self, bugid) -> list[BugzillaComment]:
         """Return the list of comments for the specified bug ID"""
-        return self._client.get_comments(*args, **kwargs)
+        response = self._client.get_comments(idlist=[bugid])
+        comments = response["bugs"][str(bugid)]["comments"]
+        return [BugzillaComment.parse_obj(comment) for comment in comments]
 
     def update_bug(self, bugid, **attrs):
         """Update the specified bug with the specified attributes"""
