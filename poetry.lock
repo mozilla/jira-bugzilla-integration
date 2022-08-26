@@ -30,28 +30,21 @@ wrapt = ">=1.11,<2"
 
 [[package]]
 name = "atlassian-python-api"
-version = "3.25.0"
+version = "3.27.0"
 description = "Python Atlassian REST API Wrapper"
 category = "main"
 optional = false
 python-versions = "*"
-develop = false
 
 [package.dependencies]
 deprecated = "*"
 oauthlib = "*"
 requests = "*"
-requests-oauthlib = "*"
+requests_oauthlib = "*"
 six = "*"
 
 [package.extras]
 kerberos = ["requests-kerberos"]
-
-[package.source]
-type = "git"
-url = "https://github.com/atlassian-api/atlassian-python-api.git"
-reference = "82293a2ac9bfa"
-resolved_reference = "82293a2ac9bfa64768d79ac0f73ce400accc85ae"
 
 [[package]]
 name = "atomicwrites"
@@ -1032,7 +1025,9 @@ astroid = [
     {file = "astroid-2.11.7-py3-none-any.whl", hash = "sha256:86b0a340a512c65abf4368b80252754cda17c02cdbbd3f587dddf98112233e7b"},
     {file = "astroid-2.11.7.tar.gz", hash = "sha256:bb24615c77f4837c707669d16907331374ae8a964650a66999da3f5ca68dc946"},
 ]
-atlassian-python-api = []
+atlassian-python-api = [
+    {file = "atlassian-python-api-3.27.0.tar.gz", hash = "sha256:d9474e8bf15167ddfdd257a900aef138d91c409a86752b2f4313888dce77f35d"},
+]
 atomicwrites = [
     {file = "atomicwrites-1.4.0-py2.py3-none-any.whl", hash = "sha256:6d1784dea7c0c8d4a5172b6c620f40b6e4cbfdf96d783691f2e1302a7b88e197"},
     {file = "atomicwrites-1.4.0.tar.gz", hash = "sha256:ae70396ad1a434f9c7046fd2dd196fc04b12f9e91ffb859164193be8b6168a7a"},
