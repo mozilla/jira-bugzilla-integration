@@ -31,7 +31,7 @@ def test_default_returns_callable_with_data(
 ):
     sentinel = mock.sentinel
     mocked_jira.create_or_update_issue_remote_links.return_value = sentinel
-    mocked_bugzilla.getbug.return_value = webhook_create_example.bug
+    mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
     callable_object = default.init(jira_project_key="")
 
     handled, details = callable_object(payload=webhook_create_example)
@@ -43,7 +43,7 @@ def test_default_returns_callable_with_data(
 def test_created_public(
     webhook_create_example: BugzillaWebhookRequest, mocked_jira, mocked_bugzilla
 ):
-    mocked_bugzilla.getbug.return_value = webhook_create_example.bug
+    mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
     mocked_bugzilla.get_comments.return_value = [
         comment_factory(text="Initial comment")
     ]
@@ -117,7 +117,7 @@ def test_jira_returns_an_error(
 def test_disabled_label_field(
     webhook_create_example: BugzillaWebhookRequest, mocked_jira, mocked_bugzilla
 ):
-    mocked_bugzilla.getbug.return_value = webhook_create_example.bug
+    mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
     mocked_bugzilla.get_comments.return_value = [
         comment_factory(text="Initial comment")
     ]

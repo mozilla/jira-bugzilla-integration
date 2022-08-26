@@ -236,7 +236,7 @@ class DefaultExecutor:
 
         # In the time taken to create the Jira issue the bug may have been updated so
         # re-retrieve it to ensure we have the latest data.
-        bug_obj = self.bugzilla_client.getbug(bug_obj.id)
+        bug_obj = self.bugzilla_client.get_bug(bug_obj.id)
 
         jira_key_in_bugzilla = bug_obj.extract_from_see_also()
         _duplicate_creation_event = (

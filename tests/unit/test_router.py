@@ -66,7 +66,7 @@ def test_webhook_is_200_if_action_succeeds(
     mocked_jira,
     mocked_bugzilla,
 ):
-    mocked_bugzilla.getbug.return_value = webhook_create_example.bug
+    mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
     mocked_bugzilla.update_bug.return_value = {
         "bugs": [
             {

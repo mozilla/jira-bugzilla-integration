@@ -85,7 +85,7 @@ def test_bugzilla_get_bug_comment(webhook_private_comment_example):
             "comments": {},
         }
 
-        expanded = get_bugzilla().getbug(webhook_private_comment_example.bug.id)
+        expanded = get_bugzilla().get_bug(webhook_private_comment_example.bug.id)
 
     # then
     assert expanded.comment.creator == "mathieu@mozilla.org"
@@ -104,6 +104,6 @@ def test_bugzilla_missing_private_comment(
             "comments": {},
         }
 
-        expanded = get_bugzilla().getbug(webhook_private_comment_example.bug.id)
+        expanded = get_bugzilla().get_bug(webhook_private_comment_example.bug.id)
 
     assert not expanded.comment

@@ -41,7 +41,7 @@ def execute_action(
         try:
             if request.bug.is_private:
                 request = request.copy(
-                    update={"bug": get_bugzilla().getbug(request.bug.id)}
+                    update={"bug": get_bugzilla().get_bug(request.bug.id)}
                 )
         except Exception as err:
             logger.exception("Failed to get bug: %s", err, extra=log_context.dict())

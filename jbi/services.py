@@ -99,7 +99,7 @@ class BugzillaClient:
         """Return `true` if credentials are valid"""
         return self._client.logged_in
 
-    def getbug(self, bugid) -> BugzillaBug:
+    def get_bug(self, bugid) -> BugzillaBug:
         """Return the Bugzilla object with all attributes"""
         response = self._client.getbug(bugid).__dict__
         bug = BugzillaBug.parse_obj(response)
@@ -129,7 +129,7 @@ def get_bugzilla():
         settings.bugzilla_base_url, api_key=str(settings.bugzilla_api_key)
     )
     instrumented_methods = (
-        "getbug",
+        "get_bug",
         "get_comments",
         "update_bugs",
     )
