@@ -263,7 +263,7 @@ class DefaultExecutor:
             extra=log_context.update(operation=Operation.LINK).dict(),
         )
         bugzilla_response = self.bugzilla_client.update_bug(
-            bug_obj, see_also_add=jira_url
+            bug_obj.id, see_also_add=jira_url
         )
 
         bugzilla_url = f"{settings.bugzilla_base_url}/show_bug.cgi?id={bug_obj.id}"

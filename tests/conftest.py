@@ -5,6 +5,7 @@ import time
 from unittest import mock
 
 import pytest
+import responses
 from fastapi.testclient import TestClient
 
 from jbi.app import app
@@ -44,6 +45,12 @@ def mocked_bugzilla(request):
 def mocked_jira():
     with mock.patch("jbi.services.Jira") as mocked_jira:
         yield mocked_jira()
+
+
+@pytest.fixture
+def mocked_responses():
+    with responses.RequestsMock() as rsps:
+        yield rsps
 
 
 @pytest.fixture

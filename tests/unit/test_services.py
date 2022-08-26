@@ -1,12 +1,14 @@
 """
 Module for testing jbi/services.py
 """
+from sys import exc_info
 from unittest import mock
 
-import bugzilla
 import pytest
+import responses
 
-from jbi.services import get_bugzilla, get_jira
+from jbi.environment import get_settings
+from jbi.services import BugzillaClientError, get_bugzilla, get_jira
 from tests.fixtures.factories import comment_factory
 
 
@@ -28,7 +30,7 @@ def test_timer_is_used_on_jira_create_issue():
     mocked.timer.assert_called_with("jbi.jira.methods.create_issue.timer")
 
 
-def test_timer_is_used_on_bugzilla_getcomments():
+def test_timer_is_used_on_bugzilla_get_comments():
     bugzilla_client = get_bugzilla()
 
     with mock.patch("jbi.services.statsd") as mocked:
@@ -38,54 +40,123 @@ def test_timer_is_used_on_bugzilla_getcomments():
 
 
 @pytest.mark.no_mocked_bugzilla
-def test_bugzilla_methods_are_retried_if_raising():
-    with mock.patch("jbi.services.rh_bugzilla.Bugzilla") as mocked_bugzilla:
-        mocked_bugzilla().get_comments.side_effect = [
-            bugzilla.BugzillaError("boom"),
-            {"bugs": {"42": {"comments": []}}},
-        ]
-        bugzilla_client = get_bugzilla()
+def test_bugzilla_methods_are_retried_if_raising(mocked_responses):
+    url = f"{get_settings().bugzilla_base_url}/rest/bug/42/comment"
+    mocked_responses.add(responses.GET, url, status=503, json={})
+    mocked_responses.add(
+        responses.GET,
+        url,
+        json={
+            "bugs": {"42": {"comments": []}},
+        },
+    )
 
-        # Not raising
-        bugzilla_client.get_comments(42)
+    # Not raising
+    get_bugzilla().get_comments(42)
 
-    assert mocked_bugzilla().get_comments.call_count == 2
+    assert len(mocked_responses.calls) == 2
 
 
 @pytest.mark.no_mocked_bugzilla
-def test_bugzilla_get_bug_comment(webhook_private_comment_example):
-    # given
-    with mock.patch("jbi.services.rh_bugzilla.Bugzilla") as mocked_bugzilla:
-        mocked_bugzilla().getbug.return_value = webhook_private_comment_example.bug
+def test_bugzilla_key_is_passed_in_querystring(mocked_responses):
+    url = (
+        f"{get_settings().bugzilla_base_url}/rest/whoami?api_key=fake_bugzilla_api_key"
+    )
+    mocked_responses.add(responses.GET, url, json={"id": "you"})
 
-        comments = [
-            {
-                "id": 343,
-                "text": "not this one",
-                "is_private": False,
-                "creator": "mathieu@mozilla.org",
-            },
-            {
-                "id": 344,
-                "text": "hello",
-                "is_private": False,
-                "creator": "mathieu@mozilla.org",
-            },
-            {
-                "id": 345,
-                "text": "not this one",
-                "is_private": False,
-                "creator": "mathieu@mozilla.org",
-            },
-        ]
-        mocked_bugzilla().get_comments.return_value = {
+    assert get_bugzilla().logged_in
+
+
+@pytest.mark.no_mocked_bugzilla
+def test_bugzilla_raises_if_response_has_error(mocked_responses):
+    url = f"{get_settings().bugzilla_base_url}/rest/bug/42"
+    mocked_responses.add(
+        responses.GET, url, json={"error": True, "message": "not happy"}
+    )
+
+    with pytest.raises(BugzillaClientError) as exc:
+        get_bugzilla().get_bug(42)
+
+    assert "not happy" in str(exc)
+
+
+@pytest.mark.no_mocked_bugzilla
+def test_bugzilla_get_bug_raises_if_response_has_no_bugs(mocked_responses):
+    url = f"{get_settings().bugzilla_base_url}/rest/bug/42"
+    mocked_responses.add(responses.GET, url, json={"bugs": []})
+
+    with pytest.raises(BugzillaClientError) as exc:
+        get_bugzilla().get_bug(42)
+
+    assert "Unexpected response" in str(exc)
+
+
+@pytest.mark.no_mocked_bugzilla
+def test_bugzilla_get_comments_raises_if_response_has_no_bugs(mocked_responses):
+    url = f"{get_settings().bugzilla_base_url}/rest/bug/42/comment"
+    mocked_responses.add(responses.GET, url, json={"bugs": {"42": {}}})
+
+    with pytest.raises(BugzillaClientError) as exc:
+        get_bugzilla().get_comments(42)
+
+    assert "Unexpected response" in str(exc)
+
+
+@pytest.mark.no_mocked_bugzilla
+def test_bugzilla_update_bug_uses_a_put(mocked_responses):
+    url = f"{get_settings().bugzilla_base_url}/rest/bug/42"
+    mocked_responses.add(responses.PUT, url, json={"bugs": [{"id": 42}]})
+
+    get_bugzilla().update_bug(42, see_also="http://url.com")
+
+    assert mocked_responses.calls[0].request.body == b'{"see_also": "http://url.com"}'
+
+
+@pytest.mark.no_mocked_bugzilla
+def test_bugzilla_get_bug_comment(mocked_responses, webhook_private_comment_example):
+    # given
+    bug_url = (
+        f"{get_settings().bugzilla_base_url}/rest/bug/%s"
+        % webhook_private_comment_example.bug.id
+    )
+    mocked_responses.add(
+        responses.GET,
+        bug_url,
+        json={"bugs": [webhook_private_comment_example.bug.dict()]},
+    )
+    mocked_responses.add(
+        responses.GET,
+        bug_url + "/comment",
+        json={
             "bugs": {
-                str(webhook_private_comment_example.bug.id): {"comments": comments}
+                str(webhook_private_comment_example.bug.id): {
+                    "comments": [
+                        {
+                            "id": 343,
+                            "text": "not this one",
+                            "is_private": False,
+                            "creator": "mathieu@mozilla.org",
+                        },
+                        {
+                            "id": 344,
+                            "text": "hello",
+                            "is_private": False,
+                            "creator": "mathieu@mozilla.org",
+                        },
+                        {
+                            "id": 345,
+                            "text": "not this one",
+                            "is_private": False,
+                            "creator": "mathieu@mozilla.org",
+                        },
+                    ]
+                }
             },
             "comments": {},
-        }
+        },
+    )
 
-        expanded = get_bugzilla().get_bug(webhook_private_comment_example.bug.id)
+    expanded = get_bugzilla().get_bug(webhook_private_comment_example.bug.id)
 
     # then
     assert expanded.comment.creator == "mathieu@mozilla.org"
@@ -94,16 +165,27 @@ def test_bugzilla_get_bug_comment(webhook_private_comment_example):
 
 @pytest.mark.no_mocked_bugzilla
 def test_bugzilla_missing_private_comment(
+    mocked_responses,
     webhook_private_comment_example,
 ):
-    with mock.patch("jbi.services.rh_bugzilla.Bugzilla") as mocked_bugzilla:
-        mocked_bugzilla().getbug.return_value = webhook_private_comment_example.bug
-
-        mocked_bugzilla().get_comments.return_value = {
+    bug_url = (
+        f"{get_settings().bugzilla_base_url}/rest/bug/%s"
+        % webhook_private_comment_example.bug.id
+    )
+    mocked_responses.add(
+        responses.GET,
+        bug_url,
+        json={"bugs": [webhook_private_comment_example.bug.dict()]},
+    )
+    mocked_responses.add(
+        responses.GET,
+        bug_url + "/comment",
+        json={
             "bugs": {str(webhook_private_comment_example.bug.id): {"comments": []}},
             "comments": {},
-        }
+        },
+    )
 
-        expanded = get_bugzilla().get_bug(webhook_private_comment_example.bug.id)
+    expanded = get_bugzilla().get_bug(webhook_private_comment_example.bug.id)
 
     assert not expanded.comment

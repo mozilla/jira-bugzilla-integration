@@ -6,13 +6,13 @@ import logging
 from typing import TYPE_CHECKING
 
 import backoff
-import bugzilla as rh_bugzilla
+import requests
 from atlassian import Jira, errors
 from pydantic import parse_obj_as
 from statsd.defaults.env import statsd
 
 from jbi import environment
-from jbi.models import BugzillaBug, BugzillaComment
+from jbi.models import BugzillaApiResponse, BugzillaBug, BugzillaComment
 
 if TYPE_CHECKING:
     from jbi.models import Actions
@@ -86,25 +86,51 @@ def jira_visible_projects(jira=None) -> list[dict]:
     return projects
 
 
-class BugzillaClient:
-    """
-    Wrapper around the Bugzilla client to turn responses into our models instances.
-    """
+class BugzillaClientError(Exception):
+    """Errors raised by `BugzillaClient`."""
 
-    def __init__(self, base_url: str, api_key: str):
-        """Constructor"""
-        self._client = rh_bugzilla.Bugzilla(base_url, api_key=api_key)
+
+class BugzillaClient:
+    """A wrapper around `requests` to interact with a Bugzilla REST API."""
+
+    def __init__(self, base_url, api_key):
+        """Initialize the client, without network activity."""
+        self.base_url = base_url
+        self.params = {
+            "api_key": api_key,
+        }
+        self._client = requests.Session()
+
+    def _call(self, verb, url, *args, **kwargs):
+        """Send HTTP requests with API key in querystring parameters."""
+        # Send API key as querystring parameter.
+        kwargs.setdefault("params", self.params)
+        resp = self._client.request(verb, url, *args, **kwargs)
+        resp.raise_for_status()
+        parsed = resp.json()
+        if parsed.get("error"):
+            raise BugzillaClientError(parsed["message"])
+        return parsed
 
     @property
-    def logged_in(self):
-        """Return `true` if credentials are valid"""
-        return self._client.logged_in
+    def logged_in(self) -> bool:
+        """Verify the API key validity."""
+        # https://bugzilla.readthedocs.io/en/latest/api/core/v1/user.html#who-am-i
+        resp = self._call("GET", f"{self.base_url}/rest/whoami")
+        return "id" in resp
 
     def get_bug(self, bugid) -> BugzillaBug:
-        """Return the Bugzilla object with all attributes"""
-        response = self._client.getbug(bugid).__dict__
-        bug = BugzillaBug.parse_obj(response)
-        # If comment is private, then webhook does not have comment, fetch it from server
+        """Retrieve details about the specified bug id."""
+        # https://bugzilla.readthedocs.io/en/latest/api/core/v1/bug.html#rest-single-bug
+        url = f"{self.base_url}/rest/bug/{bugid}"
+        bug_info = self._call("GET", url)
+        parsed = BugzillaApiResponse.parse_obj(bug_info)
+        if not parsed.bugs:
+            raise BugzillaClientError(
+                f"Unexpected response content from 'GET {url}' (no 'bugs' field)"
+            )
+        bug = parsed.bugs[0]
+        # If comment is private, then fetch it from server
         if bug.comment and bug.comment.is_private:
             comment_list = self.get_comments(bugid)
             matching_comments = [c for c in comment_list if c.id == bug.comment.id]
@@ -114,15 +140,28 @@ class BugzillaClient:
         return bug
 
     def get_comments(self, bugid) -> list[BugzillaComment]:
-        """Return the list of comments for the specified bug ID"""
-        response = self._client.get_comments(idlist=[bugid])
-        comments = response["bugs"][str(bugid)]["comments"]
+        """Retrieve the list of comments of the specified bug id."""
+        # https://bugzilla.readthedocs.io/en/latest/api/core/v1/comment.html#rest-comments
+        url = f"{self.base_url}/rest/bug/{bugid}/comment"
+        comments_info = self._call("GET", url)
+        comments = comments_info.get("bugs", {}).get(str(bugid), {}).get("comments")
+        if comments is None:
+            raise BugzillaClientError(
+                f"Unexpected response content from 'GET {url}' (no 'bugs' field)"
+            )
         return parse_obj_as(list[BugzillaComment], comments)
 
-    def update_bug(self, bugid, **attrs):
-        """Update the specified bug with the specified attributes"""
-        update = self._client.build_update(**attrs)
-        return self._client.update_bugs([bugid], update)
+    def update_bug(self, bugid, **fields) -> BugzillaBug:
+        """Update the specified fields of the specified bug."""
+        # https://bugzilla.readthedocs.io/en/latest/api/core/v1/bug.html#rest-update-bug
+        url = f"{self.base_url}/rest/bug/{bugid}"
+        updated_info = self._call("PUT", url, json=fields)
+        parsed = BugzillaApiResponse.parse_obj(updated_info)
+        if not parsed.bugs:
+            raise BugzillaClientError(
+                f"Unexpected response content from 'PUT {url}' (no 'bugs' field)"
+            )
+        return parsed.bugs[0]
 
 
 def get_bugzilla():
@@ -139,7 +178,10 @@ def get_bugzilla():
         wrapped=bugzilla_client,
         prefix="bugzilla",
         methods=instrumented_methods,
-        exceptions=(rh_bugzilla.BugzillaError,),
+        exceptions=(
+            BugzillaClientError,
+            requests.RequestException,
+        ),
     )
 
 
