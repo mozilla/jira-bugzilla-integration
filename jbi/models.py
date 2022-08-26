@@ -25,7 +25,6 @@ from pydantic_yaml import YamlModel
 
 from jbi import Operation
 from jbi.errors import ActionNotFoundError
-from jbi.services import get_bugzilla
 
 logger = logging.getLogger(__name__)
 
@@ -330,20 +329,11 @@ class BugzillaWebhookRequest(BaseModel):
 
     def map_as_jira_comment(self):
         """Extract comment from Webhook Event"""
-        comment: BugzillaWebhookComment = self.bug.comment
         commenter: BugzillaWebhookUser = self.event.user
-        comment_body: str = comment.body
-
-        if comment.is_private:
-            bug_comments = get_bugzilla().get_comments([self.bug.id])
-            comment_list = bug_comments["bugs"][str(self.bug.id)]["comments"]
-            matching_comments = [c for c in comment_list if c["id"] == comment.id]
-            if len(matching_comments) != 1:
-                return None
-            comment_body = matching_comments[0]["text"]
-
-        body = f"*({commenter.login})* commented: \n{{quote}}{comment_body}{{quote}}"
-        return body
+        comment: BugzillaWebhookComment = self.bug.comment
+        if comment is None:
+            return None
+        return f"*({commenter.login})* commented: \n{{quote}}{comment.body}{{quote}}"
 
     def map_as_jira_description(self):
         """Extract description as comment from Webhook Event"""
@@ -379,18 +369,6 @@ class BugzillaWebhookRequest(BaseModel):
                     comments.append({"assignee": bug.assigned_to})
 
         return [json.dumps(comment, indent=4) for comment in comments]
-
-    def getbug_as_bugzilla_object(self) -> BugzillaBug:
-        """Helper method to get up to date bug data from Request.bug.id in BugzillaBug format"""
-        current_bug_info = get_bugzilla().getbug(self.bug.id)  # type: ignore
-        return BugzillaBug.parse_obj(current_bug_info.__dict__)
-
-    @functools.cached_property
-    def bugzilla_object(self) -> BugzillaBug:
-        """Returns the bugzilla bug object, querying the API as needed for private bugs"""
-        if not self.bug.is_private:
-            return self.bug
-        return self.getbug_as_bugzilla_object()
 
 
 class BugzillaApiResponse(BaseModel):

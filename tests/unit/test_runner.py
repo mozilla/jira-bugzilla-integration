@@ -215,3 +215,30 @@ def test_counter_is_incremented_on_processed_requests(
             settings=settings,
         )
     mocked.incr.assert_called_with("jbi.bugzilla.processed.count")
+
+
+def test_bugzilla_object_is_fetched_when_private(
+    mocked_bugzilla,
+    webhook_modify_private_example,
+    actions_example: Actions,
+    settings: Settings,
+):
+    fetched_private_bug = bug_factory(
+        id=webhook_modify_private_example.bug.id,
+        is_private=webhook_modify_private_example.bug.is_private,
+        see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+    )
+    mocked_bugzilla.getbug.return_value = fetched_private_bug
+    actions_example["devtest"].allow_private = True
+
+    # when the runner executes a private bug
+    execute_action(
+        request=webhook_modify_private_example,
+        actions=actions_example,
+        settings=settings,
+    )
+
+    # then
+    mocked_bugzilla.getbug.assert_called_once_with(
+        webhook_modify_private_example.bug.id
+    )

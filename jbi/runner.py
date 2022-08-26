@@ -8,7 +8,8 @@ from statsd.defaults.env import statsd
 from jbi import Operation
 from jbi.environment import Settings
 from jbi.errors import ActionNotFoundError, IgnoreInvalidRequestError
-from jbi.models import Actions, BugzillaBug, BugzillaWebhookRequest, RunnerLogContext
+from jbi.models import Actions, BugzillaWebhookRequest, RunnerLogContext
+from jbi.services import get_bugzilla
 
 logger = logging.getLogger(__name__)
 
@@ -38,23 +39,26 @@ def execute_action(
         )
 
         try:
-            bug_obj: BugzillaBug = request.bugzilla_object
+            if request.bug.is_private:
+                request = request.copy(
+                    update={"bug": get_bugzilla().getbug(request.bug.id)}
+                )
         except Exception as err:
             logger.exception("Failed to get bug: %s", err, extra=log_context.dict())
             raise IgnoreInvalidRequestError(
                 "bug not accessible or bugzilla down"
             ) from err
-        log_context = log_context.update(bug=bug_obj)
 
+        log_context = log_context.update(bug=request.bug)
         try:
-            action = bug_obj.lookup_action(actions)
+            action = request.bug.lookup_action(actions)
         except ActionNotFoundError as err:
             raise IgnoreInvalidRequestError(
                 f"no action matching bug whiteboard tags: {err}"
             ) from err
         log_context = log_context.update(action=action)
 
-        if bug_obj.is_private and not action.allow_private:
+        if request.bug.is_private and not action.allow_private:
             raise IgnoreInvalidRequestError(
                 f"private bugs are not valid for action {action.whiteboard_tag!r}"
             )
@@ -63,7 +67,7 @@ def execute_action(
             "Execute action '%s:%s' for Bug %s",
             action.whiteboard_tag,
             action.module,
-            bug_obj.id,
+            request.bug.id,
             extra=log_context.update(operation=Operation.EXECUTE).dict(),
         )
 
@@ -72,7 +76,7 @@ def execute_action(
         logger.info(
             "Action %r executed successfully for Bug %s",
             action.whiteboard_tag,
-            bug_obj.id,
+            request.bug.id,
             extra=log_context.update(
                 operation=Operation.SUCCESS if handled else Operation.IGNORE
             ).dict(),

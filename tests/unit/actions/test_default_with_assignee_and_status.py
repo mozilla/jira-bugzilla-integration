@@ -27,6 +27,7 @@ def test_create_with_no_assignee(webhook_create_example, mocked_jira, mocked_bug
 
 def test_create_with_assignee(webhook_create_example, mocked_jira, mocked_bugzilla):
     webhook_create_example.bug.assigned_to = "dtownsend@mozilla.com"
+    # Make sure the bug fetched the second time in `create_and_link_issue()` also has the assignee.
     mocked_bugzilla.getbug.return_value = webhook_create_example.bug
     mocked_jira.create_issue.return_value = {"key": "JBI-534"}
     mocked_jira.user_find_by_user_string.return_value = [{"accountId": "6254"}]
@@ -150,13 +151,12 @@ def test_create_with_unknown_status(
 def test_create_with_known_status(webhook_create_example, mocked_jira, mocked_bugzilla):
     webhook_create_example.bug.status = "ASSIGNED"
     webhook_create_example.bug.resolution = ""
-
-    mocked_jira.create_issue.return_value = {"key": "JBI-534"}
-
+    # Make sure the bug fetched the second time in `create_and_link_issue()` also has the status.
     mocked_bugzilla.getbug.return_value = webhook_create_example.bug
     mocked_bugzilla.get_comments.return_value = {
         "bugs": {"654321": {"comments": [{"text": "Initial comment"}]}}
     }
+    mocked_jira.create_issue.return_value = {"key": "JBI-534"}
 
     callable_object = action.init(
         jira_project_key="JBI",

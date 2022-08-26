@@ -7,6 +7,7 @@ import bugzilla
 import pytest
 
 from jbi.services import get_bugzilla, get_jira
+from tests.fixtures.factories import comment_factory
 
 
 def test_counter_is_incremented_on_jira_create_issue():
@@ -47,3 +48,43 @@ def test_bugzilla_methods_are_retried_if_raising():
         bugzilla_client.get_comments([])
 
     assert mocked.call_count == 2
+
+
+def test_bugzilla_get_bug_comment(webhook_private_comment_example):
+    # given
+    with mock.patch("jbi.services.rh_bugzilla.Bugzilla") as mocked_bugzilla:
+        mocked_bugzilla().getbug.return_value = webhook_private_comment_example.bug
+
+        comments = [
+            comment_factory(id=343, text="not this one", count=1),
+            comment_factory(id=344, text="hello", count=2),
+            comment_factory(id=345, text="not this one", count=3),
+        ]
+        mocked_bugzilla().get_comments.return_value = {
+            "bugs": {
+                str(webhook_private_comment_example.bug.id): {"comments": comments}
+            },
+            "comments": {},
+        }
+
+        expanded = get_bugzilla().getbug(webhook_private_comment_example.bug.id)
+
+    # then
+    assert expanded.comment["creator"] == "mathieu@mozilla.org"
+    assert expanded.comment["text"] == "hello"
+
+
+def test_bugzilla_missing_private_comment(
+    webhook_private_comment_example,
+):
+    with mock.patch("jbi.services.rh_bugzilla.Bugzilla") as mocked_bugzilla:
+        mocked_bugzilla().getbug.return_value = webhook_private_comment_example.bug
+
+        mocked_bugzilla().get_comments.return_value = {
+            "bugs": {str(webhook_private_comment_example.bug.id): {"comments": []}},
+            "comments": {},
+        }
+
+        expanded = get_bugzilla().getbug(webhook_private_comment_example.bug.id)
+
+    assert not expanded.comment

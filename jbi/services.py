@@ -11,6 +11,7 @@ from atlassian import Jira, errors
 from statsd.defaults.env import statsd
 
 from jbi import environment
+from jbi.models import BugzillaBug
 
 if TYPE_CHECKING:
     from jbi.models import Actions
@@ -84,9 +85,46 @@ def jira_visible_projects(jira=None) -> list[dict]:
     return projects
 
 
+class BugzillaClient:
+    """
+    Wrapper around the Bugzilla client to turn responses into our models instances.
+    """
+
+    def __init__(self, base_url: str, api_key: str):
+        """Constructor"""
+        self._client = rh_bugzilla.Bugzilla(base_url, api_key=api_key)
+
+    @property
+    def logged_in(self):
+        """Return `true` if credentials are valid"""
+        return self._client.logged_in
+
+    def getbug(self, bugid) -> BugzillaBug:
+        """Return the Bugzilla object with all attributes"""
+        response = self._client.getbug(bugid).__dict__
+        bug = BugzillaBug.parse_obj(response)
+        # If comment is private, then webhook does not have comment, fetch it from server
+        if bug.comment and bug.comment.is_private:
+            bug_comments = self._client.get_comments([bugid])
+            comment_list = bug_comments["bugs"][str(bugid)]["comments"]
+            matching_comments = [c for c in comment_list if c["id"] == bug.comment.id]
+            found = matching_comments[0] if matching_comments else None
+            bug = bug.copy(update={"comment": found})
+        return bug
+
+    def get_comments(self, *args, **kwargs):
+        """Return the list of comments for the specified bug ID"""
+        return self._client.get_comments(*args, **kwargs)
+
+    def update_bug(self, bugid, **attrs):
+        """Update the specified bug with the specified attributes"""
+        update = self._client.build_update(**attrs)
+        return self._client.update_bugs([bugid], update)
+
+
 def get_bugzilla():
     """Get bugzilla service"""
-    bugzilla_client = rh_bugzilla.Bugzilla(
+    bugzilla_client = BugzillaClient(
         settings.bugzilla_base_url, api_key=str(settings.bugzilla_api_key)
     )
     instrumented_methods = (
