@@ -33,16 +33,18 @@ def settings():
 
 
 @pytest.fixture(autouse=True)
-def mocked_bugzilla(request):
+def mocked_bugzilla(request, monkeypatch):
     if "no_mocked_bugzilla" in request.keywords:
         yield None
     else:
+        monkeypatch.setattr("jbi.services.bugzilla._client", None)
         with mock.patch("jbi.services.bugzilla.BugzillaClient") as mocked_bz:
             yield mocked_bz()
 
 
 @pytest.fixture(autouse=True)
-def mocked_jira():
+def mocked_jira(monkeypatch):
+    monkeypatch.setattr("jbi.services.jira._client", None)
     with mock.patch("jbi.services.jira.Jira") as mocked_jira:
         yield mocked_jira()
 

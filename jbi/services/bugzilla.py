@@ -89,25 +89,32 @@ class BugzillaClient:
         return parsed.bugs[0]
 
 
+instrumented_methods = (
+    "getbug",
+    "get_comments",
+    "update_bugs",
+)
+
+_client = None
+
+
 def get_client():
     """Get bugzilla service"""
-    bugzilla_client = BugzillaClient(
-        settings.bugzilla_base_url, api_key=str(settings.bugzilla_api_key)
-    )
-    instrumented_methods = (
-        "get_bug",
-        "get_comments",
-        "update_bug",
-    )
-    return InstrumentedClient(
-        wrapped=bugzilla_client,
-        prefix="bugzilla",
-        methods=instrumented_methods,
-        exceptions=(
-            BugzillaClientError,
-            requests.RequestException,
-        ),
-    )
+    global _client
+    if not _client:
+        bugzilla_client = BugzillaClient(
+            settings.bugzilla_base_url, api_key=str(settings.bugzilla_api_key)
+        )
+        _client = InstrumentedClient(
+            wrapped=bugzilla_client,
+            prefix="bugzilla",
+            methods=instrumented_methods,
+            exceptions=(
+                BugzillaClientError,
+                requests.RequestException,
+            ),
+        )
+    return _client
 
 
 def bugzilla_check_health() -> ServiceHealth:

@@ -17,27 +17,34 @@ settings = environment.get_settings()
 
 logger = logging.getLogger(__name__)
 
+instrumented_methods = (
+    "update_issue_field",
+    "set_issue_status",
+    "issue_add_comment",
+    "create_issue",
+)
+
+_client = None
+
 
 def get_client():
     """Get atlassian Jira Service"""
-    jira_client = Jira(
-        url=settings.jira_base_url,
-        username=settings.jira_username,
-        password=settings.jira_api_key,  # package calls this param 'password' but actually expects an api key
-        cloud=True,  # we run against an instance of Jira cloud
-    )
-    instrumented_methods = (
-        "update_issue_field",
-        "set_issue_status",
-        "issue_add_comment",
-        "create_issue",
-    )
-    return InstrumentedClient(
-        wrapped=jira_client,
-        prefix="jira",
-        methods=instrumented_methods,
-        exceptions=(errors.ApiError,),
-    )
+    global _client
+    if not _client:
+        jira_client = Jira(
+            url=settings.jira_base_url,
+            username=settings.jira_username,
+            password=settings.jira_api_key,  # package calls this param 'password' but actually expects an api key
+            cloud=True,  # we run against an instance of Jira cloud
+        )
+
+        _client = InstrumentedClient(
+            wrapped=jira_client,
+            prefix="jira",
+            methods=instrumented_methods,
+            exceptions=(errors.ApiError,),
+        )
+    return _client
 
 
 def fetch_visible_projects() -> list[dict]:
