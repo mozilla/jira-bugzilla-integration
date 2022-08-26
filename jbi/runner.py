@@ -27,10 +27,8 @@ def execute_action(
     The value returned by the action call is returned.
     """
     log_context = RunnerLogContext(
-        bug={
-            "id": request.bug.id if request.bug else None,
-        },
-        request=request,
+        bug=request.bug.dict(),
+        request=request.dict(),
         operation=Operation.HANDLE,
     )
     try:
@@ -38,8 +36,6 @@ def execute_action(
             "Handling incoming request",
             extra=log_context.dict(),
         )
-        if not request.bug:
-            raise IgnoreInvalidRequestError("no bug data received")
 
         try:
             bug_obj: BugzillaBug = request.bugzilla_object
