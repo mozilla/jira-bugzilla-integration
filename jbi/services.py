@@ -131,7 +131,7 @@ def get_bugzilla():
     instrumented_methods = (
         "get_bug",
         "get_comments",
-        "update_bugs",
+        "update_bug",
     )
     return InstrumentedClient(
         wrapped=bugzilla_client,
