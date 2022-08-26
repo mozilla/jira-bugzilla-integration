@@ -89,7 +89,7 @@ class BugzillaClient:
         return parsed.bugs[0]
 
 
-def get_bugzilla():
+def get_client():
     """Get bugzilla service"""
     bugzilla_client = BugzillaClient(
         settings.bugzilla_base_url, api_key=str(settings.bugzilla_api_key)
@@ -112,6 +112,6 @@ def get_bugzilla():
 
 def bugzilla_check_health() -> ServiceHealth:
     """Check health for Bugzilla Service"""
-    bugzilla = get_bugzilla()
-    health: ServiceHealth = {"up": bugzilla.logged_in}
+    client = get_client()
+    health: ServiceHealth = {"up": client.logged_in}
     return health

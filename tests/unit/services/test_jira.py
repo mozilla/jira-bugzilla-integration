@@ -1,10 +1,10 @@
 from unittest import mock
 
-from jbi.services.jira import get_jira
+from jbi.services import jira
 
 
 def test_counter_is_incremented_on_jira_create_issue():
-    jira_client = get_jira()
+    jira_client = jira.get_client()
 
     with mock.patch("jbi.services.common.statsd") as mocked:
         jira_client.create_issue({})
@@ -13,7 +13,7 @@ def test_counter_is_incremented_on_jira_create_issue():
 
 
 def test_timer_is_used_on_jira_create_issue():
-    jira_client = get_jira()
+    jira_client = jira.get_client()
 
     with mock.patch("jbi.services.common.statsd") as mocked:
         jira_client.create_issue({})

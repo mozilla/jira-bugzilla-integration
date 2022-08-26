@@ -13,7 +13,7 @@ from jbi.configuration import get_actions
 from jbi.environment import Settings, get_settings, get_version
 from jbi.models import Actions, BugzillaWebhookRequest
 from jbi.runner import IgnoreInvalidRequestError, execute_action
-from jbi.services import jbi_service_health_map, jira
+from jbi.services import jira, bugzilla
 
 router = APIRouter()
 
@@ -37,7 +37,10 @@ def root(request: Request, settings: Settings = Depends(get_settings)):
 @router.head("/__heartbeat__")
 def heartbeat(response: Response, actions: Actions = Depends(get_actions)):
     """Return status of backing services, as required by Dockerflow."""
-    health_map = jbi_service_health_map(actions)
+    health_map = {
+        "bugzilla": bugzilla.bugzilla_check_health(),
+        "jira": jira.jira_check_health(actions),
+    }
     health_checks = []
     for health in health_map.values():
         health_checks.extend(health.values())
