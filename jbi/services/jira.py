@@ -1,3 +1,7 @@
+"""Contains a Jira REST client and functions comprised of common operations
+with that REST client
+"""
+
 from __future__ import annotations
 
 import concurrent.futures
@@ -24,13 +28,13 @@ instrumented_methods = (
     "create_issue",
 )
 
-_client = None
+_CLIENT = None
 
 
 def get_client():
     """Get atlassian Jira Service"""
-    global _client
-    if not _client:
+    global _CLIENT  # pylint: disable=global-statement
+    if not _CLIENT:
         jira_client = Jira(
             url=settings.jira_base_url,
             username=settings.jira_username,
@@ -38,13 +42,13 @@ def get_client():
             cloud=True,  # we run against an instance of Jira cloud
         )
 
-        _client = InstrumentedClient(
+        _CLIENT = InstrumentedClient(
             wrapped=jira_client,
             prefix="jira",
             methods=instrumented_methods,
             exceptions=(errors.ApiError,),
         )
-    return _client
+    return _CLIENT
 
 
 def fetch_visible_projects() -> list[dict]:

@@ -1,3 +1,7 @@
+"""Contains a Bugzilla REST client and functions comprised of common operations
+with that REST client
+"""
+
 import logging
 
 import requests
@@ -95,17 +99,17 @@ instrumented_methods = (
     "update_bugs",
 )
 
-_client = None
+_CLIENT = None
 
 
 def get_client():
     """Get bugzilla service"""
-    global _client
-    if not _client:
+    global _CLIENT  # pylint: disable=global-statement
+    if not _CLIENT:
         bugzilla_client = BugzillaClient(
             settings.bugzilla_base_url, api_key=str(settings.bugzilla_api_key)
         )
-        _client = InstrumentedClient(
+        _CLIENT = InstrumentedClient(
             wrapped=bugzilla_client,
             prefix="bugzilla",
             methods=instrumented_methods,
@@ -114,7 +118,7 @@ def get_client():
                 requests.RequestException,
             ),
         )
-    return _client
+    return _CLIENT
 
 
 def bugzilla_check_health() -> ServiceHealth:

@@ -1,3 +1,8 @@
+"""Contains code common to all services
+
+ServiceHealth: Return type that service health checks should use
+InstrumentedClient: wraps service clients so that we can track their usage
+"""
 import logging
 
 import backoff

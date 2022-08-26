@@ -13,7 +13,7 @@ from jbi.configuration import get_actions
 from jbi.environment import Settings, get_settings, get_version
 from jbi.models import Actions, BugzillaWebhookRequest
 from jbi.runner import IgnoreInvalidRequestError, execute_action
-from jbi.services import jira, bugzilla
+from jbi.services import bugzilla, jira
 
 router = APIRouter()
 
@@ -41,7 +41,7 @@ def heartbeat(response: Response, actions: Actions = Depends(get_actions)):
         "bugzilla": bugzilla.bugzilla_check_health(),
         "jira": jira.jira_check_health(actions),
     }
-    health_checks = []
+    health_checks: list = []
     for health in health_map.values():
         health_checks.extend(health.values())
     if not all(health_checks):

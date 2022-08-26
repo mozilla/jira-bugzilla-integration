@@ -18,7 +18,7 @@ from jbi.models import (
     BugzillaWebhookRequest,
     JiraContext,
 )
-from jbi.services import jira, bugzilla
+from jbi.services import bugzilla, jira
 
 settings = get_settings()
 
