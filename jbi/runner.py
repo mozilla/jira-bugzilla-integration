@@ -27,8 +27,8 @@ def execute_action(
     The value returned by the action call is returned.
     """
     log_context = RunnerLogContext(
-        bug=request.bug.dict(),
-        request=request.dict(),
+        bug=request.bug,
+        request=request,
         operation=Operation.HANDLE,
     )
     try:
