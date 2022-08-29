@@ -315,13 +315,6 @@ class BugzillaBug(BaseModel):
 class BugzillaWebhookRequest(BaseModel):
     """Bugzilla Webhook Request Object"""
 
-    class Config:
-        """pydantic model config"""
-
-        keep_untouched = (
-            functools.cached_property,
-        )  # https://github.com/samuelcolvin/pydantic/issues/1241
-
     webhook_id: int
     webhook_name: str
     event: BugzillaWebhookEvent
