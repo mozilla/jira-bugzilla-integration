@@ -94,17 +94,17 @@ class DefaultExecutor:
             )
             return False, {}
 
-        comment = payload.map_as_jira_comment()
-        if comment is None:
+        if bug_obj.comment is None:
             logger.debug(
                 "No matching comment found in payload",
                 extra=log_context.dict(),
             )
             return False, {}
 
+        formatted_comment = payload.map_as_jira_comment()
         jira_response = self.jira_client.issue_add_comment(
             issue_key=linked_issue_key,
-            comment=payload.map_as_jira_comment(),
+            comment=formatted_comment,
         )
         logger.debug(
             "Comment added to Jira issue %s",

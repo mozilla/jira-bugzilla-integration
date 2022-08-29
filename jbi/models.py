@@ -331,8 +331,6 @@ class BugzillaWebhookRequest(BaseModel):
         """Extract comment from Webhook Event"""
         commenter: BugzillaWebhookUser = self.event.user
         comment: BugzillaWebhookComment = self.bug.comment
-        if comment is None:
-            return None
         return f"*({commenter.login})* commented: \n{{quote}}{comment.body}{{quote}}"
 
     def map_as_jira_description(self):

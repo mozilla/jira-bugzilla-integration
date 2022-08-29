@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING
 import backoff
 import bugzilla as rh_bugzilla
 from atlassian import Jira, errors
-from statsd.defaults.env import statsd
 from pydantic import parse_obj_as
+from statsd.defaults.env import statsd
 
 from jbi import environment
 from jbi.models import BugzillaBug, BugzillaComment
@@ -108,6 +108,7 @@ class BugzillaClient:
         if bug.comment and bug.comment.is_private:
             comment_list = self.get_comments(bugid)
             matching_comments = [c for c in comment_list if c.id == bug.comment.id]
+            # If no matching entry is found, set `bug.comment` to `None`.
             found = matching_comments[0] if matching_comments else None
             bug = bug.copy(update={"comment": found})
         return bug
