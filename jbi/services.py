@@ -9,6 +9,7 @@ import backoff
 import bugzilla as rh_bugzilla
 from atlassian import Jira, errors
 from statsd.defaults.env import statsd
+from pydantic import parse_obj_as
 
 from jbi import environment
 from jbi.models import BugzillaBug, BugzillaComment
@@ -115,7 +116,7 @@ class BugzillaClient:
         """Return the list of comments for the specified bug ID"""
         response = self._client.get_comments(idlist=[bugid])
         comments = response["bugs"][str(bugid)]["comments"]
-        return [BugzillaComment.parse_obj(comment) for comment in comments]
+        return parse_obj_as(list[BugzillaComment], comments)
 
     def update_bug(self, bugid, **attrs):
         """Update the specified bug with the specified attributes"""
