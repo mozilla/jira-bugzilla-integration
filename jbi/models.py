@@ -276,7 +276,7 @@ class BugzillaBug(BaseModel):
 
     def extract_from_see_also(self):
         """Extract Jira Issue Key from see_also if jira url present"""
-        if not self.see_also and len(self.see_also) > 0:
+        if not self.see_also or len(self.see_also) == 0:
             return None
 
         for url in self.see_also:  # pylint: disable=not-an-iterable

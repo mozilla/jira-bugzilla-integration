@@ -32,6 +32,7 @@ def test_jira_labels(whiteboard, expected):
 @pytest.mark.parametrize(
     "see_also,expected",
     [
+        (None, None),
         ([], None),
         (["foo"], None),
         (["fail:/format"], None),
