@@ -8,9 +8,11 @@ from typing import TYPE_CHECKING
 import backoff
 import bugzilla as rh_bugzilla
 from atlassian import Jira, errors
+from pydantic import parse_obj_as
 from statsd.defaults.env import statsd
 
 from jbi import environment
+from jbi.models import BugzillaBug, BugzillaComment
 
 if TYPE_CHECKING:
     from jbi.models import Actions
@@ -84,15 +86,54 @@ def jira_visible_projects(jira=None) -> list[dict]:
     return projects
 
 
+class BugzillaClient:
+    """
+    Wrapper around the Bugzilla client to turn responses into our models instances.
+    """
+
+    def __init__(self, base_url: str, api_key: str):
+        """Constructor"""
+        self._client = rh_bugzilla.Bugzilla(base_url, api_key=api_key)
+
+    @property
+    def logged_in(self):
+        """Return `true` if credentials are valid"""
+        return self._client.logged_in
+
+    def get_bug(self, bugid) -> BugzillaBug:
+        """Return the Bugzilla object with all attributes"""
+        response = self._client.getbug(bugid).__dict__
+        bug = BugzillaBug.parse_obj(response)
+        # If comment is private, then webhook does not have comment, fetch it from server
+        if bug.comment and bug.comment.is_private:
+            comment_list = self.get_comments(bugid)
+            matching_comments = [c for c in comment_list if c.id == bug.comment.id]
+            # If no matching entry is found, set `bug.comment` to `None`.
+            found = matching_comments[0] if matching_comments else None
+            bug = bug.copy(update={"comment": found})
+        return bug
+
+    def get_comments(self, bugid) -> list[BugzillaComment]:
+        """Return the list of comments for the specified bug ID"""
+        response = self._client.get_comments(idlist=[bugid])
+        comments = response["bugs"][str(bugid)]["comments"]
+        return parse_obj_as(list[BugzillaComment], comments)
+
+    def update_bug(self, bugid, **attrs):
+        """Update the specified bug with the specified attributes"""
+        update = self._client.build_update(**attrs)
+        return self._client.update_bugs([bugid], update)
+
+
 def get_bugzilla():
     """Get bugzilla service"""
-    bugzilla_client = rh_bugzilla.Bugzilla(
+    bugzilla_client = BugzillaClient(
         settings.bugzilla_base_url, api_key=str(settings.bugzilla_api_key)
     )
     instrumented_methods = (
-        "getbug",
+        "get_bug",
         "get_comments",
-        "update_bugs",
+        "update_bug",
     )
     return InstrumentedClient(
         wrapped=bugzilla_client,

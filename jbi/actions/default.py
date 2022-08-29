@@ -74,7 +74,7 @@ class DefaultExecutor:
 
     def comment_create_or_noop(self, payload: BugzillaWebhookRequest) -> ActionResult:
         """Confirm issue is already linked, then apply comments; otherwise noop"""
-        bug_obj = payload.bugzilla_object
+        bug_obj = payload.bug
         linked_issue_key = bug_obj.extract_from_see_also()
 
         log_context = ActionLogContext(
@@ -94,17 +94,17 @@ class DefaultExecutor:
             )
             return False, {}
 
-        comment = payload.map_as_jira_comment()
-        if comment is None:
+        if bug_obj.comment is None:
             logger.debug(
                 "No matching comment found in payload",
                 extra=log_context.dict(),
             )
             return False, {}
 
+        formatted_comment = payload.map_as_jira_comment()
         jira_response = self.jira_client.issue_add_comment(
             issue_key=linked_issue_key,
-            comment=payload.map_as_jira_comment(),
+            comment=formatted_comment,
         )
         logger.debug(
             "Comment added to Jira issue %s",
@@ -144,7 +144,7 @@ class DefaultExecutor:
         self, payload: BugzillaWebhookRequest
     ) -> ActionResult:  # pylint: disable=too-many-locals
         """Create and link jira issue with bug, or update; rollback if multiple events fire"""
-        bug_obj = payload.bugzilla_object
+        bug_obj = payload.bug
         linked_issue_key = bug_obj.extract_from_see_also()  # type: ignore
         if not linked_issue_key:
             return self.create_and_link_issue(payload, bug_obj)
@@ -205,10 +205,8 @@ class DefaultExecutor:
             bug_obj.id,
             extra=log_context.dict(),
         )
-        comment_list = self.bugzilla_client.get_comments(idlist=[bug_obj.id])
-        description = comment_list["bugs"][str(bug_obj.id)]["comments"][0]["text"][
-            :JIRA_DESCRIPTION_CHAR_LIMIT
-        ]
+        comment_list = self.bugzilla_client.get_comments(bug_obj.id)
+        description = comment_list[0].text[:JIRA_DESCRIPTION_CHAR_LIMIT]
 
         fields = {
             **self.jira_fields(bug_obj),  # type: ignore
@@ -238,7 +236,8 @@ class DefaultExecutor:
 
         # In the time taken to create the Jira issue the bug may have been updated so
         # re-retrieve it to ensure we have the latest data.
-        bug_obj = payload.getbug_as_bugzilla_object()
+        bug_obj = self.bugzilla_client.get_bug(bug_obj.id)
+
         jira_key_in_bugzilla = bug_obj.extract_from_see_also()
         _duplicate_creation_event = (
             jira_key_in_bugzilla is not None
@@ -263,8 +262,9 @@ class DefaultExecutor:
             bug_obj.id,
             extra=log_context.update(operation=Operation.LINK).dict(),
         )
-        update = self.bugzilla_client.build_update(see_also_add=jira_url)
-        bugzilla_response = self.bugzilla_client.update_bugs([bug_obj.id], update)
+        bugzilla_response = self.bugzilla_client.update_bug(
+            bug_obj, see_also_add=jira_url
+        )
 
         bugzilla_url = f"{settings.bugzilla_base_url}/show_bug.cgi?id={bug_obj.id}"
         logger.debug(
