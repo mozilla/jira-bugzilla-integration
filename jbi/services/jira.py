@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import logging
+from functools import lru_cache
 from typing import TYPE_CHECKING
 
 from atlassian import Jira, errors
@@ -21,34 +22,28 @@ settings = environment.get_settings()
 
 logger = logging.getLogger(__name__)
 
-instrumented_methods = (
-    "update_issue_field",
-    "set_issue_status",
-    "issue_add_comment",
-    "create_issue",
-)
 
-_CLIENT = None
-
-
+@lru_cache(maxsize=1)
 def get_client():
     """Get atlassian Jira Service"""
-    global _CLIENT  # pylint: disable=global-statement
-    if not _CLIENT:
-        jira_client = Jira(
-            url=settings.jira_base_url,
-            username=settings.jira_username,
-            password=settings.jira_api_key,  # package calls this param 'password' but actually expects an api key
-            cloud=True,  # we run against an instance of Jira cloud
-        )
+    jira_client = Jira(
+        url=settings.jira_base_url,
+        username=settings.jira_username,
+        password=settings.jira_api_key,  # package calls this param 'password' but actually expects an api key
+        cloud=True,  # we run against an instance of Jira cloud
+    )
 
-        _CLIENT = InstrumentedClient(
-            wrapped=jira_client,
-            prefix="jira",
-            methods=instrumented_methods,
-            exceptions=(errors.ApiError,),
-        )
-    return _CLIENT
+    return InstrumentedClient(
+        wrapped=jira_client,
+        prefix="jira",
+        methods=(
+            "update_issue_field",
+            "set_issue_status",
+            "issue_add_comment",
+            "create_issue",
+        ),
+        exceptions=(errors.ApiError,),
+    )
 
 
 def fetch_visible_projects() -> list[dict]:

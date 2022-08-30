@@ -55,13 +55,13 @@ class Settings(BaseSettings):
         env_file_encoding = "utf-8"
 
 
-@lru_cache()
+@lru_cache(maxsize=1)
 def get_settings() -> Settings:
     """Return the Settings object; use cache"""
     return Settings()
 
 
-@lru_cache()
+@lru_cache(maxsize=1)
 def get_version():
     """Return contents of version.json. This has generic data in repo, but gets the build details in CI."""
     info = {}

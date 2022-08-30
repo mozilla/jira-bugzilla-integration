@@ -3,6 +3,7 @@ with that REST client
 """
 
 import logging
+from functools import lru_cache
 
 import requests
 from pydantic import parse_obj_as
@@ -93,32 +94,25 @@ class BugzillaClient:
         return parsed.bugs[0]
 
 
-instrumented_methods = (
-    "getbug",
-    "get_comments",
-    "update_bugs",
-)
-
-_CLIENT = None
-
-
+@lru_cache(maxsize=1)
 def get_client():
     """Get bugzilla service"""
-    global _CLIENT  # pylint: disable=global-statement
-    if not _CLIENT:
-        bugzilla_client = BugzillaClient(
-            settings.bugzilla_base_url, api_key=str(settings.bugzilla_api_key)
-        )
-        _CLIENT = InstrumentedClient(
-            wrapped=bugzilla_client,
-            prefix="bugzilla",
-            methods=instrumented_methods,
-            exceptions=(
-                BugzillaClientError,
-                requests.RequestException,
-            ),
-        )
-    return _CLIENT
+    bugzilla_client = BugzillaClient(
+        settings.bugzilla_base_url, api_key=str(settings.bugzilla_api_key)
+    )
+    return InstrumentedClient(
+        wrapped=bugzilla_client,
+        prefix="bugzilla",
+        methods=(
+            "get_bug",
+            "get_comments",
+            "update_bugs",
+        ),
+        exceptions=(
+            BugzillaClientError,
+            requests.RequestException,
+        ),
+    )
 
 
 def check_health() -> ServiceHealth:
