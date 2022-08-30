@@ -59,7 +59,7 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
         changed_fields = payload.event.changed_fields() or []
 
         log_context = ActionLogContext(
-            request=payload,
+            event=payload.event,
             bug=bug_obj,
             operation=Operation.UPDATE,
             jira=JiraContext(

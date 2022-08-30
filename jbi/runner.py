@@ -29,7 +29,7 @@ def execute_action(
     """
     log_context = RunnerLogContext(
         bug=request.bug,
-        request=request,
+        event=request.event,
         operation=Operation.HANDLE,
     )
     try:
@@ -37,7 +37,6 @@ def execute_action(
             "Handling incoming request",
             extra=log_context.dict(),
         )
-
         try:
             if request.bug.is_private:
                 request = request.copy(

@@ -78,7 +78,7 @@ class DefaultExecutor:
         linked_issue_key = bug_obj.extract_from_see_also()
 
         log_context = ActionLogContext(
-            request=payload,
+            event=payload.event,
             bug=bug_obj,
             operation=Operation.COMMENT,
             jira=JiraContext(
@@ -150,7 +150,7 @@ class DefaultExecutor:
             return self.create_and_link_issue(payload, bug_obj)
 
         log_context = ActionLogContext(
-            request=payload,
+            event=payload.event,
             bug=bug_obj,
             operation=Operation.LINK,
             jira=JiraContext(
@@ -193,7 +193,7 @@ class DefaultExecutor:
     ) -> ActionResult:
         """create jira issue and establish link between bug and issue; rollback/delete if required"""
         log_context = ActionLogContext(
-            request=payload,
+            event=payload.event,
             bug=bug_obj,
             operation=Operation.CREATE,
             jira=JiraContext(

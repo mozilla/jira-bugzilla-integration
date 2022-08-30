@@ -1,6 +1,7 @@
 """
 Python Module for Pydantic Models and validation
 """
+from asyncio import events
 import datetime
 import functools
 import importlib
@@ -393,7 +394,7 @@ class RunnerLogContext(LogContext, extra=Extra.forbid):
     """Logging context from runner"""
 
     operation: Operation
-    request: BugzillaWebhookRequest
+    event: BugzillaWebhookEvent
     action: Optional[Action]
     bug: BugId | BugzillaBug
 
@@ -402,7 +403,7 @@ class ActionLogContext(LogContext, extra=Extra.forbid):
     """Logging context from actions"""
 
     operation: Operation
-    request: BugzillaWebhookRequest
+    event: BugzillaWebhookEvent
     jira: JiraContext
     bug: BugzillaBug
     extra: dict[str, str] = {}
