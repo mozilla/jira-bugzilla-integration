@@ -101,7 +101,7 @@ class DefaultExecutor:
             )
             return False, {}
 
-        formatted_comment = payload.map_as_jira_comment()
+        formatted_comment = bug_obj.map_event_as_comment(payload.event)
         jira_response = self.jira_client.issue_add_comment(
             issue_key=linked_issue_key,
             comment=formatted_comment,

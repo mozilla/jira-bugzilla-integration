@@ -303,6 +303,13 @@ class BugzillaBug(BaseModel):
 
         return None
 
+    def map_event_as_comment(self, event: BugzillaWebhookEvent):
+        """Extract comment from Webhook Event"""
+        # Let Python raise an AttributeError instead of raising ValueError ourselves.
+        commenter: BugzillaWebhookUser = event.user  # type: ignore
+        comment: BugzillaWebhookComment = self.comment  # type: ignore
+        return f"*({commenter.login})* commented: \n{{quote}}{comment.body}{{quote}}"
+
     def map_changes_as_comments(
         self,
         event: BugzillaWebhookEvent,
@@ -347,12 +354,6 @@ class BugzillaWebhookRequest(BaseModel):
     webhook_name: str
     event: BugzillaWebhookEvent
     bug: BugzillaBug
-
-    def map_as_jira_comment(self):
-        """Extract comment from Webhook Event"""
-        commenter: BugzillaWebhookUser = self.event.user
-        comment: BugzillaWebhookComment = self.bug.comment
-        return f"*({commenter.login})* commented: \n{{quote}}{comment.body}{{quote}}"
 
 
 class BugzillaComment(BaseModel):
