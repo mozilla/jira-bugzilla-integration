@@ -326,12 +326,6 @@ class BugzillaWebhookRequest(BaseModel):
         comment: BugzillaWebhookComment = self.bug.comment
         return f"*({commenter.login})* commented: \n{{quote}}{comment.body}{{quote}}"
 
-    def map_as_jira_description(self):
-        """Extract description as comment from Webhook Event"""
-        commenter: BugzillaWebhookUser = self.event.user
-        comment: BugzillaWebhookComment = self.bug.comment
-        return f"*({commenter.login})* commented: \n{{quote}}{comment.body}{{quote}}"
-
     def map_as_comments(
         self,
         status_log_enabled: bool = True,
