@@ -1019,7 +1019,7 @@ pyyaml = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.10 <3.11"
-content-hash = "c65d747db604a6ccf6abfce73ab49e35b4a472cec74eb1fb6f8360ada660a69e"
+content-hash = "f43663cfd882d3c68b62d0f3c9697dc08a5a21cd69f5db50458e7cb85c9b7ed7"
 
 [metadata.files]
 anyio = [
