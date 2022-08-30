@@ -96,15 +96,13 @@ class BugzillaClient:
     def __init__(self, base_url, api_key):
         """Initialize the client, without network activity."""
         self.base_url = base_url
-        self.params = {
-            "api_key": api_key,
-        }
+        self.api_key = api_key
         self._client = requests.Session()
 
     def _call(self, verb, url, *args, **kwargs):
         """Send HTTP requests with API key in querystring parameters."""
         # Send API key as querystring parameter.
-        kwargs.setdefault("params", self.params)
+        kwargs.setdefault("params", {}).setdefault("api_key", self.api_key)
         resp = self._client.request(verb, url, *args, **kwargs)
         resp.raise_for_status()
         parsed = resp.json()
