@@ -58,20 +58,20 @@ def fetch_visible_projects() -> list[dict]:
     return projects
 
 
-def jira_check_health(actions: Actions) -> ServiceHealth:
+def check_health(actions: Actions) -> ServiceHealth:
     """Check health for Jira Service"""
     client = get_client()
     server_info = client.get_server_info(True)
     is_up = server_info is not None
     health: ServiceHealth = {
         "up": is_up,
-        "all_projects_are_visible": is_up and _all_jira_projects_visible(actions),
-        "all_projects_have_permissions": _all_jira_projects_permissions(actions),
+        "all_projects_are_visible": is_up and _all_projects_visible(actions),
+        "all_projects_have_permissions": _all_projects_permissions(actions),
     }
     return health
 
 
-def _all_jira_projects_visible(actions: Actions) -> bool:
+def _all_projects_visible(actions: Actions) -> bool:
     visible_projects = {project["key"] for project in fetch_visible_projects()}
     missing_projects = actions.configured_jira_projects_keys - visible_projects
     if missing_projects:
@@ -82,13 +82,13 @@ def _all_jira_projects_visible(actions: Actions) -> bool:
     return not missing_projects
 
 
-def _all_jira_projects_permissions(actions: Actions):
+def _all_projects_permissions(actions: Actions):
     """Fetches and validates that required permissions exist for the configured projects"""
-    all_projects_perms = _fetch_jira_project_permissions(actions)
-    return _validate_jira_permissions(all_projects_perms)
+    all_projects_perms = _fetch_project_permissions(actions)
+    return _validate_permissions(all_projects_perms)
 
 
-def _fetch_jira_project_permissions(actions):
+def _fetch_project_permissions(actions):
     """Fetches permissions for the configured projects"""
     required_perms_by_project = {
         action.parameters["jira_project_key"]: action.required_jira_permissions
@@ -118,7 +118,7 @@ def _fetch_jira_project_permissions(actions):
     return all_projects_perms
 
 
-def _validate_jira_permissions(all_projects_perms):
+def _validate_permissions(all_projects_perms):
     """Validates permissions for the configured projects"""
     misconfigured = []
     for project_key, (required_perms, obtained_perms) in all_projects_perms.items():

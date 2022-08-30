@@ -121,7 +121,7 @@ def get_client():
     return _CLIENT
 
 
-def bugzilla_check_health() -> ServiceHealth:
+def check_health() -> ServiceHealth:
     """Check health for Bugzilla Service"""
     client = get_client()
     health: ServiceHealth = {"up": client.logged_in}

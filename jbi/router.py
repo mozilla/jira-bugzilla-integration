@@ -38,8 +38,8 @@ def root(request: Request, settings: Settings = Depends(get_settings)):
 def heartbeat(response: Response, actions: Actions = Depends(get_actions)):
     """Return status of backing services, as required by Dockerflow."""
     health_map = {
-        "bugzilla": bugzilla.bugzilla_check_health(),
-        "jira": jira.jira_check_health(actions),
+        "bugzilla": bugzilla.check_health(),
+        "jira": jira.check_health(actions),
     }
     health_checks: list = []
     for health in health_map.values():
