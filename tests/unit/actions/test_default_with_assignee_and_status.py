@@ -272,3 +272,49 @@ def test_change_to_known_resolution(webhook_create_example, mocked_jira):
         },
     )
     mocked_jira.set_issue_status.assert_called_once_with("JBI-234", "Closed")
+
+
+def test_change_to_known_resolution_with_resolution_map(
+    webhook_modify_resolution_example, mocked_jira
+):
+    webhook_modify_resolution_example.bug.resolution = "DUPLICATE"
+
+    callable_object = action.init(
+        jira_project_key="JBI",
+        resolution_map={
+            "DUPLICATE": "Duplicate",
+        },
+    )
+    callable_object(
+        bug=webhook_modify_resolution_example.bug,
+        event=webhook_modify_resolution_example.event,
+    )
+
+    mocked_jira.update_issue_field.assert_called_with(  # not once
+        key="JBI-234",
+        fields={
+            "resolution": "Duplicate",
+        },
+    )
+
+
+def test_change_to_unknown_resolution_with_resolution_map(
+    webhook_modify_resolution_example, mocked_jira
+):
+    webhook_modify_resolution_example.bug.resolution = "WONTFIX"
+
+    callable_object = action.init(
+        jira_project_key="JBI",
+        resolution_map={
+            "DUPLICATE": "Duplicate",
+        },
+    )
+    callable_object(
+        bug=webhook_modify_resolution_example.bug,
+        event=webhook_modify_resolution_example.event,
+    )
+
+    mocked_jira.update_issue_field.assert_called_once_with(
+        key="JBI-234",
+        fields={"summary": "JBI Test", "labels": ["bugzilla", "devtest", "[devtest]"]},
+    )

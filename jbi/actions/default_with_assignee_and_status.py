@@ -22,18 +22,21 @@ logger = logging.getLogger(__name__)
 JIRA_REQUIRED_PERMISSIONS = DEFAULT_JIRA_REQUIRED_PERMISSIONS
 
 
-def init(status_map=None, **kwargs):
+def init(status_map=None, resolution_map=None, **kwargs):
     """Function that takes required and optional params and returns a callable object"""
-    return AssigneeAndStatusExecutor(status_map=status_map or {}, **kwargs)
+    return AssigneeAndStatusExecutor(
+        status_map=status_map or {}, resolution_map=resolution_map or {}, **kwargs
+    )
 
 
 class AssigneeAndStatusExecutor(DefaultExecutor):
     """Callable class that encapsulates the default_with_assignee_and_status action."""
 
-    def __init__(self, status_map, **kwargs):
+    def __init__(self, status_map, resolution_map, **kwargs):
         """Initialize AssigneeAndStatusExecutor Object"""
         super().__init__(**kwargs)
         self.status_map = status_map
+        self.resolution_map = resolution_map
 
     def jira_comments_for_update(
         self,
@@ -115,17 +118,43 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
         # If this is a new issue or if the bug's status or resolution has
         # changed then update the issue status.
         if is_new or "status" in changed_fields or "resolution" in changed_fields:
-            # We use resolution if one exists or status otherwise.
-            status = bug.resolution or bug.status
+            # If action has configured mappings for the issue resolution field, update it.
+            bz_resolution = bug.resolution
+            jira_resolution = self.resolution_map.get(bz_resolution)
+            if jira_resolution:
+                logger.debug(
+                    "Updating Jira resolution to %s",
+                    jira_resolution,
+                    extra=log_context.dict(),
+                )
+                self.jira_client.update_issue_field(
+                    key=linked_issue_key,
+                    fields={"resolution": jira_resolution},
+                )
+            else:
+                logger.debug(
+                    "Bug resolution was not in the resolution map.",
+                    extra=log_context.update(
+                        operation=Operation.IGNORE,
+                        extra={
+                            **log_context.extra,
+                            "resolution_map": self.resolution_map,
+                        },
+                    ).dict(),
+                )
 
-            if status in self.status_map:
+            # We use resolution if one exists or status otherwise.
+            bz_status = bz_resolution or bug.status
+            jira_status = self.status_map.get(bz_status)
+            if jira_status:
                 logger.debug(
                     "Updating Jira status to %s",
-                    self.status_map[status],
+                    jira_status,
                     extra=log_context.dict(),
                 )
                 self.jira_client.set_issue_status(
-                    linked_issue_key, self.status_map[status]
+                    linked_issue_key,
+                    jira_status,
                 )
             else:
                 logger.debug(

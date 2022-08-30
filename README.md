@@ -121,6 +121,9 @@ If configured, the action supports setting the Jira issues's status when the Bug
 - `status_map` (optional)
     - mapping [str, str]
     - If defined, map the Bugzilla bug status to Jira issue status
+- `resolution_map` (optional)
+    - mapping [str, str]
+    - If defined, map the Bugzilla bug resolution to Jira issue resolution
 
 Example configuration:
 ```yaml
@@ -134,6 +137,10 @@ Example configuration:
       status_map:
         NEW: "In Progress"
         FIXED: "Closed"
+      resolution_map:
+        FIXED: "Done"
+        DUPLICATE: "Duplicate"
+        WONTFIX: "Won't Do"
 ```
 
 In this case if the bug changes to the NEW status the action will attempt to set the linked Jira

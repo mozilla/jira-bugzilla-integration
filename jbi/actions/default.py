@@ -13,7 +13,7 @@ from jbi import ActionResult, Operation
 from jbi.environment import get_settings
 from jbi.errors import ActionError
 from jbi.models import ActionLogContext, BugzillaBug, BugzillaWebhookEvent, JiraContext
-from jbi.services import get_bugzilla, get_jira
+from jbi.services import bugzilla, jira
 
 settings = get_settings()
 
@@ -45,8 +45,8 @@ class DefaultExecutor:
         self.jira_project_key = jira_project_key
         self.sync_whiteboard_labels = kwargs.get("sync_whiteboard_labels", True)
 
-        self.bugzilla_client = get_bugzilla()
-        self.jira_client = get_jira()
+        self.bugzilla_client = bugzilla.get_client()
+        self.jira_client = jira.get_client()
 
     def __call__(  # pylint: disable=inconsistent-return-statements
         self,

@@ -9,7 +9,7 @@ from jbi import Operation
 from jbi.environment import Settings
 from jbi.errors import ActionNotFoundError, IgnoreInvalidRequestError
 from jbi.models import Actions, BugzillaWebhookRequest, RunnerLogContext
-from jbi.services import get_bugzilla
+from jbi.services import bugzilla
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ def execute_action(
         )
         try:
             if bug.is_private:
-                bug = get_bugzilla().get_bug(bug.id)
+                bug = bugzilla.get_client().get_bug(bug.id)
         except Exception as err:
             logger.exception("Failed to get bug: %s", err, extra=log_context.dict())
             raise IgnoreInvalidRequestError(

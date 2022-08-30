@@ -13,7 +13,7 @@ from jbi.configuration import get_actions
 from jbi.environment import Settings, get_settings, get_version
 from jbi.models import Actions, BugzillaWebhookRequest
 from jbi.runner import IgnoreInvalidRequestError, execute_action
-from jbi.services import jbi_service_health_map, jira_visible_projects
+from jbi.services import bugzilla, jira
 
 router = APIRouter()
 
@@ -37,8 +37,11 @@ def root(request: Request, settings: Settings = Depends(get_settings)):
 @router.head("/__heartbeat__")
 def heartbeat(response: Response, actions: Actions = Depends(get_actions)):
     """Return status of backing services, as required by Dockerflow."""
-    health_map = jbi_service_health_map(actions)
-    health_checks = []
+    health_map = {
+        "bugzilla": bugzilla.check_health(),
+        "jira": jira.check_health(actions),
+    }
+    health_checks: list = []
     for health in health_map.values():
         health_checks.extend(health.values())
     if not all(health_checks):
@@ -87,7 +90,7 @@ def get_whiteboard_tags(
 @router.get("/jira_projects/")
 def get_jira_projects():
     """API for viewing projects that are currently accessible by API"""
-    visible_projects: list[dict] = jira_visible_projects()
+    visible_projects: list[dict] = jira.fetch_visible_projects()
     return [project["key"] for project in visible_projects]
 
 
