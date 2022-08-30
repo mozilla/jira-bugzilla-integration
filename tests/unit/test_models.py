@@ -6,7 +6,7 @@ from tests.fixtures.factories import action_factory
 
 
 def test_model_serializes():
-    """Regression test to assert that action with initialzed Bugzilla client serializes"""
+    """Regression test to assert that action with initialized Bugzilla client serializes"""
     action = Action.parse_obj(
         {
             "whiteboard_tag": "devtest",
@@ -15,7 +15,7 @@ def test_model_serializes():
             "module": "tests.fixtures.bugzilla_action",
         }
     )
-    action.caller(payload=action)
+    action.caller(bug=None, event=None)
     serialized_action = jsonable_encoder(action)
     assert not serialized_action.get("_caller")
     assert not serialized_action.get("caller")

@@ -8,7 +8,7 @@ from jbi import Operation
 
 
 def init(**parameters):
-    return lambda payload: (
+    return lambda bug, event: (
         True,
-        {"parameters": parameters, "payload": payload.json()},
+        {"parameters": parameters, "bug": bug.json(), "event": event.json()},
     )

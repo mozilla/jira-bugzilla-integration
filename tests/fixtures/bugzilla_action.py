@@ -1,6 +1,6 @@
 class FakeBugzillaAction:
-    def __call__(self, payload):
-        return {"payload": payload}
+    def __call__(self, bug, event):
+        return {"bug": bug, "event": event}
 
 
 def init():

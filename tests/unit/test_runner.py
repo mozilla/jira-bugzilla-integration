@@ -11,7 +11,7 @@ import pytest
 from jbi import Operation
 from jbi.environment import Settings
 from jbi.errors import IgnoreInvalidRequestError
-from jbi.models import Action, Actions, BugzillaWebhookRequest
+from jbi.models import Action, Actions, BugzillaBug, BugzillaWebhookRequest
 from jbi.runner import execute_action
 from tests.fixtures.factories import bug_factory
 
@@ -51,9 +51,8 @@ def test_private_request_is_allowed(
         settings=settings,
     )
 
-    payload = BugzillaWebhookRequest.parse_raw(result["payload"])
-    assert payload.bug
-    assert payload.bug.id == 654321
+    bug = BugzillaBug.parse_raw(result["bug"])
+    assert bug.id == 654321
 
 
 def test_request_is_ignored_because_no_action(

@@ -23,7 +23,9 @@ def test_default_returns_callable_without_data(mocked_bugzilla, mocked_jira):
     with pytest.raises(TypeError) as exc_info:
         assert callable_object()
 
-    assert "missing 1 required positional argument: 'payload'" in str(exc_info.value)
+    assert "missing 2 required positional arguments: 'bug' and 'event'" in str(
+        exc_info.value
+    )
 
 
 def test_default_returns_callable_with_data(
@@ -34,7 +36,9 @@ def test_default_returns_callable_with_data(
     mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
     callable_object = default.init(jira_project_key="")
 
-    handled, details = callable_object(payload=webhook_create_example)
+    handled, details = callable_object(
+        bug=webhook_create_example.bug, event=webhook_create_example.event
+    )
 
     assert handled
     assert details["jira_response"] == sentinel
@@ -49,7 +53,7 @@ def test_created_public(
     ]
     callable_object = default.init(jira_project_key="JBI")
 
-    callable_object(payload=webhook_create_example)
+    callable_object(bug=webhook_create_example.bug, event=webhook_create_example.event)
 
     mocked_jira.create_issue.assert_called_once_with(
         fields={
@@ -66,7 +70,7 @@ def test_modified_public(webhook_modify_example: BugzillaWebhookRequest, mocked_
     assert webhook_modify_example.bug
     callable_object = default.init(jira_project_key="")
 
-    callable_object(payload=webhook_modify_example)
+    callable_object(bug=webhook_modify_example.bug, event=webhook_modify_example.event)
 
     assert webhook_modify_example.bug.extract_from_see_also(), "see_also is not empty"
 
@@ -80,7 +84,9 @@ def test_added_comment(webhook_comment_example: BugzillaWebhookRequest, mocked_j
 
     callable_object = default.init(jira_project_key="")
 
-    callable_object(payload=webhook_comment_example)
+    callable_object(
+        bug=webhook_comment_example.bug, event=webhook_comment_example.event
+    )
 
     mocked_jira.issue_add_comment.assert_called_once_with(
         issue_key="JBI-234",
@@ -95,7 +101,9 @@ def test_added_comment_without_linked_issue(
     webhook_comment_example.bug.see_also = []
     callable_object = default.init(jira_project_key="")
 
-    handled, _ = callable_object(payload=webhook_comment_example)
+    handled, _ = callable_object(
+        bug=webhook_comment_example.bug, event=webhook_comment_example.event
+    )
 
     assert not handled
 
@@ -109,7 +117,9 @@ def test_jira_returns_an_error(
     callable_object = default.init(jira_project_key="")
 
     with pytest.raises(ActionError) as exc_info:
-        callable_object(payload=webhook_create_example)
+        callable_object(
+            bug=webhook_create_example.bug, event=webhook_create_example.event
+        )
 
     assert str(exc_info.value) == "response contains error: {'errors': ['Boom']}"
 
@@ -123,7 +133,7 @@ def test_disabled_label_field(
     ]
     callable_object = default.init(jira_project_key="JBI", sync_whiteboard_labels=False)
 
-    callable_object(payload=webhook_create_example)
+    callable_object(bug=webhook_create_example.bug, event=webhook_create_example.event)
 
     mocked_jira.create_issue.assert_called_once_with(
         fields={
