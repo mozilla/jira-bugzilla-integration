@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 from jbi.app import app
 from jbi.environment import Settings
 from jbi.models import Action, Actions, BugzillaWebhookComment, BugzillaWebhookRequest
+from jbi.services import bugzilla, jira
 from tests.fixtures.factories import (
     action_factory,
     bug_factory,
@@ -37,14 +38,16 @@ def mocked_bugzilla(request):
     if "no_mocked_bugzilla" in request.keywords:
         yield None
     else:
-        with mock.patch("jbi.services.BugzillaClient") as mocked_bz:
+        with mock.patch("jbi.services.bugzilla.BugzillaClient") as mocked_bz:
             yield mocked_bz()
+            bugzilla.get_client.cache_clear()
 
 
 @pytest.fixture(autouse=True)
 def mocked_jira():
-    with mock.patch("jbi.services.Jira") as mocked_jira:
+    with mock.patch("jbi.services.jira.Jira") as mocked_jira:
         yield mocked_jira()
+        jira.get_client.cache_clear()
 
 
 @pytest.fixture

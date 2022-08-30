@@ -1,39 +1,16 @@
-"""
-Module for testing jbi/services.py
-"""
-from sys import exc_info
 from unittest import mock
 
 import pytest
 import responses
 
 from jbi.environment import get_settings
-from jbi.services import BugzillaClientError, get_bugzilla, get_jira
-from tests.fixtures.factories import comment_factory
-
-
-def test_counter_is_incremented_on_jira_create_issue():
-    jira_client = get_jira()
-
-    with mock.patch("jbi.services.statsd") as mocked:
-        jira_client.create_issue({})
-
-    mocked.incr.assert_called_with("jbi.jira.methods.create_issue.count")
-
-
-def test_timer_is_used_on_jira_create_issue():
-    jira_client = get_jira()
-
-    with mock.patch("jbi.services.statsd") as mocked:
-        jira_client.create_issue({})
-
-    mocked.timer.assert_called_with("jbi.jira.methods.create_issue.timer")
+from jbi.services.bugzilla import BugzillaClientError, get_client
 
 
 def test_timer_is_used_on_bugzilla_get_comments():
-    bugzilla_client = get_bugzilla()
+    bugzilla_client = get_client()
 
-    with mock.patch("jbi.services.statsd") as mocked:
+    with mock.patch("jbi.services.common.statsd") as mocked:
         bugzilla_client.get_comments([])
 
     mocked.timer.assert_called_with("jbi.bugzilla.methods.get_comments.timer")
@@ -52,7 +29,7 @@ def test_bugzilla_methods_are_retried_if_raising(mocked_responses):
     )
 
     # Not raising
-    get_bugzilla().get_comments(42)
+    get_client().get_comments(42)
 
     assert len(mocked_responses.calls) == 2
 
@@ -64,7 +41,7 @@ def test_bugzilla_key_is_passed_in_querystring(mocked_responses):
     )
     mocked_responses.add(responses.GET, url, json={"id": "you"})
 
-    assert get_bugzilla().logged_in
+    assert get_client().logged_in
 
 
 @pytest.mark.no_mocked_bugzilla
@@ -75,7 +52,7 @@ def test_bugzilla_raises_if_response_has_error(mocked_responses):
     )
 
     with pytest.raises(BugzillaClientError) as exc:
-        get_bugzilla().get_bug(42)
+        get_client().get_bug(42)
 
     assert "not happy" in str(exc)
 
@@ -86,7 +63,7 @@ def test_bugzilla_get_bug_raises_if_response_has_no_bugs(mocked_responses):
     mocked_responses.add(responses.GET, url, json={"bugs": []})
 
     with pytest.raises(BugzillaClientError) as exc:
-        get_bugzilla().get_bug(42)
+        get_client().get_bug(42)
 
     assert "Unexpected response" in str(exc)
 
@@ -97,7 +74,7 @@ def test_bugzilla_get_comments_raises_if_response_has_no_bugs(mocked_responses):
     mocked_responses.add(responses.GET, url, json={"bugs": {"42": {}}})
 
     with pytest.raises(BugzillaClientError) as exc:
-        get_bugzilla().get_comments(42)
+        get_client().get_comments(42)
 
     assert "Unexpected response" in str(exc)
 
@@ -107,7 +84,7 @@ def test_bugzilla_update_bug_uses_a_put(mocked_responses):
     url = f"{get_settings().bugzilla_base_url}/rest/bug/42"
     mocked_responses.add(responses.PUT, url, json={"bugs": [{"id": 42}]})
 
-    get_bugzilla().update_bug(42, see_also="http://url.com")
+    get_client().update_bug(42, see_also="http://url.com")
 
     assert mocked_responses.calls[0].request.body == b'{"see_also": "http://url.com"}'
 
@@ -156,7 +133,7 @@ def test_bugzilla_get_bug_comment(mocked_responses, webhook_private_comment_exam
         },
     )
 
-    expanded = get_bugzilla().get_bug(webhook_private_comment_example.bug.id)
+    expanded = get_client().get_bug(webhook_private_comment_example.bug.id)
 
     # then
     assert expanded.comment.creator == "mathieu@mozilla.org"
@@ -186,6 +163,6 @@ def test_bugzilla_missing_private_comment(
         },
     )
 
-    expanded = get_bugzilla().get_bug(webhook_private_comment_example.bug.id)
+    expanded = get_client().get_bug(webhook_private_comment_example.bug.id)
 
     assert not expanded.comment
