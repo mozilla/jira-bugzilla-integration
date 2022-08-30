@@ -103,6 +103,14 @@ def webhook_modify_example() -> BugzillaWebhookRequest:
 
 
 @pytest.fixture
+def webhook_modify_resolution_example() -> BugzillaWebhookRequest:
+    bug = bug_factory(see_also=["https://mozilla.atlassian.net/browse/JBI-234"])
+    event = webhook_event_factory(action="modify", routing_key="bug.modify:resolution")
+    webhook_payload = webhook_factory(bug=bug, event=event)
+    return webhook_payload
+
+
+@pytest.fixture
 def webhook_change_status_assignee():
     changes = [
         {
