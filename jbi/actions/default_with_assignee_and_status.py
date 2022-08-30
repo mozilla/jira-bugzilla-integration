@@ -45,8 +45,8 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
         payload: BugzillaWebhookRequest,
     ):
         """Returns the comments to post to Jira for a changed bug"""
-        return payload.map_as_comments(
-            status_log_enabled=False, assignee_log_enabled=False
+        return payload.bug.map_changes_as_comments(
+            payload.event, status_log_enabled=False, assignee_log_enabled=False
         )
 
     def update_issue(

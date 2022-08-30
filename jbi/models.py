@@ -1,7 +1,6 @@
 """
 Python Module for Pydantic Models and validation
 """
-from asyncio import events
 import datetime
 import functools
 import importlib
@@ -304,6 +303,34 @@ class BugzillaBug(BaseModel):
 
         return None
 
+    def map_changes_as_comments(
+        self,
+        event: BugzillaWebhookEvent,
+        status_log_enabled: bool = True,
+        assignee_log_enabled: bool = True,
+    ) -> list[str]:
+        """Extract update dict and comment list from Webhook Event"""
+
+        comments: list = []
+
+        if event.changes:
+            user = event.user.login if event.user else "unknown"
+            for change in event.changes:
+
+                if status_log_enabled and change.field in ["status", "resolution"]:
+                    comments.append(
+                        {
+                            "modified by": user,
+                            "resolution": self.resolution,
+                            "status": self.status,
+                        }
+                    )
+
+                if assignee_log_enabled and change.field in ["assigned_to", "assignee"]:
+                    comments.append({"assignee": self.assigned_to})
+
+        return [json.dumps(comment, indent=4) for comment in comments]
+
     def lookup_action(self, actions: Actions) -> Action:
         """Find first matching action from bug's whiteboard list"""
         tags: list[str] = self.get_potential_whiteboard_config_list()
@@ -326,34 +353,6 @@ class BugzillaWebhookRequest(BaseModel):
         commenter: BugzillaWebhookUser = self.event.user
         comment: BugzillaWebhookComment = self.bug.comment
         return f"*({commenter.login})* commented: \n{{quote}}{comment.body}{{quote}}"
-
-    def map_as_comments(
-        self,
-        status_log_enabled: bool = True,
-        assignee_log_enabled: bool = True,
-    ) -> list[str]:
-        """Extract update dict and comment list from Webhook Event"""
-
-        comments: list = []
-        bug: BugzillaBug = self.bug  # type: ignore
-
-        if self.event.changes:
-            user = self.event.user.login if self.event.user else "unknown"
-            for change in self.event.changes:
-
-                if status_log_enabled and change.field in ["status", "resolution"]:
-                    comments.append(
-                        {
-                            "modified by": user,
-                            "resolution": bug.resolution,
-                            "status": bug.status,
-                        }
-                    )
-
-                if assignee_log_enabled and change.field in ["assigned_to", "assignee"]:
-                    comments.append({"assignee": bug.assigned_to})
-
-        return [json.dumps(comment, indent=4) for comment in comments]
 
 
 class BugzillaComment(BaseModel):

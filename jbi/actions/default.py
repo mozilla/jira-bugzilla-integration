@@ -129,7 +129,7 @@ class DefaultExecutor:
         payload: BugzillaWebhookRequest,
     ):
         """Returns the comments to post to Jira for a changed bug"""
-        return payload.map_as_comments()
+        return payload.bug.map_changes_as_comments(payload.event)
 
     def update_issue(
         self,
