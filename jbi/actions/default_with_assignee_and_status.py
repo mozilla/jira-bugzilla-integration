@@ -46,6 +46,13 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
         event: BugzillaWebhookEvent,
         issue_key: str,
     ):
+        log_context = log_context.update(
+            extra={
+                **log_context.extra,
+                "status_map": self.status_map,
+                "resolution_map": self.resolution_map,
+            },
+        )
         return self._update_issue(log_context, bug, event, issue_key, is_new=True)
 
     def on_update_issue(
@@ -56,6 +63,13 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
         issue_key: str,
     ):
         # We don't do the upper class updates (add comments for status and assignee).
+        log_context = log_context.update(
+            extra={
+                **log_context.extra,
+                "status_map": self.status_map,
+                "resolution_map": self.resolution_map,
+            },
+        )
         return self._update_issue(log_context, bug, event, issue_key, is_new=False)
 
     def _update_issue(  # pylint: disable=too-many-arguments
@@ -136,10 +150,6 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
                     "Bug resolution was not in the resolution map.",
                     extra=log_context.update(
                         operation=Operation.IGNORE,
-                        extra={
-                            **log_context.extra,
-                            "resolution_map": self.resolution_map,
-                        },
                     ).dict(),
                 )
 
@@ -161,6 +171,5 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
                     "Bug status was not in the status map.",
                     extra=log_context.update(
                         operation=Operation.IGNORE,
-                        extra={**log_context.extra, "status_map": self.status_map},
                     ).dict(),
                 )
