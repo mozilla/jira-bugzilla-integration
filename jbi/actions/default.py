@@ -51,9 +51,9 @@ class DefaultExecutor:
         event: BugzillaWebhookEvent,
     ) -> ActionResult:
         """Called from BZ webhook when default action is used. All default-action webhook-events are processed here."""
-        target = event.target  # type: ignore
+        target = event.target
         if target == "comment":
-            return self.comment_create_or_noop(bug=bug, event=event)  # type: ignore
+            return self.comment_create_or_noop(bug=bug, event=event)
         if target == "bug":
             return self.bug_create_or_update(bug=bug, event=event)
         logger.debug(
@@ -109,17 +109,6 @@ class DefaultExecutor:
         )
         return True, {"jira_response": jira_response}
 
-    def jira_fields(self, bug: BugzillaBug):
-        """Extract bug info as jira issue dictionary"""
-        fields: dict[str, Any] = {
-            "summary": bug.summary,
-        }
-
-        if self.sync_whiteboard_labels:
-            fields["labels"] = bug.get_jira_labels()
-
-        return fields
-
     def jira_comments_for_update(
         self,
         bug: BugzillaBug,
@@ -139,9 +128,9 @@ class DefaultExecutor:
 
     def bug_create_or_update(
         self, bug: BugzillaBug, event: BugzillaWebhookEvent
-    ) -> ActionResult:  # pylint: disable=too-many-locals
+    ) -> ActionResult:
         """Create and link jira issue with bug, or update; rollback if multiple events fire"""
-        linked_issue_key = bug.extract_from_see_also()  # type: ignore
+        linked_issue_key = bug.extract_from_see_also()
         if not linked_issue_key:
             return self.create_and_link_issue(bug=bug, event=event)
 
