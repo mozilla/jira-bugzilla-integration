@@ -46,6 +46,7 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
         event: BugzillaWebhookEvent,
         issue_key: str,
     ):
+        """Hook to modify the recently created Jira issue"""
         log_context = log_context.update(
             extra={
                 **log_context.extra,
@@ -75,6 +76,7 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
         event: BugzillaWebhookEvent,
         issue_key: str,
     ):
+        """Hook to modify the recently modified Jira issue"""
         # We don't do the upper class updates (add comments for status and assignee).
         log_context = log_context.update(
             extra={

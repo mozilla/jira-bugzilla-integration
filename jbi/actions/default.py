@@ -73,7 +73,7 @@ class DefaultExecutor:
         if event.target == "comment":
             log_context = log_context.update(operation=Operation.COMMENT)
             if linked_issue_key:
-                return self.comment_create_or_noop(
+                return self.create_comment(
                     log_context=log_context,
                     bug=bug,
                     event=event,
@@ -108,7 +108,7 @@ class DefaultExecutor:
         )
         return False, {}
 
-    def comment_create_or_noop(
+    def create_comment(
         self,
         log_context: ActionLogContext,
         bug: BugzillaBug,
