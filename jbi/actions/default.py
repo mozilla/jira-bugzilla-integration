@@ -12,7 +12,13 @@ from typing import Any
 from jbi import ActionResult, Operation
 from jbi.environment import get_settings
 from jbi.errors import ActionError
-from jbi.models import ActionLogContext, BugzillaBug, BugzillaWebhookEvent, JiraContext
+from jbi.models import (
+    ActionLogContext,
+    BugzillaBug,
+    BugzillaWebhookComment,
+    BugzillaWebhookEvent,
+    JiraContext,
+)
 from jbi.services import bugzilla, jira
 
 settings = get_settings()
@@ -97,15 +103,9 @@ class DefaultExecutor:
             )
             return False, {}
 
-        formatted_comment = bug.map_event_as_comment(event)
-        jira_response = jira.get_client().issue_add_comment(
-            issue_key=linked_issue_key,
-            comment=formatted_comment,
-        )
-        logger.debug(
-            "Comment added to Jira issue %s",
-            linked_issue_key,
-            extra=log_context.dict(),
+        commenter = event.user.login if event.user else "unknown"
+        jira_response = add_jira_comment(
+            log_context, linked_issue_key, commenter, bug.comment
         )
         return True, {"jira_response": jira_response}
 
@@ -264,6 +264,23 @@ def update_jira_issue(context, bug, issue_key, sync_whiteboard_labels):
         key=issue_key, fields=fields
     )
     return jira_response_update
+
+
+def add_jira_comment(
+    context, issue_key, commenter: str, comment: BugzillaWebhookComment
+):
+    """Publish a comment on the specified Jira issue"""
+    formatted_comment = f"*({commenter})* commented: \n{{quote}}{comment.body}{{quote}}"
+    jira_response = jira.get_client().issue_add_comment(
+        issue_key=issue_key,
+        comment=formatted_comment,
+    )
+    logger.debug(
+        "Comment added to Jira issue %s",
+        issue_key,
+        extra=context.dict(),
+    )
+    return jira_response
 
 
 def delete_jira_issue_if_duplicate(context, bug, issue_key):
