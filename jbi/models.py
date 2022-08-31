@@ -231,6 +231,10 @@ class BugzillaBug(BaseModel):
     assigned_to: Optional[str]
     comment: Optional[BugzillaWebhookComment]
 
+    def is_assigned(self) -> bool:
+        """Return `true` if the bug is assigned to a user."""
+        return self.assigned_to != "nobody@mozilla.org"
+
     def get_whiteboard_as_list(self) -> list[str]:
         """Convert string whiteboard into list, splitting on ']' and removing '['."""
         if self.whiteboard is not None:

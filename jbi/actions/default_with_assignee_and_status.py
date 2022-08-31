@@ -53,7 +53,20 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
                 "resolution_map": self.resolution_map,
             },
         )
-        return self._update_issue(log_context, bug, event, issue_key, is_new=True)
+
+        if bug.is_assigned():
+            try:
+                assign_jira_user(log_context, issue_key, bug.assigned_to)
+            except ValueError as exc:
+                logger.debug(str(exc), extra=log_context.dict())
+
+        jira_resolution = self.resolution_map.get(bug.resolution)
+        update_issue_resolution(log_context, issue_key, jira_resolution)
+
+        # We use resolution if one exists or status otherwise.
+        bz_status = bug.resolution or bug.status
+        jira_status = self.status_map.get(bz_status)
+        update_issue_status(log_context, issue_key, jira_status)
 
     def on_update_issue(
         self,
@@ -70,106 +83,99 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
                 "resolution_map": self.resolution_map,
             },
         )
-        return self._update_issue(log_context, bug, event, issue_key, is_new=False)
 
-    def _update_issue(  # pylint: disable=too-many-arguments
-        self,
-        log_context: ActionLogContext,
-        bug: BugzillaBug,
-        event: BugzillaWebhookEvent,
-        linked_issue_key: str,
-        is_new: bool,
-    ):
         changed_fields = event.changed_fields() or []
 
-        jira_client = jira.get_client()
-
-        def clear_assignee():
-            # New tickets already have no assignee.
-            if not is_new:
-                logger.debug("Clearing assignee", extra=log_context.dict())
-                jira_client.update_issue_field(
-                    key=linked_issue_key, fields={"assignee": None}
-                )
-
-        # If this is a new issue or if the bug's assignee has changed then
-        # update the assignee.
-        if is_new or "assigned_to" in changed_fields:
-            if bug.assigned_to == "nobody@mozilla.org":
-                clear_assignee()
+        if "assigned_to" in changed_fields:
+            if not bug.is_assigned():
+                clear_assignee(log_context, issue_key)
             else:
-                logger.debug(
-                    "Attempting to update assignee",
-                    extra=log_context.dict(),
-                )
-                # Look up this user in Jira
-                users = jira_client.user_find_by_user_string(query=bug.assigned_to)
-                if len(users) == 1:
-                    try:
-                        # There doesn't appear to be an easy way to verify that
-                        # this user can be assigned to this issue, so just try
-                        # and do it.
-                        jira_client.update_issue_field(
-                            key=linked_issue_key,
-                            fields={"assignee": {"accountId": users[0]["accountId"]}},
-                        )
-                    except IOError as exception:
-                        logger.debug(
-                            "Setting assignee failed: %s",
-                            exception,
-                            extra=log_context.dict(),
-                        )
-                        # If that failed then just fall back to clearing the
-                        # assignee.
-                        clear_assignee()
-                else:
-                    logger.debug(
-                        "No assignee found",
-                        extra=log_context.update(operation=Operation.IGNORE).dict(),
-                    )
-                    clear_assignee()
+                try:
+                    assign_jira_user(log_context, issue_key, bug.assigned_to)
+                except ValueError as exc:
+                    logger.debug(str(exc), extra=log_context.dict())
+                    # If that failed then just fall back to clearing the assignee.
+                    clear_assignee(log_context, issue_key)
 
-        # If this is a new issue or if the bug's status or resolution has
-        # changed then update the issue status.
-        if is_new or "status" in changed_fields or "resolution" in changed_fields:
-            # If action has configured mappings for the issue resolution field, update it.
-            bz_resolution = bug.resolution
-            jira_resolution = self.resolution_map.get(bz_resolution)
-            if jira_resolution:
-                logger.debug(
-                    "Updating Jira resolution to %s",
-                    jira_resolution,
-                    extra=log_context.dict(),
-                )
-                jira_client.update_issue_field(
-                    key=linked_issue_key,
-                    fields={"resolution": jira_resolution},
-                )
-            else:
-                logger.debug(
-                    "Bug resolution was not in the resolution map.",
-                    extra=log_context.update(
-                        operation=Operation.IGNORE,
-                    ).dict(),
-                )
+        if "resolution" in changed_fields:
+            jira_resolution = self.resolution_map.get(bug.resolution)
+            update_issue_resolution(log_context, issue_key, jira_resolution)
 
-            # We use resolution if one exists or status otherwise.
-            bz_status = bz_resolution or bug.status
+        if "status" in changed_fields or "resolution" in changed_fields:
+            bz_status = bug.resolution or bug.status
             jira_status = self.status_map.get(bz_status)
-            if jira_status:
-                logger.debug(
-                    "Updating Jira status to %s",
-                    jira_status,
-                    extra=log_context.dict(),
-                )
-                jira_client.set_issue_status(
-                    linked_issue_key,
-                    jira_status,
-                )
-            else:
-                logger.debug(
-                    "Bug status was not in the status map.",
-                    extra=log_context.update(
-                        operation=Operation.IGNORE,
-                    ).dict(),
-                )
+            update_issue_status(log_context, issue_key, jira_status)
+
+
+def clear_assignee(context, issue_key):
+    """Clear the assignee of the specified Jira issue."""
+    logger.debug("Clearing assignee", extra=context.dict())
+    jira.get_client().update_issue_field(key=issue_key, fields={"assignee": None})
+
+
+def find_jira_user(context, bugzilla_assignee):
+    """Lookup Jira users, raise an error if not exactly one found."""
+    users = jira.get_client().user_find_by_user_string(query=bugzilla_assignee)
+    if len(users) != 1:
+        raise ValueError(f"User {bugzilla_assignee} not found")
+    return users[0]
+
+
+def assign_jira_user(context, issue_key, bugzilla_assignee):
+    """Set the assignee of the specified Jira issue, raise if fails."""
+    jira_user = find_jira_user(context, bugzilla_assignee)
+    jira_user_id = jira_user["accountId"]
+    try:
+        # There doesn't appear to be an easy way to verify that
+        # this user can be assigned to this issue, so just try
+        # and do it.
+        return jira.get_client().update_issue_field(
+            key=issue_key,
+            fields={"assignee": {"accountId": jira_user_id}},
+        )
+    except IOError as exc:
+        raise ValueError(
+            f"Could not assign {jira_user_id} to issue {issue_key}"
+        ) from exc
+
+
+def update_issue_status(context, issue_key, jira_status):
+    """Update the status of the Jira issue or no-op if None."""
+    if jira_status:
+        logger.debug(
+            "Updating Jira status to %s",
+            jira_status,
+            extra=context.dict(),
+        )
+        jira.get_client().set_issue_status(
+            issue_key,
+            jira_status,
+        )
+    else:
+        logger.debug(
+            "Bug status was not in the status map.",
+            extra=context.update(
+                operation=Operation.IGNORE,
+            ).dict(),
+        )
+
+
+def update_issue_resolution(context, issue_key, jira_resolution):
+    """Update the resolution of the Jira issue or no-op if None."""
+    if jira_resolution:
+        logger.debug(
+            "Updating Jira resolution to %s",
+            jira_resolution,
+            extra=context.dict(),
+        )
+        jira.get_client().update_issue_field(
+            key=issue_key,
+            fields={"resolution": jira_resolution},
+        )
+    else:
+        logger.debug(
+            "Bug resolution was not in the resolution map.",
+            extra=context.update(
+                operation=Operation.IGNORE,
+            ).dict(),
+        )
