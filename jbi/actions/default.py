@@ -12,12 +12,7 @@ from typing import Any
 from jbi import ActionResult, Operation
 from jbi.environment import get_settings
 from jbi.errors import ActionError
-from jbi.models import (
-    ActionLogContext,
-    BugzillaBug,
-    BugzillaWebhookRequest,
-    JiraContext,
-)
+from jbi.models import ActionLogContext, BugzillaBug, BugzillaWebhookEvent, JiraContext
 from jbi.services import bugzilla, jira
 
 settings = get_settings()
@@ -54,32 +49,36 @@ class DefaultExecutor:
         self.jira_client = jira.get_client()
 
     def __call__(  # pylint: disable=inconsistent-return-statements
-        self, payload: BugzillaWebhookRequest
+        self,
+        bug: BugzillaBug,
+        event: BugzillaWebhookEvent,
     ) -> ActionResult:
         """Called from BZ webhook when default action is used. All default-action webhook-events are processed here."""
-        target = payload.event.target  # type: ignore
+        target = event.target  # type: ignore
         if target == "comment":
-            return self.comment_create_or_noop(payload=payload)  # type: ignore
+            return self.comment_create_or_noop(bug=bug, event=event)  # type: ignore
         if target == "bug":
-            return self.bug_create_or_update(payload=payload)
+            return self.bug_create_or_update(bug=bug, event=event)
         logger.debug(
             "Ignore event target %r",
             target,
             extra=ActionLogContext(
-                request=payload,
+                bug=bug,
+                event=event,
                 operation=Operation.IGNORE,
             ).dict(),
         )
         return False, {}
 
-    def comment_create_or_noop(self, payload: BugzillaWebhookRequest) -> ActionResult:
+    def comment_create_or_noop(
+        self, bug: BugzillaBug, event: BugzillaWebhookEvent
+    ) -> ActionResult:
         """Confirm issue is already linked, then apply comments; otherwise noop"""
-        bug_obj = payload.bug
-        linked_issue_key = bug_obj.extract_from_see_also()
+        linked_issue_key = bug.extract_from_see_also()
 
         log_context = ActionLogContext(
-            request=payload,
-            bug=bug_obj,
+            event=event,
+            bug=bug,
             operation=Operation.COMMENT,
             jira=JiraContext(
                 issue=linked_issue_key,
@@ -89,19 +88,19 @@ class DefaultExecutor:
         if not linked_issue_key:
             logger.debug(
                 "No Jira issue linked to Bug %s",
-                bug_obj.id,
+                bug.id,
                 extra=log_context.dict(),
             )
             return False, {}
 
-        if bug_obj.comment is None:
+        if bug.comment is None:
             logger.debug(
                 "No matching comment found in payload",
                 extra=log_context.dict(),
             )
             return False, {}
 
-        formatted_comment = payload.map_as_jira_comment()
+        formatted_comment = bug.map_event_as_comment(event)
         jira_response = self.jira_client.issue_add_comment(
             issue_key=linked_issue_key,
             comment=formatted_comment,
@@ -113,45 +112,45 @@ class DefaultExecutor:
         )
         return True, {"jira_response": jira_response}
 
-    def jira_fields(self, bug_obj: BugzillaBug):
+    def jira_fields(self, bug: BugzillaBug):
         """Extract bug info as jira issue dictionary"""
         fields: dict[str, Any] = {
-            "summary": bug_obj.summary,
+            "summary": bug.summary,
         }
 
         if self.sync_whiteboard_labels:
-            fields["labels"] = bug_obj.get_jira_labels()
+            fields["labels"] = bug.get_jira_labels()
 
         return fields
 
     def jira_comments_for_update(
         self,
-        payload: BugzillaWebhookRequest,
+        bug: BugzillaBug,
+        event: BugzillaWebhookEvent,
     ):
         """Returns the comments to post to Jira for a changed bug"""
-        return payload.map_as_comments()
+        return bug.map_changes_as_comments(event)
 
     def update_issue(
         self,
-        payload: BugzillaWebhookRequest,
-        bug_obj: BugzillaBug,
+        bug: BugzillaBug,
+        event: BugzillaWebhookEvent,
         linked_issue_key: str,
         is_new: bool,
     ):
         """Allows sub-classes to modify the Jira issue in response to a bug event"""
 
     def bug_create_or_update(
-        self, payload: BugzillaWebhookRequest
+        self, bug: BugzillaBug, event: BugzillaWebhookEvent
     ) -> ActionResult:  # pylint: disable=too-many-locals
         """Create and link jira issue with bug, or update; rollback if multiple events fire"""
-        bug_obj = payload.bug
-        linked_issue_key = bug_obj.extract_from_see_also()  # type: ignore
+        linked_issue_key = bug.extract_from_see_also()  # type: ignore
         if not linked_issue_key:
-            return self.create_and_link_issue(payload, bug_obj)
+            return self.create_and_link_issue(bug=bug, event=event)
 
         log_context = ActionLogContext(
-            request=payload,
-            bug=bug_obj,
+            event=event,
+            bug=bug,
             operation=Operation.LINK,
             jira=JiraContext(
                 issue=linked_issue_key,
@@ -162,14 +161,14 @@ class DefaultExecutor:
         logger.debug(
             "Update fields of Jira issue %s for Bug %s",
             linked_issue_key,
-            bug_obj.id,
+            bug.id,
             extra=log_context.dict(),
         )
         jira_response_update = self.jira_client.update_issue_field(
-            key=linked_issue_key, fields=self.jira_fields(bug_obj)
+            key=linked_issue_key, fields=self.jira_fields(bug)
         )
 
-        comments = self.jira_comments_for_update(payload)
+        comments = self.jira_comments_for_update(bug=bug, event=event)
         jira_response_comments = []
         for i, comment in enumerate(comments):
             logger.debug(
@@ -184,17 +183,19 @@ class DefaultExecutor:
                 )
             )
 
-        self.update_issue(payload, bug_obj, linked_issue_key, is_new=False)
+        self.update_issue(bug, event, linked_issue_key, is_new=False)
 
         return True, {"jira_responses": [jira_response_update, jira_response_comments]}
 
     def create_and_link_issue(  # pylint: disable=too-many-locals
-        self, payload, bug_obj
+        self,
+        bug,
+        event,
     ) -> ActionResult:
         """create jira issue and establish link between bug and issue; rollback/delete if required"""
         log_context = ActionLogContext(
-            request=payload,
-            bug=bug_obj,
+            event=event,
+            bug=bug,
             operation=Operation.CREATE,
             jira=JiraContext(
                 project=self.jira_project_key,
@@ -202,15 +203,15 @@ class DefaultExecutor:
         )
         logger.debug(
             "Create new Jira issue for Bug %s",
-            bug_obj.id,
+            bug.id,
             extra=log_context.dict(),
         )
-        comment_list = self.bugzilla_client.get_comments(bug_obj.id)
+        comment_list = self.bugzilla_client.get_comments(bug.id)
         description = comment_list[0].text[:JIRA_DESCRIPTION_CHAR_LIMIT]
 
         fields = {
-            **self.jira_fields(bug_obj),  # type: ignore
-            "issuetype": {"name": bug_obj.issue_type()},
+            **self.jira_fields(bug),  # type: ignore
+            "issuetype": {"name": bug.issue_type()},
             "description": description,
             "project": {"key": self.jira_project_key},
         }
@@ -236,9 +237,9 @@ class DefaultExecutor:
 
         # In the time taken to create the Jira issue the bug may have been updated so
         # re-retrieve it to ensure we have the latest data.
-        bug_obj = self.bugzilla_client.get_bug(bug_obj.id)
+        bug = self.bugzilla_client.get_bug(bug.id)
 
-        jira_key_in_bugzilla = bug_obj.extract_from_see_also()
+        jira_key_in_bugzilla = bug.extract_from_see_also()
         _duplicate_creation_event = (
             jira_key_in_bugzilla is not None
             and jira_key_in_response != jira_key_in_bugzilla
@@ -247,7 +248,7 @@ class DefaultExecutor:
             logger.warning(
                 "Delete duplicated Jira issue %s from Bug %s",
                 jira_key_in_response,
-                bug_obj.id,
+                bug.id,
                 extra=log_context.update(operation=Operation.DELETE).dict(),
             )
             jira_response_delete = self.jira_client.delete_issue(
@@ -259,14 +260,14 @@ class DefaultExecutor:
         logger.debug(
             "Link %r on Bug %s",
             jira_url,
-            bug_obj.id,
+            bug.id,
             extra=log_context.update(operation=Operation.LINK).dict(),
         )
         bugzilla_response = self.bugzilla_client.update_bug(
-            bug_obj.id, see_also_add=jira_url
+            bug.id, see_also_add=jira_url
         )
 
-        bugzilla_url = f"{settings.bugzilla_base_url}/show_bug.cgi?id={bug_obj.id}"
+        bugzilla_url = f"{settings.bugzilla_base_url}/show_bug.cgi?id={bug.id}"
         logger.debug(
             "Link %r on Jira issue %s",
             bugzilla_url,
@@ -282,7 +283,9 @@ class DefaultExecutor:
             icon_title=icon_url,
         )
 
-        self.update_issue(payload, bug_obj, jira_key_in_response, is_new=True)
+        self.update_issue(
+            bug=bug, event=event, linked_issue_key=jira_key_in_response, is_new=True
+        )
 
         return True, {
             "bugzilla_response": bugzilla_response,

@@ -14,12 +14,7 @@ from jbi.actions.default import (
     JIRA_REQUIRED_PERMISSIONS as DEFAULT_JIRA_REQUIRED_PERMISSIONS,
 )
 from jbi.actions.default import DefaultExecutor
-from jbi.models import (
-    ActionLogContext,
-    BugzillaBug,
-    BugzillaWebhookRequest,
-    JiraContext,
-)
+from jbi.models import ActionLogContext, BugzillaBug, BugzillaWebhookEvent, JiraContext
 
 logger = logging.getLogger(__name__)
 
@@ -45,25 +40,26 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
 
     def jira_comments_for_update(
         self,
-        payload: BugzillaWebhookRequest,
+        bug: BugzillaBug,
+        event: BugzillaWebhookEvent,
     ):
         """Returns the comments to post to Jira for a changed bug"""
-        return payload.map_as_comments(
-            status_log_enabled=False, assignee_log_enabled=False
+        return bug.map_changes_as_comments(
+            event, status_log_enabled=False, assignee_log_enabled=False
         )
 
     def update_issue(
         self,
-        payload: BugzillaWebhookRequest,
-        bug_obj: BugzillaBug,
+        bug: BugzillaBug,
+        event: BugzillaWebhookEvent,
         linked_issue_key: str,
         is_new: bool,
     ):
-        changed_fields = payload.event.changed_fields() or []
+        changed_fields = event.changed_fields() or []
 
         log_context = ActionLogContext(
-            request=payload,
-            bug=bug_obj,
+            event=event,
+            bug=bug,
             operation=Operation.UPDATE,
             jira=JiraContext(
                 project=self.jira_project_key,
@@ -85,7 +81,7 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
         # If this is a new issue or if the bug's assignee has changed then
         # update the assignee.
         if is_new or "assigned_to" in changed_fields:
-            if bug_obj.assigned_to == "nobody@mozilla.org":
+            if bug.assigned_to == "nobody@mozilla.org":
                 clear_assignee()
             else:
                 logger.debug(
@@ -93,9 +89,7 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
                     extra=log_context.dict(),
                 )
                 # Look up this user in Jira
-                users = self.jira_client.user_find_by_user_string(
-                    query=bug_obj.assigned_to
-                )
+                users = self.jira_client.user_find_by_user_string(query=bug.assigned_to)
                 if len(users) == 1:
                     try:
                         # There doesn't appear to be an easy way to verify that
@@ -125,7 +119,7 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
         # changed then update the issue status.
         if is_new or "status" in changed_fields or "resolution" in changed_fields:
             # If action has configured mappings for the issue resolution field, update it.
-            bz_resolution = bug_obj.resolution
+            bz_resolution = bug.resolution
             jira_resolution = self.resolution_map.get(bz_resolution)
             if jira_resolution:
                 logger.debug(
@@ -150,7 +144,7 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
                 )
 
             # We use resolution if one exists or status otherwise.
-            bz_status = bz_resolution or bug_obj.status
+            bz_status = bz_resolution or bug.status
             jira_status = self.status_map.get(bz_status)
             if jira_status:
                 logger.debug(
