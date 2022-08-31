@@ -4,7 +4,6 @@ Python Module for Pydantic Models and validation
 import datetime
 import functools
 import importlib
-import json
 import logging
 import warnings
 from inspect import signature
@@ -302,34 +301,6 @@ class BugzillaBug(BaseModel):
                     return parsed_jira_key
 
         return None
-
-    def map_changes_as_comments(
-        self,
-        event: BugzillaWebhookEvent,
-        status_log_enabled: bool = True,
-        assignee_log_enabled: bool = True,
-    ) -> list[str]:
-        """Extract update dict and comment list from Webhook Event"""
-
-        comments: list = []
-
-        if event.changes:
-            user = event.user.login if event.user else "unknown"
-            for change in event.changes:
-
-                if status_log_enabled and change.field in ["status", "resolution"]:
-                    comments.append(
-                        {
-                            "modified by": user,
-                            "resolution": self.resolution,
-                            "status": self.status,
-                        }
-                    )
-
-                if assignee_log_enabled and change.field in ["assigned_to", "assignee"]:
-                    comments.append({"assignee": self.assigned_to})
-
-        return [json.dumps(comment, indent=4) for comment in comments]
 
     def lookup_action(self, actions: Actions) -> Action:
         """Find first matching action from bug's whiteboard list"""

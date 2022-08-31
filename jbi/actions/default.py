@@ -6,6 +6,7 @@ labels generated from the Bugzilla status whiteboard.
 
 `init` should return a __call__able
 """
+import json
 import logging
 from typing import Any
 
@@ -109,22 +110,30 @@ class DefaultExecutor:
         )
         return True, {"jira_response": jira_response}
 
-    def jira_comments_for_update(
+    def on_create_issue(
         self,
+        log_context: ActionLogContext,
         bug: BugzillaBug,
         event: BugzillaWebhookEvent,
+        issue_key: str,
     ):
-        """Returns the comments to post to Jira for a changed bug"""
-        return bug.map_changes_as_comments(event)
+        """Allows sub-classes to act when a Jira issue is created"""
 
-    def update_issue(
+    def on_update_issue(
         self,
+        log_context: ActionLogContext,
         bug: BugzillaBug,
         event: BugzillaWebhookEvent,
-        linked_issue_key: str,
-        is_new: bool,
+        issue_key: str,
     ):
-        """Allows sub-classes to modify the Jira issue in response to a bug event"""
+        """Allows sub-classes to act when a Jira issue is updated,
+        by default, add comments for changes"""
+        jira_response_comments = []
+        if event.changes:
+            jira_response_comments = add_jira_comments_for_changes(
+                log_context, event, bug, issue_key
+            )
+        return jira_response_comments
 
     def bug_create_or_update(
         self, bug: BugzillaBug, event: BugzillaWebhookEvent
@@ -134,38 +143,32 @@ class DefaultExecutor:
         if not linked_issue_key:
             return self.create_and_link_issue(bug=bug, event=event)
 
+        changed_fields = event.changed_fields() or []
         log_context = ActionLogContext(
             event=event,
             bug=bug,
-            operation=Operation.LINK,
+            operation=Operation.UPDATE,
             jira=JiraContext(
                 issue=linked_issue_key,
                 project=self.jira_project_key,
             ),
+            extra={
+                "changed_fields": ", ".join(changed_fields),
+            },
         )
 
         jira_response_update = update_jira_issue(
             log_context, bug, linked_issue_key, self.sync_whiteboard_labels
         )
 
-        comments = self.jira_comments_for_update(bug=bug, event=event)
-        jira_response_comments = []
-        for i, comment in enumerate(comments):
-            logger.debug(
-                "Create comment #%s on Jira issue %s",
-                i + 1,
-                linked_issue_key,
-                extra=log_context.update(operation=Operation.COMMENT).dict(),
-            )
-            jira_response_comments.append(
-                jira.get_client().issue_add_comment(
-                    issue_key=linked_issue_key, comment=comment
-                )
-            )
+        extra_updates = self.on_update_issue(
+            log_context=log_context,
+            bug=bug,
+            event=event,
+            issue_key=linked_issue_key,
+        )
 
-        self.update_issue(bug, event, linked_issue_key, is_new=False)
-
-        return True, {"jira_responses": [jira_response_update, jira_response_comments]}
+        return True, {"jira_responses": [jira_response_update, extra_updates]}
 
     def create_and_link_issue(
         self,
@@ -201,7 +204,7 @@ class DefaultExecutor:
 
         jira_response = add_link_to_bugzilla(log_context, issue_key, bug)
 
-        self.update_issue(bug=bug, event=event, linked_issue_key=issue_key, is_new=True)
+        self.on_create_issue(log_context, bug=bug, event=event, issue_key=issue_key)
 
         return True, {
             "bugzilla_response": bugzilla_response,
@@ -276,11 +279,43 @@ def add_jira_comment(
         comment=formatted_comment,
     )
     logger.debug(
-        "Comment added to Jira issue %s",
+        "User comment added to Jira issue %s",
         issue_key,
         extra=context.dict(),
     )
     return jira_response
+
+
+def add_jira_comments_for_changes(log_context, event, bug, linked_issue_key):
+    """Add comments on the specified Jira issue for each change of the event"""
+    comments: list = []
+    user = event.user.login if event.user else "unknown"
+    for change in event.changes:
+        if change.field in ["status", "resolution"]:
+            comments.append(
+                {
+                    "modified by": user,
+                    "resolution": bug.resolution,
+                    "status": bug.status,
+                }
+            )
+        if change.field in ["assigned_to", "assignee"]:
+            comments.append({"assignee": bug.assigned_to})
+
+    jira_response_comments = []
+    for i, comment in enumerate(comments):
+        logger.debug(
+            "Create comment #%s on Jira issue %s",
+            i + 1,
+            linked_issue_key,
+            extra=log_context.update(operation=Operation.COMMENT).dict(),
+        )
+        jira_response = jira.get_client().issue_add_comment(
+            issue_key=linked_issue_key, comment=json.dumps(comment, indent=4)
+        )
+        jira_response_comments.append(jira_response)
+
+    return jira_response_comments
 
 
 def delete_jira_issue_if_duplicate(context, bug, issue_key):

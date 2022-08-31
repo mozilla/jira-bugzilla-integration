@@ -32,6 +32,7 @@ def test_default_returns_callable_with_data(
     webhook_create_example, mocked_jira, mocked_bugzilla
 ):
     sentinel = mock.sentinel
+    mocked_jira.create_issue.return_value = {"key": "k"}
     mocked_jira.create_or_update_issue_remote_links.return_value = sentinel
     mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
     callable_object = default.init(jira_project_key="")
@@ -47,6 +48,7 @@ def test_default_returns_callable_with_data(
 def test_created_public(
     webhook_create_example: BugzillaWebhookRequest, mocked_jira, mocked_bugzilla
 ):
+    mocked_jira.create_issue.return_value = {"key": "k"}
     mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
     mocked_bugzilla.get_comments.return_value = [
         comment_factory(text="Initial comment")
@@ -77,6 +79,30 @@ def test_modified_public(webhook_modify_example: BugzillaWebhookRequest, mocked_
     mocked_jira.update_issue_field.assert_called_once_with(
         key="JBI-234",
         fields={"summary": "JBI Test", "labels": ["bugzilla", "devtest", "[devtest]"]},
+    )
+
+
+def test_comment_for_modified_assignee_and_status(
+    webhook_change_status_assignee, mocked_jira
+):
+    webhook_change_status_assignee.bug.see_also = [
+        "https://mozilla.atlassian.net/browse/JBI-234"
+    ]
+
+    callable_object = default.init(jira_project_key="")
+
+    callable_object(
+        bug=webhook_change_status_assignee.bug,
+        event=webhook_change_status_assignee.event,
+    )
+
+    mocked_jira.issue_add_comment.assert_any_call(
+        issue_key="JBI-234",
+        comment='{\n    "assignee": "nobody@mozilla.org"\n}',
+    )
+    mocked_jira.issue_add_comment.assert_any_call(
+        issue_key="JBI-234",
+        comment='{\n    "modified by": "nobody@mozilla.org",\n    "resolution": "",\n    "status": "NEW"\n}',
     )
 
 
@@ -127,6 +153,7 @@ def test_jira_returns_an_error(
 def test_disabled_label_field(
     webhook_create_example: BugzillaWebhookRequest, mocked_jira, mocked_bugzilla
 ):
+    mocked_jira.create_issue.return_value = {"key": "k"}
     mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
     mocked_bugzilla.get_comments.return_value = [
         comment_factory(text="Initial comment")

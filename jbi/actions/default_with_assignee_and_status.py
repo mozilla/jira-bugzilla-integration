@@ -14,7 +14,7 @@ from jbi.actions.default import (
     JIRA_REQUIRED_PERMISSIONS as DEFAULT_JIRA_REQUIRED_PERMISSIONS,
 )
 from jbi.actions.default import DefaultExecutor
-from jbi.models import ActionLogContext, BugzillaBug, BugzillaWebhookEvent, JiraContext
+from jbi.models import ActionLogContext, BugzillaBug, BugzillaWebhookEvent
 from jbi.services import jira
 
 logger = logging.getLogger(__name__)
@@ -39,37 +39,34 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
         self.status_map = status_map
         self.resolution_map = resolution_map
 
-    def jira_comments_for_update(
+    def on_create_issue(
         self,
+        log_context: ActionLogContext,
         bug: BugzillaBug,
         event: BugzillaWebhookEvent,
+        issue_key: str,
     ):
-        """Returns the comments to post to Jira for a changed bug"""
-        return bug.map_changes_as_comments(
-            event, status_log_enabled=False, assignee_log_enabled=False
-        )
+        return self._update_issue(log_context, bug, event, issue_key, is_new=True)
 
-    def update_issue(
+    def on_update_issue(
         self,
+        log_context: ActionLogContext,
+        bug: BugzillaBug,
+        event: BugzillaWebhookEvent,
+        issue_key: str,
+    ):
+        # We don't do the upper class updates (add comments for status and assignee).
+        return self._update_issue(log_context, bug, event, issue_key, is_new=False)
+
+    def _update_issue(  # pylint: disable=too-many-arguments
+        self,
+        log_context: ActionLogContext,
         bug: BugzillaBug,
         event: BugzillaWebhookEvent,
         linked_issue_key: str,
         is_new: bool,
     ):
         changed_fields = event.changed_fields() or []
-
-        log_context = ActionLogContext(
-            event=event,
-            bug=bug,
-            operation=Operation.UPDATE,
-            jira=JiraContext(
-                project=self.jira_project_key,
-                issue=linked_issue_key,
-            ),
-            extra={
-                "changed_fields": ", ".join(changed_fields),
-            },
-        )
 
         jira_client = jira.get_client()
 

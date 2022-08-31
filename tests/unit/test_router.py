@@ -80,6 +80,9 @@ def test_webhook_is_200_if_action_succeeds(
             }
         ]
     }
+    mocked_jira.create_issue.return_value = {
+        "key": "JBI-1922",
+    }
     mocked_jira.create_or_update_issue_remote_links.return_value = {
         "id": 18936,
         "self": "https://mozilla.atlassian.net/rest/api/2/issue/JBI-1922/remotelink/18936",
