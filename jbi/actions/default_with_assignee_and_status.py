@@ -15,6 +15,7 @@ from jbi.actions.default import (
 )
 from jbi.actions.default import DefaultExecutor
 from jbi.models import ActionLogContext, BugzillaBug, BugzillaWebhookEvent, JiraContext
+from jbi.services import jira
 
 logger = logging.getLogger(__name__)
 
@@ -70,11 +71,13 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
             },
         )
 
+        jira_client = jira.get_client()
+
         def clear_assignee():
             # New tickets already have no assignee.
             if not is_new:
                 logger.debug("Clearing assignee", extra=log_context.dict())
-                self.jira_client.update_issue_field(
+                jira_client.update_issue_field(
                     key=linked_issue_key, fields={"assignee": None}
                 )
 
@@ -89,13 +92,13 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
                     extra=log_context.dict(),
                 )
                 # Look up this user in Jira
-                users = self.jira_client.user_find_by_user_string(query=bug.assigned_to)
+                users = jira_client.user_find_by_user_string(query=bug.assigned_to)
                 if len(users) == 1:
                     try:
                         # There doesn't appear to be an easy way to verify that
                         # this user can be assigned to this issue, so just try
                         # and do it.
-                        self.jira_client.update_issue_field(
+                        jira_client.update_issue_field(
                             key=linked_issue_key,
                             fields={"assignee": {"accountId": users[0]["accountId"]}},
                         )
@@ -127,7 +130,7 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
                     jira_resolution,
                     extra=log_context.dict(),
                 )
-                self.jira_client.update_issue_field(
+                jira_client.update_issue_field(
                     key=linked_issue_key,
                     fields={"resolution": jira_resolution},
                 )
@@ -152,7 +155,7 @@ class AssigneeAndStatusExecutor(DefaultExecutor):
                     jira_status,
                     extra=log_context.dict(),
                 )
-                self.jira_client.set_issue_status(
+                jira_client.set_issue_status(
                     linked_issue_key,
                     jira_status,
                 )

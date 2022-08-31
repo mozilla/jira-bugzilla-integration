@@ -45,9 +45,6 @@ class DefaultExecutor:
         self.jira_project_key = jira_project_key
         self.sync_whiteboard_labels = kwargs.get("sync_whiteboard_labels", True)
 
-        self.bugzilla_client = bugzilla.get_client()
-        self.jira_client = jira.get_client()
-
     def __call__(  # pylint: disable=inconsistent-return-statements
         self,
         bug: BugzillaBug,
@@ -101,7 +98,7 @@ class DefaultExecutor:
             return False, {}
 
         formatted_comment = bug.map_event_as_comment(event)
-        jira_response = self.jira_client.issue_add_comment(
+        jira_response = jira.get_client().issue_add_comment(
             issue_key=linked_issue_key,
             comment=formatted_comment,
         )
@@ -172,7 +169,7 @@ class DefaultExecutor:
                 extra=log_context.update(operation=Operation.COMMENT).dict(),
             )
             jira_response_comments.append(
-                self.jira_client.issue_add_comment(
+                jira.get_client().issue_add_comment(
                     issue_key=linked_issue_key, comment=comment
                 )
             )
