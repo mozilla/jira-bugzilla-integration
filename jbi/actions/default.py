@@ -58,45 +58,64 @@ class DefaultExecutor:
         event: BugzillaWebhookEvent,
     ) -> ActionResult:
         """Called from BZ webhook when default action is used. All default-action webhook-events are processed here."""
-        target = event.target
-        if target == "comment":
-            return self.comment_create_or_noop(bug=bug, event=event)
-        if target == "bug":
-            return self.bug_create_or_update(bug=bug, event=event)
-        logger.debug(
-            "Ignore event target %r",
-            target,
-            extra=ActionLogContext(
-                bug=bug,
-                event=event,
-                operation=Operation.IGNORE,
-            ).dict(),
-        )
-        return False, {}
-
-    def comment_create_or_noop(
-        self, bug: BugzillaBug, event: BugzillaWebhookEvent
-    ) -> ActionResult:
-        """Confirm issue is already linked, then apply comments; otherwise noop"""
         linked_issue_key = bug.extract_from_see_also()
 
         log_context = ActionLogContext(
             event=event,
             bug=bug,
-            operation=Operation.COMMENT,
+            operation=Operation.IGNORE,
             jira=JiraContext(
                 issue=linked_issue_key,
                 project=self.jira_project_key,
             ),
         )
-        if not linked_issue_key:
-            logger.debug(
-                "No Jira issue linked to Bug %s",
-                bug.id,
-                extra=log_context.dict(),
-            )
-            return False, {}
 
+        if event.target == "comment":
+            log_context = log_context.update(operation=Operation.COMMENT)
+            if linked_issue_key:
+                return self.comment_create_or_noop(
+                    log_context=log_context,
+                    bug=bug,
+                    event=event,
+                    linked_issue_key=linked_issue_key,
+                )
+
+        if event.target == "bug":
+            if not linked_issue_key:
+                # Create
+                log_context = log_context.update(operation=Operation.CREATE)
+                return self.create_issue(log_context=log_context, bug=bug, event=event)
+
+            # Update
+            changed_fields = event.changed_fields() or []
+            log_context = log_context.update(
+                operation=Operation.UPDATE,
+                extra={
+                    "changed_fields": ", ".join(changed_fields),
+                },
+            )
+            return self.update_issue(
+                log_context=log_context,
+                bug=bug,
+                event=event,
+                linked_issue_key=linked_issue_key,
+            )
+
+        logger.debug(
+            "Ignore event target %r",
+            event.target,
+            extra=log_context.dict(),
+        )
+        return False, {}
+
+    def comment_create_or_noop(
+        self,
+        log_context: ActionLogContext,
+        bug: BugzillaBug,
+        event: BugzillaWebhookEvent,
+        linked_issue_key: str,
+    ) -> ActionResult:
+        """Confirm issue is already linked, then apply comments; otherwise noop"""
         if bug.comment is None:
             logger.debug(
                 "No matching comment found in payload",
@@ -110,80 +129,13 @@ class DefaultExecutor:
         )
         return True, {"jira_response": jira_response}
 
-    def on_create_issue(
+    def create_issue(
         self,
         log_context: ActionLogContext,
         bug: BugzillaBug,
         event: BugzillaWebhookEvent,
-        issue_key: str,
-    ):
-        """Allows sub-classes to act when a Jira issue is created"""
-
-    def on_update_issue(
-        self,
-        log_context: ActionLogContext,
-        bug: BugzillaBug,
-        event: BugzillaWebhookEvent,
-        issue_key: str,
-    ):
-        """Allows sub-classes to act when a Jira issue is updated,
-        by default, add comments for changes"""
-        jira_response_comments = []
-        if event.changes:
-            jira_response_comments = add_jira_comments_for_changes(
-                log_context, event, bug, issue_key
-            )
-        return jira_response_comments
-
-    def bug_create_or_update(
-        self, bug: BugzillaBug, event: BugzillaWebhookEvent
-    ) -> ActionResult:
-        """Create and link jira issue with bug, or update; rollback if multiple events fire"""
-        linked_issue_key = bug.extract_from_see_also()
-        if not linked_issue_key:
-            return self.create_and_link_issue(bug=bug, event=event)
-
-        changed_fields = event.changed_fields() or []
-        log_context = ActionLogContext(
-            event=event,
-            bug=bug,
-            operation=Operation.UPDATE,
-            jira=JiraContext(
-                issue=linked_issue_key,
-                project=self.jira_project_key,
-            ),
-            extra={
-                "changed_fields": ", ".join(changed_fields),
-            },
-        )
-
-        jira_response_update = update_jira_issue(
-            log_context, bug, linked_issue_key, self.sync_whiteboard_labels
-        )
-
-        extra_updates = self.on_update_issue(
-            log_context=log_context,
-            bug=bug,
-            event=event,
-            issue_key=linked_issue_key,
-        )
-
-        return True, {"jira_responses": [jira_response_update, extra_updates]}
-
-    def create_and_link_issue(
-        self,
-        bug,
-        event,
     ) -> ActionResult:
         """create jira issue and establish link between bug and issue; rollback/delete if required"""
-        log_context = ActionLogContext(
-            event=event,
-            bug=bug,
-            operation=Operation.CREATE,
-            jira=JiraContext(
-                project=self.jira_project_key,
-            ),
-        )
         issue_key = create_jira_issue(
             log_context,
             bug,
@@ -210,6 +162,52 @@ class DefaultExecutor:
             "bugzilla_response": bugzilla_response,
             "jira_response": jira_response,
         }
+
+    def on_create_issue(
+        self,
+        log_context: ActionLogContext,
+        bug: BugzillaBug,
+        event: BugzillaWebhookEvent,
+        issue_key: str,
+    ):
+        """Allows sub-classes to act when a Jira issue is created"""
+
+    def update_issue(
+        self,
+        log_context: ActionLogContext,
+        bug: BugzillaBug,
+        event: BugzillaWebhookEvent,
+        linked_issue_key: str,
+    ) -> ActionResult:
+        """Update existing an Jira issue."""
+        jira_response_update = update_jira_issue(
+            log_context, bug, linked_issue_key, self.sync_whiteboard_labels
+        )
+
+        extra_updates = self.on_update_issue(
+            log_context=log_context,
+            bug=bug,
+            event=event,
+            issue_key=linked_issue_key,
+        )
+
+        return True, {"jira_responses": [jira_response_update, extra_updates]}
+
+    def on_update_issue(
+        self,
+        log_context: ActionLogContext,
+        bug: BugzillaBug,
+        event: BugzillaWebhookEvent,
+        issue_key: str,
+    ):
+        """Allows sub-classes to act when a Jira issue is updated,
+        by default, add comments for changes"""
+        jira_response_comments = []
+        if event.changes:
+            jira_response_comments = add_jira_comments_for_changes(
+                log_context, event, bug, issue_key
+            )
+        return jira_response_comments
 
 
 def create_jira_issue(context, bug, jira_project_key, sync_whiteboard_labels) -> str:
