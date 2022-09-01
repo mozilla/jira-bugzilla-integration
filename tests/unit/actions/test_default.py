@@ -42,7 +42,7 @@ def test_default_returns_callable_with_data(
     )
 
     assert handled
-    assert details["jira_response"] == sentinel
+    assert details["responses"][-1] == sentinel
 
 
 def test_created_public(
