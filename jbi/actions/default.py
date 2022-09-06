@@ -131,9 +131,15 @@ def maybe_create_issue(
         return None
 
     log_context = log_context.update(operation=Operation.CREATE)
+
+    # XXX: For some reason, we fetch the bug comments instead of using `bug.comment`
+    comment_list = bugzilla.get_client().get_comments(bug.id)
+    description = comment_list[0].text
+
     issue_key = jira.create_jira_issue(
         log_context,
         bug,
+        description,
         jira_project_key,
         sync_whiteboard_labels=sync_whiteboard_labels,
     )

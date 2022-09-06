@@ -15,7 +15,6 @@ from atlassian import Jira, errors
 from jbi import Operation, environment
 from jbi.models import BugzillaWebhookComment
 
-from . import bugzilla
 from .common import InstrumentedClient, ServiceHealth
 
 if TYPE_CHECKING:
@@ -149,19 +148,19 @@ class JiraCreateError(Exception):
     """Error raised on Jira issue creation."""
 
 
-def create_jira_issue(context, bug, jira_project_key, sync_whiteboard_labels) -> str:
+def create_jira_issue(
+    context, bug, description, jira_project_key, sync_whiteboard_labels
+) -> str:
     """Create a Jira issue with the specified fields and return its key."""
     logger.debug(
         "Create new Jira issue for Bug %s",
         bug.id,
         extra=context.dict(),
     )
-    comment_list = bugzilla.get_client().get_comments(bug.id)
-    description = comment_list[0].text[:JIRA_DESCRIPTION_CHAR_LIMIT]
     fields: dict[str, Any] = {
         "summary": bug.summary,
         "issuetype": {"name": bug.issue_type()},
-        "description": description,
+        "description": description[:JIRA_DESCRIPTION_CHAR_LIMIT],
         "project": {"key": jira_project_key},
     }
     if sync_whiteboard_labels:

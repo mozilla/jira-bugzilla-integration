@@ -7,8 +7,8 @@ from unittest import mock
 import pytest
 
 from jbi.actions import default
-from jbi.services.jira import JiraCreateError
 from jbi.models import BugzillaWebhookRequest
+from jbi.services.jira import JiraCreateError
 from tests.fixtures.factories import bug_factory, comment_factory
 
 
