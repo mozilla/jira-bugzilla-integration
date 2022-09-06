@@ -9,7 +9,12 @@ import requests
 from pydantic import parse_obj_as
 
 from jbi import Operation, environment
-from jbi.models import BugzillaApiResponse, BugzillaBug, BugzillaComment
+from jbi.models import (
+    ActionLogContext,
+    BugzillaApiResponse,
+    BugzillaBug,
+    BugzillaComment,
+)
 
 from .common import InstrumentedClient, ServiceHealth
 
@@ -122,7 +127,7 @@ def check_health() -> ServiceHealth:
     return health
 
 
-def add_link_to_jira(context, bug, issue_key):
+def add_link_to_jira(context: ActionLogContext, bug: BugzillaBug, issue_key: str):
     """Add link to Jira in Bugzilla ticket"""
     jira_url = f"{settings.jira_base_url}browse/{issue_key}"
     logger.debug(

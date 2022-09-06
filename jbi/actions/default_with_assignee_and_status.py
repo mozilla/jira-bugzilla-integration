@@ -106,7 +106,7 @@ class AssigneeAndStatusExecutor:
             if bug.is_assigned():
                 try:
                     resp = jira.assign_jira_user(
-                        log_context, linked_issue_key, bug.assigned_to
+                        log_context, linked_issue_key, bug.assigned_to  # type: ignore
                     )
                     responses.append(resp)
                 except ValueError as exc:
@@ -140,7 +140,7 @@ class AssigneeAndStatusExecutor:
                 else:
                     try:
                         resp = jira.assign_jira_user(
-                            log_context, linked_issue_key, bug.assigned_to
+                            log_context, linked_issue_key, bug.assigned_to  # type: ignore
                         )
                     except ValueError as exc:
                         logger.debug(str(exc), extra=log_context.dict())

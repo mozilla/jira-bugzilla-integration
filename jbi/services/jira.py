@@ -8,12 +8,17 @@ import concurrent.futures
 import json
 import logging
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
 
 from atlassian import Jira, errors
 
 from jbi import Operation, environment
-from jbi.models import BugzillaWebhookComment
+from jbi.models import (
+    ActionLogContext,
+    BugzillaBug,
+    BugzillaWebhookComment,
+    BugzillaWebhookEvent,
+)
 
 from .common import InstrumentedClient, ServiceHealth
 
@@ -149,7 +154,11 @@ class JiraCreateError(Exception):
 
 
 def create_jira_issue(
-    context, bug, description, jira_project_key, sync_whiteboard_labels
+    context: ActionLogContext,
+    bug: BugzillaBug,
+    description: str,
+    jira_project_key: str,
+    sync_whiteboard_labels: bool,
 ) -> str:
     """Create a Jira issue with the specified fields and return its key."""
     logger.debug(
@@ -203,7 +212,10 @@ def update_jira_issue(context, bug, issue_key, sync_whiteboard_labels):
 
 
 def add_jira_comment(
-    context, issue_key, commenter: str, comment: BugzillaWebhookComment
+    context: ActionLogContext,
+    issue_key: str,
+    commenter: str,
+    comment: BugzillaWebhookComment,
 ):
     """Publish a comment on the specified Jira issue"""
     formatted_comment = f"*({commenter})* commented: \n{{quote}}{comment.body}{{quote}}"
@@ -219,7 +231,12 @@ def add_jira_comment(
     return jira_response
 
 
-def add_jira_comments_for_changes(log_context, event, bug, linked_issue_key):
+def add_jira_comments_for_changes(
+    log_context: ActionLogContext,
+    event: BugzillaWebhookEvent,
+    bug: BugzillaBug,
+    linked_issue_key: str,
+):
     """Add comments on the specified Jira issue for each change of the event"""
     comments: list = []
     user = event.user.login if event.user else "unknown"
@@ -251,7 +268,9 @@ def add_jira_comments_for_changes(log_context, event, bug, linked_issue_key):
     return jira_response_comments
 
 
-def delete_jira_issue_if_duplicate(context, bug, issue_key):
+def delete_jira_issue_if_duplicate(
+    context: ActionLogContext, bug: BugzillaBug, issue_key: str
+):
     """Rollback the Jira issue creation if there is already a linked Jira issue
     on the Bugzilla ticket"""
     # In the time taken to create the Jira issue the bug may have been updated so
@@ -273,7 +292,7 @@ def delete_jira_issue_if_duplicate(context, bug, issue_key):
     return jira_response_delete
 
 
-def add_link_to_bugzilla(context, issue_key, bug):
+def add_link_to_bugzilla(context: ActionLogContext, issue_key: str, bug: BugzillaBug):
     """Add link to Bugzilla ticket in Jira issue"""
     bugzilla_url = f"{settings.bugzilla_base_url}/show_bug.cgi?id={bug.id}"
     logger.debug(
@@ -292,13 +311,13 @@ def add_link_to_bugzilla(context, issue_key, bug):
     )
 
 
-def clear_assignee(context, issue_key):
+def clear_assignee(context: ActionLogContext, issue_key: str):
     """Clear the assignee of the specified Jira issue."""
     logger.debug("Clearing assignee", extra=context.dict())
     return get_client().update_issue_field(key=issue_key, fields={"assignee": None})
 
 
-def find_jira_user(context, email):
+def find_jira_user(context: ActionLogContext, email: str):
     """Lookup Jira users, raise an error if not exactly one found."""
     logger.debug("Find Jira user with email %s", email, extra=context.dict())
     users = get_client().user_find_by_user_string(query=email)
@@ -307,7 +326,7 @@ def find_jira_user(context, email):
     return users[0]
 
 
-def assign_jira_user(context, issue_key, email):
+def assign_jira_user(context: ActionLogContext, issue_key: str, email: str):
     """Set the assignee of the specified Jira issue, raise if fails."""
     jira_user = find_jira_user(context, email)
     jira_user_id = jira_user["accountId"]
@@ -325,7 +344,9 @@ def assign_jira_user(context, issue_key, email):
         ) from exc
 
 
-def maybe_update_issue_status(context, issue_key, jira_status):
+def maybe_update_issue_status(
+    context: ActionLogContext, issue_key: str, jira_status: Optional[str]
+):
     """Update the status of the Jira issue or no-op if None."""
     if jira_status:
         logger.debug(
@@ -347,7 +368,9 @@ def maybe_update_issue_status(context, issue_key, jira_status):
     return None
 
 
-def maybe_update_issue_resolution(context, issue_key, jira_resolution):
+def maybe_update_issue_resolution(
+    context: ActionLogContext, issue_key: str, jira_resolution: Optional[str]
+):
     """Update the resolution of the Jira issue or no-op if None."""
     if jira_resolution:
         logger.debug(
