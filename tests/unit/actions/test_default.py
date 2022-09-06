@@ -7,7 +7,7 @@ from unittest import mock
 import pytest
 
 from jbi.actions import default
-from jbi.errors import ActionError
+from jbi.services.jira import JiraCreateError
 from jbi.models import BugzillaWebhookRequest
 from tests.fixtures.factories import bug_factory, comment_factory
 
@@ -142,12 +142,12 @@ def test_jira_returns_an_error(
     ]
     callable_object = default.init(jira_project_key="")
 
-    with pytest.raises(ActionError) as exc_info:
+    with pytest.raises(JiraCreateError) as exc_info:
         callable_object(
             bug=webhook_create_example.bug, event=webhook_create_example.event
         )
 
-    assert str(exc_info.value) == "response contains error: {'errors': ['Boom']}"
+    assert str(exc_info.value) == "Boom"
 
 
 def test_disabled_label_field(

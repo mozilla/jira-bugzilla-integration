@@ -105,7 +105,7 @@ class AssigneeAndStatusExecutor:
 
             if bug.is_assigned():
                 try:
-                    resp = assign_jira_user(
+                    resp = jira.assign_jira_user(
                         log_context, linked_issue_key, bug.assigned_to
                     )
                     responses.append(resp)
@@ -113,7 +113,7 @@ class AssigneeAndStatusExecutor:
                     logger.debug(str(exc), extra=log_context.dict())
 
             jira_resolution = self.resolution_map.get(bug.resolution)
-            if resp := maybe_update_issue_resolution(
+            if resp := jira.maybe_update_issue_resolution(
                 log_context, linked_issue_key, jira_resolution
             ):
                 responses.append(resp)
@@ -121,7 +121,7 @@ class AssigneeAndStatusExecutor:
             # We use resolution if one exists or status otherwise.
             bz_status = bug.resolution or bug.status
             jira_status = self.status_map.get(bz_status)
-            if resp := maybe_update_issue_status(
+            if resp := jira.maybe_update_issue_status(
                 log_context, linked_issue_key, jira_status
             ):
                 responses.append(resp)
@@ -136,21 +136,21 @@ class AssigneeAndStatusExecutor:
 
             if "assigned_to" in changed_fields:
                 if not bug.is_assigned():
-                    resp = clear_assignee(log_context, linked_issue_key)
+                    resp = jira.clear_assignee(log_context, linked_issue_key)
                 else:
                     try:
-                        resp = assign_jira_user(
+                        resp = jira.assign_jira_user(
                             log_context, linked_issue_key, bug.assigned_to
                         )
                     except ValueError as exc:
                         logger.debug(str(exc), extra=log_context.dict())
                         # If that failed then just fall back to clearing the assignee.
-                        resp = clear_assignee(log_context, linked_issue_key)
+                        resp = jira.clear_assignee(log_context, linked_issue_key)
                 responses.append(resp)
 
             if "resolution" in changed_fields:
                 jira_resolution = self.resolution_map.get(bug.resolution)
-                if resp := maybe_update_issue_resolution(
+                if resp := jira.maybe_update_issue_resolution(
                     log_context, linked_issue_key, jira_resolution
                 ):
                     responses.append(resp)
@@ -158,7 +158,7 @@ class AssigneeAndStatusExecutor:
             if "status" in changed_fields or "resolution" in changed_fields:
                 bz_status = bug.resolution or bug.status
                 jira_status = self.status_map.get(bz_status)
-                if resp := maybe_update_issue_status(
+                if resp := jira.maybe_update_issue_status(
                     log_context, linked_issue_key, jira_status
                 ):
                     responses.append(resp)
@@ -171,81 +171,3 @@ class AssigneeAndStatusExecutor:
             extra=log_context.dict(),
         )
         return False, {}
-
-
-def clear_assignee(context, issue_key):
-    """Clear the assignee of the specified Jira issue."""
-    logger.debug("Clearing assignee", extra=context.dict())
-    return jira.get_client().update_issue_field(
-        key=issue_key, fields={"assignee": None}
-    )
-
-
-def find_jira_user(context, bugzilla_assignee):
-    """Lookup Jira users, raise an error if not exactly one found."""
-    users = jira.get_client().user_find_by_user_string(query=bugzilla_assignee)
-    if len(users) != 1:
-        raise ValueError(f"User {bugzilla_assignee} not found")
-    return users[0]
-
-
-def assign_jira_user(context, issue_key, bugzilla_assignee):
-    """Set the assignee of the specified Jira issue, raise if fails."""
-    jira_user = find_jira_user(context, bugzilla_assignee)
-    jira_user_id = jira_user["accountId"]
-    try:
-        # There doesn't appear to be an easy way to verify that
-        # this user can be assigned to this issue, so just try
-        # and do it.
-        return jira.get_client().update_issue_field(
-            key=issue_key,
-            fields={"assignee": {"accountId": jira_user_id}},
-        )
-    except IOError as exc:
-        raise ValueError(
-            f"Could not assign {jira_user_id} to issue {issue_key}"
-        ) from exc
-
-
-def maybe_update_issue_status(context, issue_key, jira_status):
-    """Update the status of the Jira issue or no-op if None."""
-    if jira_status:
-        logger.debug(
-            "Updating Jira status to %s",
-            jira_status,
-            extra=context.dict(),
-        )
-        return jira.get_client().set_issue_status(
-            issue_key,
-            jira_status,
-        )
-
-    logger.debug(
-        "Bug status was not in the status map.",
-        extra=context.update(
-            operation=Operation.IGNORE,
-        ).dict(),
-    )
-    return None
-
-
-def maybe_update_issue_resolution(context, issue_key, jira_resolution):
-    """Update the resolution of the Jira issue or no-op if None."""
-    if jira_resolution:
-        logger.debug(
-            "Updating Jira resolution to %s",
-            jira_resolution,
-            extra=context.dict(),
-        )
-        return jira.get_client().update_issue_field(
-            key=issue_key,
-            fields={"resolution": jira_resolution},
-        )
-
-    logger.debug(
-        "Bug resolution was not in the resolution map.",
-        extra=context.update(
-            operation=Operation.IGNORE,
-        ).dict(),
-    )
-    return None

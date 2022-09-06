@@ -6,27 +6,18 @@ labels generated from the Bugzilla status whiteboard.
 
 `init` should return a __call__able
 """
-import json
 import logging
-from typing import Any, Optional
+from typing import Optional
 
 from jbi import ActionResult, Operation
 from jbi.environment import get_settings
-from jbi.errors import ActionError
-from jbi.models import (
-    ActionLogContext,
-    BugzillaBug,
-    BugzillaWebhookComment,
-    BugzillaWebhookEvent,
-    JiraContext,
-)
+from jbi.models import ActionLogContext, BugzillaBug, BugzillaWebhookEvent, JiraContext
 from jbi.services import bugzilla, jira
 
 settings = get_settings()
 
 logger = logging.getLogger(__name__)
 
-JIRA_DESCRIPTION_CHAR_LIMIT = 32767
 JIRA_REQUIRED_PERMISSIONS = {
     "ADD_COMMENTS",
     "CREATE_ISSUES",
@@ -89,7 +80,7 @@ class DefaultExecutor:
             **operation_kwargs, sync_whiteboard_labels=self.sync_whiteboard_labels
         ):
             context, responses = result
-            comments_responses = add_jira_comments_for_changes(
+            comments_responses = jira.add_jira_comments_for_changes(
                 **{**operation_kwargs, "log_context": context}
             )
             return True, {"responses": responses + comments_responses}
@@ -121,7 +112,7 @@ def maybe_create_comment(
 
     log_context = log_context.update(operation=Operation.COMMENT)
     commenter = event.user.login if event.user else "unknown"
-    jira_response = add_jira_comment(
+    jira_response = jira.add_jira_comment(
         log_context, linked_issue_key, commenter, bug.comment
     )
     return log_context, [jira_response]
@@ -140,7 +131,7 @@ def maybe_create_issue(
         return None
 
     log_context = log_context.update(operation=Operation.CREATE)
-    issue_key = create_jira_issue(
+    issue_key = jira.create_jira_issue(
         log_context,
         bug,
         jira_project_key,
@@ -150,13 +141,15 @@ def maybe_create_issue(
     log_context.jira.issue = issue_key
 
     bug = bugzilla.get_client().get_bug(bug.id)
-    jira_response_delete = delete_jira_issue_if_duplicate(log_context, bug, issue_key)
+    jira_response_delete = jira.delete_jira_issue_if_duplicate(
+        log_context, bug, issue_key
+    )
     if jira_response_delete:
         return jira_response_delete
 
-    bugzilla_response = add_link_to_jira(log_context, bug, issue_key)
+    bugzilla_response = bugzilla.add_link_to_jira(log_context, bug, issue_key)
 
-    jira_response = add_link_to_bugzilla(log_context, issue_key, bug)
+    jira_response = jira.add_link_to_bugzilla(log_context, issue_key, bug)
 
     return log_context, [bugzilla_response, jira_response]
 
@@ -179,167 +172,8 @@ def maybe_update_issue(
             "changed_fields": ", ".join(changed_fields),
         },
     )
-    jira_response_update = update_jira_issue(
+    jira_response_update = jira.update_jira_issue(
         log_context, bug, linked_issue_key, sync_whiteboard_labels
     )
 
     return log_context, [jira_response_update]
-
-
-def create_jira_issue(context, bug, jira_project_key, sync_whiteboard_labels) -> str:
-    """Create a Jira issue with the specified fields and return its key."""
-    logger.debug(
-        "Create new Jira issue for Bug %s",
-        bug.id,
-        extra=context.dict(),
-    )
-    comment_list = bugzilla.get_client().get_comments(bug.id)
-    description = comment_list[0].text[:JIRA_DESCRIPTION_CHAR_LIMIT]
-    fields: dict[str, Any] = {
-        "summary": bug.summary,
-        "issuetype": {"name": bug.issue_type()},
-        "description": description,
-        "project": {"key": jira_project_key},
-    }
-    if sync_whiteboard_labels:
-        fields["labels"] = bug.get_jira_labels()
-
-    jira_response_create = jira.get_client().create_issue(fields=fields)
-
-    # Jira response can be of the form: List or Dictionary
-    if isinstance(jira_response_create, list):
-        # if a list is returned, get the first item
-        jira_response_create = jira_response_create[0]
-
-    if isinstance(jira_response_create, dict):
-        # if a dict is returned or the first item in a list, confirm there are no errors
-        if any(
-            element in ["errors", "errorMessages"] and jira_response_create[element]
-            for element in jira_response_create.keys()
-        ):
-            raise ActionError(f"response contains error: {jira_response_create}")
-
-    issue_key: str = jira_response_create.get("key")
-    return issue_key
-
-
-def update_jira_issue(context, bug, issue_key, sync_whiteboard_labels):
-    """Update the fields of an existing Jira issue"""
-    logger.debug(
-        "Update fields of Jira issue %s for Bug %s",
-        issue_key,
-        bug.id,
-        extra=context.dict(),
-    )
-    fields = {
-        "summary": bug.summary,
-    }
-    if sync_whiteboard_labels:
-        fields["labels"] = bug.get_jira_labels()
-
-    jira_response_update = jira.get_client().update_issue_field(
-        key=issue_key, fields=fields
-    )
-    return jira_response_update
-
-
-def add_jira_comment(
-    context, issue_key, commenter: str, comment: BugzillaWebhookComment
-):
-    """Publish a comment on the specified Jira issue"""
-    formatted_comment = f"*({commenter})* commented: \n{{quote}}{comment.body}{{quote}}"
-    jira_response = jira.get_client().issue_add_comment(
-        issue_key=issue_key,
-        comment=formatted_comment,
-    )
-    logger.debug(
-        "User comment added to Jira issue %s",
-        issue_key,
-        extra=context.dict(),
-    )
-    return jira_response
-
-
-def add_jira_comments_for_changes(log_context, event, bug, linked_issue_key):
-    """Add comments on the specified Jira issue for each change of the event"""
-    comments: list = []
-    user = event.user.login if event.user else "unknown"
-    for change in event.changes or []:
-        if change.field in ["status", "resolution"]:
-            comments.append(
-                {
-                    "modified by": user,
-                    "resolution": bug.resolution,
-                    "status": bug.status,
-                }
-            )
-        if change.field in ["assigned_to", "assignee"]:
-            comments.append({"assignee": bug.assigned_to})
-
-    jira_response_comments = []
-    for i, comment in enumerate(comments):
-        logger.debug(
-            "Create comment #%s on Jira issue %s",
-            i + 1,
-            linked_issue_key,
-            extra=log_context.update(operation=Operation.COMMENT).dict(),
-        )
-        jira_response = jira.get_client().issue_add_comment(
-            issue_key=linked_issue_key, comment=json.dumps(comment, indent=4)
-        )
-        jira_response_comments.append(jira_response)
-
-    return jira_response_comments
-
-
-def delete_jira_issue_if_duplicate(context, bug, issue_key):
-    """Rollback the Jira issue creation if there is already a linked Jira issue
-    on the Bugzilla ticket"""
-    # In the time taken to create the Jira issue the bug may have been updated so
-    # re-retrieve it to ensure we have the latest data.
-    jira_key_in_bugzilla = bug.extract_from_see_also()
-    _duplicate_creation_event = (
-        jira_key_in_bugzilla is not None and issue_key != jira_key_in_bugzilla
-    )
-    if not _duplicate_creation_event:
-        return None
-
-    logger.warning(
-        "Delete duplicated Jira issue %s from Bug %s",
-        issue_key,
-        bug.id,
-        extra=context.update(operation=Operation.DELETE).dict(),
-    )
-    jira_response_delete = jira.get_client().delete_issue(issue_id_or_key=issue_key)
-    return jira_response_delete
-
-
-def add_link_to_jira(context, bug, issue_key):
-    """Add link to Jira in Bugzilla ticket"""
-    jira_url = f"{settings.jira_base_url}browse/{issue_key}"
-    logger.debug(
-        "Link %r on Bug %s",
-        jira_url,
-        bug.id,
-        extra=context.update(operation=Operation.LINK).dict(),
-    )
-    return bugzilla.get_client().update_bug(bug.id, see_also_add=jira_url)
-
-
-def add_link_to_bugzilla(context, issue_key, bug):
-    """Add link to Bugzilla ticket in Jira issue"""
-    bugzilla_url = f"{settings.bugzilla_base_url}/show_bug.cgi?id={bug.id}"
-    logger.debug(
-        "Link %r on Jira issue %s",
-        bugzilla_url,
-        issue_key,
-        extra=context.update(operation=Operation.LINK).dict(),
-    )
-    icon_url = f"{settings.bugzilla_base_url}/favicon.ico"
-    return jira.get_client().create_or_update_issue_remote_links(
-        issue_key=issue_key,
-        link_url=bugzilla_url,
-        title=bugzilla_url,
-        icon_url=icon_url,
-        icon_title=icon_url,
-    )
