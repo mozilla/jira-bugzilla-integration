@@ -47,7 +47,7 @@ class DefaultExecutor:
         """Called from BZ webhook when default action is used. All default-action webhook-events are processed here."""
         linked_issue_key = bug.extract_from_see_also()
 
-        log_context = ActionContext(
+        context = ActionContext(
             event=event,
             bug=bug,
             operation=Operation.IGNORE,
@@ -58,7 +58,7 @@ class DefaultExecutor:
         )
 
         operation_kwargs = dict(
-            log_context=log_context,
+            context=context,
             bug=bug,
             event=event,
             linked_issue_key=linked_issue_key,
@@ -80,21 +80,20 @@ class DefaultExecutor:
             **operation_kwargs, sync_whiteboard_labels=self.sync_whiteboard_labels
         ):
             context, responses = result
-            comments_responses = jira.add_jira_comments_for_changes(
-                **{**operation_kwargs, "log_context": context}
-            )
+            operation_kwargs.update(context=context)
+            comments_responses = jira.add_jira_comments_for_changes(**operation_kwargs)
             return True, {"responses": responses + comments_responses}
 
         logger.debug(
             "Ignore event target %r",
             event.target,
-            extra=log_context.dict(),
+            extra=context.dict(),
         )
         return False, {}
 
 
 def maybe_create_comment(
-    log_context: ActionContext,
+    context: ActionContext,
     bug: BugzillaBug,
     event: BugzillaWebhookEvent,
     linked_issue_key: Optional[str],
@@ -106,20 +105,20 @@ def maybe_create_comment(
     if bug.comment is None:
         logger.debug(
             "No matching comment found in payload",
-            extra=log_context.dict(),
+            extra=context.dict(),
         )
         return None
 
-    log_context = log_context.update(operation=Operation.COMMENT)
+    context = context.update(operation=Operation.COMMENT)
     commenter = event.user.login if event.user else "unknown"
     jira_response = jira.add_jira_comment(
-        log_context, linked_issue_key, commenter, bug.comment
+        context, linked_issue_key, commenter, bug.comment
     )
-    return log_context, [jira_response]
+    return context, [jira_response]
 
 
 def maybe_create_issue(
-    log_context: ActionContext,
+    context: ActionContext,
     bug: BugzillaBug,
     event: BugzillaWebhookEvent,
     linked_issue_key: Optional[str],
@@ -130,7 +129,7 @@ def maybe_create_issue(
     if event.target != "bug" or linked_issue_key:
         return None
 
-    log_context = log_context.update(operation=Operation.CREATE)
+    context = context.update(operation=Operation.CREATE)
 
     # In the payload of a bug creation, the `comment` field is `null`.
     # We fetch the list of comments to use the first one as the Jira issue description.
@@ -138,31 +137,29 @@ def maybe_create_issue(
     description = comment_list[0].text if comment_list else ""
 
     issue_key = jira.create_jira_issue(
-        log_context,
+        context,
         bug,
         description,
         jira_project_key,
         sync_whiteboard_labels=sync_whiteboard_labels,
     )
 
-    log_context.jira.issue = issue_key
+    context.jira.issue = issue_key
 
     bug = bugzilla.get_client().get_bug(bug.id)
-    jira_response_delete = jira.delete_jira_issue_if_duplicate(
-        log_context, bug, issue_key
-    )
+    jira_response_delete = jira.delete_jira_issue_if_duplicate(context, bug, issue_key)
     if jira_response_delete:
         return jira_response_delete
 
-    bugzilla_response = bugzilla.add_link_to_jira(log_context, bug, issue_key)
+    bugzilla_response = bugzilla.add_link_to_jira(context, bug, issue_key)
 
-    jira_response = jira.add_link_to_bugzilla(log_context, issue_key, bug)
+    jira_response = jira.add_link_to_bugzilla(context, issue_key, bug)
 
-    return log_context, [bugzilla_response, jira_response]
+    return context, [bugzilla_response, jira_response]
 
 
 def maybe_update_issue(
-    log_context: ActionContext,
+    context: ActionContext,
     bug: BugzillaBug,
     event: BugzillaWebhookEvent,
     linked_issue_key: Optional[str],
@@ -173,14 +170,14 @@ def maybe_update_issue(
         return None
 
     changed_fields = event.changed_fields() or []
-    log_context = log_context.update(
+    context = context.update(
         operation=Operation.UPDATE,
         extra={
             "changed_fields": ", ".join(changed_fields),
         },
     )
     jira_response_update = jira.update_jira_issue(
-        log_context, bug, linked_issue_key, sync_whiteboard_labels
+        context, bug, linked_issue_key, sync_whiteboard_labels
     )
 
-    return log_context, [jira_response_update]
+    return context, [jira_response_update]

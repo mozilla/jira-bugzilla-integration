@@ -350,7 +350,7 @@ class JiraContext(BaseModel):
 BugId = TypedDict("BugId", {"id": Optional[int]})
 
 
-class LogContext(BaseModel):
+class Context(BaseModel):
     """Generic log context throughout JBI"""
 
     def update(self, **kwargs):
@@ -358,7 +358,7 @@ class LogContext(BaseModel):
         return self.copy(update=kwargs)
 
 
-class RunnerLogContext(LogContext, extra=Extra.forbid):
+class RunnerContext(Context, extra=Extra.forbid):
     """Logging context from runner"""
 
     operation: Operation
@@ -367,7 +367,7 @@ class RunnerLogContext(LogContext, extra=Extra.forbid):
     bug: BugId | BugzillaBug
 
 
-class ActionContext(LogContext, extra=Extra.forbid):
+class ActionContext(Context, extra=Extra.forbid):
     """Logging context from actions"""
 
     operation: Operation

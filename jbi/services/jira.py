@@ -232,7 +232,7 @@ def add_jira_comment(
 
 
 def add_jira_comments_for_changes(
-    log_context: ActionContext,
+    context: ActionContext,
     event: BugzillaWebhookEvent,
     bug: BugzillaBug,
     linked_issue_key: str,
@@ -258,7 +258,7 @@ def add_jira_comments_for_changes(
             "Create comment #%s on Jira issue %s",
             i + 1,
             linked_issue_key,
-            extra=log_context.update(operation=Operation.COMMENT).dict(),
+            extra=context.update(operation=Operation.COMMENT).dict(),
         )
         jira_response = get_client().issue_add_comment(
             issue_key=linked_issue_key, comment=json.dumps(comment, indent=4)

@@ -69,7 +69,7 @@ class AssigneeAndStatusExecutor:
         """Called from BZ webhook when default action is used. All default-action webhook-events are processed here."""
         linked_issue_key = bug.extract_from_see_also()
 
-        log_context = ActionContext(
+        context = ActionContext(
             event=event,
             bug=bug,
             operation=Operation.IGNORE,
@@ -84,7 +84,7 @@ class AssigneeAndStatusExecutor:
         )
 
         operation_kwargs = dict(
-            log_context=log_context,
+            context=context,
             bug=bug,
             event=event,
             linked_issue_key=linked_issue_key,
@@ -99,22 +99,22 @@ class AssigneeAndStatusExecutor:
             sync_whiteboard_labels=self.sync_whiteboard_labels,
             **operation_kwargs,
         ):
-            log_context, responses = result
+            context, responses = result
 
-            linked_issue_key = log_context.jira.issue  # not great
+            linked_issue_key = context.jira.issue  # not great
 
             if bug.is_assigned():
                 try:
                     resp = jira.assign_jira_user(
-                        log_context, linked_issue_key, bug.assigned_to  # type: ignore
+                        context, linked_issue_key, bug.assigned_to  # type: ignore
                     )
                     responses.append(resp)
                 except ValueError as exc:
-                    logger.debug(str(exc), extra=log_context.dict())
+                    logger.debug(str(exc), extra=context.dict())
 
             jira_resolution = self.resolution_map.get(bug.resolution)
             if resp := jira.maybe_update_issue_resolution(
-                log_context, linked_issue_key, jira_resolution
+                context, linked_issue_key, jira_resolution
             ):
                 responses.append(resp)
 
@@ -122,7 +122,7 @@ class AssigneeAndStatusExecutor:
             bz_status = bug.resolution or bug.status
             jira_status = self.status_map.get(bz_status)
             if resp := jira.maybe_update_issue_status(
-                log_context, linked_issue_key, jira_status
+                context, linked_issue_key, jira_status
             ):
                 responses.append(resp)
             return True, {"responses": responses}
@@ -130,28 +130,28 @@ class AssigneeAndStatusExecutor:
         if result := maybe_update_issue(
             **operation_kwargs, sync_whiteboard_labels=self.sync_whiteboard_labels
         ):
-            log_context, responses = result
+            context, responses = result
 
             changed_fields = event.changed_fields() or []
 
             if "assigned_to" in changed_fields:
                 if not bug.is_assigned():
-                    resp = jira.clear_assignee(log_context, linked_issue_key)
+                    resp = jira.clear_assignee(context, linked_issue_key)
                 else:
                     try:
                         resp = jira.assign_jira_user(
-                            log_context, linked_issue_key, bug.assigned_to  # type: ignore
+                            context, linked_issue_key, bug.assigned_to  # type: ignore
                         )
                     except ValueError as exc:
-                        logger.debug(str(exc), extra=log_context.dict())
+                        logger.debug(str(exc), extra=context.dict())
                         # If that failed then just fall back to clearing the assignee.
-                        resp = jira.clear_assignee(log_context, linked_issue_key)
+                        resp = jira.clear_assignee(context, linked_issue_key)
                 responses.append(resp)
 
             if "resolution" in changed_fields:
                 jira_resolution = self.resolution_map.get(bug.resolution)
                 if resp := jira.maybe_update_issue_resolution(
-                    log_context, linked_issue_key, jira_resolution
+                    context, linked_issue_key, jira_resolution
                 ):
                     responses.append(resp)
 
@@ -159,7 +159,7 @@ class AssigneeAndStatusExecutor:
                 bz_status = bug.resolution or bug.status
                 jira_status = self.status_map.get(bz_status)
                 if resp := jira.maybe_update_issue_status(
-                    log_context, linked_issue_key, jira_status
+                    context, linked_issue_key, jira_status
                 ):
                     responses.append(resp)
 
@@ -168,6 +168,6 @@ class AssigneeAndStatusExecutor:
         logger.debug(
             "Ignore event target %r",
             event.target,
-            extra=log_context.dict(),
+            extra=context.dict(),
         )
         return False, {}
