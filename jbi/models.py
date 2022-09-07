@@ -367,7 +367,7 @@ class RunnerLogContext(LogContext, extra=Extra.forbid):
     bug: BugId | BugzillaBug
 
 
-class ActionLogContext(LogContext, extra=Extra.forbid):
+class ActionContext(LogContext, extra=Extra.forbid):
     """Logging context from actions"""
 
     operation: Operation

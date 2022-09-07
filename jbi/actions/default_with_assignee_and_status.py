@@ -18,7 +18,7 @@ from jbi.actions.default import (
     maybe_create_issue,
     maybe_update_issue,
 )
-from jbi.models import ActionLogContext, BugzillaBug, BugzillaWebhookEvent, JiraContext
+from jbi.models import ActionContext, BugzillaBug, BugzillaWebhookEvent, JiraContext
 from jbi.services import jira
 
 logger = logging.getLogger(__name__)
@@ -69,7 +69,7 @@ class AssigneeAndStatusExecutor:
         """Called from BZ webhook when default action is used. All default-action webhook-events are processed here."""
         linked_issue_key = bug.extract_from_see_also()
 
-        log_context = ActionLogContext(
+        log_context = ActionContext(
             event=event,
             bug=bug,
             operation=Operation.IGNORE,

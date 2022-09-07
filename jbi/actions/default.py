@@ -11,7 +11,7 @@ from typing import Optional
 
 from jbi import ActionResult, Operation
 from jbi.environment import get_settings
-from jbi.models import ActionLogContext, BugzillaBug, BugzillaWebhookEvent, JiraContext
+from jbi.models import ActionContext, BugzillaBug, BugzillaWebhookEvent, JiraContext
 from jbi.services import bugzilla, jira
 
 settings = get_settings()
@@ -47,7 +47,7 @@ class DefaultExecutor:
         """Called from BZ webhook when default action is used. All default-action webhook-events are processed here."""
         linked_issue_key = bug.extract_from_see_also()
 
-        log_context = ActionLogContext(
+        log_context = ActionContext(
             event=event,
             bug=bug,
             operation=Operation.IGNORE,
@@ -94,7 +94,7 @@ class DefaultExecutor:
 
 
 def maybe_create_comment(
-    log_context: ActionLogContext,
+    log_context: ActionContext,
     bug: BugzillaBug,
     event: BugzillaWebhookEvent,
     linked_issue_key: Optional[str],
@@ -119,7 +119,7 @@ def maybe_create_comment(
 
 
 def maybe_create_issue(
-    log_context: ActionLogContext,
+    log_context: ActionContext,
     bug: BugzillaBug,
     event: BugzillaWebhookEvent,
     linked_issue_key: Optional[str],
@@ -162,7 +162,7 @@ def maybe_create_issue(
 
 
 def maybe_update_issue(
-    log_context: ActionLogContext,
+    log_context: ActionContext,
     bug: BugzillaBug,
     event: BugzillaWebhookEvent,
     linked_issue_key: Optional[str],

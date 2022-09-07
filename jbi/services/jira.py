@@ -14,7 +14,7 @@ from atlassian import Jira, errors
 
 from jbi import Operation, environment
 from jbi.models import (
-    ActionLogContext,
+    ActionContext,
     BugzillaBug,
     BugzillaWebhookComment,
     BugzillaWebhookEvent,
@@ -154,7 +154,7 @@ class JiraCreateError(Exception):
 
 
 def create_jira_issue(
-    context: ActionLogContext,
+    context: ActionContext,
     bug: BugzillaBug,
     description: str,
     jira_project_key: str,
@@ -212,7 +212,7 @@ def update_jira_issue(context, bug, issue_key, sync_whiteboard_labels):
 
 
 def add_jira_comment(
-    context: ActionLogContext,
+    context: ActionContext,
     issue_key: str,
     commenter: str,
     comment: BugzillaWebhookComment,
@@ -232,7 +232,7 @@ def add_jira_comment(
 
 
 def add_jira_comments_for_changes(
-    log_context: ActionLogContext,
+    log_context: ActionContext,
     event: BugzillaWebhookEvent,
     bug: BugzillaBug,
     linked_issue_key: str,
@@ -269,7 +269,7 @@ def add_jira_comments_for_changes(
 
 
 def delete_jira_issue_if_duplicate(
-    context: ActionLogContext, bug: BugzillaBug, issue_key: str
+    context: ActionContext, bug: BugzillaBug, issue_key: str
 ):
     """Rollback the Jira issue creation if there is already a linked Jira issue
     on the Bugzilla ticket"""
@@ -292,7 +292,7 @@ def delete_jira_issue_if_duplicate(
     return jira_response_delete
 
 
-def add_link_to_bugzilla(context: ActionLogContext, issue_key: str, bug: BugzillaBug):
+def add_link_to_bugzilla(context: ActionContext, issue_key: str, bug: BugzillaBug):
     """Add link to Bugzilla ticket in Jira issue"""
     bugzilla_url = f"{settings.bugzilla_base_url}/show_bug.cgi?id={bug.id}"
     logger.debug(
@@ -311,13 +311,13 @@ def add_link_to_bugzilla(context: ActionLogContext, issue_key: str, bug: Bugzill
     )
 
 
-def clear_assignee(context: ActionLogContext, issue_key: str):
+def clear_assignee(context: ActionContext, issue_key: str):
     """Clear the assignee of the specified Jira issue."""
     logger.debug("Clearing assignee", extra=context.dict())
     return get_client().update_issue_field(key=issue_key, fields={"assignee": None})
 
 
-def find_jira_user(context: ActionLogContext, email: str):
+def find_jira_user(context: ActionContext, email: str):
     """Lookup Jira users, raise an error if not exactly one found."""
     logger.debug("Find Jira user with email %s", email, extra=context.dict())
     users = get_client().user_find_by_user_string(query=email)
@@ -326,7 +326,7 @@ def find_jira_user(context: ActionLogContext, email: str):
     return users[0]
 
 
-def assign_jira_user(context: ActionLogContext, issue_key: str, email: str):
+def assign_jira_user(context: ActionContext, issue_key: str, email: str):
     """Set the assignee of the specified Jira issue, raise if fails."""
     jira_user = find_jira_user(context, email)
     jira_user_id = jira_user["accountId"]
@@ -345,7 +345,7 @@ def assign_jira_user(context: ActionLogContext, issue_key: str, email: str):
 
 
 def maybe_update_issue_status(
-    context: ActionLogContext, issue_key: str, jira_status: Optional[str]
+    context: ActionContext, issue_key: str, jira_status: Optional[str]
 ):
     """Update the status of the Jira issue or no-op if None."""
     if jira_status:
@@ -369,7 +369,7 @@ def maybe_update_issue_status(
 
 
 def maybe_update_issue_resolution(
-    context: ActionLogContext, issue_key: str, jira_resolution: Optional[str]
+    context: ActionContext, issue_key: str, jira_resolution: Optional[str]
 ):
     """Update the resolution of the Jira issue or no-op if None."""
     if jira_resolution:
