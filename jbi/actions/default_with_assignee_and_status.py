@@ -8,6 +8,7 @@ Extended action that provides some additional features over the default:
 `init` should return a __call__able
 """
 import logging
+from typing import Optional
 
 from jbi import ActionResult, Operation
 from jbi.actions.default import (
@@ -83,91 +84,130 @@ class AssigneeAndStatusExecutor:
             },
         )
 
-        operation_kwargs = dict(
+        context, comment_responses = maybe_create_comment(context=context)
+        context, create_responses = maybe_create_issue(
+            sync_whiteboard_labels=self.sync_whiteboard_labels,
             context=context,
-            bug=bug,
-            event=event,
-            linked_issue_key=linked_issue_key,
+        )
+        context, update_responses = maybe_update_issue(
+            context=context, sync_whiteboard_labels=self.sync_whiteboard_labels
         )
 
-        if result := maybe_create_comment(**operation_kwargs):
-            _, responses = result
-            return True, responses
+        context, assign_responses = maybe_assign_jira_user(context=context)
 
-        if result := maybe_create_issue(
-            jira_project_key=self.jira_project_key,
-            sync_whiteboard_labels=self.sync_whiteboard_labels,
-            **operation_kwargs,
+        jira_resolution = self.resolution_map.get(bug.resolution)
+        context, resolution_responses = maybe_update_issue_resolution(
+            context=context, jira_resolution=jira_resolution
+        )
+
+        bz_status = bug.resolution or bug.status
+        jira_status = self.status_map.get(bz_status)
+        context, status_responses = maybe_update_issue_status(
+            context=context, jira_status=jira_status
+        )
+
+        is_noop = context.operation == Operation.IGNORE
+        if is_noop:
+            logger.debug(
+                "Ignore event target %r",
+                event.target,
+                extra=context.dict(),
+            )
+
+        return not is_noop, {
+            "responses": comment_responses
+            + create_responses
+            + update_responses
+            + assign_responses
+            + resolution_responses
+            + status_responses
+        }
+
+
+def maybe_assign_jira_user(context: ActionContext):
+    event = context.event
+    bug = context.bug
+    linked_issue_key = context.jira.issue
+
+    if context.operation == Operation.CREATE:
+        if not bug.is_assigned():
+            return context, ()
+
+        try:
+            resp = jira.assign_jira_user(
+                context, linked_issue_key, bug.assigned_to  # type: ignore
+            )
+            return context, (resp,)
+        except ValueError as exc:
+            logger.debug(str(exc), extra=context.dict())
+
+    if context.operation == Operation.UPDATE:
+        changed_fields = event.changed_fields() or []
+
+        if "assigned_to" not in changed_fields:
+            return context, ()
+
+        if not bug.is_assigned():
+            resp = jira.clear_assignee(context, linked_issue_key)
+        else:
+            try:
+                resp = jira.assign_jira_user(
+                    context, linked_issue_key, bug.assigned_to  # type: ignore
+                )
+            except ValueError as exc:
+                logger.debug(str(exc), extra=context.dict())
+                # If that failed then just fall back to clearing the assignee.
+                resp = jira.clear_assignee(context, linked_issue_key)
+        return context, (resp,)
+
+    return context, ()
+
+
+def maybe_update_issue_resolution(
+    context: ActionContext,
+    jira_resolution: Optional[str],
+):
+    event = context.event
+    linked_issue_key = context.jira.issue
+
+    if context.operation == Operation.CREATE:
+        if resp := jira.maybe_update_issue_resolution(
+            context, linked_issue_key, jira_resolution
         ):
-            context, responses = result
+            return context, (resp,)
 
-            linked_issue_key = context.jira.issue  # not great
+    if context.operation == Operation.UPDATE:
+        changed_fields = event.changed_fields() or []
 
-            if bug.is_assigned():
-                try:
-                    resp = jira.assign_jira_user(
-                        context, linked_issue_key, bug.assigned_to  # type: ignore
-                    )
-                    responses.append(resp)
-                except ValueError as exc:
-                    logger.debug(str(exc), extra=context.dict())
-
-            jira_resolution = self.resolution_map.get(bug.resolution)
+        if "resolution" in changed_fields:
             if resp := jira.maybe_update_issue_resolution(
                 context, linked_issue_key, jira_resolution
             ):
-                responses.append(resp)
+                return context, (resp,)
 
-            # We use resolution if one exists or status otherwise.
-            bz_status = bug.resolution or bug.status
-            jira_status = self.status_map.get(bz_status)
+    return context, ()
+
+
+def maybe_update_issue_status(
+    context: ActionContext,
+    jira_status: Optional[str],
+):
+    event = context.event
+    linked_issue_key = context.jira.issue
+
+    if context.operation == Operation.CREATE:
+        if resp := jira.maybe_update_issue_status(
+            context, linked_issue_key, jira_status
+        ):
+            return context, (resp,)
+
+    if context.operation == Operation.UPDATE:
+        changed_fields = event.changed_fields() or []
+
+        if "status" in changed_fields or "resolution" in changed_fields:
             if resp := jira.maybe_update_issue_status(
                 context, linked_issue_key, jira_status
             ):
-                responses.append(resp)
-            return True, {"responses": responses}
+                return context, (resp,)
 
-        if result := maybe_update_issue(
-            **operation_kwargs, sync_whiteboard_labels=self.sync_whiteboard_labels
-        ):
-            context, responses = result
-
-            changed_fields = event.changed_fields() or []
-
-            if "assigned_to" in changed_fields:
-                if not bug.is_assigned():
-                    resp = jira.clear_assignee(context, linked_issue_key)
-                else:
-                    try:
-                        resp = jira.assign_jira_user(
-                            context, linked_issue_key, bug.assigned_to  # type: ignore
-                        )
-                    except ValueError as exc:
-                        logger.debug(str(exc), extra=context.dict())
-                        # If that failed then just fall back to clearing the assignee.
-                        resp = jira.clear_assignee(context, linked_issue_key)
-                responses.append(resp)
-
-            if "resolution" in changed_fields:
-                jira_resolution = self.resolution_map.get(bug.resolution)
-                if resp := jira.maybe_update_issue_resolution(
-                    context, linked_issue_key, jira_resolution
-                ):
-                    responses.append(resp)
-
-            if "status" in changed_fields or "resolution" in changed_fields:
-                bz_status = bug.resolution or bug.status
-                jira_status = self.status_map.get(bz_status)
-                if resp := jira.maybe_update_issue_status(
-                    context, linked_issue_key, jira_status
-                ):
-                    responses.append(resp)
-
-            return True, {"responses": responses}
-
-        logger.debug(
-            "Ignore event target %r",
-            event.target,
-            extra=context.dict(),
-        )
-        return False, {}
+    return context, ()

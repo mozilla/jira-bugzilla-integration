@@ -8,6 +8,7 @@ labels generated from the Bugzilla status whiteboard.
 """
 import logging
 from typing import Optional
+from webbrowser import Opera
 
 from jbi import ActionResult, Operation
 from jbi.environment import get_settings
@@ -57,77 +58,77 @@ class DefaultExecutor:
             ),
         )
 
-        operation_kwargs = dict(
+        context, comment_responses = maybe_create_comment(context=context)
+        context, create_responses = maybe_create_issue(
             context=context,
-            bug=bug,
-            event=event,
-            linked_issue_key=linked_issue_key,
-        )
-
-        if result := maybe_create_comment(**operation_kwargs):
-            _, responses = result
-            return True, {"responses": responses}
-
-        if result := maybe_create_issue(
-            jira_project_key=self.jira_project_key,
             sync_whiteboard_labels=self.sync_whiteboard_labels,
-            **operation_kwargs,
-        ):
-            _, responses = result
-            return True, {"responses": responses}
-
-        if result := maybe_update_issue(
-            **operation_kwargs, sync_whiteboard_labels=self.sync_whiteboard_labels
-        ):
-            context, responses = result
-            operation_kwargs.update(context=context)
-            comments_responses = jira.add_jira_comments_for_changes(**operation_kwargs)
-            return True, {"responses": responses + comments_responses}
-
-        logger.debug(
-            "Ignore event target %r",
-            event.target,
-            extra=context.dict(),
         )
-        return False, {}
+        context, update_responses = maybe_update_issue(
+            context=context, sync_whiteboard_labels=self.sync_whiteboard_labels
+        )
+
+        context, changes_responses = maybe_add_jira_comments_for_changes(
+            context=context
+        )
+
+        is_noop = context.operation == Operation.IGNORE
+        if is_noop:
+            logger.debug(
+                "Ignore event target %r",
+                event.target,
+                extra=context.dict(),
+            )
+
+        return not is_noop, {
+            "responses": comment_responses
+            + create_responses
+            + update_responses
+            + changes_responses
+        }
 
 
 def maybe_create_comment(
     context: ActionContext,
-    bug: BugzillaBug,
-    event: BugzillaWebhookEvent,
-    linked_issue_key: Optional[str],
 ):
     """Create a Jira comment if event is `"comment"`"""
+    event = context.event
+    bug = context.bug
+    linked_issue_key = context.jira.issue
+
     if event.target != "comment" or not linked_issue_key:
-        return None
+        return context, ()
 
     if bug.comment is None:
         logger.debug(
             "No matching comment found in payload",
             extra=context.dict(),
         )
-        return None
+        return context, ()
 
     context = context.update(operation=Operation.COMMENT)
     commenter = event.user.login if event.user else "unknown"
     jira_response = jira.add_jira_comment(
         context, linked_issue_key, commenter, bug.comment
     )
-    return context, [jira_response]
+    return context, (jira_response,)
 
 
 def maybe_create_issue(
     context: ActionContext,
-    bug: BugzillaBug,
-    event: BugzillaWebhookEvent,
-    linked_issue_key: Optional[str],
-    jira_project_key: str,
     sync_whiteboard_labels: bool,
 ):  # pylint: disable=too-many-arguments
     """Create Jira issue and establish link between bug and issue; rollback/delete if required"""
-    if event.target != "bug" or linked_issue_key:
-        return None
+    event = context.event
+    bug = context.bug
+    jira_project_key = context.jira.project
+    linked_issue_key = context.jira.issue
+
+    if (
+        event.target != "bug"
+        or linked_issue_key
+        or context.operation != Operation.IGNORE
+    ):
+        return context, ()
 
     context = context.update(operation=Operation.CREATE)
 
@@ -149,25 +150,30 @@ def maybe_create_issue(
     bug = bugzilla.get_client().get_bug(bug.id)
     jira_response_delete = jira.delete_jira_issue_if_duplicate(context, bug, issue_key)
     if jira_response_delete:
-        return jira_response_delete
+        return context, (jira_response_delete,)
 
     bugzilla_response = bugzilla.add_link_to_jira(context, bug, issue_key)
 
     jira_response = jira.add_link_to_bugzilla(context, issue_key, bug)
 
-    return context, [bugzilla_response, jira_response]
+    return context, (bugzilla_response, jira_response)
 
 
 def maybe_update_issue(
     context: ActionContext,
-    bug: BugzillaBug,
-    event: BugzillaWebhookEvent,
-    linked_issue_key: Optional[str],
     sync_whiteboard_labels: bool,
 ):
     """Update the Jira issue if bug with linked issue is modified."""
-    if event.target != "bug" or not linked_issue_key:
-        return None
+    event = context.event
+    bug = context.bug
+    linked_issue_key = context.jira.issue
+
+    if (
+        event.target != "bug"
+        or not linked_issue_key
+        or context.operation != Operation.IGNORE
+    ):
+        return context, ()
 
     changed_fields = event.changed_fields() or []
     context = context.update(
@@ -176,8 +182,22 @@ def maybe_update_issue(
             "changed_fields": ", ".join(changed_fields),
         },
     )
-    jira_response_update = jira.update_jira_issue(
+    resp = jira.update_jira_issue(
         context, bug, linked_issue_key, sync_whiteboard_labels
     )
 
-    return context, [jira_response_update]
+    return context, (resp,)
+
+
+def maybe_add_jira_comments_for_changes(context: ActionContext):
+    """"""
+    if context.operation != Operation.UPDATE:
+        return context, ()
+
+    comments_responses = jira.add_jira_comments_for_changes(
+        context=context,
+        event=context.event,
+        bug=context.bug,
+        linked_issue_key=context.jira.issue,
+    )
+    return context, tuple(comments_responses)
