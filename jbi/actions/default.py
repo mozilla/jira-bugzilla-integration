@@ -132,9 +132,10 @@ def maybe_create_issue(
 
     log_context = log_context.update(operation=Operation.CREATE)
 
-    # XXX: For some reason, we fetch the bug comments instead of using `bug.comment`
+    # In the payload of a bug creation, the `comment` field is `null`.
+    # We fetch the list of comments to use the first one as the Jira issue description.
     comment_list = bugzilla.get_client().get_comments(bug.id)
-    description = comment_list[0].text
+    description = comment_list[0].text if comment_list else ""
 
     issue_key = jira.create_jira_issue(
         log_context,
