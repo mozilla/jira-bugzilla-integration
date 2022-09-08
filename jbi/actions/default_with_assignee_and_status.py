@@ -32,34 +32,22 @@ def init(
     sync_whiteboard_labels=True,
     status_map=None,
     resolution_map=None,
-    **kwargs,
 ):
     """Function that takes required and optional params and returns a callable object"""
     return AssigneeAndStatusExecutor(
-        jira_project_key,
-        sync_whiteboard_labels,
+        jira_project_key=jira_project_key,
+        sync_whiteboard_labels=sync_whiteboard_labels,
         status_map=status_map or {},
         resolution_map=resolution_map or {},
-        **kwargs,
     )
 
 
 class AssigneeAndStatusExecutor:
     """Callable class that encapsulates the default_with_assignee_and_status action."""
 
-    def __init__(
-        self,
-        jira_project_key,
-        sync_whiteboard_labels,
-        status_map,
-        resolution_map,
-        **kwargs,
-    ):
+    def __init__(self, **parameters):
         """Initialize AssigneeAndStatusExecutor Object"""
-        self.jira_project_key = jira_project_key
-        self.sync_whiteboard_labels = sync_whiteboard_labels
-        self.status_map = status_map
-        self.resolution_map = resolution_map
+        self.parameters = parameters
 
     def __call__(  # pylint: disable=too-many-branches,duplicate-code
         self,
@@ -75,35 +63,31 @@ class AssigneeAndStatusExecutor:
             operation=Operation.IGNORE,
             jira=JiraContext(
                 issue=linked_issue_key,
-                project=self.jira_project_key,
+                project=self.parameters["jira_project_key"],
             ),
-            extra={
-                "status_map": str(self.status_map),
-                "resolution_map": str(self.resolution_map),
-            },
+            extra={k: str(v) for k, v in self.parameters.items()},
         )
 
-        parameters = {
-            "jira_project_key": self.jira_project_key,
-            "sync_whiteboard_labels": self.sync_whiteboard_labels,
-            "status_map": self.status_map,
-            "resolution_map": self.resolution_map,
-        }
-
-        context, comment_responses = maybe_create_comment(context=context, **parameters)
-        context, create_responses = maybe_create_issue(context=context, **parameters)
-        context, update_responses = maybe_update_issue(context=context, **parameters)
+        context, comment_responses = maybe_create_comment(
+            context=context, **self.parameters
+        )
+        context, create_responses = maybe_create_issue(
+            context=context, **self.parameters
+        )
+        context, update_responses = maybe_update_issue(
+            context=context, **self.parameters
+        )
 
         context, assign_responses = maybe_assign_jira_user(
-            context=context, **parameters
+            context=context, **self.parameters
         )
 
         context, resolution_responses = maybe_update_issue_resolution(
-            context=context, **parameters
+            context=context, **self.parameters
         )
 
         context, status_responses = maybe_update_issue_status(
-            context=context, **parameters
+            context=context, **self.parameters
         )
 
         is_noop = context.operation == Operation.IGNORE

@@ -25,22 +25,19 @@ JIRA_REQUIRED_PERMISSIONS = {
 }
 
 
-def init(jira_project_key, sync_whiteboard_labels=True, **kwargs):
+def init(jira_project_key, sync_whiteboard_labels=True):
     """Function that takes required and optional params and returns a callable object"""
     return DefaultExecutor(
-        jira_project_key=jira_project_key,
-        sync_whiteboard_labels=sync_whiteboard_labels,
-        **kwargs,
+        jira_project_key=jira_project_key, sync_whiteboard_labels=sync_whiteboard_labels
     )
 
 
 class DefaultExecutor:
     """Callable class that encapsulates the default action."""
 
-    def __init__(self, jira_project_key, **kwargs):
+    def __init__(self, **parameters):
         """Initialize DefaultExecutor Object"""
-        self.jira_project_key = jira_project_key
-        self.sync_whiteboard_labels = kwargs.get("sync_whiteboard_labels", True)
+        self.parameters = parameters
 
     def __call__(self, bug: BugzillaBug, event: BugzillaWebhookEvent) -> ActionResult:
         """Called from BZ webhook when default action is used. All default-action webhook-events are processed here."""
@@ -52,21 +49,23 @@ class DefaultExecutor:
             operation=Operation.IGNORE,
             jira=JiraContext(
                 issue=linked_issue_key,
-                project=self.jira_project_key,
+                project=self.parameters["jira_project_key"],
             ),
+            extra={k: str(v) for k, v in self.parameters.items()},
         )
 
-        parameters = {
-            "jira_project_key": self.jira_project_key,
-            "sync_whiteboard_labels": self.sync_whiteboard_labels,
-        }
-
-        context, comment_responses = maybe_create_comment(context=context, **parameters)
-        context, create_responses = maybe_create_issue(context=context, **parameters)
-        context, update_responses = maybe_update_issue(context=context, **parameters)
+        context, comment_responses = maybe_create_comment(
+            context=context, **self.parameters
+        )
+        context, create_responses = maybe_create_issue(
+            context=context, **self.parameters
+        )
+        context, update_responses = maybe_update_issue(
+            context=context, **self.parameters
+        )
 
         context, changes_responses = maybe_add_jira_comments_for_changes(
-            context=context, **parameters
+            context=context, **self.parameters
         )
 
         is_noop = context.operation == Operation.IGNORE
