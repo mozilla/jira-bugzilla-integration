@@ -32,7 +32,7 @@ sentry_sdk.init(
 app = FastAPI(
     title="Jira Bugzilla Integration (JBI)",
     description="JBI v2 Platform",
-    version="3.3.1",
+    version="3.3.2",
     debug=settings.app_debug,
 )
 
