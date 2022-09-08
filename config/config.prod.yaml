@@ -37,7 +37,6 @@
       WONTFIX: Won't do
 
 - whiteboard_tag: flowstate
-  allow_private: true
   contact: dtownsend@mozilla.com
   description: Flowstate whiteboard tag
   enabled: true
