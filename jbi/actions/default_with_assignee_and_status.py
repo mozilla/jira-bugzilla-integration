@@ -8,7 +8,6 @@ Extended action that provides some additional features over the default:
 `init` should return a __call__able
 """
 import logging
-from typing import Optional
 
 from jbi import ActionResult, Operation
 from jbi.actions.default import (
@@ -84,26 +83,27 @@ class AssigneeAndStatusExecutor:
             },
         )
 
-        context, comment_responses = maybe_create_comment(context=context)
-        context, create_responses = maybe_create_issue(
-            sync_whiteboard_labels=self.sync_whiteboard_labels,
-            context=context,
-        )
-        context, update_responses = maybe_update_issue(
-            context=context, sync_whiteboard_labels=self.sync_whiteboard_labels
+        parameters = {
+            "jira_project_key": self.jira_project_key,
+            "sync_whiteboard_labels": self.sync_whiteboard_labels,
+            "status_map": self.status_map,
+            "resolution_map": self.resolution_map,
+        }
+
+        context, comment_responses = maybe_create_comment(context=context, **parameters)
+        context, create_responses = maybe_create_issue(context=context, **parameters)
+        context, update_responses = maybe_update_issue(context=context, **parameters)
+
+        context, assign_responses = maybe_assign_jira_user(
+            context=context, **parameters
         )
 
-        context, assign_responses = maybe_assign_jira_user(context=context)
-
-        jira_resolution = self.resolution_map.get(bug.resolution)
         context, resolution_responses = maybe_update_issue_resolution(
-            context=context, jira_resolution=jira_resolution
+            context=context, **parameters
         )
 
-        bz_status = bug.resolution or bug.status
-        jira_status = self.status_map.get(bz_status)
         context, status_responses = maybe_update_issue_status(
-            context=context, jira_status=jira_status
+            context=context, **parameters
         )
 
         is_noop = context.operation == Operation.IGNORE
@@ -124,7 +124,7 @@ class AssigneeAndStatusExecutor:
         }
 
 
-def maybe_assign_jira_user(context: ActionContext):
+def maybe_assign_jira_user(context: ActionContext, **parameters):
     """Assign the user on the Jira issue, based on the Bugzilla assignee email"""
     if context.operation not in (Operation.CREATE, Operation.UPDATE):
         return context, ()
@@ -171,12 +171,14 @@ def maybe_assign_jira_user(context: ActionContext):
 
 def maybe_update_issue_resolution(
     context: ActionContext,
-    jira_resolution: Optional[str],
+    **parameters,
 ):
     """
     Update the Jira issue status
     https://support.atlassian.com/jira-cloud-administration/docs/what-are-issue-statuses-priorities-and-resolutions/
     """
+    resolution_map: dict[str, str] = parameters["resolution_map"]
+    jira_resolution = resolution_map.get(context.bug.resolution or "")
     if jira_resolution is None:
         logger.debug(
             "Bug resolution was not in the resolution map.",
@@ -208,14 +210,15 @@ def maybe_update_issue_resolution(
     return context, ()
 
 
-def maybe_update_issue_status(
-    context: ActionContext,
-    jira_status: Optional[str],
-):
+def maybe_update_issue_status(context: ActionContext, **parameters):
     """
     Update the Jira issue resolution
     https://support.atlassian.com/jira-cloud-administration/docs/what-are-issue-statuses-priorities-and-resolutions/
     """
+    resolution_map: dict[str, str] = parameters["status_map"]
+    bz_status = context.bug.resolution or context.bug.status
+    jira_status = resolution_map.get(bz_status or "")
+
     event = context.event
     linked_issue_key = context.jira.issue
     assert linked_issue_key  # Until we have more fine-grained typing of contexts

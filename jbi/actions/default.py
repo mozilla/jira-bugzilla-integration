@@ -56,17 +56,17 @@ class DefaultExecutor:
             ),
         )
 
-        context, comment_responses = maybe_create_comment(context=context)
-        context, create_responses = maybe_create_issue(
-            context=context,
-            sync_whiteboard_labels=self.sync_whiteboard_labels,
-        )
-        context, update_responses = maybe_update_issue(
-            context=context, sync_whiteboard_labels=self.sync_whiteboard_labels
-        )
+        parameters = {
+            "jira_project_key": self.jira_project_key,
+            "sync_whiteboard_labels": self.sync_whiteboard_labels,
+        }
+
+        context, comment_responses = maybe_create_comment(context=context, **parameters)
+        context, create_responses = maybe_create_issue(context=context, **parameters)
+        context, update_responses = maybe_update_issue(context=context, **parameters)
 
         context, changes_responses = maybe_add_jira_comments_for_changes(
-            context=context
+            context=context, **parameters
         )
 
         is_noop = context.operation == Operation.IGNORE
@@ -85,9 +85,7 @@ class DefaultExecutor:
         }
 
 
-def maybe_create_comment(
-    context: ActionContext,
-):
+def maybe_create_comment(context: ActionContext, **parameters):
     """Create a Jira comment if event is `"comment"`"""
     event = context.event
     bug = context.bug
@@ -112,10 +110,10 @@ def maybe_create_comment(
 
 
 def maybe_create_issue(
-    context: ActionContext,
-    sync_whiteboard_labels: bool,
+    context: ActionContext, **parameters
 ):  # pylint: disable=too-many-arguments
     """Create Jira issue and establish link between bug and issue; rollback/delete if required"""
+    sync_whiteboard_labels: bool = parameters["sync_whiteboard_labels"]
     event = context.event
     bug = context.bug
     jira_project_key = context.jira.project
@@ -157,11 +155,9 @@ def maybe_create_issue(
     return context, (bugzilla_response, jira_response)
 
 
-def maybe_update_issue(
-    context: ActionContext,
-    sync_whiteboard_labels: bool,
-):
+def maybe_update_issue(context: ActionContext, **parameters):
     """Update the Jira issue if bug with linked issue is modified."""
+    sync_whiteboard_labels: bool = parameters["sync_whiteboard_labels"]
     event = context.event
     bug = context.bug
     linked_issue_key = context.jira.issue
@@ -187,7 +183,7 @@ def maybe_update_issue(
     return context, (resp,)
 
 
-def maybe_add_jira_comments_for_changes(context: ActionContext):
+def maybe_add_jira_comments_for_changes(context: ActionContext, **parameters):
     """Add a Jira comment for each field change on Bugzilla"""
     if context.operation != Operation.UPDATE:
         return context, ()
