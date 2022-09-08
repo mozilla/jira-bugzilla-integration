@@ -7,8 +7,6 @@ labels generated from the Bugzilla status whiteboard.
 `init` should return a __call__able
 """
 import logging
-from typing import Optional
-from webbrowser import Opera
 
 from jbi import ActionResult, Operation
 from jbi.environment import get_settings
@@ -190,9 +188,11 @@ def maybe_update_issue(
 
 
 def maybe_add_jira_comments_for_changes(context: ActionContext):
-    """"""
+    """Add a Jira comment for each field change on Bugzilla"""
     if context.operation != Operation.UPDATE:
         return context, ()
+
+    assert context.jira.issue  # Until we have more fine-grained typing of contexts
 
     comments_responses = jira.add_jira_comments_for_changes(
         context=context,

@@ -8,7 +8,7 @@ import concurrent.futures
 import json
 import logging
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from atlassian import Jira, errors
 
@@ -344,49 +344,29 @@ def assign_jira_user(context: ActionContext, issue_key: str, email: str):
         ) from exc
 
 
-def maybe_update_issue_status(
-    context: ActionContext, issue_key: str, jira_status: Optional[str]
-):
-    """Update the status of the Jira issue or no-op if None."""
-    if jira_status:
-        logger.debug(
-            "Updating Jira status to %s",
-            jira_status,
-            extra=context.dict(),
-        )
-        return get_client().set_issue_status(
-            issue_key,
-            jira_status,
-        )
-
+def update_issue_status(context: ActionContext, issue_key: str, jira_status: str):
+    """Update the status of the Jira issue"""
     logger.debug(
-        "Bug status was not in the status map.",
-        extra=context.update(
-            operation=Operation.IGNORE,
-        ).dict(),
+        "Updating Jira status to %s",
+        jira_status,
+        extra=context.dict(),
     )
-    return None
+    return get_client().set_issue_status(
+        issue_key,
+        jira_status,
+    )
 
 
-def maybe_update_issue_resolution(
-    context: ActionContext, issue_key: str, jira_resolution: Optional[str]
+def update_issue_resolution(
+    context: ActionContext, issue_key: str, jira_resolution: str
 ):
-    """Update the resolution of the Jira issue or no-op if None."""
-    if jira_resolution:
-        logger.debug(
-            "Updating Jira resolution to %s",
-            jira_resolution,
-            extra=context.dict(),
-        )
-        return get_client().update_issue_field(
-            key=issue_key,
-            fields={"resolution": jira_resolution},
-        )
-
+    """Update the resolution of the Jira issue."""
     logger.debug(
-        "Bug resolution was not in the resolution map.",
-        extra=context.update(
-            operation=Operation.IGNORE,
-        ).dict(),
+        "Updating Jira resolution to %s",
+        jira_resolution,
+        extra=context.dict(),
     )
-    return None
+    return get_client().update_issue_field(
+        key=issue_key,
+        fields={"resolution": jira_resolution},
+    )

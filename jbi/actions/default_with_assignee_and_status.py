@@ -125,9 +125,14 @@ class AssigneeAndStatusExecutor:
 
 
 def maybe_assign_jira_user(context: ActionContext):
+    """Assign the user on the Jira issue, based on the Bugzilla assignee email"""
+    if context.operation not in (Operation.CREATE, Operation.UPDATE):
+        return context, ()
+
     event = context.event
     bug = context.bug
     linked_issue_key = context.jira.issue
+    assert linked_issue_key  # Until we have more fine-grained typing of contexts
 
     if context.operation == Operation.CREATE:
         if not bug.is_assigned():
@@ -160,6 +165,7 @@ def maybe_assign_jira_user(context: ActionContext):
                 resp = jira.clear_assignee(context, linked_issue_key)
         return context, (resp,)
 
+    # This happens when exceptions are raised an ignored.
     return context, ()
 
 
@@ -167,11 +173,25 @@ def maybe_update_issue_resolution(
     context: ActionContext,
     jira_resolution: Optional[str],
 ):
+    """
+    Update the Jira issue status
+    https://support.atlassian.com/jira-cloud-administration/docs/what-are-issue-statuses-priorities-and-resolutions/
+    """
+    if jira_resolution is None:
+        logger.debug(
+            "Bug resolution was not in the resolution map.",
+            extra=context.update(
+                operation=Operation.IGNORE,
+            ).dict(),
+        )
+        return context, ()
+
     event = context.event
     linked_issue_key = context.jira.issue
+    assert linked_issue_key  # Until we have more fine-grained typing of contexts
 
     if context.operation == Operation.CREATE:
-        if resp := jira.maybe_update_issue_resolution(
+        if resp := jira.update_issue_resolution(
             context, linked_issue_key, jira_resolution
         ):
             return context, (resp,)
@@ -180,10 +200,10 @@ def maybe_update_issue_resolution(
         changed_fields = event.changed_fields() or []
 
         if "resolution" in changed_fields:
-            if resp := jira.maybe_update_issue_resolution(
+            resp = jira.update_issue_resolution(
                 context, linked_issue_key, jira_resolution
-            ):
-                return context, (resp,)
+            )
+            return context, (resp,)
 
     return context, ()
 
@@ -192,22 +212,32 @@ def maybe_update_issue_status(
     context: ActionContext,
     jira_status: Optional[str],
 ):
+    """
+    Update the Jira issue resolution
+    https://support.atlassian.com/jira-cloud-administration/docs/what-are-issue-statuses-priorities-and-resolutions/
+    """
     event = context.event
     linked_issue_key = context.jira.issue
+    assert linked_issue_key  # Until we have more fine-grained typing of contexts
+
+    if jira_status is None:
+        logger.debug(
+            "Bug status was not in the status map.",
+            extra=context.update(
+                operation=Operation.IGNORE,
+            ).dict(),
+        )
+        return context, ()
 
     if context.operation == Operation.CREATE:
-        if resp := jira.maybe_update_issue_status(
-            context, linked_issue_key, jira_status
-        ):
-            return context, (resp,)
+        resp = jira.update_issue_status(context, linked_issue_key, jira_status)
+        return context, (resp,)
 
     if context.operation == Operation.UPDATE:
         changed_fields = event.changed_fields() or []
 
         if "status" in changed_fields or "resolution" in changed_fields:
-            if resp := jira.maybe_update_issue_status(
-                context, linked_issue_key, jira_status
-            ):
+            if resp := jira.update_issue_status(context, linked_issue_key, jira_status):
                 return context, (resp,)
 
     return context, ()
