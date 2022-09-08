@@ -84,9 +84,12 @@ def test_bugzilla_update_bug_uses_a_put(mocked_responses):
     url = f"{get_settings().bugzilla_base_url}/rest/bug/42"
     mocked_responses.add(responses.PUT, url, json={"bugs": [{"id": 42}]})
 
-    get_client().update_bug(42, see_also="http://url.com")
+    get_client().update_bug(42, see_also={"add": ["http://url.com"]})
 
-    assert mocked_responses.calls[0].request.body == b'{"see_also": "http://url.com"}'
+    assert (
+        mocked_responses.calls[0].request.body
+        == b'{"see_also": {"add": ["http://url.com"]}}'
+    )
 
 
 @pytest.mark.no_mocked_bugzilla

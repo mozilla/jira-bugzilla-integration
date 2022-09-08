@@ -47,6 +47,7 @@ def test_default_returns_callable_with_data(
 def test_created_public(
     webhook_create_example: BugzillaWebhookRequest, mocked_jira, mocked_bugzilla
 ):
+    mocked_jira.create_issue.return_value = {"key": "new-id"}
     mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
     mocked_bugzilla.get_comments.return_value = [
         comment_factory(text="Initial comment")
@@ -63,6 +64,10 @@ def test_created_public(
             "description": "Initial comment",
             "project": {"key": "JBI"},
         },
+    )
+
+    mocked_bugzilla.update_bug.assert_called_once_with(
+        654321, see_also={"add": ["https://mozit-test.atlassian.net/browse/new-id"]}
     )
 
 
