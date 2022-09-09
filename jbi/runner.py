@@ -78,6 +78,29 @@ def execute_action(
             extra={k: str(v) for k, v in action.parameters.items()},
         )
 
+        if action_context.jira.issue is None:
+            if event.target == "bug":
+                action_context = action_context.update(operation=Operation.CREATE)
+
+        else:
+            if event.target == "bug":
+                changed_fields = event.changed_fields() or []
+                action_context = action_context.update(
+                    operation=Operation.UPDATE,
+                    extra={
+                        "changed_fields": ", ".join(changed_fields),
+                        **action_context.extra,
+                    },
+                )
+
+            elif event.target == "comment":
+                action_context = action_context.update(operation=Operation.COMMENT)
+
+        if action_context.operation == Operation.IGNORE:
+            raise IgnoreInvalidRequestError(
+                f"ignore event target {action_context.event.target!r}"
+            )
+
         logger.info(
             "Execute action '%s:%s' for Bug %s",
             action.whiteboard_tag,

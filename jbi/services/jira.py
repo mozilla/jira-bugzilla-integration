@@ -152,7 +152,7 @@ def create_jira_issue(
     context: ActionContext,
     description: str,
     sync_whiteboard_labels: bool,
-) -> str:
+):
     """Create a Jira issue with the specified fields and return its key."""
     bug = context.bug
     logger.debug(
@@ -183,8 +183,7 @@ def create_jira_issue(
         if errs or msgs:
             raise JiraCreateError(errs + msgs)
 
-    issue_key: str = jira_response_create.get("key")
-    return issue_key
+    return jira_response_create
 
 
 def update_jira_issue(context: ActionContext, sync_whiteboard_labels):

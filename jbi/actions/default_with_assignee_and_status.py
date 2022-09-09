@@ -14,9 +14,12 @@ from jbi.actions.default import (
     JIRA_REQUIRED_PERMISSIONS as DEFAULT_JIRA_REQUIRED_PERMISSIONS,
 )
 from jbi.actions.default import (
-    maybe_create_comment,
-    maybe_create_issue,
-    maybe_update_issue,
+    add_link_to_bugzilla,
+    add_link_to_jira,
+    create_comment,
+    create_issue,
+    maybe_delete_duplicate,
+    update_issue,
 )
 from jbi.models import ActionContext
 from jbi.services import jira
@@ -56,33 +59,35 @@ class AssigneeAndStatusExecutor:
 
         responses = tuple()  # type: ignore
 
-        for step in [
-            maybe_create_comment,
-            maybe_create_issue,
-            maybe_update_issue,
-            maybe_assign_jira_user,
-            maybe_update_issue_resolution,
-            maybe_update_issue_status,
-        ]:
+        steps = {
+            Operation.CREATE: [
+                create_issue,
+                maybe_delete_duplicate,
+                add_link_to_bugzilla,
+                add_link_to_jira,
+                assign_jira_user,
+                update_issue_resolution,
+                update_issue_status,
+            ],
+            Operation.UPDATE: [
+                update_issue,
+                assign_jira_user,
+                update_issue_resolution,
+                update_issue_status,
+            ],
+            Operation.COMMENT: [
+                create_comment,
+            ],
+        }
+        for step in steps[context.operation]:
             context, step_responses = step(context=context, **self.parameters)
             responses += step_responses
 
-        is_noop = context.operation == Operation.IGNORE
-        if is_noop:
-            logger.debug(
-                "Ignore event target %r",
-                context.event.target,
-                extra=context.dict(),
-            )
-
-        return not is_noop, {"responses": responses}
+        return True, {"responses": responses}
 
 
-def maybe_assign_jira_user(context: ActionContext, **parameters):
+def assign_jira_user(context: ActionContext, **parameters):
     """Assign the user on the Jira issue, based on the Bugzilla assignee email"""
-    if context.operation not in (Operation.CREATE, Operation.UPDATE):
-        return context, ()
-
     event = context.event
     bug = context.bug
 
@@ -117,7 +122,7 @@ def maybe_assign_jira_user(context: ActionContext, **parameters):
     return context, ()
 
 
-def maybe_update_issue_resolution(
+def update_issue_resolution(
     context: ActionContext,
     **parameters,
 ):
@@ -150,7 +155,7 @@ def maybe_update_issue_resolution(
     return context, ()
 
 
-def maybe_update_issue_status(context: ActionContext, **parameters):
+def update_issue_status(context: ActionContext, **parameters):
     """
     Update the Jira issue resolution
     https://support.atlassian.com/jira-cloud-administration/docs/what-are-issue-statuses-priorities-and-resolutions/

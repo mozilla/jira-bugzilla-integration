@@ -46,34 +46,31 @@ class DefaultExecutor:
 
         responses = tuple()  # type: ignore
 
-        for step in [
-            maybe_create_comment,
-            maybe_create_issue,
-            maybe_update_issue,
-            maybe_add_jira_comments_for_changes,
-        ]:
+        steps = {
+            Operation.CREATE: [
+                create_issue,
+                maybe_delete_duplicate,
+                add_link_to_bugzilla,
+                add_link_to_jira,
+            ],
+            Operation.UPDATE: [
+                update_issue,
+                add_jira_comments_for_changes,
+            ],
+            Operation.COMMENT: [
+                create_comment,
+            ],
+        }
+        for step in steps[context.operation]:
             context, step_responses = step(context=context, **self.parameters)
             responses += step_responses
 
-        is_noop = context.operation == Operation.IGNORE
-        if is_noop:
-            logger.debug(
-                "Ignore event target %r",
-                context.event.target,
-                extra=context.dict(),
-            )
-
-        return not is_noop, {"responses": responses}
+        return True, {"responses": responses}
 
 
-def maybe_create_comment(context: ActionContext, **parameters):
+def create_comment(context: ActionContext, **parameters):
     """Create a Jira comment if event is `"comment"`"""
-    event = context.event
     bug = context.bug
-    linked_issue_key = context.jira.issue
-
-    if event.target != "comment" or not linked_issue_key:
-        return context, ()
 
     if bug.comment is None:
         logger.debug(
@@ -82,83 +79,68 @@ def maybe_create_comment(context: ActionContext, **parameters):
         )
         return context, ()
 
-    context = context.update(operation=Operation.COMMENT)
     jira_response = jira.add_jira_comment(context)
     return context, (jira_response,)
 
 
-def maybe_create_issue(
+def create_issue(
     context: ActionContext, **parameters
 ):  # pylint: disable=too-many-arguments
     """Create Jira issue and establish link between bug and issue; rollback/delete if required"""
     sync_whiteboard_labels: bool = parameters["sync_whiteboard_labels"]
-    event = context.event
     bug = context.bug
-    linked_issue_key = context.jira.issue
-
-    if event.target != "bug" or linked_issue_key:
-        return context, ()
-
-    context = context.update(operation=Operation.CREATE)
 
     # In the payload of a bug creation, the `comment` field is `null`.
     # We fetch the list of comments to use the first one as the Jira issue description.
     comment_list = bugzilla.get_client().get_comments(bug.id)
     description = comment_list[0].text if comment_list else ""
 
-    issue_key = jira.create_jira_issue(
+    jira_create_response = jira.create_jira_issue(
         context,
         description,
         sync_whiteboard_labels=sync_whiteboard_labels,
     )
+    issue_key = jira_create_response.get("key")
 
     context = context.update(jira=context.jira.update(issue=issue_key))
+    return context, (jira_create_response,)
 
-    # In the time taken to create the Jira issue the bug may have been updated so
-    # re-retrieve it to ensure we have the latest data.
-    latest_bug = bugzilla.get_client().get_bug(bug.id)
+
+def add_link_to_jira(context: ActionContext, **parameters):
+    """Add see_also field on Bugzilla ticket"""
+    bugzilla_response = bugzilla.add_link_to_jira(context)
+    return context, (bugzilla_response,)
+
+
+def add_link_to_bugzilla(context: ActionContext, **parameters):
+    """Add link Jira issue"""
+    jira_response = jira.add_link_to_bugzilla(context)
+    return context, (jira_response,)
+
+
+def maybe_delete_duplicate(context: ActionContext, **parameters):
+    """
+    In the time taken to create the Jira issue the bug may have been updated so
+    re-retrieve it to ensure we have the latest data.
+    """
+    latest_bug = bugzilla.get_client().get_bug(context.bug.id)
     jira_response_delete = jira.delete_jira_issue_if_duplicate(context, latest_bug)
     if jira_response_delete:
         return context, (jira_response_delete,)
-
-    bugzilla_response = bugzilla.add_link_to_jira(context)
-
-    jira_response = jira.add_link_to_bugzilla(context)
-
-    return context, (bugzilla_response, jira_response)
+    return context, ()
 
 
-def maybe_update_issue(context: ActionContext, **parameters):
+def update_issue(context: ActionContext, **parameters):
     """Update the Jira issue if bug with linked issue is modified."""
     sync_whiteboard_labels: bool = parameters["sync_whiteboard_labels"]
-    event = context.event
-    linked_issue_key = context.jira.issue
 
-    if (
-        event.target != "bug"
-        or not linked_issue_key
-        or context.operation != Operation.IGNORE
-    ):
-        return context, ()
-
-    changed_fields = event.changed_fields() or []
-    context = context.update(
-        operation=Operation.UPDATE,
-        extra={
-            "changed_fields": ", ".join(changed_fields),
-            **context.extra,
-        },
-    )
     resp = jira.update_jira_issue(context, sync_whiteboard_labels)
 
     return context, (resp,)
 
 
-def maybe_add_jira_comments_for_changes(context: ActionContext, **parameters):
+def add_jira_comments_for_changes(context: ActionContext, **parameters):
     """Add a Jira comment for each field change on Bugzilla"""
-    if context.operation != Operation.UPDATE:
-        return context, ()
-
     comments_responses = jira.add_jira_comments_for_changes(context)
 
     return context, tuple(comments_responses)

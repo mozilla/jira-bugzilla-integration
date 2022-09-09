@@ -38,7 +38,8 @@ def test_default_returns_callable_with_data(
     handled, details = callable_object(context=context_create_example)
 
     assert handled
-    assert details["responses"][-1] == sentinel
+    assert details["responses"][0] == {"key": "k"}
+    assert details["responses"][1] == sentinel
 
 
 def test_created_public(
@@ -107,18 +108,6 @@ def test_added_comment(context_comment_example: ActionContext, mocked_jira):
         issue_key="JBI-234",
         comment="*(mathieu@mozilla.org)* commented: \n{quote}hello{quote}",
     )
-
-
-def test_added_comment_without_linked_issue(context_comment_example: ActionContext):
-    context_comment_example.bug.see_also = []
-    context_comment_example.jira.issue = None
-    callable_object = default.init(
-        jira_project_key=context_comment_example.jira.project
-    )
-
-    handled, _ = callable_object(context=context_comment_example)
-
-    assert not handled
 
 
 def test_jira_returns_an_error(context_create_example: ActionContext, mocked_jira):
