@@ -102,11 +102,7 @@ def maybe_create_issue(
     bug = context.bug
     linked_issue_key = context.jira.issue
 
-    if (
-        event.target != "bug"
-        or linked_issue_key
-        or context.operation != Operation.IGNORE
-    ):
+    if event.target != "bug" or linked_issue_key:
         return context, ()
 
     context = context.update(operation=Operation.CREATE)
