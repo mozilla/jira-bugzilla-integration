@@ -18,7 +18,7 @@ from jbi.actions.default import (
     maybe_create_issue,
     maybe_update_issue,
 )
-from jbi.models import ActionContext, BugzillaBug, BugzillaWebhookEvent, JiraContext
+from jbi.models import ActionContext
 from jbi.services import jira
 
 logger = logging.getLogger(__name__)
@@ -49,25 +49,10 @@ class AssigneeAndStatusExecutor:
         """Initialize AssigneeAndStatusExecutor Object"""
         self.parameters = parameters
 
-    def __call__(  # pylint: disable=too-many-branches,duplicate-code
-        self,
-        bug: BugzillaBug,
-        event: BugzillaWebhookEvent,
+    def __call__(  # pylint: disable=duplicate-code
+        self, context: ActionContext
     ) -> ActionResult:
         """Called from BZ webhook when default action is used. All default-action webhook-events are processed here."""
-        linked_issue_key = bug.extract_from_see_also()
-
-        context = ActionContext(
-            event=event,
-            bug=bug,
-            operation=Operation.IGNORE,
-            jira=JiraContext(
-                issue=linked_issue_key,
-                project=self.parameters["jira_project_key"],
-            ),
-            extra={k: str(v) for k, v in self.parameters.items()},
-        )
-
         context, comment_responses = maybe_create_comment(
             context=context, **self.parameters
         )
@@ -94,7 +79,7 @@ class AssigneeAndStatusExecutor:
         if is_noop:
             logger.debug(
                 "Ignore event target %r",
-                event.target,
+                context.event.target,
                 extra=context.dict(),
             )
 

@@ -46,6 +46,11 @@ class Action(YamlModel):
     _required_jira_permissions: set[str] = PrivateAttr(default=None)
 
     @property
+    def jira_project_key(self):
+        """Return the configured project key."""
+        return self.parameters["jira_project_key"]
+
+    @property
     def caller(self) -> Callable:
         """Return the initialized callable for this action."""
         if not self._caller:
@@ -112,7 +117,7 @@ class Actions(YamlModel):
     def configured_jira_projects_keys(self) -> set[str]:
         """Return the list of Jira project keys from all configured actions"""
         return {
-            action.parameters["jira_project_key"]
+            action.jira_project_key
             for action in self.__root__
             if "jira_project_key" in action.parameters
         }

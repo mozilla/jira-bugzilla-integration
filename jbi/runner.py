@@ -2,13 +2,20 @@
 Execute actions from Webhook requests
 """
 import logging
+from typing import Optional
 
 from statsd.defaults.env import statsd
 
 from jbi import Operation
 from jbi.environment import Settings
 from jbi.errors import ActionNotFoundError, IgnoreInvalidRequestError
-from jbi.models import Actions, BugzillaWebhookRequest, RunnerContext
+from jbi.models import (
+    ActionContext,
+    Actions,
+    BugzillaWebhookRequest,
+    JiraContext,
+    RunnerContext,
+)
 from jbi.services import bugzilla
 
 logger = logging.getLogger(__name__)
@@ -28,7 +35,7 @@ def execute_action(
     The value returned by the action call is returned.
     """
     bug, event = request.bug, request.event
-    context = RunnerContext(
+    runner_context = RunnerContext(
         bug=bug,
         event=event,
         operation=Operation.HANDLE,
@@ -36,46 +43,56 @@ def execute_action(
     try:
         logger.debug(
             "Handling incoming request",
-            extra=context.dict(),
+            extra=runner_context.dict(),
         )
         try:
             if bug.is_private:
                 bug = bugzilla.get_client().get_bug(bug.id)
         except Exception as err:
-            logger.exception("Failed to get bug: %s", err, extra=context.dict())
+            logger.exception("Failed to get bug: %s", err, extra=runner_context.dict())
             raise IgnoreInvalidRequestError(
                 "bug not accessible or bugzilla down"
             ) from err
 
-        context = context.update(bug=bug)
+        runner_context = runner_context.update(bug=bug)
         try:
             action = bug.lookup_action(actions)
         except ActionNotFoundError as err:
             raise IgnoreInvalidRequestError(
                 f"no action matching bug whiteboard tags: {err}"
             ) from err
-        context = context.update(action=action)
+        runner_context = runner_context.update(action=action)
 
         if bug.is_private and not action.allow_private:
             raise IgnoreInvalidRequestError(
                 f"private bugs are not valid for action {action.whiteboard_tag!r}"
             )
 
+        linked_issue_key: Optional[str] = bug.extract_from_see_also()
+
+        action_context = ActionContext(
+            bug=bug,
+            event=event,
+            operation=Operation.IGNORE,
+            jira=JiraContext(project=action.jira_project_key, issue=linked_issue_key),
+            extra={k: str(v) for k, v in action.parameters.items()},
+        )
+
         logger.info(
             "Execute action '%s:%s' for Bug %s",
             action.whiteboard_tag,
             action.module,
             bug.id,
-            extra=context.update(operation=Operation.EXECUTE).dict(),
+            extra=runner_context.update(operation=Operation.EXECUTE).dict(),
         )
 
-        handled, details = action.caller(bug=bug, event=event)
+        handled, details = action.caller(context=action_context)
 
         logger.info(
             "Action %r executed successfully for Bug %s",
             action.whiteboard_tag,
             bug.id,
-            extra=context.update(
+            extra=runner_context.update(
                 operation=Operation.SUCCESS if handled else Operation.IGNORE
             ).dict(),
         )
@@ -85,7 +102,7 @@ def execute_action(
         logger.debug(
             "Ignore incoming request: %s",
             exception,
-            extra=context.update(operation=Operation.IGNORE).dict(),
+            extra=runner_context.update(operation=Operation.IGNORE).dict(),
         )
         statsd.incr("jbi.bugzilla.ignored.count")
         raise

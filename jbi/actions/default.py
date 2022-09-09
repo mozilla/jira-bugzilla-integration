@@ -10,7 +10,7 @@ import logging
 
 from jbi import ActionResult, Operation
 from jbi.environment import get_settings
-from jbi.models import ActionContext, BugzillaBug, BugzillaWebhookEvent, JiraContext
+from jbi.models import ActionContext
 from jbi.services import bugzilla, jira
 
 settings = get_settings()
@@ -39,21 +39,10 @@ class DefaultExecutor:
         """Initialize DefaultExecutor Object"""
         self.parameters = parameters
 
-    def __call__(self, bug: BugzillaBug, event: BugzillaWebhookEvent) -> ActionResult:
+    def __call__(  # pylint: disable=duplicate-code
+        self, context: ActionContext
+    ) -> ActionResult:
         """Called from BZ webhook when default action is used. All default-action webhook-events are processed here."""
-        linked_issue_key = bug.extract_from_see_also()
-
-        context = ActionContext(
-            event=event,
-            bug=bug,
-            operation=Operation.IGNORE,
-            jira=JiraContext(
-                issue=linked_issue_key,
-                project=self.parameters["jira_project_key"],
-            ),
-            extra={k: str(v) for k, v in self.parameters.items()},
-        )
-
         context, comment_responses = maybe_create_comment(
             context=context, **self.parameters
         )
@@ -72,7 +61,7 @@ class DefaultExecutor:
         if is_noop:
             logger.debug(
                 "Ignore event target %r",
-                event.target,
+                context.event.target,
                 extra=context.dict(),
             )
 
@@ -173,6 +162,7 @@ def maybe_update_issue(context: ActionContext, **parameters):
         operation=Operation.UPDATE,
         extra={
             "changed_fields": ", ".join(changed_fields),
+            **context.extra,
         },
     )
     resp = jira.update_jira_issue(
