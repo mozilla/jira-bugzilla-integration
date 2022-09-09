@@ -53,27 +53,19 @@ class AssigneeAndStatusExecutor:
         self, context: ActionContext
     ) -> ActionResult:
         """Called from BZ webhook when default action is used. All default-action webhook-events are processed here."""
-        context, comment_responses = maybe_create_comment(
-            context=context, **self.parameters
-        )
-        context, create_responses = maybe_create_issue(
-            context=context, **self.parameters
-        )
-        context, update_responses = maybe_update_issue(
-            context=context, **self.parameters
-        )
 
-        context, assign_responses = maybe_assign_jira_user(
-            context=context, **self.parameters
-        )
+        responses = tuple()  # type: ignore
 
-        context, resolution_responses = maybe_update_issue_resolution(
-            context=context, **self.parameters
-        )
-
-        context, status_responses = maybe_update_issue_status(
-            context=context, **self.parameters
-        )
+        for step in [
+            maybe_create_comment,
+            maybe_create_issue,
+            maybe_update_issue,
+            maybe_assign_jira_user,
+            maybe_update_issue_resolution,
+            maybe_update_issue_status,
+        ]:
+            context, step_responses = step(context=context, **self.parameters)
+            responses += step_responses
 
         is_noop = context.operation == Operation.IGNORE
         if is_noop:
@@ -83,14 +75,7 @@ class AssigneeAndStatusExecutor:
                 extra=context.dict(),
             )
 
-        return not is_noop, {
-            "responses": comment_responses
-            + create_responses
-            + update_responses
-            + assign_responses
-            + resolution_responses
-            + status_responses
-        }
+        return not is_noop, {"responses": responses}
 
 
 def maybe_assign_jira_user(context: ActionContext, **parameters):
