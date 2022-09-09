@@ -122,8 +122,10 @@ def check_health() -> ServiceHealth:
     return health
 
 
-def add_link_to_jira(context: ActionContext, bug: BugzillaBug, issue_key: str):
+def add_link_to_jira(context: ActionContext):
     """Add link to Jira in Bugzilla ticket"""
+    bug = context.bug
+    issue_key = context.jira.issue
     jira_url = f"{settings.jira_base_url}browse/{issue_key}"
     logger.debug(
         "Link %r on Bug %s",

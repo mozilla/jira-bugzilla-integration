@@ -92,7 +92,9 @@ def maybe_create_comment(context: ActionContext, **parameters):
     context = context.update(operation=Operation.COMMENT)
     commenter = event.user.login if event.user else "unknown"
     jira_response = jira.add_jira_comment(
-        context, linked_issue_key, commenter, bug.comment
+        context,
+        bug.comment,
+        commenter,
     )
     return context, (jira_response,)
 
@@ -104,7 +106,6 @@ def maybe_create_issue(
     sync_whiteboard_labels: bool = parameters["sync_whiteboard_labels"]
     event = context.event
     bug = context.bug
-    jira_project_key = context.jira.project
     linked_issue_key = context.jira.issue
 
     if (
@@ -123,22 +124,20 @@ def maybe_create_issue(
 
     issue_key = jira.create_jira_issue(
         context,
-        bug,
         description,
-        jira_project_key,
         sync_whiteboard_labels=sync_whiteboard_labels,
     )
 
     context.jira.issue = issue_key
 
     bug = bugzilla.get_client().get_bug(bug.id)
-    jira_response_delete = jira.delete_jira_issue_if_duplicate(context, bug, issue_key)
+    jira_response_delete = jira.delete_jira_issue_if_duplicate(context)
     if jira_response_delete:
         return context, (jira_response_delete,)
 
-    bugzilla_response = bugzilla.add_link_to_jira(context, bug, issue_key)
+    bugzilla_response = bugzilla.add_link_to_jira(context)
 
-    jira_response = jira.add_link_to_bugzilla(context, issue_key, bug)
+    jira_response = jira.add_link_to_bugzilla(context)
 
     return context, (bugzilla_response, jira_response)
 
@@ -147,7 +146,6 @@ def maybe_update_issue(context: ActionContext, **parameters):
     """Update the Jira issue if bug with linked issue is modified."""
     sync_whiteboard_labels: bool = parameters["sync_whiteboard_labels"]
     event = context.event
-    bug = context.bug
     linked_issue_key = context.jira.issue
 
     if (
@@ -165,9 +163,7 @@ def maybe_update_issue(context: ActionContext, **parameters):
             **context.extra,
         },
     )
-    resp = jira.update_jira_issue(
-        context, bug, linked_issue_key, sync_whiteboard_labels
-    )
+    resp = jira.update_jira_issue(context, sync_whiteboard_labels)
 
     return context, (resp,)
 
@@ -181,8 +177,5 @@ def maybe_add_jira_comments_for_changes(context: ActionContext, **parameters):
 
     comments_responses = jira.add_jira_comments_for_changes(
         context=context,
-        event=context.event,
-        bug=context.bug,
-        linked_issue_key=context.jira.issue,
     )
     return context, tuple(comments_responses)

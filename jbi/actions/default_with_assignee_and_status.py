@@ -100,17 +100,13 @@ def maybe_assign_jira_user(context: ActionContext, **parameters):
 
     event = context.event
     bug = context.bug
-    linked_issue_key = context.jira.issue
-    assert linked_issue_key  # Until we have more fine-grained typing of contexts
 
     if context.operation == Operation.CREATE:
         if not bug.is_assigned():
             return context, ()
 
         try:
-            resp = jira.assign_jira_user(
-                context, linked_issue_key, bug.assigned_to  # type: ignore
-            )
+            resp = jira.assign_jira_user(context, bug.assigned_to)  # type: ignore
             return context, (resp,)
         except ValueError as exc:
             logger.debug(str(exc), extra=context.dict())
@@ -122,16 +118,14 @@ def maybe_assign_jira_user(context: ActionContext, **parameters):
             return context, ()
 
         if not bug.is_assigned():
-            resp = jira.clear_assignee(context, linked_issue_key)
+            resp = jira.clear_assignee(context)
         else:
             try:
-                resp = jira.assign_jira_user(
-                    context, linked_issue_key, bug.assigned_to  # type: ignore
-                )
+                resp = jira.assign_jira_user(context, bug.assigned_to)  # type: ignore
             except ValueError as exc:
                 logger.debug(str(exc), extra=context.dict())
                 # If that failed then just fall back to clearing the assignee.
-                resp = jira.clear_assignee(context, linked_issue_key)
+                resp = jira.clear_assignee(context)
         return context, (resp,)
 
     # This happens when exceptions are raised an ignored.
@@ -157,23 +151,15 @@ def maybe_update_issue_resolution(
         )
         return context, ()
 
-    event = context.event
-    linked_issue_key = context.jira.issue
-    assert linked_issue_key  # Until we have more fine-grained typing of contexts
-
     if context.operation == Operation.CREATE:
-        if resp := jira.update_issue_resolution(
-            context, linked_issue_key, jira_resolution
-        ):
-            return context, (resp,)
+        resp = jira.update_issue_resolution(context, jira_resolution)
+        return context, (resp,)
 
     if context.operation == Operation.UPDATE:
-        changed_fields = event.changed_fields() or []
+        changed_fields = context.event.changed_fields() or []
 
         if "resolution" in changed_fields:
-            resp = jira.update_issue_resolution(
-                context, linked_issue_key, jira_resolution
-            )
+            resp = jira.update_issue_resolution(context, jira_resolution)
             return context, (resp,)
 
     return context, ()
@@ -188,10 +174,6 @@ def maybe_update_issue_status(context: ActionContext, **parameters):
     bz_status = context.bug.resolution or context.bug.status
     jira_status = resolution_map.get(bz_status or "")
 
-    event = context.event
-    linked_issue_key = context.jira.issue
-    assert linked_issue_key  # Until we have more fine-grained typing of contexts
-
     if jira_status is None:
         logger.debug(
             "Bug status was not in the status map.",
@@ -202,14 +184,14 @@ def maybe_update_issue_status(context: ActionContext, **parameters):
         return context, ()
 
     if context.operation == Operation.CREATE:
-        resp = jira.update_issue_status(context, linked_issue_key, jira_status)
+        resp = jira.update_issue_status(context, jira_status)
         return context, (resp,)
 
     if context.operation == Operation.UPDATE:
-        changed_fields = event.changed_fields() or []
+        changed_fields = context.event.changed_fields() or []
 
         if "status" in changed_fields or "resolution" in changed_fields:
-            if resp := jira.update_issue_status(context, linked_issue_key, jira_status):
+            if resp := jira.update_issue_status(context, jira_status):
                 return context, (resp,)
 
     return context, ()

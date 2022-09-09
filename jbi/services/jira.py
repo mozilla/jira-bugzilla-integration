@@ -13,12 +13,7 @@ from typing import TYPE_CHECKING, Any
 from atlassian import Jira, errors
 
 from jbi import Operation, environment
-from jbi.models import (
-    ActionContext,
-    BugzillaBug,
-    BugzillaWebhookComment,
-    BugzillaWebhookEvent,
-)
+from jbi.models import ActionContext, BugzillaWebhookComment
 
 from .common import InstrumentedClient, ServiceHealth
 
@@ -155,12 +150,11 @@ class JiraCreateError(Exception):
 
 def create_jira_issue(
     context: ActionContext,
-    bug: BugzillaBug,
     description: str,
-    jira_project_key: str,
     sync_whiteboard_labels: bool,
 ) -> str:
     """Create a Jira issue with the specified fields and return its key."""
+    bug = context.bug
     logger.debug(
         "Create new Jira issue for Bug %s",
         bug.id,
@@ -170,7 +164,7 @@ def create_jira_issue(
         "summary": bug.summary,
         "issuetype": {"name": bug.issue_type()},
         "description": description[:JIRA_DESCRIPTION_CHAR_LIMIT],
-        "project": {"key": jira_project_key},
+        "project": {"key": context.jira.project},
     }
     if sync_whiteboard_labels:
         fields["labels"] = bug.get_jira_labels()
@@ -193,15 +187,17 @@ def create_jira_issue(
     return issue_key
 
 
-def update_jira_issue(context, bug, issue_key, sync_whiteboard_labels):
+def update_jira_issue(context: ActionContext, sync_whiteboard_labels):
     """Update the fields of an existing Jira issue"""
+    bug = context.bug
+    issue_key = context.jira.issue
     logger.debug(
         "Update fields of Jira issue %s for Bug %s",
         issue_key,
         bug.id,
         extra=context.dict(),
     )
-    fields = {
+    fields: dict[str, Any] = {
         "summary": bug.summary,
     }
     if sync_whiteboard_labels:
@@ -213,11 +209,11 @@ def update_jira_issue(context, bug, issue_key, sync_whiteboard_labels):
 
 def add_jira_comment(
     context: ActionContext,
-    issue_key: str,
-    commenter: str,
     comment: BugzillaWebhookComment,
+    commenter: str,
 ):
     """Publish a comment on the specified Jira issue"""
+    issue_key = context.jira.issue
     formatted_comment = f"*({commenter})* commented: \n{{quote}}{comment.body}{{quote}}"
     jira_response = get_client().issue_add_comment(
         issue_key=issue_key,
@@ -231,13 +227,12 @@ def add_jira_comment(
     return jira_response
 
 
-def add_jira_comments_for_changes(
-    context: ActionContext,
-    event: BugzillaWebhookEvent,
-    bug: BugzillaBug,
-    linked_issue_key: str,
-):
+def add_jira_comments_for_changes(context: ActionContext):
     """Add comments on the specified Jira issue for each change of the event"""
+    bug = context.bug
+    event = context.event
+    issue_key = context.jira.issue
+
     comments: list = []
     user = event.user.login if event.user else "unknown"
     for change in event.changes or []:
@@ -257,22 +252,22 @@ def add_jira_comments_for_changes(
         logger.debug(
             "Create comment #%s on Jira issue %s",
             i + 1,
-            linked_issue_key,
+            issue_key,
             extra=context.update(operation=Operation.COMMENT).dict(),
         )
         jira_response = get_client().issue_add_comment(
-            issue_key=linked_issue_key, comment=json.dumps(comment, indent=4)
+            issue_key=issue_key, comment=json.dumps(comment, indent=4)
         )
         jira_response_comments.append(jira_response)
 
     return jira_response_comments
 
 
-def delete_jira_issue_if_duplicate(
-    context: ActionContext, bug: BugzillaBug, issue_key: str
-):
+def delete_jira_issue_if_duplicate(context: ActionContext):
     """Rollback the Jira issue creation if there is already a linked Jira issue
     on the Bugzilla ticket"""
+    bug = context.bug
+    issue_key = context.jira.issue
     # In the time taken to create the Jira issue the bug may have been updated so
     # re-retrieve it to ensure we have the latest data.
     jira_key_in_bugzilla = bug.extract_from_see_also()
@@ -292,8 +287,10 @@ def delete_jira_issue_if_duplicate(
     return jira_response_delete
 
 
-def add_link_to_bugzilla(context: ActionContext, issue_key: str, bug: BugzillaBug):
+def add_link_to_bugzilla(context: ActionContext):
     """Add link to Bugzilla ticket in Jira issue"""
+    bug = context.bug
+    issue_key = context.jira.issue
     bugzilla_url = f"{settings.bugzilla_base_url}/show_bug.cgi?id={bug.id}"
     logger.debug(
         "Link %r on Jira issue %s",
@@ -311,8 +308,9 @@ def add_link_to_bugzilla(context: ActionContext, issue_key: str, bug: BugzillaBu
     )
 
 
-def clear_assignee(context: ActionContext, issue_key: str):
+def clear_assignee(context: ActionContext):
     """Clear the assignee of the specified Jira issue."""
+    issue_key = context.jira.issue
     logger.debug("Clearing assignee", extra=context.dict())
     return get_client().update_issue_field(key=issue_key, fields={"assignee": None})
 
@@ -326,8 +324,11 @@ def find_jira_user(context: ActionContext, email: str):
     return users[0]
 
 
-def assign_jira_user(context: ActionContext, issue_key: str, email: str):
+def assign_jira_user(context: ActionContext, email: str):
     """Set the assignee of the specified Jira issue, raise if fails."""
+    issue_key = context.jira.issue
+    assert issue_key  # Until we have more fine-grained typing of contexts
+
     jira_user = find_jira_user(context, email)
     jira_user_id = jira_user["accountId"]
     try:
@@ -344,8 +345,11 @@ def assign_jira_user(context: ActionContext, issue_key: str, email: str):
         ) from exc
 
 
-def update_issue_status(context: ActionContext, issue_key: str, jira_status: str):
+def update_issue_status(context: ActionContext, jira_status: str):
     """Update the status of the Jira issue"""
+    issue_key = context.jira.issue
+    assert issue_key  # Until we have more fine-grained typing of contexts
+
     logger.debug(
         "Updating Jira status to %s",
         jira_status,
@@ -357,10 +361,11 @@ def update_issue_status(context: ActionContext, issue_key: str, jira_status: str
     )
 
 
-def update_issue_resolution(
-    context: ActionContext, issue_key: str, jira_resolution: str
-):
+def update_issue_resolution(context: ActionContext, jira_resolution: str):
     """Update the resolution of the Jira issue."""
+    issue_key = context.jira.issue
+    assert issue_key  # Until we have more fine-grained typing of contexts
+
     logger.debug(
         "Updating Jira resolution to %s",
         jira_resolution,
