@@ -65,15 +65,15 @@ class AssigneeAndStatusExecutor:
                 maybe_delete_duplicate,
                 add_link_to_bugzilla,
                 add_link_to_jira,
-                assign_jira_user,
-                update_issue_resolution,
-                update_issue_status,
+                maybe_assign_jira_user,
+                maybe_update_issue_resolution,
+                maybe_update_issue_status,
             ],
             Operation.UPDATE: [
                 update_issue,
-                assign_jira_user,
-                update_issue_resolution,
-                update_issue_status,
+                maybe_assign_jira_user,
+                maybe_update_issue_resolution,
+                maybe_update_issue_status,
             ],
             Operation.COMMENT: [
                 create_comment,
@@ -86,7 +86,7 @@ class AssigneeAndStatusExecutor:
         return True, {"responses": responses}
 
 
-def assign_jira_user(context: ActionContext, **parameters):
+def maybe_assign_jira_user(context: ActionContext, **parameters):
     """Assign the user on the Jira issue, based on the Bugzilla assignee email"""
     event = context.event
     bug = context.bug
@@ -122,7 +122,7 @@ def assign_jira_user(context: ActionContext, **parameters):
     return context, ()
 
 
-def update_issue_resolution(
+def maybe_update_issue_resolution(
     context: ActionContext,
     **parameters,
 ):
@@ -155,7 +155,7 @@ def update_issue_resolution(
     return context, ()
 
 
-def update_issue_status(context: ActionContext, **parameters):
+def maybe_update_issue_status(context: ActionContext, **parameters):
     """
     Update the Jira issue resolution
     https://support.atlassian.com/jira-cloud-administration/docs/what-are-issue-statuses-priorities-and-resolutions/
