@@ -345,7 +345,15 @@ class BugzillaApiResponse(BaseModel):
     bugs: Optional[list[BugzillaBug]]
 
 
-class JiraContext(BaseModel):
+class Context(BaseModel):
+    """Generic log context throughout JBI"""
+
+    def update(self, **kwargs):
+        """Return a copy with updated fields."""
+        return self.copy(update=kwargs)
+
+
+class JiraContext(Context):
     """Logging context about Jira"""
 
     project: str
@@ -353,14 +361,6 @@ class JiraContext(BaseModel):
 
 
 BugId = TypedDict("BugId", {"id": Optional[int]})
-
-
-class Context(BaseModel):
-    """Generic log context throughout JBI"""
-
-    def update(self, **kwargs):
-        """Return a copy with updated fields."""
-        return self.copy(update=kwargs)
 
 
 class RunnerContext(Context, extra=Extra.forbid):
