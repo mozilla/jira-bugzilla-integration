@@ -191,7 +191,7 @@ def maybe_update_issue_status(context: ActionContext, **parameters):
         changed_fields = context.event.changed_fields() or []
 
         if "status" in changed_fields or "resolution" in changed_fields:
-            if resp := jira.update_issue_status(context, jira_status):
-                return context, (resp,)
+            resp = jira.update_issue_status(context, jira_status)
+            return context, (resp,)
 
     return context, ()

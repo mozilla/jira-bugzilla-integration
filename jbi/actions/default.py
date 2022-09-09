@@ -89,13 +89,7 @@ def maybe_create_comment(context: ActionContext, **parameters):
         )
         return context, ()
 
-    context = context.update(operation=Operation.COMMENT)
-    commenter = event.user.login if event.user else "unknown"
-    jira_response = jira.add_jira_comment(
-        context,
-        bug.comment,
-        commenter,
-    )
+    jira_response = jira.add_jira_comment(context)
     return context, (jira_response,)
 
 
@@ -128,10 +122,12 @@ def maybe_create_issue(
         sync_whiteboard_labels=sync_whiteboard_labels,
     )
 
-    context.jira.issue = issue_key
+    context = context.update(jira=context.jira.update(issue=issue_key))
 
-    bug = bugzilla.get_client().get_bug(bug.id)
-    jira_response_delete = jira.delete_jira_issue_if_duplicate(context)
+    # In the time taken to create the Jira issue the bug may have been updated so
+    # re-retrieve it to ensure we have the latest data.
+    latest_bug = bugzilla.get_client().get_bug(bug.id)
+    jira_response_delete = jira.delete_jira_issue_if_duplicate(context, latest_bug)
     if jira_response_delete:
         return context, (jira_response_delete,)
 
@@ -173,9 +169,6 @@ def maybe_add_jira_comments_for_changes(context: ActionContext, **parameters):
     if context.operation != Operation.UPDATE:
         return context, ()
 
-    assert context.jira.issue  # Until we have more fine-grained typing of contexts
+    comments_responses = jira.add_jira_comments_for_changes(context)
 
-    comments_responses = jira.add_jira_comments_for_changes(
-        context=context,
-    )
     return context, tuple(comments_responses)

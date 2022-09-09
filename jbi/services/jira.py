@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any
 from atlassian import Jira, errors
 
 from jbi import Operation, environment
-from jbi.models import ActionContext, BugzillaWebhookComment
+from jbi.models import ActionContext, BugzillaBug
 
 from .common import InstrumentedClient, ServiceHealth
 
@@ -207,12 +207,13 @@ def update_jira_issue(context: ActionContext, sync_whiteboard_labels):
     return jira_response_update
 
 
-def add_jira_comment(
-    context: ActionContext,
-    comment: BugzillaWebhookComment,
-    commenter: str,
-):
+def add_jira_comment(context: ActionContext):
     """Publish a comment on the specified Jira issue"""
+    context = context.update(operation=Operation.COMMENT)
+    commenter = context.event.user.login if context.event.user else "unknown"
+    comment = context.bug.comment
+    assert comment  # See maybe_add_comment()
+
     issue_key = context.jira.issue
     formatted_comment = f"*({commenter})* commented: \n{{quote}}{comment.body}{{quote}}"
     jira_response = get_client().issue_add_comment(
@@ -263,14 +264,11 @@ def add_jira_comments_for_changes(context: ActionContext):
     return jira_response_comments
 
 
-def delete_jira_issue_if_duplicate(context: ActionContext):
+def delete_jira_issue_if_duplicate(context: ActionContext, latest_bug: BugzillaBug):
     """Rollback the Jira issue creation if there is already a linked Jira issue
     on the Bugzilla ticket"""
-    bug = context.bug
     issue_key = context.jira.issue
-    # In the time taken to create the Jira issue the bug may have been updated so
-    # re-retrieve it to ensure we have the latest data.
-    jira_key_in_bugzilla = bug.extract_from_see_also()
+    jira_key_in_bugzilla = latest_bug.extract_from_see_also()
     _duplicate_creation_event = (
         jira_key_in_bugzilla is not None and issue_key != jira_key_in_bugzilla
     )
@@ -280,7 +278,7 @@ def delete_jira_issue_if_duplicate(context: ActionContext):
     logger.warning(
         "Delete duplicated Jira issue %s from Bug %s",
         issue_key,
-        bug.id,
+        context.bug.id,
         extra=context.update(operation=Operation.DELETE).dict(),
     )
     jira_response_delete = get_client().delete_issue(issue_id_or_key=issue_key)
