@@ -1,10 +1,13 @@
+from jbi import Operation
 from jbi.models import (
     Action,
+    ActionContext,
     BugzillaBug,
     BugzillaComment,
     BugzillaWebhookEvent,
     BugzillaWebhookRequest,
     BugzillaWebhookUser,
+    JiraContext,
 )
 
 
@@ -14,6 +17,9 @@ def action_factory(**overrides):
         "contact": "tbd",
         "description": "test config",
         "module": "tests.fixtures.noop_action",
+        "parameters": {
+            "jira_project_key": "JBI",
+        },
         **overrides,
     }
     return Action.parse_obj(action)
@@ -86,6 +92,28 @@ def comment_factory(**overrides):
             "count": 1,
             "is_private": True,
             "creator": "mathieu@mozilla.org",
+            **overrides,
+        }
+    )
+
+
+def action_context_factory(**overrides):
+    return ActionContext.parse_obj(
+        {
+            "operation": Operation.IGNORE,
+            "bug": bug_factory(),
+            "event": webhook_event_factory(),
+            "jira": jira_context_factory(),
+            **overrides,
+        },
+    )
+
+
+def jira_context_factory(**overrides):
+    return JiraContext.parse_obj(
+        {
+            "project": "JBI",
+            "issue": None,
             **overrides,
         }
     )
