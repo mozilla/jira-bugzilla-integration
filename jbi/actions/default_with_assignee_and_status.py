@@ -13,16 +13,18 @@ from jbi import ActionResult, Operation
 from jbi.actions.default import (
     JIRA_REQUIRED_PERMISSIONS as DEFAULT_JIRA_REQUIRED_PERMISSIONS,
 )
-from jbi.actions.default import (
+from jbi.actions.steps import (
     add_link_to_bugzilla,
     add_link_to_jira,
     create_comment,
     create_issue,
+    maybe_assign_jira_user,
     maybe_delete_duplicate,
+    maybe_update_issue_resolution,
+    maybe_update_issue_status,
     update_issue,
 )
 from jbi.models import ActionContext
-from jbi.services import jira
 
 logger = logging.getLogger(__name__)
 
@@ -84,104 +86,3 @@ class AssigneeAndStatusExecutor:
             responses += step_responses
 
         return True, {"responses": responses}
-
-
-def maybe_assign_jira_user(context: ActionContext, **parameters):
-    """Assign the user on the Jira issue, based on the Bugzilla assignee email"""
-    event = context.event
-    bug = context.bug
-
-    if context.operation == Operation.CREATE:
-        if not bug.is_assigned():
-            return context, ()
-
-        try:
-            resp = jira.assign_jira_user(context, bug.assigned_to)  # type: ignore
-            return context, (resp,)
-        except ValueError as exc:
-            logger.debug(str(exc), extra=context.dict())
-
-    if context.operation == Operation.UPDATE:
-        changed_fields = event.changed_fields() or []
-
-        if "assigned_to" not in changed_fields:
-            return context, ()
-
-        if not bug.is_assigned():
-            resp = jira.clear_assignee(context)
-        else:
-            try:
-                resp = jira.assign_jira_user(context, bug.assigned_to)  # type: ignore
-            except ValueError as exc:
-                logger.debug(str(exc), extra=context.dict())
-                # If that failed then just fall back to clearing the assignee.
-                resp = jira.clear_assignee(context)
-        return context, (resp,)
-
-    # This happens when exceptions are raised an ignored.
-    return context, ()
-
-
-def maybe_update_issue_resolution(
-    context: ActionContext,
-    **parameters,
-):
-    """
-    Update the Jira issue status
-    https://support.atlassian.com/jira-cloud-administration/docs/what-are-issue-statuses-priorities-and-resolutions/
-    """
-    resolution_map: dict[str, str] = parameters["resolution_map"]
-    jira_resolution = resolution_map.get(context.bug.resolution or "")
-    if jira_resolution is None:
-        logger.debug(
-            "Bug resolution was not in the resolution map.",
-            extra=context.update(
-                operation=Operation.IGNORE,
-            ).dict(),
-        )
-        return context, ()
-
-    if context.operation == Operation.CREATE:
-        resp = jira.update_issue_resolution(context, jira_resolution)
-        return context, (resp,)
-
-    if context.operation == Operation.UPDATE:
-        changed_fields = context.event.changed_fields() or []
-
-        if "resolution" in changed_fields:
-            resp = jira.update_issue_resolution(context, jira_resolution)
-            return context, (resp,)
-
-    return context, ()
-
-
-def maybe_update_issue_status(context: ActionContext, **parameters):
-    """
-    Update the Jira issue resolution
-    https://support.atlassian.com/jira-cloud-administration/docs/what-are-issue-statuses-priorities-and-resolutions/
-    """
-    resolution_map: dict[str, str] = parameters["status_map"]
-    bz_status = context.bug.resolution or context.bug.status
-    jira_status = resolution_map.get(bz_status or "")
-
-    if jira_status is None:
-        logger.debug(
-            "Bug status was not in the status map.",
-            extra=context.update(
-                operation=Operation.IGNORE,
-            ).dict(),
-        )
-        return context, ()
-
-    if context.operation == Operation.CREATE:
-        resp = jira.update_issue_status(context, jira_status)
-        return context, (resp,)
-
-    if context.operation == Operation.UPDATE:
-        changed_fields = context.event.changed_fields() or []
-
-        if "status" in changed_fields or "resolution" in changed_fields:
-            resp = jira.update_issue_status(context, jira_status)
-            return context, (resp,)
-
-    return context, ()
