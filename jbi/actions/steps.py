@@ -28,11 +28,9 @@ def create_comment(context: ActionContext, **parameters):
     return context, (jira_response,)
 
 
-def create_issue(
-    context: ActionContext, **parameters
-):  # pylint: disable=too-many-arguments
+def create_issue(context: ActionContext, **parameters):
     """Create Jira issue and establish link between bug and issue; rollback/delete if required"""
-    sync_whiteboard_labels: bool = parameters["sync_whiteboard_labels"]
+    sync_whiteboard_labels: bool = parameters.get("sync_whiteboard_labels", True)
     bug = context.bug
 
     # In the payload of a bug creation, the `comment` field is `null`.
@@ -77,7 +75,7 @@ def maybe_delete_duplicate(context: ActionContext, **parameters):
 
 def update_issue(context: ActionContext, **parameters):
     """Update the Jira issue if bug with linked issue is modified."""
-    sync_whiteboard_labels: bool = parameters["sync_whiteboard_labels"]
+    sync_whiteboard_labels: bool = parameters.get("sync_whiteboard_labels", True)
 
     resp = jira.update_jira_issue(context, sync_whiteboard_labels)
 
@@ -135,7 +133,7 @@ def maybe_update_issue_resolution(
     Update the Jira issue status
     https://support.atlassian.com/jira-cloud-administration/docs/what-are-issue-statuses-priorities-and-resolutions/
     """
-    resolution_map: dict[str, str] = parameters["resolution_map"]
+    resolution_map: dict[str, str] = parameters.get("resolution_map", {})
     jira_resolution = resolution_map.get(context.bug.resolution or "")
     if jira_resolution is None:
         logger.debug(
@@ -165,7 +163,7 @@ def maybe_update_issue_status(context: ActionContext, **parameters):
     Update the Jira issue resolution
     https://support.atlassian.com/jira-cloud-administration/docs/what-are-issue-statuses-priorities-and-resolutions/
     """
-    resolution_map: dict[str, str] = parameters["status_map"]
+    resolution_map: dict[str, str] = parameters.get("status_map", {})
     bz_status = context.bug.resolution or context.bug.status
     jira_status = resolution_map.get(bz_status or "")
 

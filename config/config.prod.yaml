@@ -19,9 +19,25 @@
   contact: gijs@mozilla.com
   description: Firefox Front End whiteboard tag
   enabled: true
-  module: jbi.actions.default_with_assignee_and_status
+  module: jbi.actions.default
   parameters:
     jira_project_key: FIDEFE
+    steps:
+      create:
+        - create_issue
+        - maybe_delete_duplicate
+        - add_link_to_bugzilla
+        - add_link_to_jira
+        - maybe_assign_jira_user
+        - maybe_update_issue_resolution
+        - maybe_update_issue_status
+      update:
+        - update_issue
+        - maybe_assign_jira_user
+        - maybe_update_issue_resolution
+        - maybe_update_issue_status
+      comment:
+        - create_comment
     status_map:
       ASSIGNED: In Progress
       FIXED: Closed
@@ -37,9 +53,24 @@
   contact: dtownsend@mozilla.com
   description: Flowstate whiteboard tag
   enabled: true
-  module: jbi.actions.default_with_assignee_and_status
   parameters:
     jira_project_key: MR2
+    steps:
+      create:
+        - create_issue
+        - maybe_delete_duplicate
+        - add_link_to_bugzilla
+        - add_link_to_jira
+        - maybe_assign_jira_user
+        - maybe_update_issue_resolution
+        - maybe_update_issue_status
+      update:
+        - update_issue,
+        - maybe_assign_jira_user
+        - maybe_update_issue_resolution
+        - maybe_update_issue_status
+      comment:
+        - create_comment
     sync_whiteboard_labels: false
     status_map:
       ASSIGNED: In Progress
