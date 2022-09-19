@@ -81,7 +81,7 @@ to the Bugzilla ticket on the Jira issue.
     - The Jira project identifier
 - `steps`
     - mapping [str, list[str]]
-    - If defined, the specified steps are executed
+    - If defined, the specified steps are executed. The group of steps listed under `new` are executed when a Bugzilla event occurs on a ticket that is unknown to Jira. The steps under `existing`, when the Bugzilla ticket is already linked to a Jira issue. The steps under `comment` when a comment is posted on a linked Bugzilla ticket.
 - `sync_whiteboard_labels` (optional)
     - boolean
     - Whether to sync the Bugzilla status whiteboard labels to Jira. Defaults to `true`.
@@ -112,7 +112,7 @@ Full configuration, that will set assignee, change the Jira issue status and res
   parameters:
     jira_project_key: FIDEFE
     steps:
-      create:
+      new:
       - create_issue
       - maybe_delete_duplicate
       - add_link_to_bugzilla
@@ -120,7 +120,7 @@ Full configuration, that will set assignee, change the Jira issue status and res
       - maybe_assign_jira_user
       - maybe_update_issue_resolution
       - maybe_update_issue_status
-      update:
+      existing:
       - update_issue
       - add_jira_comments_for_changes
       - maybe_assign_jira_user

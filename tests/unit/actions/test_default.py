@@ -18,7 +18,7 @@ def test_default_invalid_operation():
 
 def test_default_invalid_step():
     with pytest.raises(AttributeError):
-        default.init(jira_project_key="", steps={"create": ["unknown_step"]})
+        default.init(jira_project_key="", steps={"new": ["unknown_step"]})
 
 
 def test_default_returns_callable_without_data():

@@ -15,7 +15,7 @@
   parameters:
     jira_project_key: MR2
     steps:
-      create:
+      new:
         - create_issue
         - maybe_delete_duplicate
         - add_link_to_bugzilla
@@ -23,7 +23,7 @@
         - maybe_assign_jira_user
         - maybe_update_issue_resolution
         - maybe_update_issue_status
-      update:
+      existing:
         - update_issue
         - maybe_assign_jira_user
         - maybe_update_issue_resolution

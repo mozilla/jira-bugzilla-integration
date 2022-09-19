@@ -34,33 +34,35 @@ def init(
     """Function that takes required and optional params and returns a callable object"""
     if steps is None:
         steps = {
-            Operation.CREATE: [
+            "new": [
                 "create_issue",
                 "maybe_delete_duplicate",
                 "add_link_to_bugzilla",
                 "add_link_to_jira",
             ],
-            Operation.UPDATE: [
+            "existing": [
                 "update_issue",
                 "add_jira_comments_for_changes",
             ],
-            Operation.COMMENT: [
+            "comment": [
                 "create_comment",
             ],
         }
 
-    unknown_operations = set(steps.keys()) - {
-        Operation.CREATE,
-        Operation.UPDATE,
-        Operation.COMMENT,
+    group_to_operation = {
+        "new": Operation.CREATE,
+        "existing": Operation.UPDATE,
+        "comment": Operation.COMMENT,
     }
-    if unknown_operations:
-        raise ValueError(f"Unsupported operation in `steps`: {unknown_operations}")
-
-    steps_callables = {
-        operation: [getattr(steps_module, step_str) for step_str in steps_list]
-        for operation, steps_list in steps.items()
-    }
+    try:
+        steps_callables = {
+            group_to_operation[entry]: [
+                getattr(steps_module, step_str) for step_str in steps_list
+            ]
+            for entry, steps_list in steps.items()
+        }
+    except KeyError as err:
+        raise ValueError(f"Unsupported entry in `steps`: {err}") from err
 
     return Executor(jira_project_key=jira_project_key, steps=steps_callables, **kwargs)
 

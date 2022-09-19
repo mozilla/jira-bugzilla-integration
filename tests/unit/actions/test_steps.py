@@ -12,7 +12,7 @@ from jbi.services.jira import JiraCreateError
 from tests.fixtures.factories import comment_factory
 
 ALL_STEPS = {
-    "create": [
+    "new": [
         "create_issue",
         "maybe_delete_duplicate",
         "add_link_to_bugzilla",
@@ -21,7 +21,7 @@ ALL_STEPS = {
         "maybe_update_issue_resolution",
         "maybe_update_issue_status",
     ],
-    "update": [
+    "existing": [
         "update_issue",
         "maybe_assign_jira_user",
         "maybe_update_issue_resolution",
