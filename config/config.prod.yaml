@@ -19,7 +19,6 @@
   contact: gijs@mozilla.com
   description: Firefox Front End whiteboard tag
   enabled: true
-  module: jbi.actions.default
   parameters:
     jira_project_key: FIDEFE
     steps:
