@@ -1,7 +1,6 @@
 """
 Module for testing jbi/actions/default.py functionality
 """
-# pylint: disable=cannot-enumerate-pytest-fixtures
 from unittest import mock
 
 import pytest
