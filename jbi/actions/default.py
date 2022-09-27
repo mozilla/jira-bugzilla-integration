@@ -26,6 +26,25 @@ JIRA_REQUIRED_PERMISSIONS = {
 }
 
 
+def groups2operation(steps):
+    """In the configuration files, the steps are grouped by `new`, `existing`,
+    and `comment`. Internally, this correspond to enums of `Operation`.
+    This helper remaps the list of steps.
+    """
+    group_to_operation = {
+        "new": Operation.CREATE,
+        "existing": Operation.UPDATE,
+        "comment": Operation.COMMENT,
+    }
+    try:
+        by_operation = {
+            group_to_operation[entry]: steps_list for entry, steps_list in steps.items()
+        }
+    except KeyError as err:
+        raise ValueError(f"Unsupported entry in `steps`: {err}") from err
+    return by_operation
+
+
 def init(
     jira_project_key,
     steps: Optional[dict[str, list[str]]] = None,
@@ -49,20 +68,13 @@ def init(
             ],
         }
 
-    group_to_operation = {
-        "new": Operation.CREATE,
-        "existing": Operation.UPDATE,
-        "comment": Operation.COMMENT,
+    steps_by_operation = groups2operation(steps)
+
+    # Turn the steps strings into references to functions of the `jbi.actions.steps` module.
+    steps_callables = {
+        group: [getattr(steps_module, step_str) for step_str in steps_list]
+        for group, steps_list in steps_by_operation.items()
     }
-    try:
-        steps_callables = {
-            group_to_operation[entry]: [
-                getattr(steps_module, step_str) for step_str in steps_list
-            ]
-            for entry, steps_list in steps.items()
-        }
-    except KeyError as err:
-        raise ValueError(f"Unsupported entry in `steps`: {err}") from err
 
     return Executor(jira_project_key=jira_project_key, steps=steps_callables, **kwargs)
 
