@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def create_comment(context: ActionContext, **parameters):
-    """Create a Jira comment if event is `"comment"`"""
+    """Create a Jira comment using `context.bug.comment`"""
     bug = context.bug
 
     if bug.comment is None:
@@ -29,7 +29,7 @@ def create_comment(context: ActionContext, **parameters):
 
 
 def create_issue(context: ActionContext, **parameters):
-    """Create Jira issue and establish link between bug and issue; rollback/delete if required"""
+    """Create the Jira issue with the first comment as the description."""
     sync_whiteboard_labels: bool = parameters.get("sync_whiteboard_labels", True)
     bug = context.bug
 
@@ -50,13 +50,13 @@ def create_issue(context: ActionContext, **parameters):
 
 
 def add_link_to_jira(context: ActionContext, **parameters):
-    """Add see_also field on Bugzilla ticket"""
+    """Add the URL to the Jira issue in the `see_also` field on the Bugzilla ticket"""
     bugzilla_response = bugzilla.add_link_to_jira(context)
     return context, (bugzilla_response,)
 
 
 def add_link_to_bugzilla(context: ActionContext, **parameters):
-    """Add link Jira issue"""
+    """Add the URL of the Bugzilla ticket to the links of the Jira issue"""
     jira_response = jira.add_link_to_bugzilla(context)
     return context, (jira_response,)
 
@@ -64,7 +64,8 @@ def add_link_to_bugzilla(context: ActionContext, **parameters):
 def maybe_delete_duplicate(context: ActionContext, **parameters):
     """
     In the time taken to create the Jira issue the bug may have been updated so
-    re-retrieve it to ensure we have the latest data.
+    re-retrieve it to ensure we have the latest data, and delete any duplicate
+    if two Jira issues were created for the same Bugzilla ticket.
     """
     latest_bug = bugzilla.get_client().get_bug(context.bug.id)
     jira_response_delete = jira.delete_jira_issue_if_duplicate(context, latest_bug)
@@ -74,7 +75,7 @@ def maybe_delete_duplicate(context: ActionContext, **parameters):
 
 
 def update_issue(context: ActionContext, **parameters):
-    """Update the Jira issue if bug with linked issue is modified."""
+    """Update the Jira issue's summary and labels if the linked bug is modified."""
     sync_whiteboard_labels: bool = parameters.get("sync_whiteboard_labels", True)
 
     resp = jira.update_jira_issue(context, sync_whiteboard_labels)
@@ -83,14 +84,21 @@ def update_issue(context: ActionContext, **parameters):
 
 
 def add_jira_comments_for_changes(context: ActionContext, **parameters):
-    """Add a Jira comment for each field change on Bugzilla"""
+    """Add a Jira comment for each field (assignee, status, resolution) change on
+    the Bugzilla ticket."""
     comments_responses = jira.add_jira_comments_for_changes(context)
 
     return context, tuple(comments_responses)
 
 
 def maybe_assign_jira_user(context: ActionContext, **parameters):
-    """Assign the user on the Jira issue, based on the Bugzilla assignee email"""
+    """Assign the user on the Jira issue, based on the Bugzilla assignee email.
+
+    It will attempt to assign the Jira issue the same person as the bug is assigned to. This relies on
+    the user using the same email address in both Bugzilla and Jira. If the user does not exist in Jira
+    then the assignee is cleared from the Jira issue. The Jira account that JBI uses requires the "Browse
+    users and groups" global permission in order to set the assignee.
+    """
     event = context.event
     bug = context.bug
 
