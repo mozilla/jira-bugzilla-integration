@@ -28,8 +28,6 @@
         - maybe_assign_jira_user
         - maybe_update_issue_resolution
         - maybe_update_issue_status
-      comment:
-        - create_comment
     status_map:
       ASSIGNED: In Progress
       FIXED: In Review

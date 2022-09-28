@@ -21,6 +21,12 @@ def test_default_invalid_step():
         default.init(jira_project_key="", steps={"new": ["unknown_step"]})
 
 
+def test_unspecified_groups_come_from_default_steps():
+    action = default.init(jira_project_key="", steps={"comment": ["create_comment"]})
+
+    assert len(action.steps) == 3
+
+
 def test_default_returns_callable_without_data():
     callable_object = default.init(jira_project_key="")
     assert callable_object

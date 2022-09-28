@@ -25,6 +25,22 @@ JIRA_REQUIRED_PERMISSIONS = {
     "EDIT_ISSUES",
 }
 
+DEFAULT_STEPS = {
+    "new": [
+        "create_issue",
+        "maybe_delete_duplicate",
+        "add_link_to_bugzilla",
+        "add_link_to_jira",
+    ],
+    "existing": [
+        "update_issue",
+        "add_jira_comments_for_changes",
+    ],
+    "comment": [
+        "create_comment",
+    ],
+}
+
 
 def groups2operation(steps):
     """In the configuration files, the steps are grouped by `new`, `existing`,
@@ -51,22 +67,8 @@ def init(
     **kwargs,
 ):
     """Function that takes required and optional params and returns a callable object"""
-    if steps is None:
-        steps = {
-            "new": [
-                "create_issue",
-                "maybe_delete_duplicate",
-                "add_link_to_bugzilla",
-                "add_link_to_jira",
-            ],
-            "existing": [
-                "update_issue",
-                "add_jira_comments_for_changes",
-            ],
-            "comment": [
-                "create_comment",
-            ],
-        }
+    # Merge specified steps with default ones.
+    steps = {**DEFAULT_STEPS, **(steps or {})}
 
     steps_by_operation = groups2operation(steps)
 

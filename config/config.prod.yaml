@@ -35,8 +35,6 @@
         - maybe_assign_jira_user
         - maybe_update_issue_resolution
         - maybe_update_issue_status
-      comment:
-        - create_comment
     status_map:
       ASSIGNED: In Progress
       FIXED: Closed
@@ -68,8 +66,6 @@
         - maybe_assign_jira_user
         - maybe_update_issue_resolution
         - maybe_update_issue_status
-      comment:
-        - create_comment
     sync_whiteboard_labels: false
     status_map:
       ASSIGNED: In Progress
