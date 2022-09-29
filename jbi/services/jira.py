@@ -211,7 +211,7 @@ def add_jira_comment(context: ActionContext):
     context = context.update(operation=Operation.COMMENT)
     commenter = context.event.user.login if context.event.user else "unknown"
     comment = context.bug.comment
-    assert comment  # See maybe_add_comment()
+    assert comment  # See jbi.steps.create_comment()
 
     issue_key = context.jira.issue
     formatted_comment = f"*({commenter})* commented: \n{{quote}}{comment.body}{{quote}}"
