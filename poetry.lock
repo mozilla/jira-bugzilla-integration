@@ -234,7 +234,7 @@ wmi = ["wmi (>=1.5.1,<2.0.0)"]
 
 [[package]]
 name = "dockerflow"
-version = "2022.7.0"
+version = "2022.8.0"
 description = "Python tools and helpers for Mozilla's Dockerflow"
 category = "main"
 optional = false
@@ -1024,7 +1024,7 @@ setuptools = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.10 <3.11"
-content-hash = "fed7cce7c64e6c03ab4282b21f56e952a677fb38481ba8744681915a103e3ed4"
+content-hash = "f8bd03f1e833c2bad067722ddd872744394f69e5da1243fae8a1e889344d62a1"
 
 [metadata.files]
 anyio = [
@@ -1168,8 +1168,8 @@ dnspython = [
     {file = "dnspython-2.2.1.tar.gz", hash = "sha256:0f7569a4a6ff151958b64304071d370daa3243d15941a7beedf0c9fe5105603e"},
 ]
 dockerflow = [
-    {file = "dockerflow-2022.7.0-py2.py3-none-any.whl", hash = "sha256:f2b7a484f94910aeb2fb35b7ef67d08e40abbb42c806de6da0589f51fe50d1b1"},
-    {file = "dockerflow-2022.7.0.tar.gz", hash = "sha256:6b15c6904198095225c167abb4e1b3547220cd1faccd786b92f314e46bbecc7c"},
+    {file = "dockerflow-2022.8.0-py2.py3-none-any.whl", hash = "sha256:cebd5e12ff08be43b02ea4fcaf044fb2cd4cec63c93dbfbe6e3c5b610849924c"},
+    {file = "dockerflow-2022.8.0.tar.gz", hash = "sha256:fcb95ea8226551e1fd03c3c82f2b11de50434ddfa63cebc164399dabf5c78908"},
 ]
 email-validator = [
     {file = "email_validator-1.2.1-py2.py3-none-any.whl", hash = "sha256:c8589e691cf73eb99eed8d10ce0e9cbb05a0886ba920c8bcb7c82873f4c5789c"},
