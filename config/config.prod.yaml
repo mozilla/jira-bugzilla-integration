@@ -44,9 +44,12 @@
       INCOMPLETE: Closed
       WORKSFORME: Closed
       REOPENED: In Progress
+    resolution_map:
+      FIXED: Done
+      DUPLICATE: Duplicate
+      WONTFIX: Won't do
 
 - whiteboard_tag: flowstate
-  allow_private: true
   contact: dtownsend@mozilla.com
   description: Flowstate whiteboard tag
   enabled: true

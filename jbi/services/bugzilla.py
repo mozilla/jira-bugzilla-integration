@@ -133,4 +133,4 @@ def add_link_to_jira(context: ActionContext):
         bug.id,
         extra=context.update(operation=Operation.LINK).dict(),
     )
-    return get_client().update_bug(bug.id, see_also_add=jira_url)
+    return get_client().update_bug(bug.id, see_also={"add": [jira_url]})

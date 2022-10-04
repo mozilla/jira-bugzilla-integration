@@ -1,5 +1,5 @@
 # Creating a python base with shared environment variables
-FROM python:3.10.6 as base
+FROM python:3.10.7 as base
 ENV PIP_NO_CACHE_DIR=off \
     PIP_DEFAULT_TIMEOUT=100 \
     PIP_DISABLE_PIP_VERSION_CHECK=on \
@@ -21,7 +21,7 @@ COPY ./poetry.lock ./pyproject.toml ./
 RUN poetry install --no-dev --no-root
 
 # `production` stage uses the dependencies downloaded in the `base` stage
-FROM python:3.10.6-slim as production
+FROM python:3.10.7-slim as production
 ENV PORT=8000 \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \

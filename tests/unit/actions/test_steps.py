@@ -54,6 +54,10 @@ def test_created_public(
         },
     )
 
+    mocked_bugzilla.update_bug.assert_called_once_with(
+        654321, see_also={"add": ["https://mozit-test.atlassian.net/browse/k"]}
+    )
+
 
 def test_modified_public(context_update_example: ActionContext, mocked_jira):
     callable_object = default.init(jira_project_key=context_update_example.jira.project)
