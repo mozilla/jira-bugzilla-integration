@@ -1,18 +1,18 @@
 """
-Default action is listed below.
-`init` is required; and requires at minimum the `jira_project_key` parameter.
-The `label_field` parameter configures which Jira field is used to store the
-labels generated from the Bugzilla status whiteboard.
+The `default` action takes a list of steps from configuration and executes them
+in chain.
 
-`init` should return a __call__able
+The `runner` will call this action with an initialized context. When a Bugzilla ticket
+is created or updated, its `operation` attribute will be `Operation.CREATE` or `Operation.UPDATE`,
+and when a comment is posted, it will be set to `Operation.COMMENT`.
 """
 import logging
 from typing import Optional
 
 from jbi import ActionResult, Operation
+from jbi.actions import steps as steps_module
 from jbi.environment import get_settings
-from jbi.models import ActionLogContext, BugzillaBug, BugzillaWebhookEvent, JiraContext
-from jbi.services import bugzilla, jira
+from jbi.models import ActionContext
 
 settings = get_settings()
 
@@ -25,162 +25,77 @@ JIRA_REQUIRED_PERMISSIONS = {
     "EDIT_ISSUES",
 }
 
+DEFAULT_STEPS = {
+    "new": [
+        "create_issue",
+        "maybe_delete_duplicate",
+        "add_link_to_bugzilla",
+        "add_link_to_jira",
+    ],
+    "existing": [
+        "update_issue",
+        "add_jira_comments_for_changes",
+    ],
+    "comment": [
+        "create_comment",
+    ],
+}
 
-def init(jira_project_key, sync_whiteboard_labels=True, **kwargs):
+
+def groups2operation(steps):
+    """In the configuration files, the steps are grouped by `new`, `existing`,
+    and `comment`. Internally, this correspond to enums of `Operation`.
+    This helper remaps the list of steps.
+    """
+    group_to_operation = {
+        "new": Operation.CREATE,
+        "existing": Operation.UPDATE,
+        "comment": Operation.COMMENT,
+    }
+    try:
+        by_operation = {
+            group_to_operation[entry]: steps_list for entry, steps_list in steps.items()
+        }
+    except KeyError as err:
+        raise ValueError(f"Unsupported entry in `steps`: {err}") from err
+    return by_operation
+
+
+def init(
+    jira_project_key,
+    steps: Optional[dict[str, list[str]]] = None,
+    **kwargs,
+):
     """Function that takes required and optional params and returns a callable object"""
-    return DefaultExecutor(
-        jira_project_key=jira_project_key,
-        sync_whiteboard_labels=sync_whiteboard_labels,
-        **kwargs,
-    )
+    # Merge specified steps with default ones.
+    steps = {**DEFAULT_STEPS, **(steps or {})}
+
+    steps_by_operation = groups2operation(steps)
+
+    # Turn the steps strings into references to functions of the `jbi.actions.steps` module.
+    steps_callables = {
+        group: [getattr(steps_module, step_str) for step_str in steps_list]
+        for group, steps_list in steps_by_operation.items()
+    }
+
+    return Executor(jira_project_key=jira_project_key, steps=steps_callables, **kwargs)
 
 
-class DefaultExecutor:
+class Executor:
     """Callable class that encapsulates the default action."""
 
-    def __init__(self, jira_project_key, **kwargs):
-        """Initialize DefaultExecutor Object"""
-        self.jira_project_key = jira_project_key
-        self.sync_whiteboard_labels = kwargs.get("sync_whiteboard_labels", True)
+    def __init__(self, steps, **parameters):
+        """Initialize Executor Object"""
+        self.steps = steps
+        self.parameters = parameters
 
-    def __call__(self, bug: BugzillaBug, event: BugzillaWebhookEvent) -> ActionResult:
-        """Called from BZ webhook when default action is used. All default-action webhook-events are processed here."""
-        linked_issue_key = bug.extract_from_see_also()
+    def __call__(self, context: ActionContext) -> ActionResult:
+        """Called from `runner` when the action is used."""
 
-        log_context = ActionLogContext(
-            event=event,
-            bug=bug,
-            operation=Operation.IGNORE,
-            jira=JiraContext(
-                issue=linked_issue_key,
-                project=self.jira_project_key,
-            ),
-        )
+        responses = tuple()  # type: ignore
 
-        operation_kwargs = dict(
-            log_context=log_context,
-            bug=bug,
-            event=event,
-            linked_issue_key=linked_issue_key,
-        )
+        for step in self.steps[context.operation]:
+            context, step_responses = step(context=context, **self.parameters)
+            responses += step_responses
 
-        if result := maybe_create_comment(**operation_kwargs):
-            _, responses = result
-            return True, {"responses": responses}
-
-        if result := maybe_create_issue(
-            jira_project_key=self.jira_project_key,
-            sync_whiteboard_labels=self.sync_whiteboard_labels,
-            **operation_kwargs,
-        ):
-            _, responses = result
-            return True, {"responses": responses}
-
-        if result := maybe_update_issue(
-            **operation_kwargs, sync_whiteboard_labels=self.sync_whiteboard_labels
-        ):
-            context, responses = result
-            comments_responses = jira.add_jira_comments_for_changes(
-                **{**operation_kwargs, "log_context": context}
-            )
-            return True, {"responses": responses + comments_responses}
-
-        logger.debug(
-            "Ignore event target %r",
-            event.target,
-            extra=log_context.dict(),
-        )
-        return False, {}
-
-
-def maybe_create_comment(
-    log_context: ActionLogContext,
-    bug: BugzillaBug,
-    event: BugzillaWebhookEvent,
-    linked_issue_key: Optional[str],
-):
-    """Create a Jira comment if event is `"comment"`"""
-    if event.target != "comment" or not linked_issue_key:
-        return None
-
-    if bug.comment is None:
-        logger.debug(
-            "No matching comment found in payload",
-            extra=log_context.dict(),
-        )
-        return None
-
-    log_context = log_context.update(operation=Operation.COMMENT)
-    commenter = event.user.login if event.user else "unknown"
-    jira_response = jira.add_jira_comment(
-        log_context, linked_issue_key, commenter, bug.comment
-    )
-    return log_context, [jira_response]
-
-
-def maybe_create_issue(
-    log_context: ActionLogContext,
-    bug: BugzillaBug,
-    event: BugzillaWebhookEvent,
-    linked_issue_key: Optional[str],
-    jira_project_key: str,
-    sync_whiteboard_labels: bool,
-):  # pylint: disable=too-many-arguments
-    """Create Jira issue and establish link between bug and issue; rollback/delete if required"""
-    if event.target != "bug" or linked_issue_key:
-        return None
-
-    log_context = log_context.update(operation=Operation.CREATE)
-
-    # In the payload of a bug creation, the `comment` field is `null`.
-    # We fetch the list of comments to use the first one as the Jira issue description.
-    comment_list = bugzilla.get_client().get_comments(bug.id)
-    description = comment_list[0].text if comment_list else ""
-
-    issue_key = jira.create_jira_issue(
-        log_context,
-        bug,
-        description,
-        jira_project_key,
-        sync_whiteboard_labels=sync_whiteboard_labels,
-    )
-
-    log_context.jira.issue = issue_key
-
-    bug = bugzilla.get_client().get_bug(bug.id)
-    jira_response_delete = jira.delete_jira_issue_if_duplicate(
-        log_context, bug, issue_key
-    )
-    if jira_response_delete:
-        return jira_response_delete
-
-    bugzilla_response = bugzilla.add_link_to_jira(log_context, bug, issue_key)
-
-    jira_response = jira.add_link_to_bugzilla(log_context, issue_key, bug)
-
-    return log_context, [bugzilla_response, jira_response]
-
-
-def maybe_update_issue(
-    log_context: ActionLogContext,
-    bug: BugzillaBug,
-    event: BugzillaWebhookEvent,
-    linked_issue_key: Optional[str],
-    sync_whiteboard_labels: bool,
-):
-    """Update the Jira issue if bug with linked issue is modified."""
-    if event.target != "bug" or not linked_issue_key:
-        return None
-
-    changed_fields = event.changed_fields() or []
-    log_context = log_context.update(
-        operation=Operation.UPDATE,
-        extra={
-            "changed_fields": ", ".join(changed_fields),
-        },
-    )
-    jira_response_update = jira.update_jira_issue(
-        log_context, bug, linked_issue_key, sync_whiteboard_labels
-    )
-
-    return log_context, [jira_response_update]
+        return True, {"responses": responses}

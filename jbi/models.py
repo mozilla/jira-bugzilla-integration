@@ -46,6 +46,11 @@ class Action(YamlModel):
     _required_jira_permissions: set[str] = PrivateAttr(default=None)
 
     @property
+    def jira_project_key(self):
+        """Return the configured project key."""
+        return self.parameters["jira_project_key"]
+
+    @property
     def caller(self) -> Callable:
         """Return the initialized callable for this action."""
         if not self._caller:
@@ -112,7 +117,7 @@ class Actions(YamlModel):
     def configured_jira_projects_keys(self) -> set[str]:
         """Return the list of Jira project keys from all configured actions"""
         return {
-            action.parameters["jira_project_key"]
+            action.jira_project_key
             for action in self.__root__
             if "jira_project_key" in action.parameters
         }
@@ -340,7 +345,15 @@ class BugzillaApiResponse(BaseModel):
     bugs: Optional[list[BugzillaBug]]
 
 
-class JiraContext(BaseModel):
+class Context(BaseModel):
+    """Generic log context throughout JBI"""
+
+    def update(self, **kwargs):
+        """Return a copy with updated fields."""
+        return self.copy(update=kwargs)
+
+
+class JiraContext(Context):
     """Logging context about Jira"""
 
     project: str
@@ -350,15 +363,7 @@ class JiraContext(BaseModel):
 BugId = TypedDict("BugId", {"id": Optional[int]})
 
 
-class LogContext(BaseModel):
-    """Generic log context throughout JBI"""
-
-    def update(self, **kwargs):
-        """Return a copy with updated fields."""
-        return self.copy(update=kwargs)
-
-
-class RunnerLogContext(LogContext, extra=Extra.forbid):
+class RunnerContext(Context, extra=Extra.forbid):
     """Logging context from runner"""
 
     operation: Operation
@@ -367,7 +372,7 @@ class RunnerLogContext(LogContext, extra=Extra.forbid):
     bug: BugId | BugzillaBug
 
 
-class ActionLogContext(LogContext, extra=Extra.forbid):
+class ActionContext(Context, extra=Extra.forbid):
     """Logging context from actions"""
 
     operation: Operation

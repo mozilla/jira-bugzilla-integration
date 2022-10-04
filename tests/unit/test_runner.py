@@ -55,6 +55,22 @@ def test_private_request_is_allowed(
     assert bug.id == 654321
 
 
+def test_added_comment_without_linked_issue_is_ignored(
+    webhook_comment_example: BugzillaWebhookRequest,
+    actions_example: Actions,
+    settings: Settings,
+):
+    webhook_comment_example.bug.see_also = []
+
+    with pytest.raises(IgnoreInvalidRequestError) as exc_info:
+        execute_action(
+            request=webhook_comment_example,
+            actions=actions_example,
+            settings=settings,
+        )
+    assert str(exc_info.value) == "ignore event target 'comment'"
+
+
 def test_request_is_ignored_because_no_action(
     webhook_create_example: BugzillaWebhookRequest,
     actions_example: Actions,

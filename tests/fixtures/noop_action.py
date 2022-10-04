@@ -8,7 +8,11 @@ from jbi import Operation
 
 
 def init(**parameters):
-    return lambda bug, event: (
+    return lambda context: (
         True,
-        {"parameters": parameters, "bug": bug.json(), "event": event.json()},
+        {
+            "parameters": parameters,
+            "bug": context.bug.json(),
+            "event": context.event.json(),
+        },
     )
