@@ -4,7 +4,6 @@ Python Module for Pydantic Models and validation
 import datetime
 import functools
 import importlib
-import json
 import logging
 import warnings
 from inspect import signature
@@ -45,6 +44,11 @@ class Action(YamlModel):
     parameters: dict = {}
     _caller: Callable = PrivateAttr(default=None)
     _required_jira_permissions: set[str] = PrivateAttr(default=None)
+
+    @property
+    def jira_project_key(self):
+        """Return the configured project key."""
+        return self.parameters["jira_project_key"]
 
     @property
     def caller(self) -> Callable:
@@ -113,7 +117,7 @@ class Actions(YamlModel):
     def configured_jira_projects_keys(self) -> set[str]:
         """Return the list of Jira project keys from all configured actions"""
         return {
-            action.parameters["jira_project_key"]
+            action.jira_project_key
             for action in self.__root__
             if "jira_project_key" in action.parameters
         }
@@ -232,6 +236,10 @@ class BugzillaBug(BaseModel):
     assigned_to: Optional[str]
     comment: Optional[BugzillaWebhookComment]
 
+    def is_assigned(self) -> bool:
+        """Return `true` if the bug is assigned to a user."""
+        return self.assigned_to != "nobody@mozilla.org"
+
     def get_whiteboard_as_list(self) -> list[str]:
         """Convert string whiteboard into list, splitting on ']' and removing '['."""
         if self.whiteboard is not None:
@@ -303,41 +311,6 @@ class BugzillaBug(BaseModel):
 
         return None
 
-    def map_event_as_comment(self, event: BugzillaWebhookEvent):
-        """Extract comment from Webhook Event"""
-        # Let Python raise an AttributeError instead of raising ValueError ourselves.
-        commenter: BugzillaWebhookUser = event.user  # type: ignore
-        comment: BugzillaWebhookComment = self.comment  # type: ignore
-        return f"*({commenter.login})* commented: \n{{quote}}{comment.body}{{quote}}"
-
-    def map_changes_as_comments(
-        self,
-        event: BugzillaWebhookEvent,
-        status_log_enabled: bool = True,
-        assignee_log_enabled: bool = True,
-    ) -> list[str]:
-        """Extract update dict and comment list from Webhook Event"""
-
-        comments: list = []
-
-        if event.changes:
-            user = event.user.login if event.user else "unknown"
-            for change in event.changes:
-
-                if status_log_enabled and change.field in ["status", "resolution"]:
-                    comments.append(
-                        {
-                            "modified by": user,
-                            "resolution": self.resolution,
-                            "status": self.status,
-                        }
-                    )
-
-                if assignee_log_enabled and change.field in ["assigned_to", "assignee"]:
-                    comments.append({"assignee": self.assigned_to})
-
-        return [json.dumps(comment, indent=4) for comment in comments]
-
     def lookup_action(self, actions: Actions) -> Action:
         """Find first matching action from bug's whiteboard list"""
         tags: list[str] = self.get_potential_whiteboard_config_list()
@@ -372,7 +345,15 @@ class BugzillaApiResponse(BaseModel):
     bugs: Optional[list[BugzillaBug]]
 
 
-class JiraContext(BaseModel):
+class Context(BaseModel):
+    """Generic log context throughout JBI"""
+
+    def update(self, **kwargs):
+        """Return a copy with updated fields."""
+        return self.copy(update=kwargs)
+
+
+class JiraContext(Context):
     """Logging context about Jira"""
 
     project: str
@@ -382,15 +363,7 @@ class JiraContext(BaseModel):
 BugId = TypedDict("BugId", {"id": Optional[int]})
 
 
-class LogContext(BaseModel):
-    """Generic log context throughout JBI"""
-
-    def update(self, **kwargs):
-        """Return a copy with updated fields."""
-        return self.copy(update=kwargs)
-
-
-class RunnerLogContext(LogContext, extra=Extra.forbid):
+class RunnerContext(Context, extra=Extra.forbid):
     """Logging context from runner"""
 
     operation: Operation
@@ -399,7 +372,7 @@ class RunnerLogContext(LogContext, extra=Extra.forbid):
     bug: BugId | BugzillaBug
 
 
-class ActionLogContext(LogContext, extra=Extra.forbid):
+class ActionContext(Context, extra=Extra.forbid):
     """Logging context from actions"""
 
     operation: Operation

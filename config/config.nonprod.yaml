@@ -12,9 +12,22 @@
   contact: dtownsend@mozilla.com
   description: Flowstate whiteboard tag
   enabled: true
-  module: jbi.actions.default_with_assignee_and_status
   parameters:
     jira_project_key: MR2
+    steps:
+      new:
+        - create_issue
+        - maybe_delete_duplicate
+        - add_link_to_bugzilla
+        - add_link_to_jira
+        - maybe_assign_jira_user
+        - maybe_update_issue_resolution
+        - maybe_update_issue_status
+      existing:
+        - update_issue
+        - maybe_assign_jira_user
+        - maybe_update_issue_resolution
+        - maybe_update_issue_status
     status_map:
       ASSIGNED: In Progress
       FIXED: In Review

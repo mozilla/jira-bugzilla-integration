@@ -8,8 +8,8 @@ from functools import lru_cache
 import requests
 from pydantic import parse_obj_as
 
-from jbi import environment
-from jbi.models import BugzillaApiResponse, BugzillaBug, BugzillaComment
+from jbi import Operation, environment
+from jbi.models import ActionContext, BugzillaApiResponse, BugzillaBug, BugzillaComment
 
 from .common import InstrumentedClient, ServiceHealth
 
@@ -120,3 +120,17 @@ def check_health() -> ServiceHealth:
     client = get_client()
     health: ServiceHealth = {"up": client.logged_in}
     return health
+
+
+def add_link_to_jira(context: ActionContext):
+    """Add link to Jira in Bugzilla ticket"""
+    bug = context.bug
+    issue_key = context.jira.issue
+    jira_url = f"{settings.jira_base_url}browse/{issue_key}"
+    logger.debug(
+        "Link %r on Bug %s",
+        jira_url,
+        bug.id,
+        extra=context.update(operation=Operation.LINK).dict(),
+    )
+    return get_client().update_bug(bug.id, see_also={"add": [jira_url]})

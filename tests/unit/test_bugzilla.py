@@ -66,18 +66,6 @@ def test_lookup_action_missing(actions_example):
     assert str(exc_info.value) == "example devtest"
 
 
-def test_map_changes_as_comments(webhook_change_status_assignee):
-    mapped = webhook_change_status_assignee.bug.map_changes_as_comments(
-        webhook_change_status_assignee.event,
-        status_log_enabled=True,
-        assignee_log_enabled=True,
-    )
-    assert mapped == [
-        '{\n    "modified by": "nobody@mozilla.org",\n    "resolution": "",\n    "status": "NEW"\n}',
-        '{\n    "assignee": "nobody@mozilla.org"\n}',
-    ]
-
-
 def test_payload_empty_changes_list(webhook_change_status_assignee):
     webhook_change_status_assignee.event.changes = None
     assert webhook_change_status_assignee.event.changed_fields() is None
