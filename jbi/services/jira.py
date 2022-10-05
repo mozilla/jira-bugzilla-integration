@@ -152,6 +152,7 @@ def create_jira_issue(
     context: ActionContext,
     description: str,
     sync_whiteboard_labels: bool,
+    components: list[str],
 ):
     """Create a Jira issue with the specified fields and return its key."""
     bug = context.bug
@@ -169,7 +170,19 @@ def create_jira_issue(
     if sync_whiteboard_labels:
         fields["labels"] = bug.get_jira_labels()
 
-    jira_response_create = get_client().create_issue(fields=fields)
+    client = get_client()
+
+    if components:
+        # Fetch all projects components, and match their id by name.
+        all_project_components = client.get_project_components(context.jira.project)
+        components_id = [
+            {"id": comp["id"]}
+            for comp in all_project_components
+            if comp["name"] in components
+        ]
+        fields["components"] = components_id
+
+    jira_response_create = client.create_issue(fields=fields)
 
     # Jira response can be of the form: List or Dictionary
     if isinstance(jira_response_create, list):
