@@ -5,6 +5,7 @@ from datetime import datetime
 from fastapi.testclient import TestClient
 
 from jbi.app import app
+from jbi.environment import get_toml_version
 from jbi.models import BugzillaWebhookRequest
 
 
@@ -133,6 +134,7 @@ def test_read_version(anon_client):
     with open(version_path, "r", encoding="utf8") as vp_file:
         version_contents = vp_file.read()
     expected = json.loads(version_contents)
+    expected["version"] = get_toml_version()
     resp = anon_client.get("/__version__")
     assert resp.status_code == 200
     assert resp.json() == expected
