@@ -39,7 +39,6 @@ def test_default_returns_callable_without_data():
     assert "missing 1 required positional argument: 'context'" in str(exc_info.value)
 
 
-
 @pytest.mark.no_mocked_bugzilla
 @pytest.mark.no_mocked_jira
 def test_default_logs_all_received_responses(
@@ -74,9 +73,11 @@ def test_default_logs_all_received_responses(
     ]
 
     assert captured_log_msgs == [
-        ("Received {'id': '10000', 'key': 'ED-24'}",
-        {"id": "10000", "key": "ED-24"},
-    )]
+        (
+            "Received {'id': '10000', 'key': 'ED-24'}",
+            {"id": "10000", "key": "ED-24"},
+        )
+    ]
 
 
 def test_default_returns_callable_with_data(

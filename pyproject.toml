@@ -47,6 +47,10 @@ env_override_existing_values = true
 env_files = [
     ".env.example"
 ]
+markers = [
+    "no_mocked_bugzilla",
+    "no_mocked_jira",
+]
 
 [tool.pylint]
     [tool.pylint.'MESSAGES CONTROL']
