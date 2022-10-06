@@ -18,7 +18,7 @@ help:
 	@echo "  clean         - clean local cache folders"
 	@echo "  format        - run formatters (black, isort), fix in place"
 	@echo "  lint          - run linters"
-	@echo "  version       - bump version (major|minor|patch)"
+	@echo "  version-bump  - bump version (major|minor|patch)"
 	@echo "  start         - run the API service locally"
 	@echo "  test          - run test suite"
 	@echo ""
@@ -56,8 +56,9 @@ lint: $(INSTALL_STAMP)
 	bin/lint.sh
 
 .PHONY: version
-version: $(INSTALL_STAMP)
-	poetry version
+version:
+	@if [ -z "$(PARAM)" ]; then echo "No PARAM provided. Printing version"; else echo "Updating based on PARAM=$(PARAM)"; fi
+	poetry version $(PARAM)	
 
 .PHONY: start
 start: $(INSTALL_STAMP) $(DOTENV_FILE)
