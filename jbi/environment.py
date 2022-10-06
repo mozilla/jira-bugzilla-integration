@@ -7,6 +7,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
+import toml
 from pydantic import AnyUrl, BaseSettings
 
 
@@ -68,4 +69,20 @@ def get_version():
     version_path = Path(__file__).parents[1] / "version.json"
     if version_path.exists():
         info = json.loads(version_path.read_text(encoding="utf8"))
+    toml_version = get_toml_version()
+    if (
+        not info.get("version") and toml_version
+    ):  # if a build tag has provided a version skip using toml version
+        info["version"] = toml_version
     return info
+
+
+@lru_cache(maxsize=1)
+def get_toml_version():
+    """Return version in pyproject.toml."""
+    toml_version = None
+    pyproject_path = Path(__file__).parents[1] / "pyproject.toml"
+    if pyproject_path.exists():
+        pyproject = toml.loads(pyproject_path.read_text(encoding="utf8"))
+        toml_version = pyproject["tool"]["poetry"]["version"]
+    return toml_version

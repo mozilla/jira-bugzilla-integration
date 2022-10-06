@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "jira-bugzilla-integration"
-version = "3.3.2"
+version = "3.4.0"
 description = "jira-bugzilla-integration"
 authors = ["@mozilla/jbi-core"]
 license = "MPL"
@@ -18,6 +18,8 @@ sentry-sdk = "^1.9.10"
 backoff = "^2.1.2"
 statsd = "^3.3.0"
 requests = "^2.28.1"
+toml = "^0.10.2"
+types-toml = "^0.10.8"
 
 [tool.poetry.dev-dependencies]
 pre-commit = "^2.20.0"

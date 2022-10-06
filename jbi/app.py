@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.starlette import StarletteIntegration
 
-from jbi.environment import get_settings
+from jbi.environment import get_settings, get_toml_version
 from jbi.log import format_request_summary_fields
 from jbi.router import router
 
@@ -31,8 +31,8 @@ sentry_sdk.init(
 
 app = FastAPI(
     title="Jira Bugzilla Integration (JBI)",
-    description="JBI v2 Platform",
-    version="3.3.2",
+    description="Platform providing default and customized synchronization for bugzilla bugs.",
+    version=get_toml_version(),
     debug=settings.app_debug,
 )
 

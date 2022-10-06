@@ -18,6 +18,7 @@ help:
 	@echo "  clean         - clean local cache folders"
 	@echo "  format        - run formatters (black, isort), fix in place"
 	@echo "  lint          - run linters"
+	@echo "  version       - bump version (major|minor|patch)"
 	@echo "  start         - run the API service locally"
 	@echo "  test          - run test suite"
 	@echo ""
@@ -53,6 +54,10 @@ format: $(INSTALL_STAMP)
 .PHONY: lint
 lint: $(INSTALL_STAMP)
 	bin/lint.sh
+
+.PHONY: version
+version: $(INSTALL_STAMP)
+	poetry version
 
 .PHONY: start
 start: $(INSTALL_STAMP) $(DOTENV_FILE)
