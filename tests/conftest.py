@@ -53,10 +53,13 @@ def mocked_bugzilla(request):
 
 
 @pytest.fixture(autouse=True)
-def mocked_jira():
-    with mock.patch("jbi.services.jira.Jira") as mocked_jira:
-        yield mocked_jira()
-        jira.get_client.cache_clear()
+def mocked_jira(request):
+    if "no_mocked_jira" in request.keywords:
+        yield None
+    else:
+        with mock.patch("jbi.services.jira.Jira") as mocked_jira:
+            yield mocked_jira()
+            jira.get_client.cache_clear()
 
 
 @pytest.fixture

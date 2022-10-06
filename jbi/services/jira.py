@@ -67,6 +67,8 @@ def check_health(actions: Actions) -> ServiceHealth:
         "up": is_up,
         "all_projects_are_visible": is_up and _all_projects_visible(actions),
         "all_projects_have_permissions": _all_projects_permissions(actions),
+        "all_projects_components_exist": is_up
+        and _all_projects_components_exist(actions),
     }
     return health
 
@@ -144,6 +146,28 @@ def _validate_permissions(all_projects_perms):
     return not misconfigured
 
 
+def _all_projects_components_exist(actions: Actions):
+    components_by_project = {
+        action.parameters["jira_project_key"]: action.parameters["components"]
+        for action in actions
+        if "components" in action.parameters
+    }
+    success = True
+    for project, specified_components in components_by_project.items():
+        all_project_components = get_client().get_project_components(project)
+        all_components_names = set(comp["name"] for comp in all_project_components)
+        unknown = set(specified_components) - all_components_names
+        if unknown:
+            logger.error(
+                "Jira project %s does not have components %s",
+                project,
+                unknown,
+            )
+            success = False
+
+    return success
+
+
 class JiraCreateError(Exception):
     """Error raised on Jira issue creation."""
 
@@ -152,6 +176,7 @@ def create_jira_issue(
     context: ActionContext,
     description: str,
     sync_whiteboard_labels: bool,
+    components: list[str],
 ):
     """Create a Jira issue with the specified fields and return its key."""
     bug = context.bug
@@ -169,7 +194,19 @@ def create_jira_issue(
     if sync_whiteboard_labels:
         fields["labels"] = bug.get_jira_labels()
 
-    jira_response_create = get_client().create_issue(fields=fields)
+    client = get_client()
+
+    if components:
+        # Fetch all projects components, and match their id by name.
+        all_project_components = client.get_project_components(context.jira.project)
+        components_id = [
+            {"id": comp["id"]}
+            for comp in all_project_components
+            if comp["name"] in components
+        ]
+        fields["components"] = components_id
+
+    jira_response_create = client.create_issue(fields=fields)
 
     # Jira response can be of the form: List or Dictionary
     if isinstance(jira_response_create, list):

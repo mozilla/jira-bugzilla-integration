@@ -151,6 +151,7 @@ def test_read_heartbeat_all_services_fail(anon_client, mocked_jira, mocked_bugzi
             "up": False,
             "all_projects_are_visible": False,
             "all_projects_have_permissions": False,
+            "all_projects_components_exist": False,
         },
         "bugzilla": {
             "up": False,
@@ -171,6 +172,7 @@ def test_read_heartbeat_jira_services_fails(anon_client, mocked_jira, mocked_bug
             "up": False,
             "all_projects_are_visible": False,
             "all_projects_have_permissions": False,
+            "all_projects_components_exist": False,
         },
         "bugzilla": {
             "up": True,
@@ -194,6 +196,7 @@ def test_read_heartbeat_bugzilla_services_fails(
             "up": True,
             "all_projects_are_visible": True,
             "all_projects_have_permissions": False,
+            "all_projects_components_exist": False,
         },
         "bugzilla": {
             "up": False,
@@ -206,6 +209,7 @@ def test_read_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
     mocked_bugzilla.logged_in = True
     mocked_jira.get_server_info.return_value = {}
     mocked_jira.projects.return_value = [{"key": "DevTest"}]
+    mocked_jira.get_project_components.return_value = [{"name": "Main"}]
     mocked_jira.get_permissions.return_value = {
         "permissions": {
             "ADD_COMMENTS": {"havePermission": True},
@@ -223,6 +227,7 @@ def test_read_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
             "up": True,
             "all_projects_are_visible": True,
             "all_projects_have_permissions": True,
+            "all_projects_components_exist": True,
         },
         "bugzilla": {
             "up": True,
@@ -243,6 +248,7 @@ def test_jira_heartbeat_visible_projects(anon_client, mocked_jira, mocked_bugzil
             "up": True,
             "all_projects_are_visible": False,
             "all_projects_have_permissions": False,
+            "all_projects_components_exist": False,
         },
         "bugzilla": {
             "up": True,
@@ -254,6 +260,7 @@ def test_jira_heartbeat_missing_permissions(anon_client, mocked_jira, mocked_bug
     """/__heartbeat__ fails if configured projects don't match."""
     mocked_bugzilla.logged_in = True
     mocked_jira.get_server_info.return_value = {}
+    mocked_jira.get_project_components.return_value = [{"name": "Main"}]
     mocked_jira.get_project_permission_scheme.return_value = {
         "permissions": {
             "ADD_COMMENTS": {"havePermission": True},
@@ -271,6 +278,7 @@ def test_jira_heartbeat_missing_permissions(anon_client, mocked_jira, mocked_bug
             "up": True,
             "all_projects_are_visible": False,
             "all_projects_have_permissions": False,
+            "all_projects_components_exist": True,
         },
         "bugzilla": {
             "up": True,
@@ -278,11 +286,22 @@ def test_jira_heartbeat_missing_permissions(anon_client, mocked_jira, mocked_bug
     }
 
 
+def test_jira_heartbeat_unknown_components(anon_client, mocked_jira, mocked_bugzilla):
+    mocked_bugzilla.logged_in = True
+    mocked_jira.get_server_info.return_value = {}
+
+    resp = anon_client.get("/__heartbeat__")
+
+    assert resp.status_code == 503
+    assert not resp.json()["jira"]["all_projects_components_exist"]
+
+
 def test_head_heartbeat(anon_client, mocked_jira, mocked_bugzilla):
     """/__heartbeat__ support head requests"""
     mocked_bugzilla.logged_in = True
     mocked_jira.get_server_info.return_value = {}
     mocked_jira.projects.return_value = [{"key": "DevTest"}]
+    mocked_jira.get_project_components.return_value = [{"name": "Main"}]
     mocked_jira.get_permissions.return_value = {
         "permissions": {
             "ADD_COMMENTS": {"havePermission": True},

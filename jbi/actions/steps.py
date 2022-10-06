@@ -31,6 +31,7 @@ def create_comment(context: ActionContext, **parameters):
 def create_issue(context: ActionContext, **parameters):
     """Create the Jira issue with the first comment as the description."""
     sync_whiteboard_labels: bool = parameters.get("sync_whiteboard_labels", True)
+    components: list[str] = parameters.get("components", [])
     bug = context.bug
 
     # In the payload of a bug creation, the `comment` field is `null`.
@@ -42,6 +43,7 @@ def create_issue(context: ActionContext, **parameters):
         context,
         description,
         sync_whiteboard_labels=sync_whiteboard_labels,
+        components=components,
     )
     issue_key = jira_create_response.get("key")
 
