@@ -96,6 +96,15 @@ class Executor:
 
         for step in self.steps[context.operation]:
             context, step_responses = step(context=context, **self.parameters)
+            for response in step_responses:
+                logger.debug(
+                    "Received %s",
+                    response,
+                    extra={
+                        "response": response,
+                        **context.dict(),
+                    },
+                )
             responses += step_responses
 
         return True, {"responses": responses}

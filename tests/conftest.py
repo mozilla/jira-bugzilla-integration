@@ -46,6 +46,7 @@ def settings():
 def mocked_bugzilla(request):
     if "no_mocked_bugzilla" in request.keywords:
         yield None
+        bugzilla.get_client.cache_clear()
     else:
         with mock.patch("jbi.services.bugzilla.BugzillaClient") as mocked_bz:
             yield mocked_bz()
@@ -56,6 +57,7 @@ def mocked_bugzilla(request):
 def mocked_jira(request):
     if "no_mocked_jira" in request.keywords:
         yield None
+        jira.get_client.cache_clear()
     else:
         with mock.patch("jbi.services.jira.Jira") as mocked_jira:
             yield mocked_jira()
