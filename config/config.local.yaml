@@ -6,5 +6,5 @@
   enabled: true
   parameters:
     jira_project_key: DevTest
-    components:
+    jira_components:
       - "Main"

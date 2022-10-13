@@ -83,7 +83,7 @@ to the Bugzilla ticket on the Jira issue.
     - mapping [str, list[str]]
     - If defined, the specified steps are executed. The group of steps listed under `new` are executed when a Bugzilla event occurs on a ticket that is unknown to Jira. The steps under `existing`, when the Bugzilla ticket is already linked to a Jira issue. The steps under `comment` when a comment is posted on a linked Bugzilla ticket.
     If one of these groups is not specified, the default steps will be used.
-- `components` (optional)
+- `jira_components` (optional)
    - list [str]
    - If defined, the created issues will be assigned the specified components.
 - `sync_whiteboard_labels` (optional)
