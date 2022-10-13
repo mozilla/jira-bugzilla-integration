@@ -148,9 +148,9 @@ def _validate_permissions(all_projects_perms):
 
 def _all_projects_components_exist(actions: Actions):
     components_by_project = {
-        action.parameters["jira_project_key"]: action.parameters["components"]
+        action.parameters["jira_project_key"]: action.parameters["jira_components"]
         for action in actions
-        if "components" in action.parameters
+        if "jira_components" in action.parameters
     }
     success = True
     for project, specified_components in components_by_project.items():
