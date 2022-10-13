@@ -4,9 +4,10 @@ Core FastAPI app (setup, middleware)
 import logging
 import time
 from pathlib import Path
+from typing import Awaitable, Callable
 
 import sentry_sdk
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.starlette import StarletteIntegration
@@ -41,7 +42,9 @@ app.mount("/static", StaticFiles(directory=SRC_DIR / "static"), name="static")
 
 
 @app.middleware("http")
-async def request_summary(request: Request, call_next):
+async def request_summary(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
     """Middleware to log request info"""
     summary_logger = logging.getLogger("request.summary")
     request_time = time.time()
