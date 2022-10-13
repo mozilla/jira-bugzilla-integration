@@ -8,6 +8,7 @@ from tests.fixtures.factories import bug_factory
     "whiteboard,expected",
     [
         ("", ["bugzilla"]),
+        ("[tag]", ["bugzilla", "tag", "[tag]"]),
         ("[test whiteboard]", ["bugzilla", "test.whiteboard", "[test.whiteboard]"]),
         ("[test-whiteboard]", ["bugzilla", "test-whiteboard", "[test-whiteboard]"]),
         (
