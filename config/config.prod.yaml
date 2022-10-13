@@ -138,6 +138,15 @@
   parameters:
     jira_project_key: RELOPS
 
+- whiteboard_tag: remote-settings
+  contact: mleplatre@mozilla.com
+  description: Remote Settings Server issues
+  enabled: true
+  parameters:
+    jira_project_key: SE
+    jira_components:
+      - "Remote Settings"
+
 - whiteboard_tag: snt
   contact: cbellini@mozilla.com
   description: Search/NewTab Team Tag
