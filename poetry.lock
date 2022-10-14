@@ -183,7 +183,7 @@ dev = ["PyTest", "PyTest (<5)", "PyTest-Cov", "PyTest-Cov (<2.6)", "bump2version
 
 [[package]]
 name = "detect-secrets"
-version = "1.3.0"
+version = "1.4.0"
 description = "Tool for detecting secrets in the codebase"
 category = "dev"
 optional = false
@@ -1024,7 +1024,7 @@ setuptools = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.10 <3.11"
-content-hash = "495e835b2be71fc98433eb7304dad57c5da1ca8dcaa7e7efa9103b7b648230d3"
+content-hash = "73333f9148fa9860b567d918b4dcd6ef5c2576cec9fe51c1b6061c142c42bb37"
 
 [metadata.files]
 anyio = [
@@ -1150,8 +1150,8 @@ deprecated = [
     {file = "Deprecated-1.2.13.tar.gz", hash = "sha256:43ac5335da90c31c24ba028af536a91d41d53f9e6901ddb021bcc572ce44e38d"},
 ]
 detect-secrets = [
-    {file = "detect_secrets-1.3.0-py3-none-any.whl", hash = "sha256:86ff0936a7680e9e04f7a6edc1f11507c12a4fa3b06f077d969776124cd5dc91"},
-    {file = "detect_secrets-1.3.0.tar.gz", hash = "sha256:a93ef7d141f48a3a6531bc6d4ccf6d022d23bc10afd1e100a91ca9d2c25abb90"},
+    {file = "detect_secrets-1.4.0-py3-none-any.whl", hash = "sha256:d08ecabeee8b68c0acb0e8a354fb98d822a653f6ed05e520cead4c6fc1fc02cd"},
+    {file = "detect_secrets-1.4.0.tar.gz", hash = "sha256:d56787e339758cef48c9ccd6692f7a094b9963c979c9813580b0169e41132833"},
 ]
 dill = [
     {file = "dill-0.3.5.1-py2.py3-none-any.whl", hash = "sha256:33501d03270bbe410c72639b350e941882a8b0fd55357580fbc873fba0c59302"},
