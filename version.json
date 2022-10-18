@@ -1,6 +1,6 @@
 {
     "commit": "HEAD",
-    "version": "0.0.0",
+    "version": "v0.0.0",
     "image_tag": null,
     "source": "https://github.com/mozilla/jira-bugzilla-integration",
     "build": null
