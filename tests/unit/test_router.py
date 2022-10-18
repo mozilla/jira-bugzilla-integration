@@ -98,9 +98,11 @@ def test_webhook_is_200_if_action_succeeds(
 
 def test_webhook_is_200_if_action_raises_IgnoreInvalidRequestError(
     webhook_create_example: BugzillaWebhookRequest,
+    mocked_bugzilla,
 ):
     assert webhook_create_example.bug
     webhook_create_example.bug.whiteboard = "unmatched"
+    mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
 
     with TestClient(app) as anon_client:
         response = anon_client.post(

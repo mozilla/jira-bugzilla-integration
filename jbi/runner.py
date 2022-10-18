@@ -46,8 +46,7 @@ def execute_action(
             extra=runner_context.dict(),
         )
         try:
-            if bug.is_private:
-                bug = bugzilla.get_client().get_bug(bug.id)
+            bug = bugzilla.get_client().get_bug(bug.id)
         except Exception as err:
             logger.exception("Failed to get bug: %s", err, extra=runner_context.dict())
             raise IgnoreInvalidRequestError(
