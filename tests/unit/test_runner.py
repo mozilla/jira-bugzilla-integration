@@ -16,6 +16,30 @@ from jbi.runner import execute_action
 from tests.fixtures.factories import bug_factory
 
 
+def test_bugzilla_object_is_always_fetched(
+    mocked_bugzilla,
+    webhook_create_example,
+    actions_example: Actions,
+    settings: Settings,
+):
+    # See https://github.com/mozilla/jira-bugzilla-integration/issues/292
+    fetched_bug = bug_factory(
+        id=webhook_create_example.bug.id,
+        see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+    )
+    mocked_bugzilla.get_bug.return_value = fetched_bug
+
+    # when the runner executes a private bug
+    execute_action(
+        request=webhook_create_example,
+        actions=actions_example,
+        settings=settings,
+    )
+
+    # then
+    mocked_bugzilla.get_bug.assert_called_once_with(webhook_create_example.bug.id)
+
+
 def test_request_is_ignored_because_private(
     webhook_create_private_example: BugzillaWebhookRequest,
     actions_example: Actions,
@@ -59,8 +83,10 @@ def test_added_comment_without_linked_issue_is_ignored(
     webhook_comment_example: BugzillaWebhookRequest,
     actions_example: Actions,
     settings: Settings,
+    mocked_bugzilla,
 ):
     webhook_comment_example.bug.see_also = []
+    mocked_bugzilla.get_bug.return_value = webhook_comment_example.bug
 
     with pytest.raises(IgnoreInvalidRequestError) as exc_info:
         execute_action(
@@ -75,9 +101,11 @@ def test_request_is_ignored_because_no_action(
     webhook_create_example: BugzillaWebhookRequest,
     actions_example: Actions,
     settings: Settings,
+    mocked_bugzilla,
 ):
     assert webhook_create_example.bug
     webhook_create_example.bug.whiteboard = "bar"
+    mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
 
     with pytest.raises(IgnoreInvalidRequestError) as exc_info:
         execute_action(
@@ -93,7 +121,10 @@ def test_execution_logging_for_successful_requests(
     webhook_create_example: BugzillaWebhookRequest,
     actions_example: Actions,
     settings: Settings,
+    mocked_bugzilla,
 ):
+    mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
+
     with caplog.at_level(logging.DEBUG):
         execute_action(
             request=webhook_create_example,
@@ -117,9 +148,12 @@ def test_execution_logging_for_ignored_requests(
     webhook_create_example: BugzillaWebhookRequest,
     actions_example: Actions,
     settings: Settings,
+    mocked_bugzilla,
 ):
     assert webhook_create_example.bug
     webhook_create_example.bug.whiteboard = "foo"
+    mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
+
     with caplog.at_level(logging.DEBUG):
         with pytest.raises(IgnoreInvalidRequestError):
             execute_action(
@@ -143,7 +177,10 @@ def test_action_is_logged_as_success_if_returns_true(
     webhook_create_example: BugzillaWebhookRequest,
     actions_example: Actions,
     settings: Settings,
+    mocked_bugzilla,
 ):
+    mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
+
     with mock.patch("jbi.models.Action.caller") as mocked:
         mocked.return_value = True, {}
 
@@ -175,7 +212,10 @@ def test_action_is_logged_as_ignore_if_returns_false(
     webhook_create_example: BugzillaWebhookRequest,
     actions_example: Actions,
     settings: Settings,
+    mocked_bugzilla,
 ):
+    mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
+
     with mock.patch("jbi.models.Action.caller") as mocked:
         mocked.return_value = False, {}
 
@@ -204,9 +244,11 @@ def test_counter_is_incremented_on_ignored_requests(
     webhook_create_example: BugzillaWebhookRequest,
     actions_example: Actions,
     settings: Settings,
+    mocked_bugzilla,
 ):
     assert webhook_create_example.bug
     webhook_create_example.bug.whiteboard = "foo"
+    mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
 
     with mock.patch("jbi.runner.statsd") as mocked:
         with pytest.raises(IgnoreInvalidRequestError):
@@ -222,7 +264,10 @@ def test_counter_is_incremented_on_processed_requests(
     webhook_create_example: BugzillaWebhookRequest,
     actions_example: Actions,
     settings: Settings,
+    mocked_bugzilla,
 ):
+    mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
+
     with mock.patch("jbi.runner.statsd") as mocked:
         execute_action(
             request=webhook_create_example,
@@ -230,30 +275,3 @@ def test_counter_is_incremented_on_processed_requests(
             settings=settings,
         )
     mocked.incr.assert_called_with("jbi.bugzilla.processed.count")
-
-
-def test_bugzilla_object_is_fetched_when_private(
-    mocked_bugzilla,
-    webhook_modify_private_example,
-    actions_example: Actions,
-    settings: Settings,
-):
-    fetched_private_bug = bug_factory(
-        id=webhook_modify_private_example.bug.id,
-        is_private=webhook_modify_private_example.bug.is_private,
-        see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
-    )
-    mocked_bugzilla.get_bug.return_value = fetched_private_bug
-    actions_example["devtest"].allow_private = True
-
-    # when the runner executes a private bug
-    execute_action(
-        request=webhook_modify_private_example,
-        actions=actions_example,
-        settings=settings,
-    )
-
-    # then
-    mocked_bugzilla.get_bug.assert_called_once_with(
-        webhook_modify_private_example.bug.id
-    )
