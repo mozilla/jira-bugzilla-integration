@@ -140,7 +140,7 @@
   enabled: true
   parameters:
     jira_project_key: SNT
-    
+
 - whiteboard_tag: xyz
   contact: bsieber@mozilla.com
   description: XYZ Team Tag
