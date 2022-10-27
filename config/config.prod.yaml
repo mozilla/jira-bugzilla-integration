@@ -92,13 +92,6 @@
   parameters:
     jira_project_key: SYNC
 
-- whiteboard_tag: gv
-  contact: tbd
-  description: GeckoView Team whiteboard tag
-  enabled: true
-  parameters:
-    jira_project_key: ANDP
-
 - whiteboard_tag: mv3
   contact: tbd
   description: MV3 whiteboard tag
