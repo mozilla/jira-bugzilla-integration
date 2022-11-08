@@ -25,7 +25,10 @@ python-versions = ">=3.7.2"
 
 [package.dependencies]
 lazy-object-proxy = ">=1.4.0"
-wrapt = {version = ">=1.11,<2", markers = "python_version < \"3.11\""}
+wrapt = [
+    {version = ">=1.11,<2", markers = "python_version < \"3.11\""},
+    {version = ">=1.14,<2", markers = "python_version >= \"3.11\""},
+]
 
 [[package]]
 name = "atlassian-python-api"
@@ -1036,8 +1039,8 @@ setuptools = "*"
 
 [metadata]
 lock-version = "1.1"
-python-versions = ">=3.10 <3.11"
-content-hash = "c29fba81977729bb73f111a42eab2bcc8bbae045fcf28e958059a26ed112daf5"
+python-versions = ">=3.10 <3.12"
+content-hash = "831665176522f0193c6677fc773bc940e615f0a8f71d687f2a5504ed80ce2aa6"
 
 [metadata.files]
 anyio = [
