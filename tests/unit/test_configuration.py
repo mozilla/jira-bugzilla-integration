@@ -1,6 +1,8 @@
+from unittest import mock
+
 import pytest
 
-from jbi import configuration
+from jbi import configuration, environment
 
 
 def test_mock_jbi_files():
@@ -12,3 +14,17 @@ def test_mock_jbi_files():
 def test_actual_jbi_files():
     assert configuration.get_actions(jbi_config_file="config/config.nonprod.yaml")
     assert configuration.get_actions(jbi_config_file="config/config.prod.yaml")
+
+
+def test_filename_uses_env():
+    with mock.patch("jbi.configuration.Actions.parse_file") as mocked:
+        configuration.get_actions()
+    mocked.assert_called_with("config/config.local.yaml")
+
+
+def test_settings_env_is_enum_string():
+    settings = environment.Settings()
+    settings.env = environment.Environment.PROD
+
+    assert settings.env == "prod"
+    assert str(settings.env) == "prod"

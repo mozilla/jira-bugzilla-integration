@@ -17,6 +17,10 @@ class Environment(str, Enum):
     NONPROD = "nonprod"
     PROD = "prod"
 
+    def __str__(self):
+        # Force enum string representation to be the value instead 'Environment.NAME'
+        return str(self._value_)  # # pylint: disable=no-member
+
 
 class SentryDsn(AnyUrl):
     """Url type to validate Sentry DSN"""
