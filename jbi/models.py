@@ -42,7 +42,7 @@ class Action(YamlModel):
     enabled: bool = False
     allow_private: bool = False
     parameters: dict = {}
-    _caller: Callable = PrivateAttr(default=None)
+    _caller: Optional[Callable] = PrivateAttr(default=None)
     _required_jira_permissions: set[str] = PrivateAttr(default=None)
 
     @property
@@ -53,7 +53,7 @@ class Action(YamlModel):
     @property
     def caller(self) -> Callable:
         """Return the initialized callable for this action."""
-        if not self._caller:
+        if self._caller is None:
             action_module: ModuleType = importlib.import_module(self.module)
             initialized: Callable = action_module.init(**self.parameters)  # type: ignore
             self._caller = initialized
