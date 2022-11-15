@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 
 from jbi import Operation
 from jbi.app import app
+from jbi.configuration import get_actions
 from jbi.environment import Settings
 from jbi.models import (
     Action,
@@ -40,6 +41,12 @@ def anon_client():
 def settings():
     """A test Settings object"""
     return Settings()
+
+
+@pytest.fixture(autouse=True)
+def actions():
+    get_actions.cache_clear()
+    return get_actions()
 
 
 @pytest.fixture(autouse=True)

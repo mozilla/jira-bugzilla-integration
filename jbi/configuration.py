@@ -18,9 +18,12 @@ class ConfigError(Exception):
 
 
 @lru_cache
-def get_actions(
-    jbi_config_file: str = f"config/config.{settings.env}.yaml",
-) -> Actions:
+def get_actions() -> Actions:
+    """Load actions from file determined by ENV name"""
+    return get_actions_from_file(f"config/config.{settings.env}.yaml")
+
+
+def get_actions_from_file(jbi_config_file: str) -> Actions:
     """Convert and validate YAML configuration to `Action` objects"""
     try:
         actions: Actions = Actions.parse_file(jbi_config_file)
