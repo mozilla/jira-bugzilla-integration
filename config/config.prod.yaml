@@ -98,12 +98,10 @@
         - add_link_to_bugzilla
         - add_link_to_jira
         - maybe_assign_jira_user
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
       existing:
         - update_issue
         - maybe_assign_jira_user
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
     status_map:
       UNCONFIRMED: Backlog
@@ -112,15 +110,6 @@
       RESOLVED: Closed
       REOPENED: In Progress
       VERIFIED: Closed
-    resolution_map:
-      FIXED: Fixed
-      INVALID: Won't Do
-      WONTFIX: Won't Do
-      INACTIVE: Won't Do
-      DUPLICATE: Duplicate
-      WORKSFORME: Cannot Reproduce
-      INCOMPLETE: Won't Do
-      MOVED: Duplicate
 
 - whiteboard_tag: fxsync
   contact: tbd
