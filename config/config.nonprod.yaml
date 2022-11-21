@@ -55,6 +55,14 @@
       UNCONFIRMED: Backlog
       NEW: Backlog
       ASSIGNED: In Progress
-      RESOLVED: Done
       REOPENED: In Progress
+      RESOLVED: Done
       VERIFIED: Done
+      FIXED: Done
+      INVALID: Done
+      WONTFIX: Done
+      INACTIVE: Done
+      DUPLICATE: Done
+      WORKSFORME: Done
+      INCOMPLETE: Done
+      MOVED: Done
