@@ -55,6 +55,6 @@
       UNCONFIRMED: Backlog
       NEW: Backlog
       ASSIGNED: In Progress
-      RESOLVED: Closed
+      RESOLVED: Done
       REOPENED: In Progress
-      VERIFIED: Closed
+      VERIFIED: Done
