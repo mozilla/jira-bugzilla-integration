@@ -64,7 +64,7 @@ def format_request_summary_fields(
 
     current_time = time.time()
     return RequestSummary(
-        agent=request.headers.get("User-Agent"),
+        agent=request.headers.get("User-Agent", ""),
         path=request.url.path,
         method=request.method,
         lang=request.headers.get("Accept-Language"),
