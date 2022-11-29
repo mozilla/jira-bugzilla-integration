@@ -26,7 +26,6 @@ def test_request_summary_defaults_user_agent_to_empty_string(caplog):
     with caplog.at_level(logging.INFO):
         with TestClient(app) as anon_client:
             del anon_client.headers["User-Agent"]
-            # https://fastapi.tiangolo.com/advanced/testing-events/
             anon_client.get("/")
 
             summary = caplog.records[-1]
