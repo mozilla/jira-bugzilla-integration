@@ -32,7 +32,7 @@ wrapt = [
 
 [[package]]
 name = "atlassian-python-api"
-version = "3.32.0"
+version = "3.32.1"
 description = "Python Atlassian REST API Wrapper"
 category = "main"
 optional = false
@@ -1094,7 +1094,7 @@ setuptools = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.10 <3.12"
-content-hash = "85ecfcebdfbdb83a39feba7d26150f0ee8bb1c64c9e7f71752911dbe0d985aa1"
+content-hash = "4bee3489a97a6449d65badf01854c2dfd97a8deab54b46cf5074e94b545b571e"
 
 [metadata.files]
 anyio = [
@@ -1106,7 +1106,7 @@ astroid = [
     {file = "astroid-2.12.13.tar.gz", hash = "sha256:1493fe8bd3dfd73dc35bd53c9d5b6e49ead98497c47b2307662556a5692d29d7"},
 ]
 atlassian-python-api = [
-    {file = "atlassian-python-api-3.32.0.tar.gz", hash = "sha256:5825d46fd4e892fa2b565192347900db48c4a43d4cd54e7c68d53b6d994d855c"},
+    {file = "atlassian-python-api-3.32.1.tar.gz", hash = "sha256:d9e5ea045d343d348f8021f7279ae171db4a77f5db0d22b37d968f963f6e8728"},
 ]
 attrs = [
     {file = "attrs-22.1.0-py2.py3-none-any.whl", hash = "sha256:86efa402f67bf2df34f51a335487cf46b1ec130d02b8d39fd248abfd30da551c"},
