@@ -33,6 +33,40 @@
       FIXED: In Review
       REOPENED: In Progress
 
+- whiteboard_tag: fxcm
+  contact: dnguyen@mozilla.com
+  description: Firefox Credential Management Team whiteboard tag
+  enabled: true
+  parameters:
+    jira_project_key: FXCM
+    steps:
+      new:
+        - create_issue
+        - maybe_delete_duplicate
+        - add_link_to_bugzilla
+        - add_link_to_jira
+        - maybe_assign_jira_user
+        - maybe_update_issue_resolution
+        - maybe_update_issue_status
+      existing:
+        - update_issue
+        - maybe_assign_jira_user
+        - maybe_update_issue_resolution
+        - maybe_update_issue_status
+    status_map:
+      ASSIGNED: To Do
+      REOPENED: To Do
+      RESOLVED: Done
+      VERIFIED: Done
+      FIXED: Done
+      INVALID: Done
+      WONTFIX: Done
+      INACTIVE: Done
+      DUPLICATE: Done
+      WORKSFORME: Done
+      INCOMPLETE: Done
+      MOVED: Done
+
 - whiteboard_tag: fxdroid
   contact: cpeterson@mozilla.com
   description: Firefox Android Team Tag
