@@ -34,7 +34,6 @@
 - whiteboard_tag: fxcm
   contact: dnguyen@mozilla.com
   description: Firefox Credential Management Team whiteboard tag
-  enabled: true
   parameters:
     jira_project_key: FXCM
     steps:
