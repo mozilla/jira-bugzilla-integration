@@ -39,7 +39,7 @@ class Action(YamlModel):
     # TODO: Remove the tbd literal option when all actions have contact info # pylint: disable=fixme
     contact: EmailStr | list[EmailStr] | Literal["tbd"]
     description: str
-    enabled: bool = False
+    enabled: bool = True
     allow_private: bool = False
     parameters: dict = {}
     _caller: Optional[Callable] = PrivateAttr(default=None)

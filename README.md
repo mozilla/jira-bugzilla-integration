@@ -21,7 +21,6 @@ Below is a full example of an action configuration:
   allow_private: false
   contact: example@allizom.com
   description: example configuration
-  enabled: true
   module: jbi.actions.default
   parameters:
     jira_project_key: EXMPL
@@ -111,7 +110,6 @@ Full configuration, that will set assignee, change the Jira issue status and res
 - whiteboard_tag: fidefe
   contact: example@allizom.com
   description: full configuration
-  enabled: true
   module: jbi.actions.default
   parameters:
     jira_project_key: FIDEFE

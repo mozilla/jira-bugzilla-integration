@@ -3,7 +3,6 @@
 - whiteboard_tag: A
   contact: foobar
   description: test config
-  enabled: true
   module: jbi.actions.default
   parameters:
     jira_project_key: KEY

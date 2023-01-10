@@ -3,7 +3,6 @@
 - whiteboard_tag: nonprodtest
   contact: bsieber@mozilla.com
   description: Nonprod testing whiteboard tag (JBI Bin Project)
-  enabled: true
   parameters:
     jira_project_key: JB
 
@@ -11,7 +10,6 @@
   allow_private: true
   contact: dtownsend@mozilla.com
   description: Flowstate whiteboard tag
-  enabled: true
   parameters:
     jira_project_key: MR2
     steps:
@@ -70,7 +68,6 @@
 - whiteboard_tag: fxdroid
   contact: cpeterson@mozilla.com
   description: Firefox Android Team Tag
-  enabled: true
   parameters:
     jira_project_key: FXDROID
     steps:
