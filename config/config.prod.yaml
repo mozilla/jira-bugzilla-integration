@@ -3,7 +3,6 @@
 - whiteboard_tag: addons
   contact: tbd
   description: Addons whiteboard tag for AMO Team
-  enabled: true
   # module: jbi.actions.default
   parameters:
     jira_project_key: WEBEXT
@@ -11,14 +10,12 @@
 - whiteboard_tag: fidedi
   contact: tbd
   description: Firefox Desktop Integration whiteboard tag
-  enabled: true
   parameters:
     jira_project_key: FIDEDI
 
 - whiteboard_tag: fidefe
   contact: gijs@mozilla.com
   description: Firefox Front End whiteboard tag
-  enabled: true
   parameters:
     jira_project_key: FIDEFE
     steps:
@@ -48,7 +45,6 @@
 - whiteboard_tag: flowstate
   contact: dtownsend@mozilla.com
   description: Flowstate whiteboard tag
-  enabled: true
   parameters:
     jira_project_key: MR2
     steps:
@@ -74,14 +70,12 @@
 - whiteboard_tag: fxatps
   contact: tbd
   description: Privacy & Security and Anti-Tracking Team whiteboard tag
-  enabled: true
   parameters:
     jira_project_key: FXATPS
 
 - whiteboard_tag: fxcm
   contact: dnguyen@mozilla.com
   description: Firefox Credential Management Team whiteboard tag
-  enabled: true
   parameters:
     jira_project_key: FXCM
     steps:
@@ -115,7 +109,6 @@
 - whiteboard_tag: fxdroid
   contact: cpeterson@mozilla.com
   description: Firefox Android Team Tag
-  enabled: true
   parameters:
     jira_project_key: FXDROID
     steps:
@@ -149,49 +142,42 @@
 - whiteboard_tag: fxsync
   contact: tbd
   description: Firefox Sync Team whiteboard tag
-  enabled: true
   parameters:
     jira_project_key: SYNC
 
 - whiteboard_tag: mv3
   contact: tbd
   description: MV3 whiteboard tag
-  enabled: true
   parameters:
     jira_project_key: WEBEXT
 
 - whiteboard_tag: nimbus
   contact: tbd
   description: Nimbus whiteboard tag
-  enabled: true
   parameters:
     jira_project_key: EXP
 
 - whiteboard_tag: prodtest
   contact: bsieber@mozilla.com
   description: Prod testing whiteboard tag (JBI Bin Project)
-  enabled: true
   parameters:
     jira_project_key: JB
 
 - whiteboard_tag: proton
   contact: tbd
   description: Proton whiteboard tag for Firefox Frontend
-  enabled: true
   parameters:
     jira_project_key: FIDEFE
 
 - whiteboard_tag: relops
   contact: tbd
   description: Release Operations Team Tag
-  enabled: true
   parameters:
     jira_project_key: RELOPS
 
 - whiteboard_tag: remote-settings
   contact: mleplatre@mozilla.com
   description: Remote Settings Server issues
-  enabled: true
   parameters:
     jira_project_key: SE
     jira_components:
@@ -200,6 +186,5 @@
 - whiteboard_tag: snt
   contact: cbellini@mozilla.com
   description: Search/NewTab Team Tag
-  enabled: true
   parameters:
     jira_project_key: SNT
