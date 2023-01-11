@@ -11,7 +11,7 @@ ENV PIP_NO_CACHE_DIR=off \
 ENV PATH="$POETRY_HOME/bin:$PATH"
 
 # Install Poetry - respects $POETRY_VERSION & $POETRY_HOME
-ENV POETRY_VERSION=1.1.14
+ENV POETRY_VERSION=1.3.2
 RUN curl -sSL https://install.python-poetry.org | python3 -
 
 # We copy our Python requirements here to cache them
