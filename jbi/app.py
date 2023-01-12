@@ -4,7 +4,7 @@ Core FastAPI app (setup, middleware)
 import logging
 import time
 from pathlib import Path
-from typing import Awaitable, Callable
+from typing import Any, Awaitable, Callable
 
 import sentry_sdk
 from fastapi import FastAPI, Request, Response
@@ -20,14 +20,14 @@ settings = get_settings()
 version_info = get_version()
 
 
-def traces_sampler(sampling_context):
+def traces_sampler(sampling_context: dict[str, Any]) -> float:
+    """Function to dynamically set Sentry sampling rates"""
+
     request_path = sampling_context.get("asgi_scope", {}).get("path")
     if request_path == "/__lbheartbeat__":
         # Drop all __lbheartbeat__ requests
         return 0
-    else:
-        # Default sample rate
-        return settings.sentry_traces_sample_rate
+    return settings.sentry_traces_sample_rate
 
 
 sentry_sdk.init(
