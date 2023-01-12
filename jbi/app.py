@@ -19,9 +19,20 @@ SRC_DIR = Path(__file__).parent
 settings = get_settings()
 version_info = get_version()
 
+
+def traces_sampler(sampling_context):
+    request_path = sampling_context.get("asgi_scope", {}).get("path")
+    if request_path == "/__lbheartbeat__":
+        # Drop all __lbheartbeat__ requests
+        return 0
+    else:
+        # Default sample rate
+        return settings.sentry_traces_sample_rate
+
+
 sentry_sdk.init(
     dsn=settings.sentry_dsn,
-    traces_sample_rate=settings.sentry_traces_sample_rate,
+    traces_sampler=traces_sampler,
 )
 
 
