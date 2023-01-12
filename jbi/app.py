@@ -4,13 +4,11 @@ Core FastAPI app (setup, middleware)
 import logging
 import time
 from pathlib import Path
-from typing import Awaitable, Callable
+from typing import Any, Awaitable, Callable
 
 import sentry_sdk
 from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
-from sentry_sdk.integrations.fastapi import FastApiIntegration
-from sentry_sdk.integrations.starlette import StarletteIntegration
 
 from jbi.environment import get_settings, get_version
 from jbi.log import format_request_summary_fields
@@ -21,13 +19,20 @@ SRC_DIR = Path(__file__).parent
 settings = get_settings()
 version_info = get_version()
 
+
+def traces_sampler(sampling_context: dict[str, Any]) -> float:
+    """Function to dynamically set Sentry sampling rates"""
+
+    request_path = sampling_context.get("asgi_scope", {}).get("path")
+    if request_path == "/__lbheartbeat__":
+        # Drop all __lbheartbeat__ requests
+        return 0
+    return settings.sentry_traces_sample_rate
+
+
 sentry_sdk.init(
     dsn=settings.sentry_dsn,
-    integrations=[
-        StarletteIntegration(),
-        FastApiIntegration(),
-    ],
-    traces_sample_rate=settings.sentry_traces_sample_rate,
+    traces_sampler=traces_sampler,
 )
 
 

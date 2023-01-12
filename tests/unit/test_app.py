@@ -4,7 +4,8 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-from jbi.app import app
+from jbi.app import app, traces_sampler
+from jbi.environment import get_settings
 from jbi.models import BugzillaWebhookRequest
 
 
@@ -31,6 +32,32 @@ def test_request_summary_defaults_user_agent_to_empty_string(caplog):
             summary = caplog.records[-1]
 
             assert summary.agent == ""
+
+
+@pytest.mark.parametrize(
+    "sampling_context,expected",
+    [
+        # /__lbheartbeat__
+        ({"asgi_scope": {"path": "/__lbheartbeat__"}}, 0),
+        # path that isn't /__lbheartbeat__
+        (
+            {"asgi_scope": {"path": "/"}},
+            get_settings().sentry_traces_sample_rate,
+        ),
+        # context w/o an asgi_scope
+        (
+            {"parent_sampled": None},
+            get_settings().sentry_traces_sample_rate,
+        ),
+        # context w/o an asgi_scope.path
+        (
+            {"asgi_scope": {"type": "lifespan"}},
+            get_settings().sentry_traces_sample_rate,
+        ),
+    ],
+)
+def test_traces_sampler(sampling_context, expected):
+    assert traces_sampler(sampling_context) == expected
 
 
 def test_errors_are_reported_to_sentry(
