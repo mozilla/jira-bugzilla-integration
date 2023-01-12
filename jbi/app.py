@@ -9,8 +9,6 @@ from typing import Awaitable, Callable
 import sentry_sdk
 from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
-from sentry_sdk.integrations.fastapi import FastApiIntegration
-from sentry_sdk.integrations.starlette import StarletteIntegration
 
 from jbi.environment import get_settings, get_version
 from jbi.log import format_request_summary_fields
@@ -23,10 +21,6 @@ version_info = get_version()
 
 sentry_sdk.init(
     dsn=settings.sentry_dsn,
-    integrations=[
-        StarletteIntegration(),
-        FastApiIntegration(),
-    ],
     traces_sample_rate=settings.sentry_traces_sample_rate,
 )
 
