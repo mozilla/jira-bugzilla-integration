@@ -128,16 +128,16 @@
       NEW: Backlog
       ASSIGNED: In Progress
       REOPENED: In Progress
-      RESOLVED: Done
-      VERIFIED: Done
-      FIXED: Done
-      INVALID: Done
-      WONTFIX: Done
-      INACTIVE: Done
-      DUPLICATE: Done
-      WORKSFORME: Done
-      INCOMPLETE: Done
-      MOVED: Done
+      RESOLVED: Closed
+      VERIFIED: Closed
+      FIXED: Closed
+      INVALID: Closed
+      WONTFIX: Closed
+      INACTIVE: Closed
+      DUPLICATE: Closed
+      WORKSFORME: Closed
+      INCOMPLETE: Closed
+      MOVED: Closed
 
 - whiteboard_tag: fxsync
   contact: tbd
