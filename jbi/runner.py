@@ -12,6 +12,7 @@ from jbi.errors import ActionNotFoundError, IgnoreInvalidRequestError
 from jbi.models import (
     ActionContext,
     Actions,
+    BugzillaWebhookComment,
     BugzillaWebhookRequest,
     JiraContext,
     RunnerContext,
@@ -35,6 +36,7 @@ def execute_action(
     The value returned by the action call is returned.
     """
     bug, event = request.bug, request.event
+    webhook_comment: Optional[BugzillaWebhookComment] = bug.comment
     runner_context = RunnerContext(
         bug=bug,
         event=event,
@@ -46,7 +48,10 @@ def execute_action(
             extra=runner_context.dict(),
         )
         try:
-            bug = bugzilla.get_client().get_bug(bug.id)
+            bug = bugzilla.get_client().get_bug(
+                bug.id
+            )  # refresh bug data; this removes webhook specific info--but avoids duplications
+            bug.comment = webhook_comment  # inject webhook data back into bug
         except Exception as err:
             logger.exception("Failed to get bug: %s", err, extra=runner_context.dict())
             raise IgnoreInvalidRequestError(
