@@ -125,10 +125,9 @@
       REOPENED: In Progress
       RESOLVED: Done
       VERIFIED: Done
-    resolution_map:
       FIXED: Done
       INVALID: Done
-      WONTFIX: "Won't Do"
+      WONTFIX: Won't Do
       INACTIVE: Done
       DUPLICATE: Duplicate
       WORKSFORME: Cannot Reproduce
