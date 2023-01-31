@@ -96,3 +96,40 @@
       WORKSFORME: Closed
       INCOMPLETE: Closed
       MOVED: Closed
+
+- whiteboard_tag: fxp
+  contact: perf-pmo@mozilla.com
+  description: Performance Team
+  parameters:
+    jira_project_key: FXP
+    steps:
+      new:
+        - create_issue
+        - maybe_delete_duplicate
+        - add_link_to_bugzilla
+        - add_link_to_jira
+        - maybe_assign_jira_user
+        - maybe_update_issue_resolution
+        - maybe_update_issue_status
+      existing:
+        - update_issue
+        - maybe_assign_jira_user
+        - maybe_update_issue_resolution
+        - maybe_update_issue_status
+      comment:
+        - create_comment
+    status_map:
+      UNCONFIRMED: Backlog
+      NEW: Backlog
+      ASSIGNED: In Progress
+      REOPENED: In Progress
+      RESOLVED: Done
+      VERIFIED: Done
+      FIXED: Done
+      INVALID: Done
+      WONTFIX: Won't Do
+      INACTIVE: Done
+      DUPLICATE: Duplicate
+      WORKSFORME: Cannot Reproduce
+      INCOMPLETE: Done
+      MOVED: Done
