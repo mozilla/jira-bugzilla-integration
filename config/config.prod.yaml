@@ -169,10 +169,10 @@
       VERIFIED: Done
       FIXED: Done
       INVALID: Done
-      WONTFIX: Won't Do
+      WONTFIX: Done
       INACTIVE: Done
-      DUPLICATE: Duplicate
-      WORKSFORME: Cannot Reproduce
+      DUPLICATE: Done
+      WORKSFORME: Done
       INCOMPLETE: Done
       MOVED: Done
 
