@@ -225,3 +225,40 @@
   description: Search/NewTab Team Tag
   parameters:
     jira_project_key: SNT
+
+- whiteboard_tag: sp3
+  contact: dhunt@mozilla.com
+  description: Speedometer 3
+  parameters:
+    jira_project_key: SP3
+    steps:
+      new:
+        - create_issue
+        - maybe_delete_duplicate
+        - add_link_to_bugzilla
+        - add_link_to_jira
+        - maybe_assign_jira_user
+        - maybe_update_issue_resolution
+        - maybe_update_issue_status
+      existing:
+        - update_issue
+        - maybe_assign_jira_user
+        - maybe_update_issue_resolution
+        - maybe_update_issue_status
+      comment:
+        - create_comment
+    status_map:
+      UNCONFIRMED: To Do
+      NEW: To Do
+      ASSIGNED: In Progress
+      REOPENED: In Progress
+      RESOLVED: Done
+      VERIFIED: Done
+      FIXED: Done
+      INVALID: Done
+      WONTFIX: Done
+      INACTIVE: Done
+      DUPLICATE: Done
+      WORKSFORME: Done
+      INCOMPLETE: Done
+      MOVED: Done
