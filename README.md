@@ -45,7 +45,7 @@ A bit more about the different fields...
     - Please enter a description; for example, team name or project use-case.
 - `enabled` (optional)
     - bool [true, false]
-    - default: false
+    - default: true
     - If false, matching events will not be synchronized
 - `module` (optional)
     - string
@@ -90,7 +90,7 @@ to the Bugzilla ticket on the Jira issue.
     - Whether to sync the Bugzilla status whiteboard labels to Jira. Defaults to `true`.
 - `status_map` (optional)
     - mapping [str, str]
-    - If defined, map the Bugzilla bug status to Jira issue status
+    - If defined, map the Bugzilla bug status (or resolution) to Jira issue status
 - `resolution_map` (optional)
     - mapping [str, str]
     - If defined, map the Bugzilla bug resolution to Jira issue resolution
