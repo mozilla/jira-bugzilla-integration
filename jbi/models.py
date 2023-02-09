@@ -345,6 +345,26 @@ class BugzillaApiResponse(BaseModel):
     bugs: Optional[list[BugzillaBug]]
 
 
+class BugzillaWebhook(BaseModel):
+    """Bugzilla Webhook"""
+
+    id: int
+    creator: str
+    name: str
+    url: str
+    event: str
+    product: str
+    component: str
+    enabled: bool
+    errors: int
+
+
+class BugzillaWebhooksResponse(BaseModel):
+    """Bugzilla Webhooks List Response Object"""
+
+    webhooks: Optional[list[BugzillaWebhook]]
+
+
 class Context(BaseModel):
     """Generic log context throughout JBI"""
 
