@@ -2,6 +2,7 @@ from unittest import mock
 
 import pytest
 import responses
+from responses import matchers
 
 from jbi.environment import get_settings
 from jbi.services.bugzilla import BugzillaClientError, get_client
@@ -35,13 +36,22 @@ def test_bugzilla_methods_are_retried_if_raising(mocked_responses):
 
 
 @pytest.mark.no_mocked_bugzilla
-def test_bugzilla_key_is_passed_in_querystring(mocked_responses):
-    url = (
-        f"{get_settings().bugzilla_base_url}/rest/whoami?api_key=fake_bugzilla_api_key"
+def test_bugzilla_key_is_passed_in_header(mocked_responses):
+    url = f"{get_settings().bugzilla_base_url}/rest/whoami"
+    mocked_responses.add(
+        responses.GET,
+        url,
+        json={"id": "you"},
+        match=[
+            matchers.header_matcher({"x-bugzilla-api-key": "fake_bugzilla_api_key"})
+        ],
     )
-    mocked_responses.add(responses.GET, url, json={"id": "you"})
 
     assert get_client().logged_in
+
+    assert len(mocked_responses.calls) == 1
+    # The following assertion is redundant with matchers but also more explicit.
+    assert "x-bugzilla-api-key" in mocked_responses.calls[0].request.headers
 
 
 @pytest.mark.no_mocked_bugzilla

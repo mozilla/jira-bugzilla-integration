@@ -33,8 +33,10 @@ class BugzillaClient:
 
     def _call(self, verb, url, *args, **kwargs):
         """Send HTTP requests with API key in querystring parameters."""
-        # Send API key as querystring parameter.
-        kwargs.setdefault("params", {}).setdefault("api_key", self.api_key)
+        # Send API key in headers.
+        # https://bmo.readthedocs.io/en/latest/api/core/v1/general.html?highlight=x-bugzilla-api-key#authentication
+        headers = kwargs.setdefault("headers", {})
+        headers.setdefault("x-bugzilla-api-key", self.api_key)
         resp = self._client.request(verb, url, *args, **kwargs)
         resp.raise_for_status()
         parsed = resp.json()
