@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from jbi import Operation
 from jbi.models import (
     Action,
@@ -100,6 +102,7 @@ def comment_factory(**overrides):
 def action_context_factory(**overrides):
     return ActionContext.parse_obj(
         {
+            "request_id": str(uuid4()),
             "operation": Operation.IGNORE,
             "bug": bug_factory(),
             "event": webhook_event_factory(),
