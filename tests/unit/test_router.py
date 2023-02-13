@@ -5,6 +5,7 @@ from datetime import datetime
 from fastapi.testclient import TestClient
 
 from jbi.app import app
+from jbi.environment import get_settings
 from jbi.models import BugzillaWebhookRequest
 
 
@@ -13,7 +14,7 @@ def test_read_root(anon_client):
     resp = anon_client.get("/")
     infos = resp.json()
 
-    assert "atlassian.net" in infos["configuration"]["jira_base_url"]
+    assert get_settings().jira_base_url in infos["configuration"]["jira_base_url"]
 
 
 def test_whiteboard_tags(anon_client):
@@ -72,7 +73,7 @@ def test_webhook_is_200_if_action_succeeds(
             {
                 "changes": {
                     "see_also": {
-                        "added": "https://mozilla.atlassian.net/browse/JBI-1922",
+                        "added": f"{get_settings().jira_base_url}browse/JBI-1922",
                         "removed": "",
                     }
                 },
@@ -85,7 +86,7 @@ def test_webhook_is_200_if_action_succeeds(
     }
     mocked_jira.create_or_update_issue_remote_links.return_value = {
         "id": 18936,
-        "self": "https://mozilla.atlassian.net/rest/api/2/issue/JBI-1922/remotelink/18936",
+        "self": f"{get_settings().jira_base_url}rest/api/2/issue/JBI-1922/remotelink/18936",
     }
 
     with TestClient(app) as anon_client:

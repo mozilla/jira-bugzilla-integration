@@ -9,7 +9,7 @@ from unittest import mock
 import pytest
 
 from jbi import Operation
-from jbi.environment import Settings
+from jbi.environment import Settings, get_settings
 from jbi.errors import IgnoreInvalidRequestError
 from jbi.models import Actions, BugzillaBug, BugzillaWebhookRequest
 from jbi.runner import execute_action
@@ -25,7 +25,7 @@ def test_bugzilla_object_is_always_fetched(
     # See https://github.com/mozilla/jira-bugzilla-integration/issues/292
     fetched_bug = bug_factory(
         id=webhook_create_example.bug.id,
-        see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+        see_also=[f"{get_settings().jira_base_url}browse/JBI-234"],
     )
     mocked_bugzilla.get_bug.return_value = fetched_bug
 
