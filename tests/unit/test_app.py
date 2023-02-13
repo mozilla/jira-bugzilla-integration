@@ -13,11 +13,17 @@ def test_request_summary_is_logged(caplog):
     with caplog.at_level(logging.INFO):
         with TestClient(app) as anon_client:
             # https://fastapi.tiangolo.com/advanced/testing-events/
-            anon_client.get("/")
+            anon_client.get(
+                "/",
+                headers={
+                    "X-Request-Id": "foo-bar",
+                },
+            )
 
             summary = caplog.records[-1]
 
             assert summary.name == "request.summary"
+            assert summary.rid == "foo-bar"
             assert summary.method == "GET"
             assert summary.path == "/"
             assert summary.querystring == "{}"
@@ -71,3 +77,30 @@ def test_errors_are_reported_to_sentry(
                 )
 
     assert mocked.called, "Sentry captured the exception"
+
+
+def test_request_id_is_passed_down_to_logger_contexts(
+    caplog,
+    webhook_create_example: BugzillaWebhookRequest,
+    mocked_jira,
+    mocked_bugzilla,
+):
+    mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
+    mocked_jira.create_issue.return_value = {
+        "key": "JBI-1922",
+    }
+    with caplog.at_level(logging.DEBUG):
+        with TestClient(app) as anon_client:
+            anon_client.post(
+                "/bugzilla_webhook",
+                data=webhook_create_example.json(),
+                headers={
+                    "X-Request-Id": "foo-bar",
+                },
+            )
+
+    runner_logs = [r for r in caplog.records if r.name == "jbi.runner"]
+    assert runner_logs[0].rid == "foo-bar"
+
+    action_logs = [r for r in caplog.records if r.name == "jbi.actions.default"]
+    assert action_logs[0].rid == "foo-bar"
