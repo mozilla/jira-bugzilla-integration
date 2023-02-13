@@ -6,6 +6,7 @@ from unittest import mock
 import pytest
 
 from jbi.actions import default
+from jbi.environment import get_settings
 from jbi.models import ActionContext
 from jbi.services.jira import JiraCreateError
 from tests.fixtures.factories import comment_factory
@@ -55,7 +56,7 @@ def test_created_public(
     )
 
     mocked_bugzilla.update_bug.assert_called_once_with(
-        654321, see_also={"add": ["https://mozit-test.atlassian.net/browse/k"]}
+        654321, see_also={"add": [f"{get_settings().jira_base_url}browse/k"]}
     )
 
 
