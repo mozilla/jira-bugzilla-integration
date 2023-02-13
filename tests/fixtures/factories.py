@@ -1,4 +1,4 @@
-from uuid import uuid4
+from secrets import token_hex
 
 from jbi import Operation
 from jbi.models import (
@@ -102,7 +102,7 @@ def comment_factory(**overrides):
 def action_context_factory(**overrides):
     return ActionContext.parse_obj(
         {
-            "request_id": str(uuid4()),
+            "rid": token_hex(16),
             "operation": Operation.IGNORE,
             "bug": bug_factory(),
             "event": webhook_event_factory(),

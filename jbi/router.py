@@ -70,7 +70,7 @@ def bugzilla_webhook(
     settings: Settings = Depends(get_settings),
 ):
     """API endpoint that Bugzilla Webhook Events request"""
-    webhook_request.request_id = request.state.id
+    webhook_request.rid = request.state.rid
     try:
         result = execute_action(webhook_request, actions, settings)
         return result

@@ -74,5 +74,5 @@ def format_request_summary_fields(
         t=int((current_time - request_time) * 1000.0),
         time=datetime.fromtimestamp(current_time).isoformat(),
         status_code=status_code,
-        rid=request.state.id,
+        rid=request.state.rid,
     ).dict()

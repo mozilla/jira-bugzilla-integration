@@ -38,7 +38,7 @@ def execute_action(
     bug, event = request.bug, request.event
     webhook_comment: Optional[BugzillaWebhookComment] = bug.comment
     runner_context = RunnerContext(
-        request_id=request.request_id,
+        rid=request.rid,
         bug=bug,
         event=event,
         operation=Operation.HANDLE,
@@ -76,7 +76,7 @@ def execute_action(
         linked_issue_key: Optional[str] = bug.extract_from_see_also()
 
         action_context = ActionContext(
-            request_id=request.request_id,
+            rid=request.rid,
             bug=bug,
             event=event,
             operation=Operation.IGNORE,

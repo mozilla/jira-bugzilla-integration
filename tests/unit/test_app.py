@@ -100,7 +100,7 @@ def test_request_id_is_passed_down_to_logger_contexts(
             )
 
     runner_logs = [r for r in caplog.records if r.name == "jbi.runner"]
-    assert runner_logs[0].request_id == "foo-bar"
+    assert runner_logs[0].rid == "foo-bar"
 
     action_logs = [r for r in caplog.records if r.name == "jbi.actions.default"]
-    assert action_logs[0].request_id == "foo-bar"
+    assert action_logs[0].rid == "foo-bar"

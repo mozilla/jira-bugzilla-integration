@@ -4,8 +4,8 @@ Core FastAPI app (setup, middleware)
 import logging
 import time
 from pathlib import Path
+from secrets import token_hex
 from typing import Any, Awaitable, Callable
-from uuid import uuid4
 
 import sentry_sdk
 from fastapi import FastAPI, Request, Response
@@ -53,10 +53,7 @@ async def request_id(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]
 ) -> Response:
     """Read the request id from headers. This is set by NGinx."""
-    try:
-        request.state.id = request.headers["X-Request-Id"]
-    except KeyError:
-        request.state.id = str(uuid4())
+    request.state.rid = request.headers.get("X-Request-Id", token_hex(16))
     response = await call_next(request)
     return response
 
