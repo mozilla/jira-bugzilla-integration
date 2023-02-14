@@ -11,7 +11,7 @@
   contact: dtownsend@mozilla.com
   description: Flowstate whiteboard tag
   parameters:
-    jira_project_key: MR2
+    jira_project_key: JB
     steps:
       new:
         - create_issue
@@ -35,7 +35,7 @@
   contact: dnguyen@mozilla.com
   description: Firefox Credential Management Team whiteboard tag
   parameters:
-    jira_project_key: FXCM
+    jira_project_key: JB
     steps:
       new:
         - create_issue
@@ -68,7 +68,7 @@
   contact: cpeterson@mozilla.com
   description: Firefox Android Team Tag
   parameters:
-    jira_project_key: FXDROID
+    jira_project_key: JB
     steps:
       new:
         - create_issue
@@ -101,7 +101,7 @@
   contact: perf-pmo@mozilla.com
   description: Performance Team
   parameters:
-    jira_project_key: FXP
+    jira_project_key: JB
     steps:
       new:
         - create_issue
@@ -138,7 +138,7 @@
   contact: dhunt@mozilla.com
   description: Speedometer 3
   parameters:
-    jira_project_key: SP3
+    jira_project_key: JB
     steps:
       new:
         - create_issue
