@@ -64,13 +64,15 @@ def version(version_json=Depends(get_version)):
 
 @router.post("/bugzilla_webhook")
 def bugzilla_webhook(
-    request: BugzillaWebhookRequest = Body(..., embed=False),
+    request: Request,
+    webhook_request: BugzillaWebhookRequest = Body(..., embed=False),
     actions: Actions = Depends(get_actions),
     settings: Settings = Depends(get_settings),
 ):
     """API endpoint that Bugzilla Webhook Events request"""
+    webhook_request.rid = request.state.rid
     try:
-        result = execute_action(request, actions, settings)
+        result = execute_action(webhook_request, actions, settings)
         return result
     except IgnoreInvalidRequestError as exception:
         return {"error": str(exception)}
