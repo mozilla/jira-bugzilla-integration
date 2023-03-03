@@ -150,6 +150,10 @@ def check_health() -> ServiceHealth:
         # be a single webhook with `product == "Any"`.
         all_webhooks_enabled = len(jbi_webhooks) > 0
         for webhook in jbi_webhooks:
+            if webhook.errors > 0:
+                logger.warning(
+                    "Webhook %s has %s error(s)", webhook.name, webhook.errors
+                )
             if not webhook.enabled:
                 all_webhooks_enabled = False
                 logger.error(
