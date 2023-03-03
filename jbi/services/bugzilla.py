@@ -146,8 +146,6 @@ def check_health() -> ServiceHealth:
     if logged_in:
         webhooks = client.list_webhooks()
         jbi_webhooks = [wh for wh in webhooks if "/bugzilla_webhook" in wh.url]
-        # See mozilla/jira-bugzilla-integration#21 whether it should
-        # be a single webhook with `product == "Any"`.
         all_webhooks_enabled = len(jbi_webhooks) > 0
         for webhook in jbi_webhooks:
             if webhook.errors > 0:
