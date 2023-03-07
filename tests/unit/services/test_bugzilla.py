@@ -179,3 +179,44 @@ def test_bugzilla_missing_private_comment(
     expanded = get_client().get_bug(webhook_private_comment_example.bug.id)
 
     assert not expanded.comment
+
+
+@pytest.mark.no_mocked_bugzilla
+def test_bugzilla_list_webhooks(mocked_responses):
+    url = f"{get_settings().bugzilla_base_url}/rest/webhooks/list"
+    mocked_responses.add(
+        responses.GET,
+        url,
+        json={
+            "webhooks": [
+                {
+                    "id": 0,
+                    "creator": "Bob",
+                    "name": "",
+                    "url": "http://server/bugzilla_webhook",
+                    "event": "create,change,comment",
+                    "product": "Any",
+                    "component": "Any",
+                    "enabled": True,
+                    "errors": 0,
+                }
+            ]
+        },
+    )
+
+    webhooks = get_client().list_webhooks()
+
+    assert len(webhooks) == 1
+    assert webhooks[0].creator == "Bob"
+    assert "/bugzilla_webhook" in webhooks[0].url
+
+
+@pytest.mark.no_mocked_bugzilla
+def test_bugzilla_list_webhooks_raises_if_response_has_no_webhooks(mocked_responses):
+    url = f"{get_settings().bugzilla_base_url}/rest/webhooks/list"
+    mocked_responses.add(responses.GET, url, json={})
+
+    with pytest.raises(BugzillaClientError) as exc:
+        get_client().list_webhooks()
+
+    assert "Unexpected response" in str(exc)

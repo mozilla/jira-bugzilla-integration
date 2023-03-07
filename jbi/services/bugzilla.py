@@ -9,7 +9,13 @@ import requests
 from pydantic import parse_obj_as
 
 from jbi import Operation, environment
-from jbi.models import ActionContext, BugzillaApiResponse, BugzillaBug, BugzillaComment
+from jbi.models import (
+    ActionContext,
+    BugzillaApiResponse,
+    BugzillaBug,
+    BugzillaComment,
+    BugzillaWebhooksResponse,
+)
 
 from .common import InstrumentedClient, ServiceHealth
 
@@ -95,6 +101,17 @@ class BugzillaClient:
             )
         return parsed.bugs[0]
 
+    def list_webhooks(self):
+        """List the currently configured webhooks, including their status."""
+        url = f"{self.base_url}/rest/webhooks/list"
+        webhooks_info = self._call("GET", url)
+        parsed = BugzillaWebhooksResponse.parse_obj(webhooks_info)
+        if parsed.webhooks is None:
+            raise BugzillaClientError(
+                f"Unexpected response content from 'GET {url}' (no 'webhooks' field)"
+            )
+        return parsed.webhooks
+
 
 @lru_cache(maxsize=1)
 def get_client():
@@ -109,6 +126,7 @@ def get_client():
             "get_bug",
             "get_comments",
             "update_bugs",
+            "list_webhooks",
         ),
         exceptions=(
             BugzillaClientError,
@@ -120,7 +138,30 @@ def get_client():
 def check_health() -> ServiceHealth:
     """Check health for Bugzilla Service"""
     client = get_client()
-    health: ServiceHealth = {"up": client.logged_in}
+    logged_in = client.logged_in
+
+    # Check that all JBI webhooks are enabled in Bugzilla,
+    # and report disabled ones.
+    all_webhooks_enabled = False
+    if logged_in:
+        webhooks = client.list_webhooks()
+        jbi_webhooks = [wh for wh in webhooks if "/bugzilla_webhook" in wh.url]
+        all_webhooks_enabled = len(jbi_webhooks) > 0
+        for webhook in jbi_webhooks:
+            if webhook.errors > 0:
+                logger.warning(
+                    "Webhook %s has %s error(s)", webhook.name, webhook.errors
+                )
+            if not webhook.enabled:
+                all_webhooks_enabled = False
+                logger.error(
+                    "Webhook %s is disabled (%s errors)", webhook.name, webhook.errors
+                )
+
+    health: ServiceHealth = {
+        "up": logged_in,
+        "all_webhooks_enabled": all_webhooks_enabled,
+    }
     return health
 
 
