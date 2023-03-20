@@ -11,14 +11,15 @@ ENV PIP_NO_CACHE_DIR=off \
 ENV PATH="$POETRY_HOME/bin:$PATH"
 
 # Install Poetry - respects $POETRY_VERSION & $POETRY_HOME
-ENV POETRY_VERSION=1.3.2
-RUN curl -sSL https://install.python-poetry.org | python3 -
+RUN python3 -m venv $POETRY_HOME && \
+    $POETRY_HOME/bin/pip install poetry==1.4.0 && \
+    $POETRY_HOME/bin/poetry --version
 
 # We copy our Python requirements here to cache them
 # and install only runtime deps using poetry
 WORKDIR $PYSETUP_PATH
 COPY ./poetry.lock ./pyproject.toml ./
-RUN poetry install --no-dev --no-root
+RUN $POETRY_HOME/bin/poetry install --without dev --no-root
 
 # `production` stage uses the dependencies downloaded in the `base` stage
 FROM python:3.11.2-slim as production
