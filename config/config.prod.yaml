@@ -183,7 +183,7 @@
     jira_project_key: SYNC
 
 - whiteboard_tag: disco
-  contact: tbd
+  contact: 624105
   description: DISCO whiteboard tag
   parameters:
     jira_project_key: DISCO
