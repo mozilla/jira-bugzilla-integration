@@ -1,14 +1,14 @@
 ---
 # Action Config
 - whiteboard_tag: nonprodtest
-  contact: bsieber@mozilla.com
+  contact: 644672
   description: Nonprod testing whiteboard tag (JBI Bin Project)
   parameters:
     jira_project_key: JB
 
 - whiteboard_tag: flowstate
   allow_private: true
-  contact: dtownsend@mozilla.com
+  contact: 91159
   description: Flowstate whiteboard tag
   parameters:
     jira_project_key: JB
@@ -32,7 +32,7 @@
       REOPENED: In Progress
 
 - whiteboard_tag: fxcm
-  contact: dnguyen@mozilla.com
+  contact: tbd
   description: Firefox Credential Management Team whiteboard tag
   parameters:
     jira_project_key: JB
@@ -65,7 +65,7 @@
       MOVED: Done
 
 - whiteboard_tag: fxdroid
-  contact: cpeterson@mozilla.com
+  contact: 430528
   description: Firefox Android Team Tag
   parameters:
     jira_project_key: JB
@@ -135,7 +135,7 @@
       MOVED: Done
 
 - whiteboard_tag: sp3
-  contact: dhunt@mozilla.com
+  contact: 396948
   description: Speedometer 3
   parameters:
     jira_project_key: JB

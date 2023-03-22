@@ -14,7 +14,7 @@
     jira_project_key: FIDEDI
 
 - whiteboard_tag: fidefe
-  contact: gijs@mozilla.com
+  contact: 159069
   description: Firefox Front End whiteboard tag
   parameters:
     jira_project_key: FIDEFE
@@ -43,7 +43,7 @@
       REOPENED: In Progress
 
 - whiteboard_tag: flowstate
-  contact: dtownsend@mozilla.com
+  contact: 91159
   description: Flowstate whiteboard tag
   parameters:
     jira_project_key: MR2
@@ -74,7 +74,7 @@
     jira_project_key: FXATPS
 
 - whiteboard_tag: fxcm
-  contact: dnguyen@mozilla.com
+  contact: 713707
   description: Firefox Credential Management Team whiteboard tag
   parameters:
     jira_project_key: FXCM
@@ -107,7 +107,7 @@
       MOVED: Done
 
 - whiteboard_tag: fxdroid
-  contact: cpeterson@mozilla.com
+  contact: 430528
   description: Firefox Android Team Tag
   parameters:
     jira_project_key: FXDROID
@@ -177,7 +177,7 @@
       MOVED: Done
 
 - whiteboard_tag: fxsync
-  contact: tbd
+  contact: 624105
   description: Firefox Sync Team whiteboard tag
   parameters:
     jira_project_key: SYNC
@@ -195,13 +195,13 @@
     jira_project_key: WEBEXT
 
 - whiteboard_tag: nimbus
-  contact: tbd
+  contact: 624105
   description: Nimbus whiteboard tag
   parameters:
     jira_project_key: EXP
 
 - whiteboard_tag: prodtest
-  contact: bsieber@mozilla.com
+  contact: 644672
   description: Prod testing whiteboard tag (JBI Bin Project)
   parameters:
     jira_project_key: JB
@@ -219,7 +219,7 @@
     jira_project_key: RELOPS
 
 - whiteboard_tag: remote-settings
-  contact: mleplatre@mozilla.com
+  contact: 576226
   description: Remote Settings Server issues
   parameters:
     jira_project_key: SE
@@ -227,13 +227,13 @@
       - "Remote Settings"
 
 - whiteboard_tag: snt
-  contact: cbellini@mozilla.com
+  contact: 696039
   description: Search/NewTab Team Tag
   parameters:
     jira_project_key: SNT
 
 - whiteboard_tag: sp3
-  contact: dhunt@mozilla.com
+  contact: 396948
   description: Speedometer 3
   parameters:
     jira_project_key: SP3
