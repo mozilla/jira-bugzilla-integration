@@ -11,15 +11,7 @@ from types import ModuleType
 from typing import Any, Callable, Literal, Mapping, Optional, TypedDict
 from urllib.parse import ParseResult, urlparse
 
-from pydantic import (
-    BaseModel,
-    EmailStr,
-    Extra,
-    Field,
-    PrivateAttr,
-    root_validator,
-    validator,
-)
+from pydantic import BaseModel, Extra, Field, PrivateAttr, root_validator, validator
 from pydantic_yaml import YamlModel
 
 from jbi import Operation
@@ -37,7 +29,7 @@ class Action(YamlModel):
     whiteboard_tag: str
     module: str = "jbi.actions.default"
     # TODO: Remove the tbd literal option when all actions have contact info # pylint: disable=fixme
-    contact: EmailStr | list[EmailStr] | Literal["tbd"]
+    contact: int | list[int] | Literal["tbd"]
     description: str
     enabled: bool = True
     allow_private: bool = False

@@ -140,7 +140,7 @@
       MOVED: Closed
 
 - whiteboard_tag: fxp
-  contact: perf-pmo@mozilla.com
+  contact: tbd
   description: Performance Team
   parameters:
     jira_project_key: FXP
