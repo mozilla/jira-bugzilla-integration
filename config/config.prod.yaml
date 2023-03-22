@@ -182,6 +182,12 @@
   parameters:
     jira_project_key: SYNC
 
+- whiteboard_tag: disco
+  contact: tbd
+  description: DISCO whiteboard tag
+  parameters:
+    jira_project_key: DISCO
+
 - whiteboard_tag: mv3
   contact: tbd
   description: MV3 whiteboard tag
