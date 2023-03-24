@@ -1,9 +1,9 @@
-name: Run lint
+name: Run linting
 
 on: pull_request
 
 jobs:
-  run_test:
+  run_lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
