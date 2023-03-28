@@ -10,7 +10,7 @@ def test_model_serializes():
     action = Action.parse_obj(
         {
             "whiteboard_tag": "devtest",
-            "contact": "123456",
+            "bugzilla_user_id": "123456",
             "description": "test config",
             "module": "tests.fixtures.bugzilla_action",
         }
