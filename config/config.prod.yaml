@@ -1,20 +1,20 @@
 ---
 # Action Config
 - whiteboard_tag: addons
-  contact: tbd
+  bugzilla_user_id: tbd
   description: Addons whiteboard tag for AMO Team
   # module: jbi.actions.default
   parameters:
     jira_project_key: WEBEXT
 
 - whiteboard_tag: fidedi
-  contact: tbd
+  bugzilla_user_id: tbd
   description: Firefox Desktop Integration whiteboard tag
   parameters:
     jira_project_key: FIDEDI
 
 - whiteboard_tag: fidefe
-  contact: gijs@mozilla.com
+  bugzilla_user_id: 159069
   description: Firefox Front End whiteboard tag
   parameters:
     jira_project_key: FIDEFE
@@ -43,7 +43,7 @@
       REOPENED: In Progress
 
 - whiteboard_tag: flowstate
-  contact: dtownsend@mozilla.com
+  bugzilla_user_id: 91159
   description: Flowstate whiteboard tag
   parameters:
     jira_project_key: MR2
@@ -68,13 +68,13 @@
       REOPENED: In Progress
 
 - whiteboard_tag: fxatps
-  contact: tbd
+  bugzilla_user_id: tbd
   description: Privacy & Security and Anti-Tracking Team whiteboard tag
   parameters:
     jira_project_key: FXATPS
 
 - whiteboard_tag: fxcm
-  contact: dnguyen@mozilla.com
+  bugzilla_user_id: 713707
   description: Firefox Credential Management Team whiteboard tag
   parameters:
     jira_project_key: FXCM
@@ -107,7 +107,7 @@
       MOVED: Done
 
 - whiteboard_tag: fxdroid
-  contact: cpeterson@mozilla.com
+  bugzilla_user_id: 430528
   description: Firefox Android Team Tag
   parameters:
     jira_project_key: FXDROID
@@ -140,7 +140,7 @@
       MOVED: Closed
 
 - whiteboard_tag: fxp
-  contact: perf-pmo@mozilla.com
+  bugzilla_user_id: 396948
   description: Performance Team
   parameters:
     jira_project_key: FXP
@@ -177,49 +177,49 @@
       MOVED: Done
 
 - whiteboard_tag: fxsync
-  contact: tbd
+  bugzilla_user_id: 624105
   description: Firefox Sync Team whiteboard tag
   parameters:
     jira_project_key: SYNC
 
 - whiteboard_tag: disco
-  contact: tbd
+  bugzilla_user_id: 624105
   description: DISCO whiteboard tag
   parameters:
     jira_project_key: DISCO
 
 - whiteboard_tag: mv3
-  contact: tbd
+  bugzilla_user_id: tbd
   description: MV3 whiteboard tag
   parameters:
     jira_project_key: WEBEXT
 
 - whiteboard_tag: nimbus
-  contact: tbd
+  bugzilla_user_id: 624105
   description: Nimbus whiteboard tag
   parameters:
     jira_project_key: EXP
 
 - whiteboard_tag: prodtest
-  contact: bsieber@mozilla.com
+  bugzilla_user_id: 644672
   description: Prod testing whiteboard tag (JBI Bin Project)
   parameters:
     jira_project_key: JB
 
 - whiteboard_tag: proton
-  contact: tbd
+  bugzilla_user_id: tbd
   description: Proton whiteboard tag for Firefox Frontend
   parameters:
     jira_project_key: FIDEFE
 
 - whiteboard_tag: relops
-  contact: tbd
+  bugzilla_user_id: tbd
   description: Release Operations Team Tag
   parameters:
     jira_project_key: RELOPS
 
 - whiteboard_tag: remote-settings
-  contact: mleplatre@mozilla.com
+  bugzilla_user_id: 576226
   description: Remote Settings Server issues
   parameters:
     jira_project_key: SE
@@ -227,13 +227,13 @@
       - "Remote Settings"
 
 - whiteboard_tag: snt
-  contact: cbellini@mozilla.com
+  bugzilla_user_id: 696039
   description: Search/NewTab Team Tag
   parameters:
     jira_project_key: SNT
 
 - whiteboard_tag: sp3
-  contact: dhunt@mozilla.com
+  bugzilla_user_id: 396948
   description: Speedometer 3
   parameters:
     jira_project_key: SP3

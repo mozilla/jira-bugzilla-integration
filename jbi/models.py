@@ -11,15 +11,7 @@ from types import ModuleType
 from typing import Any, Callable, Literal, Mapping, Optional, TypedDict
 from urllib.parse import ParseResult, urlparse
 
-from pydantic import (
-    BaseModel,
-    EmailStr,
-    Extra,
-    Field,
-    PrivateAttr,
-    root_validator,
-    validator,
-)
+from pydantic import BaseModel, Extra, Field, PrivateAttr, root_validator, validator
 from pydantic_yaml import YamlModel
 
 from jbi import Operation
@@ -36,8 +28,7 @@ class Action(YamlModel):
 
     whiteboard_tag: str
     module: str = "jbi.actions.default"
-    # TODO: Remove the tbd literal option when all actions have contact info # pylint: disable=fixme
-    contact: EmailStr | list[EmailStr] | Literal["tbd"]
+    bugzilla_user_id: int | list[int] | Literal["tbd"]
     description: str
     enabled: bool = True
     allow_private: bool = False
@@ -129,7 +120,7 @@ class Actions(YamlModel):
         """
         Inspect the list of actions:
          - Validate that lookup tags are uniques
-         - If the action's contact is "tbd", emit a warning.
+         - If the action's bugzilla_user_id is "tbd", emit a warning.
         """
         tags = [action.whiteboard_tag.lower() for action in actions]
         duplicated_tags = [t for i, t in enumerate(tags) if t in tags[:i]]
@@ -137,9 +128,9 @@ class Actions(YamlModel):
             raise ValueError(f"actions have duplicated lookup tags: {duplicated_tags}")
 
         for action in actions:
-            if action.contact == "tbd":
+            if action.bugzilla_user_id == "tbd":
                 warnings.warn(
-                    f"Provide contact data for `{action.whiteboard_tag}` action."
+                    f"Provide bugzilla_user_id data for `{action.whiteboard_tag}` action."
                 )
 
         return actions

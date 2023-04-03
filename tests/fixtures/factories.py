@@ -16,7 +16,7 @@ from jbi.models import (
 def action_factory(**overrides):
     action = {
         "whiteboard_tag": "devtest",
-        "contact": "tbd",
+        "bugzilla_user_id": "tbd",
         "description": "test config",
         "module": "tests.fixtures.noop_action",
         "parameters": {
