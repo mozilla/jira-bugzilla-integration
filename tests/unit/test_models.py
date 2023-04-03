@@ -10,7 +10,7 @@ def test_model_serializes():
     action = Action.parse_obj(
         {
             "whiteboard_tag": "devtest",
-            "bugzilla_user_id": "123456",
+            "bugzilla_user_id": 123456,
             "description": "test config",
             "module": "tests.fixtures.bugzilla_action",
         }
@@ -19,6 +19,37 @@ def test_model_serializes():
     serialized_action = jsonable_encoder(action)
     assert not serialized_action.get("_caller")
     assert not serialized_action.get("caller")
+
+
+def test_model_with_user_list_serializes():
+    """Regression test to assert that action with initialized Bugzilla client serializes (with user id list)"""
+    action = Action.parse_obj(
+        {
+            "whiteboard_tag": "devtest",
+            "bugzilla_user_id": [123456, 654321, 000000, 111111],
+            "description": "test config",
+            "module": "tests.fixtures.bugzilla_action",
+        }
+    )
+    action.caller(bug=None, event=None)
+    serialized_action = jsonable_encoder(action)
+    assert not serialized_action.get("_caller")
+    assert not serialized_action.get("caller")
+
+    def test_model_with_user_list_of_one_serializes():
+        """Regression test to assert that action with initialized Bugzilla client serializes (with user id in list)"""
+        action = Action.parse_obj(
+            {
+                "whiteboard_tag": "devtest",
+                "bugzilla_user_id": [123456],
+                "description": "test config",
+                "module": "tests.fixtures.bugzilla_action",
+            }
+        )
+        action.caller(bug=None, event=None)
+        serialized_action = jsonable_encoder(action)
+        assert not serialized_action.get("_caller")
+        assert not serialized_action.get("caller")
 
 
 def test_no_actions_fails():

@@ -256,7 +256,7 @@ GET /whiteboard_tags/
 {
     "addons": {
         "whiteboard_tag": "addons",
-        "bugzilla_user_id": "514230",
+        "bugzilla_user_id": 514230,
         "description": "Addons whiteboard tag for AMO Team",
         "enabled": true,
         "module": "jbi.actions.default",

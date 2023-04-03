@@ -28,7 +28,6 @@ class Action(YamlModel):
 
     whiteboard_tag: str
     module: str = "jbi.actions.default"
-    # TODO: Remove the tbd literal option when all actions have bugzilla_user_id info # pylint: disable=fixme
     bugzilla_user_id: int | list[int] | Literal["tbd"]
     description: str
     enabled: bool = True
