@@ -2,7 +2,7 @@
 Core FastAPI app (setup, middleware)
 """
 from pathlib import Path
-from typing import Optional
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Body, Depends, Request, Response
 from fastapi.encoders import jsonable_encoder
@@ -15,11 +15,14 @@ from jbi.models import Actions, BugzillaWebhookRequest
 from jbi.runner import IgnoreInvalidRequestError, execute_action
 from jbi.services import bugzilla, jira
 
+_settings = Annotated[Settings, Depends(get_settings)]
+_actions = Annotated[Actions, Depends(get_actions)]
+_version = Annotated[dict, Depends(get_version)]
 router = APIRouter()
 
 
 @router.get("/", include_in_schema=False)
-def root(request: Request, settings: Settings = Depends(get_settings)):
+def root(request: Request, settings: _settings):
     """Expose key configuration"""
     return {
         "title": request.app.title,
@@ -35,7 +38,7 @@ def root(request: Request, settings: Settings = Depends(get_settings)):
 
 @router.get("/__heartbeat__")
 @router.head("/__heartbeat__")
-def heartbeat(response: Response, actions: Actions = Depends(get_actions)):
+def heartbeat(response: Response, actions: _actions):
     """Return status of backing services, as required by Dockerflow."""
     health_map = {
         "bugzilla": bugzilla.check_health(),
@@ -57,7 +60,7 @@ def lbheartbeat():
 
 
 @router.get("/__version__")
-def version(version_json=Depends(get_version)):
+def version(version_json: _version):
     """Return version.json, as required by Dockerflow."""
     return version_json
 
@@ -65,9 +68,9 @@ def version(version_json=Depends(get_version)):
 @router.post("/bugzilla_webhook")
 def bugzilla_webhook(
     request: Request,
+    actions: _actions,
+    settings: _settings,
     webhook_request: BugzillaWebhookRequest = Body(..., embed=False),
-    actions: Actions = Depends(get_actions),
-    settings: Settings = Depends(get_settings),
 ):
     """API endpoint that Bugzilla Webhook Events request"""
     webhook_request.rid = request.state.rid
@@ -80,8 +83,8 @@ def bugzilla_webhook(
 
 @router.get("/whiteboard_tags/")
 def get_whiteboard_tags(
+    actions: _actions,
     whiteboard_tag: Optional[str] = None,
-    actions: Actions = Depends(get_actions),
 ):
     """API for viewing whiteboard_tags and associated data"""
     if existing := actions.get(whiteboard_tag):
@@ -103,8 +106,8 @@ templates = Jinja2Templates(directory=SRC_DIR / "templates")
 @router.get("/powered_by_jbi/", response_class=HTMLResponse)
 def powered_by_jbi(
     request: Request,
+    actions: _actions,
     enabled: Optional[bool] = None,
-    actions: Actions = Depends(get_actions),
 ):
     """API for `Powered By` endpoint"""
     context = {
