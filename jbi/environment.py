@@ -47,6 +47,7 @@ class Settings(BaseSettings):
 
     # Logging
     log_level: str = "debug"
+    log_format: str = "json"
 
     # Sentry
     sentry_dsn: Optional[SentryDsn]
