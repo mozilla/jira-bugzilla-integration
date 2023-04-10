@@ -170,3 +170,81 @@
       WORKSFORME: Done
       INCOMPLETE: Done
       MOVED: Done
+
+- whiteboard_tag: data-platform-infra-wg
+  bugzilla_user_id: tbd
+  description: Data Platform Infrastructure
+  parameters:
+    jira_project_key: DENG
+    jira_components:
+      - "Data Platform Infrastructure"
+    steps:
+      new:
+        - create_issue
+        - maybe_delete_duplicate
+        - add_link_to_bugzilla
+        - add_link_to_jira
+        - maybe_assign_jira_user
+        - maybe_update_issue_resolution
+        - maybe_update_issue_status
+      existing:
+        - update_issue
+        - maybe_assign_jira_user
+        - maybe_update_issue_resolution
+        - maybe_update_issue_status
+      comment:
+        - create_comment
+    status_map:
+      UNCONFIRMED: Backlog
+      NEW: Backlog
+      ASSIGNED: In Progress
+      REOPENED: In Progress
+      RESOLVED: Done
+      VERIFIED: Done
+      FIXED: Done
+      INVALID: Done
+      WONTFIX: Done
+      INACTIVE: Done
+      DUPLICATE: Done
+      WORKSFORME: Done
+      INCOMPLETE: Done
+      MOVED: Done
+
+- whiteboard_tag: data-quality
+  bugzilla_user_id: tbd
+  description: Data Quality
+  parameters:
+    jira_project_key: DENG
+    jira_components:
+      - "Data Quality"
+    steps:
+      new:
+        - create_issue
+        - maybe_delete_duplicate
+        - add_link_to_bugzilla
+        - add_link_to_jira
+        - maybe_assign_jira_user
+        - maybe_update_issue_resolution
+        - maybe_update_issue_status
+      existing:
+        - update_issue
+        - maybe_assign_jira_user
+        - maybe_update_issue_resolution
+        - maybe_update_issue_status
+      comment:
+        - create_comment
+    status_map:
+      UNCONFIRMED: To Do
+      NEW: To Do
+      ASSIGNED: In Progress
+      REOPENED: In Progress
+      RESOLVED: Done
+      VERIFIED: Done
+      FIXED: Done
+      INVALID: Done
+      WONTFIX: Done
+      INACTIVE: Done
+      DUPLICATE: Done
+      WORKSFORME: Done
+      INCOMPLETE: Done
+      MOVED: Done
