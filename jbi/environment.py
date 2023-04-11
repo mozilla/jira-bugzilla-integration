@@ -47,6 +47,7 @@ class Settings(BaseSettings):
 
     # Logging
     log_level: str = "info"
+    log_format: str = "json"  # set to "text" for human-readable logs
 
     # Sentry
     sentry_dsn: Optional[SentryDsn]

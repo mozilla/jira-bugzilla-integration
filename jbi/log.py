@@ -22,12 +22,18 @@ CONFIG = {
             "()": "dockerflow.logging.JsonLogFormatter",
             "logger_name": "jbi",
         },
+        "text": {
+            "format": "%(asctime)s %(levelname)-8s %(name)-15s %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
     },
     "handlers": {
         "console": {
             "level": settings.log_level.upper(),
             "class": "logging.StreamHandler",
-            "formatter": "mozlog_json",
+            "formatter": "text"
+            if settings.log_format.lower() == "text"
+            else "mozlog_json",
             "stream": sys.stdout,
         },
         "null": {
