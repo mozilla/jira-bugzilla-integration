@@ -306,7 +306,7 @@ class BugzillaBug(BaseModel):
         """Find first matching action from bug's whiteboard list"""
         if self.whiteboard:
             for tag, action in actions.by_tag.items():
-                if tag.lower() in self.whiteboard.lower():
+                if f"[{tag.lower()}" in self.whiteboard.lower():
                     return action
 
         tags: list[str] = self.get_potential_whiteboard_config_list()
