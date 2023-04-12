@@ -33,7 +33,7 @@ A bit more about the different fields...
 - `allow_private` (optional)
     - bool [true, false]
     - default: false
-    - False bugs will not be synchronized if they are not made public. Note that in order to synchronize private bugs,
+    - If `false`, bugs will not be synchronized if they are not made public. Note that in order to synchronize private bugs,
      the bugzilla user that JBI runs as must be in the security groups that are making the bug private.
 - `contact`
     - an email address, a list of email addresses, or a literal "tbd" to signify that no contact is available
