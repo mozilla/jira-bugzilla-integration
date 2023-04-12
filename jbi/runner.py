@@ -64,7 +64,7 @@ def execute_action(
             action = bug.lookup_action(actions)
         except ActionNotFoundError as err:
             raise IgnoreInvalidRequestError(
-                f"no action matching bug whiteboard tags: {err}"
+                f"no bug whiteboard matching action tags: {err}"
             ) from err
         runner_context = runner_context.update(action=action)
 

@@ -141,7 +141,7 @@ def test_request_is_ignored_because_no_action(
             actions=actions_example,
             settings=settings,
         )
-    assert str(exc_info.value) == "no action matching bug whiteboard tags: devtest"
+    assert str(exc_info.value) == "no bug whiteboard matching action tags: devtest"
 
 
 def test_execution_logging_for_successful_requests(
@@ -196,7 +196,7 @@ def test_execution_logging_for_ignored_requests(
 
     assert captured_log_msgs == [
         "Handling incoming request",
-        "Ignore incoming request: no action matching bug whiteboard tags: devtest",
+        "Ignore incoming request: no bug whiteboard matching action tags: devtest",
     ]
 
 
