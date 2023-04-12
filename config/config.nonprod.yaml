@@ -171,7 +171,7 @@
       INCOMPLETE: Done
       MOVED: Done
 
-- whiteboard_tag: data-platform-infra-wg
+- whiteboard_tag: dataplatform
   bugzilla_user_id: tbd
   description: Data Platform Infrastructure
   parameters:
@@ -210,7 +210,7 @@
       INCOMPLETE: Done
       MOVED: Done
 
-- whiteboard_tag: data-quality
+- whiteboard_tag: dataquality
   bugzilla_user_id: tbd
   description: Data Quality
   parameters:
