@@ -304,10 +304,15 @@ class BugzillaBug(BaseModel):
 
     def lookup_action(self, actions: Actions) -> Action:
         """Find first matching action from bug's whiteboard list"""
+        try:
+            return next(
+                action
+                for action in actions
+                if f"[{action.whiteboard_tag.lower()}" in self.whiteboard.lower()
+            )
+        except StopIteration:
+            pass
         tags: list[str] = self.get_potential_whiteboard_config_list()
-        for tag in tags:
-            if action := actions.get(tag):
-                return action
         raise ActionNotFoundError(", ".join(tags))
 
 

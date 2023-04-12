@@ -230,6 +230,13 @@ def actions_example(action_example) -> Actions:
     return Actions.parse_obj([action_example])
 
 
+@pytest.fixture
+def multiple_actions_example(action_example) -> Actions:
+    action = action_factory(whiteboard_tag="exact-match-test")
+    actions = [action, action_example]
+    return Actions.parse_obj(actions)
+
+
 @pytest.fixture(autouse=True)
 def sleepless(monkeypatch):
     # https://stackoverflow.com/a/54829577

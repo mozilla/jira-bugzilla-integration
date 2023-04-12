@@ -45,7 +45,7 @@ def bug_factory(**overrides):
         "status": "NEW",
         "summary": "JBI Test",
         "type": "defect",
-        "whiteboard": "devtest",
+        "whiteboard": "[devtest]",
         **overrides,
     }
     return BugzillaBug.parse_obj(bug)

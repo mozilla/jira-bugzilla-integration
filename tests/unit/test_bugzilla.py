@@ -60,6 +60,13 @@ def test_lookup_action(actions_example):
     assert "test config" in action.description
 
 
+def test_lookup_action_prefix(actions_example):
+    bug = bug_factory(id=1234, whiteboard="[example][DevTest-test]")
+    action = bug.lookup_action(actions_example)
+    assert action.whiteboard_tag == "devtest"
+    assert "test config" in action.description
+
+
 def test_lookup_action_missing(actions_example):
     bug = bug_factory(id=1234, whiteboard="example DevTest")
     with pytest.raises(ActionNotFoundError) as exc_info:
