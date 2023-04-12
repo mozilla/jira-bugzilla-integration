@@ -309,8 +309,7 @@ class BugzillaBug(BaseModel):
                 if f"[{tag.lower()}" in self.whiteboard.lower():
                     return action
 
-        tags: list[str] = self.get_potential_whiteboard_config_list()
-        raise ActionNotFoundError(", ".join(tags))
+        raise ActionNotFoundError(", ".join(actions.by_tag.keys()))
 
 
 class BugzillaWebhookRequest(BaseModel):

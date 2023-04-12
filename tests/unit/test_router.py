@@ -125,7 +125,7 @@ def test_webhook_is_200_if_action_raises_IgnoreInvalidRequestError(
         assert response.status_code == 200
         assert (
             response.json()["error"]
-            == "no action matching bug whiteboard tags: unmatched"
+            == "no action matching bug whiteboard tags: devtest"
         )
 
 

@@ -71,7 +71,7 @@ def test_lookup_action_missing(actions_example):
     bug = bug_factory(id=1234, whiteboard="example DevTest")
     with pytest.raises(ActionNotFoundError) as exc_info:
         bug.lookup_action(actions_example)
-    assert str(exc_info.value) == "example devtest"
+    assert str(exc_info.value) == "devtest"
 
 
 def test_payload_empty_changes_list(webhook_change_status_assignee):
