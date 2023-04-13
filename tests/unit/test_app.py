@@ -20,9 +20,8 @@ def test_request_summary_is_logged(caplog):
                 },
             )
 
-            summary = caplog.records[-1]
+            summary = [r for r in caplog.records if r.name == "request.summary"][0]
 
-            assert summary.name == "request.summary"
             assert summary.rid == "foo-bar"
             assert summary.method == "GET"
             assert summary.path == "/"
@@ -35,7 +34,7 @@ def test_request_summary_defaults_user_agent_to_empty_string(caplog):
             del anon_client.headers["User-Agent"]
             anon_client.get("/")
 
-            summary = caplog.records[-1]
+            summary = [r for r in caplog.records if r.name == "request.summary"][0]
 
             assert summary.agent == ""
 
