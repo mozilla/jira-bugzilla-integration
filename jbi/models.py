@@ -33,6 +33,7 @@ class Action(YamlModel):
     description: str
     enabled: bool = True
     allow_private: bool = False
+    brackets_required: bool = True
     parameters: dict = {}
     _caller: Optional[Callable] = PrivateAttr(default=None)
     _required_jira_permissions: set[str] = PrivateAttr(default=None)
@@ -307,7 +308,9 @@ class BugzillaBug(BaseModel):
         """Find first matching action from bug's whiteboard list"""
         if self.whiteboard:
             for tag, action in actions.by_tag.items():
-                search_string = r"\[.*" + tag.lower() + r".*\]"
+                pre = r"\[.*" if action.brackets_required else ""
+                post = r".*\]" if action.brackets_required else ""
+                search_string = f"{pre}{tag.lower()}{post}"
                 if re.search(search_string, self.whiteboard.lower()):
                     return action
 

@@ -226,8 +226,13 @@ def action_example() -> Action:
 
 
 @pytest.fixture
-def action_example_with_inner_match_test() -> Action:
-    return action_factory(whiteboard_tag="inner-match-test")
+def action_example_with_inner_match() -> Action:
+    return action_factory(whiteboard_tag="inner-match")
+
+
+@pytest.fixture
+def action_example_without_brackets_required() -> Action:
+    return action_factory(whiteboard_tag="bracket-less", brackets_required=False)
 
 
 @pytest.fixture
@@ -236,10 +241,17 @@ def actions_example(action_example) -> Actions:
 
 
 @pytest.fixture
-def actions_example_with_inner_match_test(
-    action_example_with_inner_match_test,
+def actions_example_with_inner_match(
+    action_example_with_inner_match,
 ) -> Actions:
-    return Actions.parse_obj([action_example_with_inner_match_test])
+    return Actions.parse_obj([action_example_with_inner_match])
+
+
+@pytest.fixture
+def actions_example_without_brackets_required(
+    action_example_without_brackets_required,
+) -> Actions:
+    return Actions.parse_obj([action_example_without_brackets_required])
 
 
 @pytest.fixture(autouse=True)
