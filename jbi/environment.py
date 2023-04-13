@@ -46,7 +46,8 @@ class Settings(BaseSettings):
     bugzilla_api_key: str
 
     # Logging
-    log_level: str = "debug"
+    log_level: str = "info"
+    log_format: str = "json"  # set to "text" for human-readable logs
 
     # Sentry
     sentry_dsn: Optional[SentryDsn]
