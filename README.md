@@ -34,9 +34,15 @@ A bit more about the different fields...
 - `allow_private` (optional)
     - bool [true, false]
     - default: false
-    - If false bugs that are not public will not be synchronized. Note that in order to synchronize
+    - If `false` bugs that are not public will not be synchronized. Note that in order to synchronize
       private bugs the bugzilla user that JBI runs as must be in the security groups that are making
       the bug private.
+- `brackets_required` (optional)
+    - bool [true, false]
+    - default: true
+    - If `true` the whiteboard_tag must be be contained within an opening ([) and closing (]) bracket, this is the default behavior; i.e. this tag `XYX` matches this whiteboard_tag `[XYZ]` but not `XYZ`.
+    - If `false` brackets are optional; i.e. this tag `XYX` matches both these whiteboard_tags `XYZ`, `[XYZ]`
+
 - `bugzilla_user_id`
     - a bugzilla user id, a list of user ids, or a literal "tbd" to signify that no bugzilla user id is available
     - If an issue arises with the workflow, communication will be established with these users
@@ -200,6 +206,7 @@ graph TD
 - `make start`: run the application locally (http://localhost:8000)
 - `make test`: run the unit tests suites
 - `make lint`: static analysis of the code base
+- `make format`: automatically format code to align to linting standards
 
 You may consider:
 
