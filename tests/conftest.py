@@ -226,15 +226,20 @@ def action_example() -> Action:
 
 
 @pytest.fixture
+def action_example_with_inner_match_test() -> Action:
+    return action_factory(whiteboard_tag="inner-match-test")
+
+
+@pytest.fixture
 def actions_example(action_example) -> Actions:
     return Actions.parse_obj([action_example])
 
 
 @pytest.fixture
-def multiple_actions_example(action_example) -> Actions:
-    action = action_factory(whiteboard_tag="exact-match-test")
-    actions = [action, action_example]
-    return Actions.parse_obj(actions)
+def actions_example_with_inner_match_test(
+    action_example_with_inner_match_test,
+) -> Actions:
+    return Actions.parse_obj([action_example_with_inner_match_test])
 
 
 @pytest.fixture(autouse=True)

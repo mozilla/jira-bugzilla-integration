@@ -58,20 +58,20 @@ def test_request_is_ignored_because_private(
     assert str(exc_info.value) == "private bugs are not valid for action 'devtest'"
 
 
-def test_request_(
+def test_request_matched_within_brackets(
     caplog,
     webhook_create_example,
-    multiple_actions_example: Actions,
+    actions_example_with_inner_match_test: Actions,
     settings: Settings,
     mocked_bugzilla,
 ):
-    bug = bug_factory(whiteboard="[exact-match-test]")
+    bug = bug_factory(whiteboard="[pre-inner-match-test-post]")
     webhook_create_example.bug = bug
     mocked_bugzilla.get_bug.return_value = bug
     with caplog.at_level(logging.DEBUG):
         execute_action(
             request=webhook_create_example,
-            actions=multiple_actions_example,
+            actions=actions_example_with_inner_match_test,
             settings=settings,
         )
 
@@ -81,8 +81,8 @@ def test_request_(
 
     assert captured_log_msgs == [
         "Handling incoming request",
-        "Execute action 'exact-match-test:tests.fixtures.noop_action' for Bug 654321",
-        "Action 'exact-match-test' executed successfully for Bug 654321",
+        "Execute action 'inner-match-test:tests.fixtures.noop_action' for Bug 654321",
+        "Action 'inner-match-test' executed successfully for Bug 654321",
     ]
 
 

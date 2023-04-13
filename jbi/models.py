@@ -5,6 +5,7 @@ import datetime
 import functools
 import importlib
 import logging
+import re
 import warnings
 from inspect import signature
 from types import ModuleType
@@ -306,7 +307,8 @@ class BugzillaBug(BaseModel):
         """Find first matching action from bug's whiteboard list"""
         if self.whiteboard:
             for tag, action in actions.by_tag.items():
-                if f"[{tag.lower()}" in self.whiteboard.lower():
+                search_string = r"\[.*" + tag.lower() + r".*\]"
+                if re.search(search_string, self.whiteboard.lower()):
                     return action
 
         raise ActionNotFoundError(", ".join(actions.by_tag.keys()))
