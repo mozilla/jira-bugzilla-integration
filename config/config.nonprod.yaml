@@ -175,7 +175,7 @@
   bugzilla_user_id: tbd
   description: Data Platform Infrastructure
   parameters:
-    jira_project_key: DENG
+    jira_project_key: JB
     jira_components:
       - "Data Platform Infrastructure"
     steps:
@@ -214,7 +214,7 @@
   bugzilla_user_id: tbd
   description: Data Quality
   parameters:
-    jira_project_key: DENG
+    jira_project_key: JB
     jira_components:
       - "Data Quality"
     steps:
