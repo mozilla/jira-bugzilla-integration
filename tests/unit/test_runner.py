@@ -61,11 +61,15 @@ def test_request_is_ignored_because_private(
 def test_request_matched_within_brackets(
     caplog,
     webhook_create_example,
-    actions_example_with_inner_match: Actions,
+    action_factory,
     settings: Settings,
     mocked_bugzilla,
 ):
-    bug = bug_factory(whiteboard="[inner-match]")
+    search_string = "inner-match"
+    actions_example_with_inner_match = Actions.parse_obj(
+        [action_factory(whiteboard_tag=search_string)]
+    )
+    bug = bug_factory(whiteboard=f"\[{search_string}\]")
     webhook_create_example.bug = bug
     mocked_bugzilla.get_bug.return_value = bug
     with caplog.at_level(logging.DEBUG):
@@ -89,11 +93,15 @@ def test_request_matched_within_brackets(
 def test_request_matched_prefixed_within_brackets(
     caplog,
     webhook_create_example,
-    actions_example_with_inner_match: Actions,
+    action_factory,
     settings: Settings,
     mocked_bugzilla,
 ):
-    bug = bug_factory(whiteboard="[pre-inner-match]")
+    search_string = "inner-match"
+    actions_example_with_inner_match = Actions.parse_obj(
+        [action_factory(whiteboard_tag=search_string)]
+    )
+    bug = bug_factory(whiteboard=f"\[pre-{search_string}\]")
     webhook_create_example.bug = bug
     mocked_bugzilla.get_bug.return_value = bug
     with caplog.at_level(logging.DEBUG):
@@ -117,11 +125,15 @@ def test_request_matched_prefixed_within_brackets(
 def test_request_matched_postfixed_within_brackets(
     caplog,
     webhook_create_example,
-    actions_example_with_inner_match: Actions,
+    action_factory,
     settings: Settings,
     mocked_bugzilla,
 ):
-    bug = bug_factory(whiteboard="[inner-match-post]")
+    search_string = "inner-match"
+    actions_example_with_inner_match = Actions.parse_obj(
+        [action_factory(whiteboard_tag=search_string)]
+    )
+    bug = bug_factory(whiteboard=f"\[{search_string}-post-\]")
     webhook_create_example.bug = bug
     mocked_bugzilla.get_bug.return_value = bug
     with caplog.at_level(logging.DEBUG):
@@ -145,39 +157,15 @@ def test_request_matched_postfixed_within_brackets(
 def test_request_matched_prefix_and_postfixed_within_brackets(
     caplog,
     webhook_create_example,
-    actions_example_with_inner_match: Actions,
+    action_factory,
     settings: Settings,
     mocked_bugzilla,
 ):
-    bug = bug_factory(whiteboard="[pre-inner-match-post]")
-    webhook_create_example.bug = bug
-    mocked_bugzilla.get_bug.return_value = bug
-    with caplog.at_level(logging.DEBUG):
-        execute_action(
-            request=webhook_create_example,
-            actions=actions_example_with_inner_match,
-            settings=settings,
-        )
-
-    captured_log_msgs = [
-        r.msg % r.args for r in caplog.records if r.name == "jbi.runner"
-    ]
-
-    assert captured_log_msgs == [
-        "Handling incoming request",
-        "Execute action 'inner-match:tests.fixtures.noop_action' for Bug 654321",
-        "Action 'inner-match' executed successfully for Bug 654321",
-    ]
-
-
-def test_request_matched_prefix_and_postfixed_within_brackets(
-    caplog,
-    webhook_create_example,
-    actions_example_with_inner_match: Actions,
-    settings: Settings,
-    mocked_bugzilla,
-):
-    bug = bug_factory(whiteboard="[-pre-inner-match-post-]")
+    search_string = "inner-match"
+    actions_example_with_inner_match = Actions.parse_obj(
+        [action_factory(whiteboard_tag=search_string)]
+    )
+    bug = bug_factory(whiteboard=f"\[-pre-{search_string}-post-\]")
     webhook_create_example.bug = bug
     mocked_bugzilla.get_bug.return_value = bug
     with caplog.at_level(logging.DEBUG):
@@ -201,11 +189,14 @@ def test_request_matched_prefix_and_postfixed_within_brackets(
 def test_request_(
     caplog,
     webhook_create_example,
-    actions_example_without_brackets_required: Actions,
+    action_factory,
     settings: Settings,
     mocked_bugzilla,
 ):
     bug = bug_factory(whiteboard="bracket-less")
+    actions_example_without_brackets_required = Actions.parse_obj(
+        [action_factory(whiteboard_tag="bracket-less", brackets_required=False)]
+    )
     webhook_create_example.bug = bug
     mocked_bugzilla.get_bug.return_value = bug
     with caplog.at_level(logging.DEBUG):

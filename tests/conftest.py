@@ -20,15 +20,7 @@ from jbi.models import (
     BugzillaWebhookRequest,
 )
 from jbi.services import bugzilla, jira
-from tests.fixtures.factories import (
-    action_context_factory,
-    action_factory,
-    bug_factory,
-    jira_context_factory,
-    webhook_event_factory,
-    webhook_factory,
-    webhook_user_factory,
-)
+from tests.fixtures import factories
 
 
 @pytest.fixture
@@ -79,25 +71,29 @@ def mocked_responses():
 
 @pytest.fixture
 def context_create_example() -> ActionContext:
-    return action_context_factory(
+    return factories.action_context_factory(
         operation=Operation.CREATE,
     )
 
 
 @pytest.fixture
 def context_update_example() -> ActionContext:
-    bug = bug_factory(see_also=["https://mozilla.atlassian.net/browse/JBI-234"])
-    context = action_context_factory(
+    bug = factories.bug_factory(
+        see_also=["https://mozilla.atlassian.net/browse/JBI-234"]
+    )
+    context = factories.action_context_factory(
         operation=Operation.UPDATE,
         bug=bug,
-        jira=jira_context_factory(issue=bug.extract_from_see_also()),
+        jira=factories.jira_context_factory(issue=bug.extract_from_see_also()),
     )
     return context
 
 
 @pytest.fixture
 def context_update_status_assignee() -> ActionContext:
-    bug = bug_factory(see_also=["https://mozilla.atlassian.net/browse/JBI-234"])
+    bug = factories.bug_factory(
+        see_also=["https://mozilla.atlassian.net/browse/JBI-234"]
+    )
     changes = [
         {
             "field": "status",
@@ -110,84 +106,88 @@ def context_update_status_assignee() -> ActionContext:
             "added": "mathieu@mozilla.com",
         },
     ]
-    event = webhook_event_factory(routing_key="bug.modify", changes=changes)
-    context = action_context_factory(
+    event = factories.webhook_event_factory(routing_key="bug.modify", changes=changes)
+    context = factories.action_context_factory(
         operation=Operation.UPDATE,
         bug=bug,
         event=event,
-        jira=jira_context_factory(issue=bug.extract_from_see_also()),
+        jira=factories.jira_context_factory(issue=bug.extract_from_see_also()),
     )
     return context
 
 
 @pytest.fixture
 def context_comment_example() -> ActionContext:
-    user = webhook_user_factory(login="mathieu@mozilla.org")
+    user = factories.webhook_user_factory(login="mathieu@mozilla.org")
     comment = BugzillaWebhookComment.parse_obj({"number": 2, "body": "hello"})
-    bug = bug_factory(
+    bug = factories.bug_factory(
         see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
         comment=comment,
     )
-    event = webhook_event_factory(target="comment", user=user)
-    context = action_context_factory(
+    event = factories.webhook_event_factory(target="comment", user=user)
+    context = factories.action_context_factory(
         operation=Operation.COMMENT,
         bug=bug,
         event=event,
-        jira=jira_context_factory(issue=bug.extract_from_see_also()),
+        jira=factories.jira_context_factory(issue=bug.extract_from_see_also()),
     )
     return context
 
 
 @pytest.fixture
 def context_update_resolution_example() -> ActionContext:
-    bug = bug_factory(see_also=["https://mozilla.atlassian.net/browse/JBI-234"])
-    event = webhook_event_factory(action="modify", routing_key="bug.modify:resolution")
-    context = action_context_factory(
+    bug = factories.bug_factory(
+        see_also=["https://mozilla.atlassian.net/browse/JBI-234"]
+    )
+    event = factories.webhook_event_factory(
+        action="modify", routing_key="bug.modify:resolution"
+    )
+    context = factories.action_context_factory(
         operation=Operation.UPDATE,
         bug=bug,
         event=event,
-        jira=jira_context_factory(issue=bug.extract_from_see_also()),
+        jira=factories.jira_context_factory(issue=bug.extract_from_see_also()),
     )
     return context
 
 
 @pytest.fixture
 def webhook_create_example() -> BugzillaWebhookRequest:
-    webhook_payload = webhook_factory()
+    webhook_payload = factories.webhook_factory()
 
     return webhook_payload
 
 
 @pytest.fixture
 def webhook_comment_example() -> BugzillaWebhookRequest:
-    user = webhook_user_factory(login="mathieu@mozilla.org")
+    user = factories.webhook_user_factory(login="mathieu@mozilla.org")
     comment = BugzillaWebhookComment.parse_obj({"number": 2, "body": "hello"})
-    bug = bug_factory(
+    bug = factories.bug_factory(
         see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
         comment=comment,
     )
-    event = webhook_event_factory(target="comment", user=user)
-    webhook_payload = webhook_factory(bug=bug, event=event)
+    event = factories.webhook_event_factory(target="comment", user=user)
+    webhook_payload = factories.webhook_factory(bug=bug, event=event)
 
     return webhook_payload
 
 
 @pytest.fixture
 def webhook_private_comment_example() -> BugzillaWebhookRequest:
-    user = webhook_user_factory(login="mathieu@mozilla.org")
-    event = webhook_event_factory(target="comment", user=user)
-    bug = bug_factory(
+    user = factories.webhook_user_factory(login="mathieu@mozilla.org")
+    event = factories.webhook_event_factory(target="comment", user=user)
+    bug = factories.bug_factory(
         comment={"id": 344, "number": 2, "is_private": True},
         see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
     )
-    webhook_payload = webhook_factory(bug=bug, event=event)
+    webhook_payload = factories.webhook_factory(bug=bug, event=event)
     return webhook_payload
 
 
 @pytest.fixture
 def webhook_create_private_example() -> BugzillaWebhookRequest:
-    return webhook_factory(
-        event=webhook_event_factory(),
+    return factories.webhook_factory(
+        event=factories.webhook_event_factory(),
         bug={"id": 654321, "is_private": True},
     )
 
@@ -206,52 +206,35 @@ def webhook_change_status_assignee():
             "added": "mathieu@mozilla.com",
         },
     ]
-    event = webhook_event_factory(routing_key="bug.modify", changes=changes)
-    webhook_payload = webhook_factory(event=event)
+    event = factories.webhook_event_factory(routing_key="bug.modify", changes=changes)
+    webhook_payload = factories.webhook_factory(event=event)
     return webhook_payload
 
 
 @pytest.fixture
 def webhook_modify_private_example() -> BugzillaWebhookRequest:
-    event = webhook_event_factory(action="modify", routing_key="bug.modify:status")
-    webhook_payload = webhook_factory(
+    event = factories.webhook_event_factory(
+        action="modify", routing_key="bug.modify:status"
+    )
+    webhook_payload = factories.webhook_factory(
         bug={"id": 654321, "is_private": True}, event=event
     )
     return webhook_payload
 
 
 @pytest.fixture
+def action_factory() -> Action:
+    return factories.action_factory
+
+
+@pytest.fixture
 def action_example() -> Action:
-    return action_factory()
-
-
-@pytest.fixture
-def action_example_with_inner_match() -> Action:
-    return action_factory(whiteboard_tag="inner-match")
-
-
-@pytest.fixture
-def action_example_without_brackets_required() -> Action:
-    return action_factory(whiteboard_tag="bracket-less", brackets_required=False)
+    return factories.action_factory()
 
 
 @pytest.fixture
 def actions_example(action_example) -> Actions:
     return Actions.parse_obj([action_example])
-
-
-@pytest.fixture
-def actions_example_with_inner_match(
-    action_example_with_inner_match,
-) -> Actions:
-    return Actions.parse_obj([action_example_with_inner_match])
-
-
-@pytest.fixture
-def actions_example_without_brackets_required(
-    action_example_without_brackets_required,
-) -> Actions:
-    return Actions.parse_obj([action_example_without_brackets_required])
 
 
 @pytest.fixture(autouse=True)
