@@ -1,7 +1,7 @@
 ---
 # Action Config
 - whiteboard_tag: A
-  contact: foobar
+  bugzilla_user_id: foobar
   description: test config
   module: jbi.actions.default
   parameters:

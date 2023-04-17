@@ -1,3 +1,4 @@
+![Status Sustain](https://img.shields.io/badge/Status-Sustain-green)
 [![Build Docker image](https://github.com/mozilla/jira-bugzilla-integration/actions/workflows/build-publish.yaml/badge.svg)](https://github.com/mozilla/jira-bugzilla-integration/actions/workflows/build-publish.yaml)
 [![Run tests](https://github.com/mozilla/jira-bugzilla-integration/actions/workflows/test.yaml/badge.svg)](https://github.com/mozilla/jira-bugzilla-integration/actions/workflows/test.yaml)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
@@ -19,7 +20,7 @@ Below is a full example of an action configuration:
 ```yaml
 - whiteboard_tag: example
   allow_private: false
-  contact: example@allizom.com
+  bugzilla_user_id: 514230
   description: example configuration
   module: jbi.actions.default
   parameters:
@@ -33,12 +34,6 @@ A bit more about the different fields...
 - `allow_private` (optional)
     - bool [true, false]
     - default: false
-    - If `false`, bugs will not be synchronized if they are not made public. Note that in order to synchronize private bugs,
-     the bugzilla user that JBI runs as must be in the security groups that are making the bug private.
-- `contact`
-    - an email address, a list of email addresses, or a literal "tbd" to signify that no contact is available
-    - If an issue arises with the workflow, communication will be established with these contacts
-    - Please enter the contact information for one or more stakeholders
 - `description`
     - string
     - Please enter a description; for example, team name or project use-case.
@@ -97,7 +92,7 @@ to the Bugzilla ticket on the Jira issue.
 Minimal configuration:
 ```yaml
     whiteboard_tag: example
-    contact: example@allizom.com
+    bugzilla_user_id: 514230
     description: minimal configuration
     parameters:
       jira_project_key: EXMPL
@@ -107,7 +102,7 @@ Full configuration, that will set assignee, change the Jira issue status and res
 
 ```yaml
 - whiteboard_tag: fidefe
-  contact: example@allizom.com
+  bugzilla_user_id: 514230
   description: full configuration
   module: jbi.actions.default
   parameters:
@@ -256,7 +251,7 @@ GET /whiteboard_tags/
 {
     "addons": {
         "whiteboard_tag": "addons",
-        "contact": "example@allizom.com",
+        "bugzilla_user_id": 514230,
         "description": "Addons whiteboard tag for AMO Team",
         "enabled": true,
         "module": "jbi.actions.default",

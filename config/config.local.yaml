@@ -1,7 +1,7 @@
 ---
 # Action Config
 - whiteboard_tag: devtest
-  contact: tbd
+  bugzilla_user_id: tbd
   description: DevTest whiteboard tag
   parameters:
     jira_project_key: DevTest
