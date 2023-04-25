@@ -33,7 +33,7 @@ In order to verify that a certain commit was deployed, check that the Github Act
 GET /__version__
 
 {
-  "commit": "1ea792a733d704e0094fe6065ee64b2a3435f280",
+  "commit": "1ea79...",
   "version": "refs/tags/vX.Y.Z",
   "source": "https://github.com/mozilla/jira-bugzilla-integration",
   "build": "https://github.com/mozilla/jira-bugzilla-integration/actions/runs/2315380477"
