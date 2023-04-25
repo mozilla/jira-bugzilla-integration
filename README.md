@@ -29,10 +29,16 @@ graph TD
     end
 ```
 
+## Documentation
+
+* [Actions](docs/actions.md)
+* [Deployment](docs/deployment.md)
+* [Troubleshooting](docs/troubleshooting.md)
+
 ## Usage
 
 ### How to onboard a new project?
 
-1. Add an entry for your whiteboard tag (eg. `famous-product`) in the actions configuration file. See [actions documentation](docs/actions.md))
+1. Add an entry for your whiteboard tag (eg. `famous-product`) in the [actions configuration files](config/). See [actions documentation](docs/actions.md))
 2. Open a pull-request with your action configuration changes
 3. Open a ticket to request the appropriate permissions to be given to the bot account (`Jira Automation`) on the Jira project ([example ticket](https://mozilla-hub.atlassian.net/servicedesk/customer/portal/4/SDD-12038))
