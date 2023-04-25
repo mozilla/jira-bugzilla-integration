@@ -45,9 +45,9 @@ A bit more about the different fields...
     - The parameters will be validated to ensure the selected action accepts the specified values
 
 
-[View 'nonprod'  configurations here.](config/config.nonprod.yaml)
+[View 'nonprod'  configurations here.](../config/config.nonprod.yaml)
 
-[View 'prod' configurations here.](config/config.prod.yaml)
+[View 'prod' configurations here.](../config/config.prod.yaml)
 
 
 ## Available Actions

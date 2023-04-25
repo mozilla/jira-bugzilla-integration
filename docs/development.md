@@ -6,5 +6,5 @@
 
 You may consider:
 
-* Tweaking the application settings in the `.env` file (See `src/app/environment.py` for details)
+* Tweaking the application settings in the `.env` file (See [jbi/environment.py](../jbi/environment.py) for details)
 * Installing a pre-commit hook to lint your changes with `pre-commit install`
