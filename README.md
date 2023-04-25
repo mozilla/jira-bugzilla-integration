@@ -12,7 +12,6 @@ System to sync Bugzilla bugs to Jira issues.
 - The events are transformed into Jira issues
 - The system sets the `see_also` field of the Bugzilla bug with the URL to the Jira issue
 
-
 ## Diagram Overview
 
 ``` mermaid
@@ -29,3 +28,11 @@ graph TD
         F["config.{ENV}.yaml"] ---| read actions config| D
     end
 ```
+
+## Usage
+
+### How to onboard a new project?
+
+1. Add an entry for your whiteboard tag (eg. `famous-product`) in the actions configuration file. See [actions documentation](docs/actions.md))
+2. Open a pull-request with your action configuration changes
+3. Open a ticket to request the appropriate permissions to be given to the bot account (`Jira Automation`) on the Jira project ([example ticket](https://mozilla-hub.atlassian.net/servicedesk/customer/portal/4/SDD-12038))
