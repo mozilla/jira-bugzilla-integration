@@ -17,7 +17,7 @@ from jbi.models import (
     BugzillaWebhooksResponse,
 )
 
-from .common import InstrumentedClient, ServiceHealth
+from .common import ServiceHealth, instrument
 
 settings = environment.get_settings()
 
@@ -26,6 +26,15 @@ logger = logging.getLogger(__name__)
 
 class BugzillaClientError(Exception):
     """Errors raised by `BugzillaClient`."""
+
+
+instrumented_method = instrument(
+    prefix="bugzilla",
+    exceptions=(
+        BugzillaClientError,
+        requests.RequestException,
+    ),
+)
 
 
 class BugzillaClient:
@@ -57,6 +66,7 @@ class BugzillaClient:
         resp = self._call("GET", f"{self.base_url}/rest/whoami")
         return "id" in resp
 
+    @instrumented_method
     def get_bug(self, bugid) -> BugzillaBug:
         """Retrieve details about the specified bug id."""
         # https://bugzilla.readthedocs.io/en/latest/api/core/v1/bug.html#rest-single-bug
@@ -77,6 +87,7 @@ class BugzillaClient:
             bug = bug.copy(update={"comment": found})
         return bug
 
+    @instrumented_method
     def get_comments(self, bugid) -> list[BugzillaComment]:
         """Retrieve the list of comments of the specified bug id."""
         # https://bugzilla.readthedocs.io/en/latest/api/core/v1/comment.html#rest-comments
@@ -89,6 +100,7 @@ class BugzillaClient:
             )
         return parse_obj_as(list[BugzillaComment], comments)
 
+    @instrumented_method
     def update_bug(self, bugid, **fields) -> BugzillaBug:
         """Update the specified fields of the specified bug."""
         # https://bugzilla.readthedocs.io/en/latest/api/core/v1/bug.html#rest-update-bug
@@ -101,6 +113,7 @@ class BugzillaClient:
             )
         return parsed.bugs[0]
 
+    @instrumented_method
     def list_webhooks(self):
         """List the currently configured webhooks, including their status."""
         url = f"{self.base_url}/rest/webhooks/list"
@@ -116,22 +129,8 @@ class BugzillaClient:
 @lru_cache(maxsize=1)
 def get_client():
     """Get bugzilla service"""
-    bugzilla_client = BugzillaClient(
+    return BugzillaClient(
         settings.bugzilla_base_url, api_key=str(settings.bugzilla_api_key)
-    )
-    return InstrumentedClient(
-        wrapped=bugzilla_client,
-        prefix="bugzilla",
-        methods=(
-            "get_bug",
-            "get_comments",
-            "update_bugs",
-            "list_webhooks",
-        ),
-        exceptions=(
-            BugzillaClientError,
-            requests.RequestException,
-        ),
     )
 
 
