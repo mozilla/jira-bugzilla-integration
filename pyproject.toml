@@ -14,7 +14,7 @@ atlassian-python-api = "^3.36.0"
 dockerflow = "2022.8.0"
 Jinja2 = "^3.1.2"
 pydantic-yaml = {extras = ["pyyaml","ruamel"], version = "^0.11.2"}
-sentry-sdk = {extras = ["fastapi"], version = "^1.21.1"}
+sentry-sdk = {extras = ["fastapi"], version = "^1.22.2"}
 backoff = "^2.2.1"
 statsd = "^4.0.1"
 requests = "^2.30.0"
@@ -27,7 +27,7 @@ coverage = {extras = ["toml"], version = "^7.2"}
 mypy = "^1.2"
 detect-secrets = "^1.4.0"
 bandit = "^1.7.5"
-pylint = "^2.17.3"
+pylint = "^2.17.4"
 pylint-pytest = "^1.1.2"
 pytest = "^7.3.1"
 yamllint = "^1.31.0"
