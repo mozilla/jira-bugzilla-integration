@@ -15,7 +15,7 @@ from atlassian import Jira, errors
 from jbi import Operation, environment
 from jbi.models import ActionContext, BugzillaBug
 
-from .common import InstrumentedClient, ServiceHealth
+from .common import ServiceHealth, instrument
 
 if TYPE_CHECKING:
     from jbi.models import Actions
@@ -27,27 +27,28 @@ logger = logging.getLogger(__name__)
 
 JIRA_DESCRIPTION_CHAR_LIMIT = 32767
 
+instrumented_method = instrument(prefix="jira", exceptions=(errors.ApiError,))
+
+
+class JiraClient(Jira):
+    """Adapted Atlassian Jira client that wraps methods in our instrumentation
+    decorator.
+    """
+
+    update_issue_field = instrumented_method(Jira.update_issue_field)
+    set_issue_status = instrumented_method(Jira.set_issue_status)
+    issue_add_comment = instrumented_method(Jira.issue_add_comment)
+    create_issue = instrumented_method(Jira.create_issue)
+
 
 @lru_cache(maxsize=1)
 def get_client():
     """Get atlassian Jira Service"""
-    jira_client = Jira(
+    return JiraClient(
         url=settings.jira_base_url,
         username=settings.jira_username,
         password=settings.jira_api_key,  # package calls this param 'password' but actually expects an api key
         cloud=True,  # we run against an instance of Jira cloud
-    )
-
-    return InstrumentedClient(
-        wrapped=jira_client,
-        prefix="jira",
-        methods=(
-            "update_issue_field",
-            "set_issue_status",
-            "issue_add_comment",
-            "create_issue",
-        ),
-        exceptions=(errors.ApiError,),
     )
 
 

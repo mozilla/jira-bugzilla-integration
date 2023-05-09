@@ -4,6 +4,8 @@ ServiceHealth: Return type that service health checks should use
 InstrumentedClient: wraps service clients so that we can track their usage
 """
 import logging
+from functools import wraps
+from typing import Sequence, Type
 
 import backoff
 from statsd.defaults.env import statsd
@@ -18,33 +20,26 @@ logger = logging.getLogger(__name__)
 ServiceHealth = dict[str, bool]
 
 
-class InstrumentedClient:
-    """This class wraps an object and increments a counter every time
-    the specified methods are called, and times their execution.
-    It retries the methods if the specified exceptions are raised.
+def instrument(prefix: str, exceptions: Sequence[Type[Exception]]):
+    """This decorator wraps a function such that it increments a counter every
+    time it is called and times its execution. It retries the function if the
+    specified exceptions are raised.
     """
 
-    def __init__(self, wrapped, prefix, methods, exceptions):
-        self.wrapped = wrapped
-        self.prefix = prefix
-        self.methods = methods
-        self.exceptions = exceptions
-
-    def __getattr__(self, attr):
-        if attr not in self.methods:
-            return getattr(self.wrapped, attr)
-
+    def decorator(func):
+        @wraps(func)
         @backoff.on_exception(
             backoff.expo,
-            self.exceptions,
+            exceptions,
             max_tries=settings.max_retries + 1,
         )
-        def wrapped_func(*args, **kwargs):
+        def wrapper(*args, **kwargs):
             # Increment the call counter.
-            statsd.incr(f"jbi.{self.prefix}.methods.{attr}.count")
+            statsd.incr(f"jbi.{prefix}.methods.{func.__name__}.count")
             # Time its execution.
-            with statsd.timer(f"jbi.{self.prefix}.methods.{attr}.timer"):
-                return getattr(self.wrapped, attr)(*args, **kwargs)
+            with statsd.timer(f"jbi.{prefix}.methods.{func.__name__}.timer"):
+                return func(*args, **kwargs)
 
-        # The method was not called yet.
-        return wrapped_func
+        return wrapper
+
+    return decorator
