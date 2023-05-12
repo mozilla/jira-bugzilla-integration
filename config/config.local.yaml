@@ -1,9 +1,9 @@
 ---
 # Action Config
-- whiteboard_tag: devtest
+- whiteboard_tag: psm
   bugzilla_user_id: tbd
   description: DevTest whiteboard tag
   parameters:
-    jira_project_key: DevTest
+    jira_project_key: JBI
     jira_components:
       - "Main"

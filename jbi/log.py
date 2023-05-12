@@ -44,6 +44,7 @@ CONFIG = {
         "": {"handlers": ["console"]},
         "request.summary": {"level": logging.INFO},
         "jbi": {"level": logging.DEBUG},
+        "atlassian": {"level": logging.DEBUG},
         "uvicorn": {"level": logging.INFO},
         "uvicorn.access": {"handlers": ["null"], "propagate": False},
     },
