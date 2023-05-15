@@ -32,13 +32,19 @@ instrumented_method = instrument(prefix="jira", exceptions=(errors.ApiError,))
 
 
 def log_http_error(func):
+    """A decorator to catch and log HTTP errors responses of the Jira client.
+
+    Without this the actual requests and responses are not exposed when an error
+    occurs, which makes troubleshooting tedious.
+    """
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
-        except requests.HTTPError as e:
-            request = e.request
-            response = e.response
+        except requests.HTTPError as exc:
+            request = exc.request
+            response = exc.response
             logger.error(
                 "HTTP: %s %s -> %s %s",
                 request.method,
