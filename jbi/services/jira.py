@@ -7,9 +7,10 @@ from __future__ import annotations
 import concurrent.futures
 import json
 import logging
-from functools import lru_cache
+from functools import lru_cache, wraps
 from typing import TYPE_CHECKING, Any
 
+import requests
 from atlassian import Jira, errors
 
 from jbi import Operation, environment
@@ -30,15 +31,39 @@ JIRA_DESCRIPTION_CHAR_LIMIT = 32767
 instrumented_method = instrument(prefix="jira", exceptions=(errors.ApiError,))
 
 
+def log_http_error(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except requests.HTTPError as e:
+            request = e.request
+            response = e.response
+            logger.error(
+                "HTTP: %s %s -> %s %s",
+                request.method,
+                request.path_url,
+                response.status_code,
+                response.reason,
+                extra={"body": response.text},
+            )
+            raise
+
+    return wrapper
+
+
 class JiraClient(Jira):
     """Adapted Atlassian Jira client that wraps methods in our instrumentation
     decorator.
     """
 
-    update_issue_field = instrumented_method(Jira.update_issue_field)
-    set_issue_status = instrumented_method(Jira.set_issue_status)
-    issue_add_comment = instrumented_method(Jira.issue_add_comment)
-    create_issue = instrumented_method(Jira.create_issue)
+    update_issue_field = log_http_error(instrumented_method(Jira.update_issue_field))
+    set_issue_status = log_http_error(instrumented_method(Jira.set_issue_status))
+    issue_add_comment = log_http_error(instrumented_method(Jira.issue_add_comment))
+    create_issue = log_http_error(instrumented_method(Jira.create_issue))
+    get_project_components = log_http_error(
+        instrumented_method(Jira.get_project_components)
+    )
 
 
 @lru_cache(maxsize=1)
