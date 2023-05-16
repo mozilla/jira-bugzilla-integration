@@ -58,18 +58,18 @@ def test_request_is_ignored_because_private(
     assert str(exc_info.value) == "private bugs are not valid for action 'devtest'"
 
 
-def test_request_matched_whiteboard_within_brackets(
+def test_request_matched_whiteboard_with_dash(
     caplog,
     webhook_create_example,
     action_factory,
     settings: Settings,
     mocked_bugzilla,
 ):
-    search_string = "inner-match"
+    action_tag = "data-quality"
     actions_example_with_inner_match = Actions.parse_obj(
-        [action_factory(whiteboard_tag=search_string)]
+        [action_factory(whiteboard_tag=action_tag)]
     )
-    bug = bug_factory(whiteboard=f"[{search_string}-backlog]")
+    bug = bug_factory(whiteboard=f"[{action_tag}-backlog]")
     webhook_create_example.bug = bug
     mocked_bugzilla.get_bug.return_value = bug
     with caplog.at_level(logging.DEBUG):
