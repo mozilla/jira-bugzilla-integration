@@ -31,17 +31,19 @@ JIRA_DESCRIPTION_CHAR_LIMIT = 32767
 instrumented_method = instrument(prefix="jira", exceptions=(errors.ApiError,))
 
 
-def log_http_error(func):
-    """A decorator to catch and log HTTP errors responses of the Jira client.
-
-    Without this the actual requests and responses are not exposed when an error
-    occurs, which makes troubleshooting tedious.
+class JiraClient(Jira):
+    """Adapted Atlassian Jira client that logs errors and wraps methods
+    in our instrumentation decorator.
     """
 
-    @wraps(func)
-    def wrapper(*args, **kwargs):
+    def raise_for_status(self, *args, **kwargs):
+        """Catch and log HTTP errors responses of the Jira client.
+
+        Without this the actual requests and responses are not exposed when an error
+        occurs, which makes troubleshooting tedious.
+        """
         try:
-            return func(*args, **kwargs)
+            return super().raise_for_status(*args, **kwargs)
         except requests.HTTPError as exc:
             request = exc.request
             response = exc.response
@@ -55,21 +57,11 @@ def log_http_error(func):
             )
             raise
 
-    return wrapper
-
-
-class JiraClient(Jira):
-    """Adapted Atlassian Jira client that wraps methods in our instrumentation
-    decorator.
-    """
-
-    update_issue_field = log_http_error(instrumented_method(Jira.update_issue_field))
-    set_issue_status = log_http_error(instrumented_method(Jira.set_issue_status))
-    issue_add_comment = log_http_error(instrumented_method(Jira.issue_add_comment))
-    create_issue = log_http_error(instrumented_method(Jira.create_issue))
-    get_project_components = log_http_error(
-        instrumented_method(Jira.get_project_components)
-    )
+    update_issue_field = instrumented_method(Jira.update_issue_field)
+    set_issue_status = instrumented_method(Jira.set_issue_status)
+    issue_add_comment = instrumented_method(Jira.issue_add_comment)
+    create_issue = instrumented_method(Jira.create_issue)
+    get_project_components = instrumented_method(Jira.get_project_components)
 
 
 @lru_cache(maxsize=1)
