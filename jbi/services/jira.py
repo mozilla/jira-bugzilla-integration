@@ -10,6 +10,7 @@ import logging
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any
 
+import requests
 from atlassian import Jira
 from atlassian import errors as atlassian_errors
 from requests import exceptions as requests_exceptions
@@ -39,9 +40,30 @@ instrumented_method = instrument(
 
 
 class JiraClient(Jira):
-    """Adapted Atlassian Jira client that wraps methods in our instrumentation
-    decorator.
+    """Adapted Atlassian Jira client that logs errors and wraps methods
+    in our instrumentation decorator.
     """
+
+    def raise_for_status(self, *args, **kwargs):
+        """Catch and log HTTP errors responses of the Jira client.
+
+        Without this the actual requests and responses are not exposed when an error
+        occurs, which makes troubleshooting tedious.
+        """
+        try:
+            return super().raise_for_status(*args, **kwargs)
+        except requests.HTTPError as exc:
+            request = exc.request
+            response = exc.response
+            logger.error(
+                "HTTP: %s %s -> %s %s",
+                request.method,
+                request.path_url,
+                response.status_code,
+                response.reason,
+                extra={"body": response.text},
+            )
+            raise
 
     get_server_info = instrumented_method(Jira.get_server_info)
     get_permissions = instrumented_method(Jira.get_permissions)
