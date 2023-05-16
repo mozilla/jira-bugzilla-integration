@@ -76,13 +76,13 @@ def test_jira_calls_log_http_errors(mocked_responses, context_create_example, ca
                 components=["Remote Settings"],
             )
 
-    log = caplog.records[-1]
-    assert (
-        log.msg % log.args
-        == "HTTP: GET /rest/api/2/project/JBI/components -> 404 Not Found"
+    log_messages = [log.msg % log.args for log in caplog.records]
+    idx = log_messages.index(
+        "HTTP: GET /rest/api/2/project/JBI/components -> 404 Not Found"
     )
+    log_record = caplog.records[idx]
     assert (
-        log.body
+        log_record.body
         == '{"errorMessages": ["No project could be found with key \'X\'."], "errors": {}}'
     )
 
