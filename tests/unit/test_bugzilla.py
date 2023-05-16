@@ -84,17 +84,6 @@ def test_lookup_action_not_found(whiteboard, actions_example):
     assert str(exc_info.value) == "devtest"
 
 
-def test_lookup_action_without_brackets_required(action_factory):
-    search_string = "devtest"
-    actions_example = Actions.parse_obj(
-        [action_factory(whiteboard_tag=search_string, brackets_required=False)]
-    )
-    bug = bug_factory(id=1234, whiteboard="example DevTest")
-    action = bug.lookup_action(actions_example)
-    assert action.whiteboard_tag == "devtest"
-    assert "test config" in action.description
-
-
 def test_payload_empty_changes_list(webhook_change_status_assignee):
     webhook_change_status_assignee.event.changes = None
     assert webhook_change_status_assignee.event.changed_fields() is None

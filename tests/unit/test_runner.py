@@ -186,37 +186,6 @@ def test_request_matched_prefix_and_postfixed_within_brackets(
     ]
 
 
-def test_request_(
-    caplog,
-    webhook_create_example,
-    action_factory,
-    settings: Settings,
-    mocked_bugzilla,
-):
-    bug = bug_factory(whiteboard="bracket-less")
-    actions_example_without_brackets_required = Actions.parse_obj(
-        [action_factory(whiteboard_tag="bracket-less", brackets_required=False)]
-    )
-    webhook_create_example.bug = bug
-    mocked_bugzilla.get_bug.return_value = bug
-    with caplog.at_level(logging.DEBUG):
-        execute_action(
-            request=webhook_create_example,
-            actions=actions_example_without_brackets_required,
-            settings=settings,
-        )
-
-    captured_log_msgs = [
-        r.msg % r.args for r in caplog.records if r.name == "jbi.runner"
-    ]
-
-    assert captured_log_msgs == [
-        "Handling incoming request",
-        "Execute action 'bracket-less:tests.fixtures.noop_action' for Bug 654321",
-        "Action 'bracket-less' executed successfully for Bug 654321",
-    ]
-
-
 def test_private_request_is_allowed(
     webhook_create_private_example: BugzillaWebhookRequest,
     settings: Settings,
