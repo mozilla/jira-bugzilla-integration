@@ -234,17 +234,10 @@ class BugzillaBug(BaseModel):
 
     def get_whiteboard_as_list(self) -> list[str]:
         """Convert string whiteboard into list, splitting on ']' and removing '['."""
-        if self.whiteboard is not None:
-            split_list = self.whiteboard.replace("[", "").split("]")
-            return [x.strip() for x in split_list if x not in ["", " "]]
-        return []
-
-    def get_whiteboard_with_brackets_as_list(self) -> list[str]:
-        """Convert string whiteboard into list, splitting on ']' and removing '['; then re-adding."""
-        wb_list = self.get_whiteboard_as_list()
-        if wb_list is not None and len(wb_list) > 0:
-            return [f"[{element}]" for element in wb_list]
-        return []
+        split_list = (
+            self.whiteboard.replace("[", "").split("]") if self.whiteboard else []
+        )
+        return [x.strip() for x in split_list if x not in ["", " "]]
 
     def get_jira_labels(self) -> list[str]:
         """
@@ -252,22 +245,10 @@ class BugzillaBug(BaseModel):
         bugzilla is an expected label in Jira
         since jira-labels can't contain a " ", convert to "."
         """
-        wb_list = [wb.replace(" ", ".") for wb in self.get_whiteboard_as_list()]
-        wb_bracket_list = [
-            wb.replace(" ", ".") for wb in self.get_whiteboard_with_brackets_as_list()
-        ]
-
-        return ["bugzilla"] + wb_list + wb_bracket_list
-
-    def get_potential_whiteboard_config_list(self) -> list[str]:
-        """Get all possible tags from `whiteboard` field"""
-        converted_list: list = []
-        for whiteboard in self.get_whiteboard_as_list():
-            first_tag = whiteboard.strip().lower().split(sep="-", maxsplit=1)[0]
-            if first_tag:
-                converted_list.append(first_tag)
-
-        return converted_list
+        wb_list = self.get_whiteboard_as_list()
+        wb_bracket_list = [f"[{wb}]" for wb in wb_list]
+        without_spaces = [wb.replace(" ", ".") for wb in (wb_list + wb_bracket_list)]
+        return ["bugzilla"] + without_spaces
 
     def issue_type(self) -> str:
         """Get the Jira issue type for this bug"""
