@@ -72,22 +72,15 @@ def test_request_matched_whiteboard_with_dash(
     bug = bug_factory(whiteboard=f"[{action_tag}-backlog]")
     webhook_create_example.bug = bug
     mocked_bugzilla.get_bug.return_value = bug
-    with caplog.at_level(logging.DEBUG):
-        execute_action(
-            request=webhook_create_example,
-            actions=actions_example_with_inner_match,
-            settings=settings,
-        )
 
-    captured_log_msgs = [
-        r.msg % r.args for r in caplog.records if r.name == "jbi.runner"
-    ]
+    result = execute_action(
+        request=webhook_create_example,
+        actions=actions_example_with_inner_match,
+        settings=settings,
+    )
 
-    assert captured_log_msgs == [
-        "Handling incoming request",
-        "Execute action 'inner-match:tests.fixtures.noop_action' for Bug 654321",
-        "Action 'inner-match' executed successfully for Bug 654321",
-    ]
+    result_bug = BugzillaBug.parse_raw(result["bug"])
+    assert result_bug.id == bug.id
 
 
 def test_private_request_is_allowed(
