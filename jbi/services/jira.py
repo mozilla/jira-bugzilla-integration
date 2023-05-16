@@ -10,7 +10,9 @@ import logging
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any
 
-from atlassian import Jira, errors
+from atlassian import Jira
+from atlassian import errors as atlassian_errors
+from requests import exceptions as requests_exceptions
 
 from jbi import Operation, environment
 from jbi.models import ActionContext, BugzillaBug
@@ -27,7 +29,13 @@ logger = logging.getLogger(__name__)
 
 JIRA_DESCRIPTION_CHAR_LIMIT = 32767
 
-instrumented_method = instrument(prefix="jira", exceptions=(errors.ApiError,))
+instrumented_method = instrument(
+    prefix="jira",
+    exceptions=(
+        atlassian_errors.ApiError,
+        requests_exceptions.RequestException,
+    ),
+)
 
 
 class JiraClient(Jira):
@@ -35,6 +43,10 @@ class JiraClient(Jira):
     decorator.
     """
 
+    get_server_info = instrumented_method(Jira.get_server_info)
+    get_permissions = instrumented_method(Jira.get_permissions)
+    get_project_components = instrumented_method(Jira.get_project_components)
+    projects = instrumented_method(Jira.projects)
     update_issue_field = instrumented_method(Jira.update_issue_field)
     set_issue_status = instrumented_method(Jira.set_issue_status)
     issue_add_comment = instrumented_method(Jira.issue_add_comment)
