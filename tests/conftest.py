@@ -23,6 +23,12 @@ from jbi.services import bugzilla, jira
 from tests.fixtures import factories
 
 
+@pytest.fixture(autouse=True)
+def mocked_statsd():
+    with mock.patch("jbi.services.common.statsd") as _mocked_statsd:
+        yield _mocked_statsd
+
+
 @pytest.fixture
 def anon_client():
     """A test client with no authorization."""
@@ -58,7 +64,7 @@ def mocked_jira(request):
         yield None
         jira.get_client.cache_clear()
     else:
-        with mock.patch("jbi.services.jira.Jira") as mocked_jira:
+        with mock.patch("jbi.services.jira.JiraClient") as mocked_jira:
             yield mocked_jira()
             jira.get_client.cache_clear()
 

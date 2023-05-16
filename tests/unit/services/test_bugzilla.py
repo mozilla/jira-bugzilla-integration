@@ -8,13 +8,18 @@ from jbi.environment import get_settings
 from jbi.services.bugzilla import BugzillaClientError, get_client
 
 
-def test_timer_is_used_on_bugzilla_get_comments():
+@pytest.mark.no_mocked_bugzilla
+def test_timer_is_used_on_bugzilla_get_comments(mocked_responses, mocked_statsd):
     bugzilla_client = get_client()
-
-    with mock.patch("jbi.services.common.statsd") as mocked:
-        bugzilla_client.get_comments([])
-
-    mocked.timer.assert_called_with("jbi.bugzilla.methods.get_comments.timer")
+    mocked_responses.add(
+        "GET",
+        f"{get_settings().bugzilla_base_url}/rest/bug/42/comment",
+        json={
+            "bugs": {"42": {"comments": []}},
+        },
+    )
+    bugzilla_client.get_comments(42)
+    mocked_statsd.timer.assert_called_with("jbi.bugzilla.methods.get_comments.timer")
 
 
 @pytest.mark.no_mocked_bugzilla

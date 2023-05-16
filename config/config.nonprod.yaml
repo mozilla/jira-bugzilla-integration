@@ -176,8 +176,6 @@
   description: Data Platform Infrastructure
   parameters:
     jira_project_key: JB
-    jira_components:
-      - "Data Platform Infrastructure"
     steps:
       new:
         - create_issue
@@ -215,8 +213,6 @@
   description: Data Quality
   parameters:
     jira_project_key: JB
-    jira_components:
-      - "Data Quality"
     steps:
       new:
         - create_issue

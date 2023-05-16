@@ -10,12 +10,15 @@ import logging
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any
 
-from atlassian import Jira, errors
+import requests
+from atlassian import Jira
+from atlassian import errors as atlassian_errors
+from requests import exceptions as requests_exceptions
 
 from jbi import Operation, environment
 from jbi.models import ActionContext, BugzillaBug
 
-from .common import InstrumentedClient, ServiceHealth
+from .common import ServiceHealth, instrument
 
 if TYPE_CHECKING:
     from jbi.models import Actions
@@ -27,27 +30,59 @@ logger = logging.getLogger(__name__)
 
 JIRA_DESCRIPTION_CHAR_LIMIT = 32767
 
+instrumented_method = instrument(
+    prefix="jira",
+    exceptions=(
+        atlassian_errors.ApiError,
+        requests_exceptions.RequestException,
+    ),
+)
+
+
+class JiraClient(Jira):
+    """Adapted Atlassian Jira client that logs errors and wraps methods
+    in our instrumentation decorator.
+    """
+
+    def raise_for_status(self, *args, **kwargs):
+        """Catch and log HTTP errors responses of the Jira client.
+
+        Without this the actual requests and responses are not exposed when an error
+        occurs, which makes troubleshooting tedious.
+        """
+        try:
+            return super().raise_for_status(*args, **kwargs)
+        except requests.HTTPError as exc:
+            request = exc.request
+            response = exc.response
+            logger.error(
+                "HTTP: %s %s -> %s %s",
+                request.method,
+                request.path_url,
+                response.status_code,
+                response.reason,
+                extra={"body": response.text},
+            )
+            raise
+
+    get_server_info = instrumented_method(Jira.get_server_info)
+    get_permissions = instrumented_method(Jira.get_permissions)
+    get_project_components = instrumented_method(Jira.get_project_components)
+    projects = instrumented_method(Jira.projects)
+    update_issue_field = instrumented_method(Jira.update_issue_field)
+    set_issue_status = instrumented_method(Jira.set_issue_status)
+    issue_add_comment = instrumented_method(Jira.issue_add_comment)
+    create_issue = instrumented_method(Jira.create_issue)
+
 
 @lru_cache(maxsize=1)
 def get_client():
     """Get atlassian Jira Service"""
-    jira_client = Jira(
+    return JiraClient(
         url=settings.jira_base_url,
         username=settings.jira_username,
         password=settings.jira_api_key,  # package calls this param 'password' but actually expects an api key
         cloud=True,  # we run against an instance of Jira cloud
-    )
-
-    return InstrumentedClient(
-        wrapped=jira_client,
-        prefix="jira",
-        methods=(
-            "update_issue_field",
-            "set_issue_status",
-            "issue_add_comment",
-            "create_issue",
-        ),
-        exceptions=(errors.ApiError,),
     )
 
 
