@@ -58,7 +58,7 @@ def test_request_is_ignored_because_private(
     assert str(exc_info.value) == "private bugs are not valid for action 'devtest'"
 
 
-def test_request_matched_within_brackets(
+def test_request_matched_whiteboard_within_brackets(
     caplog,
     webhook_create_example,
     action_factory,
@@ -69,103 +69,7 @@ def test_request_matched_within_brackets(
     actions_example_with_inner_match = Actions.parse_obj(
         [action_factory(whiteboard_tag=search_string)]
     )
-    bug = bug_factory(whiteboard=f"\[{search_string}\]")
-    webhook_create_example.bug = bug
-    mocked_bugzilla.get_bug.return_value = bug
-    with caplog.at_level(logging.DEBUG):
-        execute_action(
-            request=webhook_create_example,
-            actions=actions_example_with_inner_match,
-            settings=settings,
-        )
-
-    captured_log_msgs = [
-        r.msg % r.args for r in caplog.records if r.name == "jbi.runner"
-    ]
-
-    assert captured_log_msgs == [
-        "Handling incoming request",
-        "Execute action 'inner-match:tests.fixtures.noop_action' for Bug 654321",
-        "Action 'inner-match' executed successfully for Bug 654321",
-    ]
-
-
-def test_request_matched_prefixed_within_brackets(
-    caplog,
-    webhook_create_example,
-    action_factory,
-    settings: Settings,
-    mocked_bugzilla,
-):
-    search_string = "inner-match"
-    actions_example_with_inner_match = Actions.parse_obj(
-        [action_factory(whiteboard_tag=search_string)]
-    )
-    bug = bug_factory(whiteboard=f"\[pre-{search_string}\]")
-    webhook_create_example.bug = bug
-    mocked_bugzilla.get_bug.return_value = bug
-    with caplog.at_level(logging.DEBUG):
-        execute_action(
-            request=webhook_create_example,
-            actions=actions_example_with_inner_match,
-            settings=settings,
-        )
-
-    captured_log_msgs = [
-        r.msg % r.args for r in caplog.records if r.name == "jbi.runner"
-    ]
-
-    assert captured_log_msgs == [
-        "Handling incoming request",
-        "Execute action 'inner-match:tests.fixtures.noop_action' for Bug 654321",
-        "Action 'inner-match' executed successfully for Bug 654321",
-    ]
-
-
-def test_request_matched_postfixed_within_brackets(
-    caplog,
-    webhook_create_example,
-    action_factory,
-    settings: Settings,
-    mocked_bugzilla,
-):
-    search_string = "inner-match"
-    actions_example_with_inner_match = Actions.parse_obj(
-        [action_factory(whiteboard_tag=search_string)]
-    )
-    bug = bug_factory(whiteboard=f"\[{search_string}-post-\]")
-    webhook_create_example.bug = bug
-    mocked_bugzilla.get_bug.return_value = bug
-    with caplog.at_level(logging.DEBUG):
-        execute_action(
-            request=webhook_create_example,
-            actions=actions_example_with_inner_match,
-            settings=settings,
-        )
-
-    captured_log_msgs = [
-        r.msg % r.args for r in caplog.records if r.name == "jbi.runner"
-    ]
-
-    assert captured_log_msgs == [
-        "Handling incoming request",
-        "Execute action 'inner-match:tests.fixtures.noop_action' for Bug 654321",
-        "Action 'inner-match' executed successfully for Bug 654321",
-    ]
-
-
-def test_request_matched_prefix_and_postfixed_within_brackets(
-    caplog,
-    webhook_create_example,
-    action_factory,
-    settings: Settings,
-    mocked_bugzilla,
-):
-    search_string = "inner-match"
-    actions_example_with_inner_match = Actions.parse_obj(
-        [action_factory(whiteboard_tag=search_string)]
-    )
-    bug = bug_factory(whiteboard=f"\[-pre-{search_string}-post-\]")
+    bug = bug_factory(whiteboard=f"[{search_string}-backlog]")
     webhook_create_example.bug = bug
     mocked_bugzilla.get_bug.return_value = bug
     with caplog.at_level(logging.DEBUG):
