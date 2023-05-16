@@ -7,7 +7,7 @@ from __future__ import annotations
 import concurrent.futures
 import json
 import logging
-from functools import lru_cache, wraps
+from functools import lru_cache
 from typing import TYPE_CHECKING, Any
 
 import requests
