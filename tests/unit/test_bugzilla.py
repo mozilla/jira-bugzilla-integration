@@ -54,36 +54,31 @@ def test_extract_see_also(see_also, expected):
     assert bug.extract_from_see_also() == expected
 
 
-def test_lookup_action(actions_example):
-    bug = bug_factory(id=1234, whiteboard="[example][DevTest]")
+@pytest.mark.parametrize(
+    "whiteboard",
+    [
+        "[example][DevTest]",
+        "[example][DevTest-test]",
+        "[example][test-DevTest]",
+        "[example][foo-DevTest-bar]",
+    ],
+)
+def test_lookup_action_found(whiteboard, actions_example):
+    bug = bug_factory(id=1234, whiteboard=whiteboard)
     action = bug.lookup_action(actions_example)
     assert action.whiteboard_tag == "devtest"
     assert "test config" in action.description
 
 
-def test_lookup_action_with_postfix(actions_example):
-    bug = bug_factory(id=1234, whiteboard="[example][DevTest-test]")
-    action = bug.lookup_action(actions_example)
-    assert action.whiteboard_tag == "devtest"
-    assert "test config" in action.description
-
-
-def test_lookup_action_with_prefix(actions_example):
-    bug = bug_factory(id=1234, whiteboard="[example][test-DevTest]")
-    action = bug.lookup_action(actions_example)
-    assert action.whiteboard_tag == "devtest"
-    assert "test config" in action.description
-
-
-def test_lookup_action_with_prefix_and_postfix(actions_example):
-    bug = bug_factory(id=1234, whiteboard="[example][foo-DevTest-bar]")
-    action = bug.lookup_action(actions_example)
-    assert action.whiteboard_tag == "devtest"
-    assert "test config" in action.description
-
-
-def test_lookup_action_not_found(actions_example):
-    bug = bug_factory(id=1234, whiteboard="example DevTest")
+@pytest.mark.parametrize(
+    "whiteboard",
+    [
+        "example DevTest",
+        "[foo] devtest [bar]",
+    ],
+)
+def test_lookup_action_not_found(whiteboard, actions_example):
+    bug = bug_factory(id=1234, whiteboard=whiteboard)
     with pytest.raises(ActionNotFoundError) as exc_info:
         bug.lookup_action(actions_example)
     assert str(exc_info.value) == "devtest"

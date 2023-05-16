@@ -308,10 +308,10 @@ class BugzillaBug(BaseModel):
         """Find first matching action from bug's whiteboard list"""
         if self.whiteboard:
             for tag, action in actions.by_tag.items():
-                pre = r"\[.*" if action.brackets_required else ""
-                post = r".*\]" if action.brackets_required else ""
-                search_string = f"{pre}{tag.lower()}{post}"
-                if re.search(search_string, self.whiteboard.lower()):
+                pre = r"\[[^\]]*" if action.brackets_required else ""
+                post = r"[^\]]*\]" if action.brackets_required else ""
+                search_string = f"{pre}{tag}{post}"
+                if re.search(search_string, self.whiteboard, flags=re.IGNORECASE):
                     return action
 
         raise ActionNotFoundError(", ".join(actions.by_tag.keys()))
