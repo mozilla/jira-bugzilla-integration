@@ -58,6 +58,31 @@ def test_request_is_ignored_because_private(
     assert str(exc_info.value) == "private bugs are not valid for action 'devtest'"
 
 
+def test_request_matched_whiteboard_with_dash(
+    caplog,
+    webhook_create_example,
+    action_factory,
+    settings: Settings,
+    mocked_bugzilla,
+):
+    action_tag = "data-quality"
+    actions_example_with_inner_match = Actions.parse_obj(
+        [action_factory(whiteboard_tag=action_tag)]
+    )
+    bug = bug_factory(whiteboard=f"[{action_tag}-backlog]")
+    webhook_create_example.bug = bug
+    mocked_bugzilla.get_bug.return_value = bug
+
+    result = execute_action(
+        request=webhook_create_example,
+        actions=actions_example_with_inner_match,
+        settings=settings,
+    )
+
+    result_bug = BugzillaBug.parse_raw(result["bug"])
+    assert result_bug.id == bug.id
+
+
 def test_private_request_is_allowed(
     webhook_create_private_example: BugzillaWebhookRequest,
     settings: Settings,
@@ -113,7 +138,7 @@ def test_request_is_ignored_because_no_action(
             actions=actions_example,
             settings=settings,
         )
-    assert str(exc_info.value) == "no action matching bug whiteboard tags: bar"
+    assert str(exc_info.value) == "no bug whiteboard matching action tags: devtest"
 
 
 def test_execution_logging_for_successful_requests(
@@ -168,7 +193,7 @@ def test_execution_logging_for_ignored_requests(
 
     assert captured_log_msgs == [
         "Handling incoming request",
-        "Ignore incoming request: no action matching bug whiteboard tags: foo",
+        "Ignore incoming request: no bug whiteboard matching action tags: devtest",
     ]
 
 
