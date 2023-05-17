@@ -290,6 +290,7 @@
         - maybe_update_issue_status
       comment:
         - create_comment
+    sync_whiteboard_labels: false
 
 
 - whiteboard_tag: dataquality
@@ -313,3 +314,4 @@
         - maybe_update_issue_status
       comment:
         - create_comment
+    sync_whiteboard_labels: false
