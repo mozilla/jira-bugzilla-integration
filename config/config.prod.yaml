@@ -292,6 +292,21 @@
         - maybe_update_issue_status
       comment:
         - create_comment
+    status_map:
+      UNCONFIRMED: Backlog
+      NEW: Backlog
+      ASSIGNED: In Progress
+      REOPENED: In Progress
+      RESOLVED: Done
+      VERIFIED: Done
+      FIXED: Done
+      INVALID: Done
+      WONTFIX: Done
+      INACTIVE: Done
+      DUPLICATE: Done
+      WORKSFORME: Done
+      INCOMPLETE: Done
+      MOVED: Done
     sync_whiteboard_labels: false
 
 
@@ -318,4 +333,19 @@
         - maybe_update_issue_status
       comment:
         - create_comment
+    status_map:
+      UNCONFIRMED: To Do
+      NEW: To Do
+      ASSIGNED: In Progress
+      REOPENED: In Progress
+      RESOLVED: Done
+      VERIFIED: Done
+      FIXED: Done
+      INVALID: Done
+      WONTFIX: Done
+      INACTIVE: Done
+      DUPLICATE: Done
+      WORKSFORME: Done
+      INCOMPLETE: Done
+      MOVED: Done
     sync_whiteboard_labels: false
