@@ -48,6 +48,7 @@ graph TD
 - `make start`: run the application locally (http://localhost:8000)
 - `make test`: run the unit tests suites
 - `make lint`: static analysis of the code base
+- `make format`: automatically format code to align to linting standards
 
 You may consider:
 

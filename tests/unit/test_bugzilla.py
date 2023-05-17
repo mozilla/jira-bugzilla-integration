@@ -1,6 +1,7 @@
 import pytest
 
 from jbi.errors import ActionNotFoundError
+from jbi.models import Actions
 from tests.fixtures.factories import bug_factory
 
 
@@ -53,18 +54,34 @@ def test_extract_see_also(see_also, expected):
     assert bug.extract_from_see_also() == expected
 
 
-def test_lookup_action(actions_example):
-    bug = bug_factory(id=1234, whiteboard="[example][DevTest]")
+@pytest.mark.parametrize(
+    "whiteboard",
+    [
+        "[example][DevTest]",
+        "[example][DevTest-test]",
+        "[example][test-DevTest]",
+        "[example][foo-DevTest-bar]",
+    ],
+)
+def test_lookup_action_found(whiteboard, actions_example):
+    bug = bug_factory(id=1234, whiteboard=whiteboard)
     action = bug.lookup_action(actions_example)
     assert action.whiteboard_tag == "devtest"
     assert "test config" in action.description
 
 
-def test_lookup_action_missing(actions_example):
-    bug = bug_factory(id=1234, whiteboard="example DevTest")
+@pytest.mark.parametrize(
+    "whiteboard",
+    [
+        "example DevTest",
+        "[foo] devtest [bar]",
+    ],
+)
+def test_lookup_action_not_found(whiteboard, actions_example):
+    bug = bug_factory(id=1234, whiteboard=whiteboard)
     with pytest.raises(ActionNotFoundError) as exc_info:
         bug.lookup_action(actions_example)
-    assert str(exc_info.value) == "example devtest"
+    assert str(exc_info.value) == "devtest"
 
 
 def test_payload_empty_changes_list(webhook_change_status_assignee):
