@@ -207,6 +207,7 @@
       WORKSFORME: Done
       INCOMPLETE: Done
       MOVED: Done
+    sync_whiteboard_labels: false
 
 - whiteboard_tag: dataquality
   bugzilla_user_id: tbd
@@ -244,3 +245,4 @@
       WORKSFORME: Done
       INCOMPLETE: Done
       MOVED: Done
+    sync_whiteboard_labels: false
