@@ -34,6 +34,7 @@ graph TD
 * [Actions](docs/actions.md)
 * [Deployment](docs/deployment.md)
 * [Troubleshooting](docs/troubleshooting.md)
+* [RRA for JBI](https://docs.google.com/document/d/1p0wWVNK5V1jXKAOE-3EquBVcGOIksHD6Rgz9afZQ1A4/edit?usp=sharing)
 
 ## Usage
 
@@ -49,6 +50,12 @@ graph TD
 - `make test`: run the unit tests suites
 - `make lint`: static analysis of the code base
 - `make format`: automatically format code to align to linting standards
+
+In order to pass arguments to `pytest`:
+
+```
+poetry run pytest -vv -k test_bugzilla_list_webhooks
+```
 
 You may consider:
 
