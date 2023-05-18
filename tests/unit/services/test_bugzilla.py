@@ -52,7 +52,7 @@ def test_bugzilla_key_is_passed_in_header(mocked_responses):
         ],
     )
 
-    assert get_client().logged_in
+    assert get_client().logged_in()
 
     assert len(mocked_responses.calls) == 1
     # The following assertion is redundant with matchers but also more explicit.
