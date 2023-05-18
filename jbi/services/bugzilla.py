@@ -59,7 +59,7 @@ class BugzillaClient:
             raise BugzillaClientError(parsed["message"])
         return parsed
 
-    @property
+    @instrumented_method
     def logged_in(self) -> bool:
         """Verify the API key validity."""
         # https://bugzilla.readthedocs.io/en/latest/api/core/v1/user.html#who-am-i
@@ -137,7 +137,7 @@ def get_client():
 def check_health() -> ServiceHealth:
     """Check health for Bugzilla Service"""
     client = get_client()
-    logged_in = client.logged_in
+    logged_in = client.logged_in()
 
     # Check that all JBI webhooks are enabled in Bugzilla,
     # and report disabled ones.

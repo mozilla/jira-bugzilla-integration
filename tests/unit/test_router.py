@@ -155,7 +155,7 @@ def test_read_version(anon_client):
 
 def test_read_heartbeat_all_services_fail(anon_client, mocked_jira, mocked_bugzilla):
     """/__heartbeat__ returns 503 when all the services are unavailable."""
-    mocked_bugzilla.logged_in = False
+    mocked_bugzilla.logged_in.return_value = False
     mocked_jira.get_server_info.return_value = None
 
     resp = anon_client.get("/__heartbeat__")
@@ -193,7 +193,7 @@ def test_read_heartbeat_jira_services_fails(anon_client, mocked_jira, mocked_bug
 def test_read_heartbeat_bugzilla_webhooks_fails(
     anon_client, mocked_jira, mocked_bugzilla
 ):
-    mocked_bugzilla.logged_in = True
+    mocked_bugzilla.logged_in.return_value = True
     mocked_bugzilla.list_webhooks.return_value = [
         EXAMPLE_WEBHOOK.copy(update={"enabled": False})
     ]
@@ -211,7 +211,7 @@ def test_read_heartbeat_bugzilla_services_fails(
     anon_client, mocked_jira, mocked_bugzilla
 ):
     """/__heartbeat__ returns 503 when one service is unavailable."""
-    mocked_bugzilla.logged_in = False
+    mocked_bugzilla.logged_in.return_value = False
     mocked_jira.get_server_info.return_value = {}
     mocked_jira.projects.return_value = [{"key": "DevTest"}]
 
@@ -226,7 +226,7 @@ def test_read_heartbeat_bugzilla_services_fails(
 
 def test_read_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
     """/__heartbeat__ returns 200 when checks succeed."""
-    mocked_bugzilla.logged_in = True
+    mocked_bugzilla.logged_in.return_value = True
     mocked_bugzilla.list_webhooks.return_value = [EXAMPLE_WEBHOOK]
     mocked_jira.get_server_info.return_value = {}
     mocked_jira.projects.return_value = [{"key": "DevTest"}]
@@ -297,7 +297,7 @@ def test_jira_heartbeat_missing_permissions(anon_client, mocked_jira, mocked_bug
 
 
 def test_jira_heartbeat_unknown_components(anon_client, mocked_jira, mocked_bugzilla):
-    mocked_bugzilla.logged_in = True
+    mocked_bugzilla.logged_in.return_value = True
     mocked_bugzilla.list_webhooks.return_value = [EXAMPLE_WEBHOOK]
     mocked_jira.get_server_info.return_value = {}
 
@@ -309,7 +309,7 @@ def test_jira_heartbeat_unknown_components(anon_client, mocked_jira, mocked_bugz
 
 def test_head_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
     """/__heartbeat__ support head requests"""
-    mocked_bugzilla.logged_in = True
+    mocked_bugzilla.logged_in.return_value = True
     mocked_bugzilla.list_webhooks.return_value = [EXAMPLE_WEBHOOK]
     mocked_jira.get_server_info.return_value = {}
     mocked_jira.projects.return_value = [{"key": "DevTest"}]
