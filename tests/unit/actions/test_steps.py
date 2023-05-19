@@ -1,6 +1,7 @@
 """
 Module for testing jbi/actions/default.py functionality
 """
+import logging
 from unittest import mock
 
 import pytest
@@ -456,3 +457,36 @@ def test_change_to_unknown_resolution_with_resolution_map(
         key="JBI-234",
         fields={"summary": "JBI Test", "labels": ["bugzilla", "devtest", "[devtest]"]},
     )
+
+
+def test_maybe_update_components(
+    mocked_responses, context_create_example, mocked_jira, caplog
+):
+    mocked_jira.get_project_components.return_value = [
+        {
+            "id": "10000",
+            "name": "Component 1",
+        },
+        {
+            "id": "42",
+            "name": "Remote Settings",
+        },
+    ]
+    context_create_example.bug.component = "Toolbar"
+
+    callable_object = default.init(
+        jira_project_key=context_create_example.jira.project,
+        steps={"new": ["maybe_update_components"]},
+        jira_components=["Remote Settings"],
+    )
+
+    with caplog.at_level(logging.DEBUG):
+        callable_object(context=context_create_example)
+
+    captured_log_msgs = [
+        r.msg % r.args for r in caplog.records if r.name == "jbi.actions.steps"
+    ]
+    mocked_jira.update_issue_field.assert_called_with(
+        key=context_create_example.jira.issue, fields={"components": [{"id": "42"}]}
+    )
+    assert captured_log_msgs == ["Could not find components {'Toolbar'} in project"]

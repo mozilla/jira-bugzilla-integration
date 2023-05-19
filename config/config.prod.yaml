@@ -225,6 +225,18 @@
     jira_project_key: SE
     jira_components:
       - "Remote Settings"
+    steps:
+      new:
+        - create_issue
+        - maybe_delete_duplicate
+        - maybe_update_components
+        - add_link_to_bugzilla
+        - add_link_to_jira
+      existing:
+        - update_issue
+        - add_jira_comments_for_changes
+      comment:
+        - create_comment
 
 - whiteboard_tag: snt
   bugzilla_user_id: 696039
@@ -280,6 +292,7 @@
       new:
         - create_issue
         - maybe_delete_duplicate
+        - maybe_update_components
         - add_link_to_bugzilla
         - add_link_to_jira
         - maybe_assign_jira_user
@@ -321,6 +334,7 @@
       new:
         - create_issue
         - maybe_delete_duplicate
+        - maybe_update_components
         - add_link_to_bugzilla
         - add_link_to_jira
         - maybe_assign_jira_user
