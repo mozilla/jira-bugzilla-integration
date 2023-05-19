@@ -34,7 +34,7 @@ yamllint = "^1.31.0"
 pytest-dotenv = "^0.5.2"
 types-requests = "^2.30.0"
 responses = "^0.23.1"
-httpx = "^0.24.0"
+httpx = "^0.24.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
