@@ -17,7 +17,7 @@ from jbi.models import (
     JiraContext,
     RunnerContext,
 )
-from jbi.services import bugzilla
+from jbi.services import bugzilla, jira
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +89,12 @@ def execute_action(
                 action_context = action_context.update(operation=Operation.CREATE)
 
         else:
+            # Check that issue exists (and is readable)
+            if not jira.get_issue(action_context, action_context.jira.issue):
+                raise IgnoreInvalidRequestError(
+                    f"ignore unreadable issue {action_context.jira.issue}"
+                )
+
             if event.target == "bug":
                 changed_fields = event.changed_fields() or []
                 action_context = action_context.update(

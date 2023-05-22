@@ -300,3 +300,32 @@ def test_counter_is_incremented_on_processed_requests(
             settings=settings,
         )
     mocked.incr.assert_called_with("jbi.bugzilla.processed.count")
+
+
+def test_runner_ignores_if_jira_issue_is_not_readable(
+    webhook_comment_example: BugzillaWebhookRequest,
+    actions_example: Actions,
+    settings: Settings,
+    mocked_bugzilla,
+    mocked_jira,
+    caplog,
+):
+    mocked_jira.get_issue.return_value = None
+    mocked_bugzilla.get_bug.return_value = webhook_comment_example.bug
+
+    with caplog.at_level(logging.DEBUG):
+        with pytest.raises(IgnoreInvalidRequestError) as exc_info:
+            execute_action(
+                request=webhook_comment_example,
+                actions=actions_example,
+                settings=settings,
+            )
+
+    assert str(exc_info.value) == "ignore unreadable issue JBI-234"
+    captured_log_msgs = [
+        r.msg % r.args for r in caplog.records if r.name == "jbi.runner"
+    ]
+    assert captured_log_msgs == [
+        "Handling incoming request",
+        "Ignore incoming request: ignore unreadable issue JBI-234",
+    ]
