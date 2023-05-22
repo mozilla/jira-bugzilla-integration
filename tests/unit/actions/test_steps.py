@@ -5,6 +5,7 @@ import logging
 from unittest import mock
 
 import pytest
+import requests
 
 from jbi.actions import default
 from jbi.environment import get_settings
@@ -67,7 +68,11 @@ def test_modified_public(context_update_example: ActionContext, mocked_jira):
 
     assert context_update_example.bug.extract_from_see_also(), "see_also is not empty"
 
-    mocked_jira.update_issue_field.assert_called_once_with(
+    mocked_jira.update_issue_field.assert_any_call(
+        key="JBI-234",
+        fields={"labels": ["bugzilla", "devtest", "[devtest]"]},
+    )
+    mocked_jira.update_issue_field.assert_any_call(
         key="JBI-234",
         fields={"summary": "JBI Test"},
     )
@@ -514,3 +519,37 @@ def test_maybe_update_components(
             fields={"components": expected_jira_components},
         )
     assert captured_log_msgs == expected_logs
+
+
+def test_sync_whiteboard_labels(context_create_example: ActionContext, mocked_jira):
+    callable_object = default.init(
+        jira_project_key=context_create_example.jira.project,
+        steps={"new": ["sync_whiteboard_labels"]},
+    )
+    callable_object(context=context_create_example)
+
+    mocked_jira.update_issue_field.assert_called_once_with(
+        key=context_create_example.jira.issue,
+        fields={"labels": ["bugzilla", "devtest", "[devtest]"]},
+    )
+
+
+def test_sync_whiteboard_labels_failing(
+    context_update_example: ActionContext, mocked_jira, caplog
+):
+    mocked_jira.update_issue_field.side_effect = requests.exceptions.HTTPError(
+        "some message", response=mock.MagicMock(status_code=400)
+    )
+
+    callable_object = default.init(
+        jira_project_key=context_update_example.jira.project,
+        steps={"existing": ["sync_whiteboard_labels"]},
+    )
+
+    with caplog.at_level(logging.DEBUG):
+        callable_object(context=context_update_example)
+
+    captured_log_msgs = [
+        r.msg % r.args for r in caplog.records if r.name == "jbi.actions.steps"
+    ]
+    assert captured_log_msgs == ["Could not set labels on issue JBI-234: some message"]

@@ -31,9 +31,11 @@ DEFAULT_STEPS = {
         "maybe_delete_duplicate",
         "add_link_to_bugzilla",
         "add_link_to_jira",
+        "sync_whiteboard_labels",
     ],
     "existing": [
         "update_issue",
+        "sync_whiteboard_labels",
         "add_jira_comments_for_changes",
     ],
     "comment": [
