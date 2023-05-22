@@ -31,7 +31,6 @@ def create_comment(context: ActionContext, **parameters):
 def create_issue(context: ActionContext, **parameters):
     """Create the Jira issue with the first comment as the description."""
     sync_whiteboard_labels: bool = parameters.get("sync_whiteboard_labels", True)
-    jira_components: list[str] = parameters.get("jira_components", [])
     bug = context.bug
 
     # In the payload of a bug creation, the `comment` field is `null`.
@@ -43,7 +42,6 @@ def create_issue(context: ActionContext, **parameters):
         context,
         description,
         sync_whiteboard_labels=sync_whiteboard_labels,
-        components=jira_components,
     )
     issue_key = jira_create_response.get("key")
 
@@ -198,3 +196,40 @@ def maybe_update_issue_status(context: ActionContext, **parameters):
             return context, (resp,)
 
     return context, ()
+
+
+def maybe_update_components(context: ActionContext, **parameters):
+    """
+    Update the Jira issue components
+    """
+    config_components: list[str] = parameters.get("jira_components", [])
+    candidate_components = set(config_components)
+    if context.bug.component:
+        candidate_components.add(context.bug.component)
+    client = jira.get_client()
+
+    # Fetch all projects components, and match their id by name.
+    all_project_components = client.get_project_components(context.jira.project)
+    jira_components = []
+    for comp in all_project_components:
+        if comp["name"] in candidate_components:
+            jira_components.append({"id": comp["id"]})
+            candidate_components.remove(comp["name"])
+
+    # Warn if some specified components are unknown
+    if candidate_components:
+        logger.warning(
+            "Could not find components %s in project",
+            candidate_components,
+            extra=context.dict(),
+        )
+
+    if not jira_components:
+        return context, ()
+
+    # Since we previously introspected the project components, we don't
+    # have to catch any potential 400 error response here.
+    resp = client.update_issue_field(
+        key=context.jira.issue, fields={"components": jira_components}
+    )
+    return context, (resp,)

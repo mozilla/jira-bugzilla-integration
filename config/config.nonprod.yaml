@@ -182,6 +182,7 @@
       new:
         - create_issue
         - maybe_delete_duplicate
+        - maybe_update_components
         - add_link_to_bugzilla
         - add_link_to_jira
         - maybe_assign_jira_user
@@ -222,6 +223,7 @@
       new:
         - create_issue
         - maybe_delete_duplicate
+        - maybe_update_components
         - add_link_to_bugzilla
         - add_link_to_jira
         - maybe_assign_jira_user
