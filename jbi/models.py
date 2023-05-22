@@ -33,7 +33,7 @@ class ActionParameters(BaseModel):
     status_map: Optional[dict[str, str]] = None
     resolution_map: Optional[dict[str, str]] = None
     jira_components: Optional[list[str]] = None
-    sync_whiteboard_labels: Optional[bool] = None
+    sync_whiteboard_labels: bool = True
 
 
 class Action(YamlModel):
