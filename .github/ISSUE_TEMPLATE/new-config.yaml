@@ -1,0 +1,45 @@
+name: New sync configuration
+description: Request a new Bugzilla to Jira sync connection
+title: "Sync <Bugzilla Product> with <Jira Project>"
+labels: ["configuration"]
+body:
+  - type: input
+    id: bugzilla_product
+    attributes:
+      label: Bugzilla Product
+      description: What Bugzilla [product](https://wiki.mozilla.org/BMO/UserGuide/BugFields#product) would you like to sync?
+      placeholder: ex. Firefox
+    validations:
+      required: true
+  - type: input
+    id: bugzilla_component
+    attributes:
+      label: Bugzilla Component
+      description: Optionally, what Bugzilla [component](https://wiki.mozilla.org/BMO/UserGuide/BugFields#component) would you like to scope the sync to?
+      placeholder: ex. General
+    validations:
+      required: false
+  - type: input
+    id: jira_project_key
+    attributes:
+      label: Jira Project Key
+      description: What is the key of the [Jira Project](https://mozilla-hub.atlassian.net/jira/projects) you'd like to sync your bugs to?
+      placeholder: ex. JB
+    validations:
+      required: true
+  - type: input
+    id: whiteboard_tag
+    attributes:
+      label: Whiteboard Tag
+      description: Adding a whiteboard tag to a bug marks it to be synced to Jira. What whiteboard tag do you want to use for this sync pipeline?
+      placeholder: ex. myTag
+    validations:
+      required: true
+  - type: input
+    id: project_contact
+    attributes:
+      label: Project Contact (Bugzilla user id)
+      description: What is the ID of the Bugzilla user that should be contacted if something goes wrong with the sync pipeline?
+      placeholder: "123456"
+    validations:
+      required: false
