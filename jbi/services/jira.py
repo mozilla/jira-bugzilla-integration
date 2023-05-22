@@ -203,6 +203,19 @@ def _all_projects_components_exist(actions: Actions):
     return success
 
 
+def get_issue(context: ActionContext, issue_key):
+    """Return the Jira issue fields or `None` if not found."""
+    try:
+        return get_client().get_issue(issue_key)
+    except requests_exceptions.HTTPError as exc:
+        if exc.response.status_code != 404:
+            raise
+        logger.error(
+            "Could not read issue %s: %s", issue_key, exc, extra=context.dict()
+        )
+        return None
+
+
 class JiraCreateError(Exception):
     """Error raised on Jira issue creation."""
 
