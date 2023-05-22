@@ -459,25 +459,82 @@ def test_change_to_unknown_resolution_with_resolution_map(
     )
 
 
+@pytest.mark.parametrize(
+    "project_components,bug_component,config_components,expected_jira_components,expected_logs",
+    [
+        (
+            [
+                {
+                    "id": "10000",
+                    "name": "Component 1",
+                },
+                {
+                    "id": "42",
+                    "name": "Remote Settings",
+                },
+            ],
+            "Toolbar",
+            ["Remote Settings"],
+            [{"id": "42"}],
+            ["Could not find components {'Toolbar'} in project"],
+        ),
+        # Without components in config
+        (
+            [
+                {
+                    "id": "37",
+                    "name": "Toolbar",
+                },
+            ],
+            "Toolbar",
+            [],
+            [{"id": "37"}],
+            [],
+        ),
+        # Without components in project
+        (
+            [],
+            "Toolbar",
+            [],
+            [],
+            ["Could not find components {'Toolbar'} in project"],
+        ),
+        # With more than one in config
+        (
+            [
+                {
+                    "id": "10000",
+                    "name": "Search",
+                },
+                {
+                    "id": "42",
+                    "name": "Remote Settings",
+                },
+            ],
+            None,
+            ["Search", "Remote Settings"],
+            [{"id": "10000"}, {"id": "42"}],
+            [],
+        ),
+    ],
+)
 def test_maybe_update_components(
-    mocked_responses, context_create_example, mocked_jira, caplog
+    project_components,
+    bug_component,
+    config_components,
+    expected_jira_components,
+    expected_logs,
+    context_create_example,
+    mocked_jira,
+    caplog,
 ):
-    mocked_jira.get_project_components.return_value = [
-        {
-            "id": "10000",
-            "name": "Component 1",
-        },
-        {
-            "id": "42",
-            "name": "Remote Settings",
-        },
-    ]
-    context_create_example.bug.component = "Toolbar"
+    mocked_jira.get_project_components.return_value = project_components
+    context_create_example.bug.component = bug_component
 
     callable_object = default.init(
         jira_project_key=context_create_example.jira.project,
         steps={"new": ["maybe_update_components"]},
-        jira_components=["Remote Settings"],
+        jira_components=config_components,
     )
 
     with caplog.at_level(logging.DEBUG):
@@ -486,7 +543,9 @@ def test_maybe_update_components(
     captured_log_msgs = [
         r.msg % r.args for r in caplog.records if r.name == "jbi.actions.steps"
     ]
-    mocked_jira.update_issue_field.assert_called_with(
-        key=context_create_example.jira.issue, fields={"components": [{"id": "42"}]}
-    )
-    assert captured_log_msgs == ["Could not find components {'Toolbar'} in project"]
+    if expected_jira_components:
+        mocked_jira.update_issue_field.assert_called_with(
+            key=context_create_example.jira.issue,
+            fields={"components": expected_jira_components},
+        )
+    assert captured_log_msgs == expected_logs

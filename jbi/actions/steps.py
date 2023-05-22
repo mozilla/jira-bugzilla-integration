@@ -203,7 +203,9 @@ def maybe_update_components(context: ActionContext, **parameters):
     Update the Jira issue components
     """
     config_components: list[str] = parameters.get("jira_components", [])
-    candidate_components = set([context.bug.component] + config_components)
+    candidate_components = set(config_components)
+    if context.bug.component:
+        candidate_components.add(context.bug.component)
     client = jira.get_client()
 
     # Fetch all projects components, and match their id by name.
@@ -214,19 +216,20 @@ def maybe_update_components(context: ActionContext, **parameters):
             jira_components.append({"id": comp["id"]})
             candidate_components.remove(comp["name"])
 
-    if jira_components:
-        # Since we previously introspected the project components, we don't
-        # have to catch any potential 400 error response here.
-        resp = client.update_issue_field(
-            key=context.jira.issue, fields={"components": jira_components}
-        )
-
     # Warn if some specified components are unknown
     if candidate_components:
         logger.warning(
-            f"Could not find components %s in project",
+            "Could not find components %s in project",
             candidate_components,
             extra=context.dict(),
         )
 
+    if not jira_components:
+        return context, ()
+
+    # Since we previously introspected the project components, we don't
+    # have to catch any potential 400 error response here.
+    resp = client.update_issue_field(
+        key=context.jira.issue, fields={"components": jira_components}
+    )
     return context, (resp,)
