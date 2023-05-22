@@ -1,7 +1,7 @@
 import pytest
 from fastapi.encoders import jsonable_encoder
 
-from jbi.models import Action, Actions
+from jbi.models import Action, ActionParameters, Actions
 from tests.fixtures.factories import action_factory
 
 
@@ -13,6 +13,7 @@ def test_model_serializes():
             "bugzilla_user_id": 123456,
             "description": "test config",
             "module": "tests.fixtures.bugzilla_action",
+            "parameters": ActionParameters(jira_project_key="fooo"),
         }
     )
     action.caller(bug=None, event=None)
@@ -29,6 +30,7 @@ def test_model_with_user_list_serializes():
             "bugzilla_user_id": [123456, 654321, 000000, 111111],
             "description": "test config",
             "module": "tests.fixtures.bugzilla_action",
+            "parameters": ActionParameters(jira_project_key="fooo"),
         }
     )
     action.caller(bug=None, event=None)
@@ -44,6 +46,7 @@ def test_model_with_user_list_serializes():
                 "bugzilla_user_id": [123456],
                 "description": "test config",
                 "module": "tests.fixtures.bugzilla_action",
+                "parameters": ActionParameters(jira_project_key="fooo"),
             }
         )
         action.caller(bug=None, event=None)
@@ -67,7 +70,7 @@ def test_unknown_module_fails():
 def test_bad_module_fails():
     with pytest.raises(ValueError) as exc_info:
         Actions.parse_obj([{"whiteboard_tag": "x", "module": "jbi.runner"}])
-    assert "action is not properly setup" in str(exc_info.value)
+    assert "action 'jbi.runner' is not properly setup" in str(exc_info.value)
 
 
 def test_duplicated_whiteboard_tag_fails():
