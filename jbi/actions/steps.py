@@ -30,7 +30,6 @@ def create_comment(context: ActionContext, **parameters):
 
 def create_issue(context: ActionContext, **parameters):
     """Create the Jira issue with the first comment as the description."""
-    sync_whiteboard_labels: bool = parameters.get("sync_whiteboard_labels", True)
     bug = context.bug
 
     # In the payload of a bug creation, the `comment` field is `null`.
@@ -39,9 +38,7 @@ def create_issue(context: ActionContext, **parameters):
     description = comment_list[0].text if comment_list else ""
 
     jira_create_response = jira.create_jira_issue(
-        context,
-        description,
-        sync_whiteboard_labels=sync_whiteboard_labels,
+        context, description, sync_whiteboard_labels=False
     )
     issue_key = jira_create_response.get("key")
 
@@ -76,9 +73,7 @@ def maybe_delete_duplicate(context: ActionContext, **parameters):
 
 def update_issue(context: ActionContext, **parameters):
     """Update the Jira issue's summary and labels if the linked bug is modified."""
-    sync_whiteboard_labels: bool = parameters.get("sync_whiteboard_labels", True)
-
-    resp = jira.update_jira_issue(context, sync_whiteboard_labels)
+    resp = jira.update_jira_issue(context, sync_whiteboard_labels=False)
 
     return context, (resp,)
 

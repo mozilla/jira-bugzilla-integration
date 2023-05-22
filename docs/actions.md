@@ -72,9 +72,6 @@ to the Bugzilla ticket on the Jira issue.
 - `jira_components` (optional)
    - list [str]
    - If defined, the created issues will be assigned the specified components.
-- `sync_whiteboard_labels` (optional)
-    - boolean
-    - Whether to sync the Bugzilla status whiteboard labels to Jira. Defaults to `true`.
 - `status_map` (optional)
     - mapping [str, str]
     - If defined, map the Bugzilla bug status (or resolution) to Jira issue status
