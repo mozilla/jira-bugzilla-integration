@@ -71,11 +71,25 @@ def maybe_delete_duplicate(context: ActionContext, **parameters):
     return context, ()
 
 
-def update_issue(context: ActionContext, **parameters):
-    """Update the Jira issue's summary and labels if the linked bug is modified."""
-    resp = jira.update_jira_issue(context)
+def update_issue_summary(context: ActionContext, **parameters):
+    """Update the Jira issue's summary if the linked bug is modified."""
 
-    return context, (resp,)
+    bug = context.bug
+    issue_key = context.jira.issue
+    logger.debug(
+        "Update summary of Jira issue %s for Bug %s",
+        issue_key,
+        bug.id,
+        extra=context.dict(),
+    )
+    truncated_summary = (bug.summary or "")[: jira.JIRA_DESCRIPTION_CHAR_LIMIT]
+    fields: dict[str, str] = {
+        "summary": truncated_summary,
+    }
+    jira_response_update = jira.get_client().update_issue_field(
+        key=issue_key, fields=fields
+    )
+    return context, (jira_response_update,)
 
 
 def add_jira_comments_for_changes(context: ActionContext, **parameters):

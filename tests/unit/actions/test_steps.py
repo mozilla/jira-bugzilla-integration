@@ -24,7 +24,7 @@ ALL_STEPS = {
         "maybe_update_issue_status",
     ],
     "existing": [
-        "update_issue",
+        "update_issue_summary",
         "maybe_assign_jira_user",
         "maybe_update_issue_resolution",
         "maybe_update_issue_status",

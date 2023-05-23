@@ -34,7 +34,7 @@ DEFAULT_STEPS = {
         "sync_whiteboard_labels",
     ],
     "existing": [
-        "update_issue",
+        "update_issue_summary",
         "sync_whiteboard_labels",
         "add_jira_comments_for_changes",
     ],
