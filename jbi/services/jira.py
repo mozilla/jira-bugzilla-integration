@@ -221,9 +221,8 @@ class JiraCreateError(Exception):
 def create_jira_issue(
     context: ActionContext,
     description: str,
-    sync_whiteboard_labels: bool,
 ):
-    """Create a Jira issue with the specified fields and return its key."""
+    """Create a Jira issue with basic fields in the project and return its key."""
     bug = context.bug
     logger.debug(
         "Create new Jira issue for Bug %s",
@@ -236,8 +235,6 @@ def create_jira_issue(
         "description": description[:JIRA_DESCRIPTION_CHAR_LIMIT],
         "project": {"key": context.jira.project},
     }
-    if sync_whiteboard_labels:
-        fields["labels"] = bug.get_jira_labels()
 
     client = get_client()
 
@@ -256,26 +253,6 @@ def create_jira_issue(
             raise JiraCreateError(errs + msgs)
 
     return jira_response_create
-
-
-def update_jira_issue(context: ActionContext, sync_whiteboard_labels):
-    """Update the fields of an existing Jira issue"""
-    bug = context.bug
-    issue_key = context.jira.issue
-    logger.debug(
-        "Update fields of Jira issue %s for Bug %s",
-        issue_key,
-        bug.id,
-        extra=context.dict(),
-    )
-    fields: dict[str, Any] = {
-        "summary": bug.summary,
-    }
-    if sync_whiteboard_labels:
-        fields["labels"] = bug.get_jira_labels()
-
-    jira_response_update = get_client().update_issue_field(key=issue_key, fields=fields)
-    return jira_response_update
 
 
 def add_jira_comment(context: ActionContext):
