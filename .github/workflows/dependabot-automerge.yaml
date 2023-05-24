@@ -12,4 +12,4 @@ jobs:
     if: ${{ github.actor == 'dependabot[bot]' }}
     steps:
       - name: Enable Dependabot automation
-        uses: mozilla/syseng-pod/actions/dependabot-automerge
+        uses: mozilla/syseng-pod/actions/dependabot-automerge@main
