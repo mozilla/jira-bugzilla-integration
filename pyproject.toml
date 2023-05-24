@@ -17,7 +17,7 @@ pydantic-yaml = {extras = ["pyyaml","ruamel"], version = "^0.11.2"}
 sentry-sdk = {extras = ["fastapi"], version = "^1.23.1"}
 backoff = "^2.2.1"
 statsd = "^4.0.1"
-requests = "^2.30.0"
+requests = "^2.31.0"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^3.3.2"
