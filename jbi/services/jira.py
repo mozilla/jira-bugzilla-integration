@@ -69,6 +69,7 @@ class JiraClient(Jira):
     get_permissions = instrumented_method(Jira.get_permissions)
     get_project_components = instrumented_method(Jira.get_project_components)
     projects = instrumented_method(Jira.projects)
+    update_issue = instrumented_method(Jira.update_issue)
     update_issue_field = instrumented_method(Jira.update_issue_field)
     set_issue_status = instrumented_method(Jira.set_issue_status)
     issue_add_comment = instrumented_method(Jira.issue_add_comment)
