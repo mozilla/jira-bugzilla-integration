@@ -9,7 +9,7 @@ import requests
 
 from jbi.actions import default
 from jbi.environment import get_settings
-from jbi.models import ActionContext
+from jbi.models import ActionContext, BugzillaWebhookEventChange
 from jbi.services.jira import JiraCreateError
 from tests.fixtures.factories import comment_factory
 
@@ -62,6 +62,12 @@ def test_created_public(
 
 
 def test_modified_public(context_update_example: ActionContext, mocked_jira):
+    context_update_example.event.changes = [
+        BugzillaWebhookEventChange.parse_obj(
+            {"field": "summary", "removed": "", "added": "JBI Test"}
+        )
+    ]
+
     callable_object = default.init(jira_project_key=context_update_example.jira.project)
 
     callable_object(context=context_update_example)
@@ -197,12 +203,6 @@ def test_clear_assignee(context_update_example: ActionContext, mocked_jira):
     mocked_jira.user_find_by_user_string.assert_not_called()
     mocked_jira.update_issue_field.assert_any_call(
         key="JBI-234",
-        fields={
-            "summary": "JBI Test",
-        },
-    )
-    mocked_jira.update_issue_field.assert_any_call(
-        key="JBI-234",
         fields={"assignee": None},
     )
     mocked_jira.set_issue_status.assert_not_called()
@@ -223,12 +223,6 @@ def test_set_assignee(context_update_example: ActionContext, mocked_jira):
     mocked_jira.create_issue.assert_not_called()
     mocked_jira.user_find_by_user_string.assert_called_once_with(
         query="dtownsend@mozilla.com"
-    )
-    mocked_jira.update_issue_field.assert_any_call(
-        key="JBI-234",
-        fields={
-            "summary": "JBI Test",
-        },
     )
     mocked_jira.update_issue_field.assert_any_call(
         key="JBI-234",
@@ -324,12 +318,6 @@ def test_change_to_unknown_status(context_update_example: ActionContext, mocked_
 
     mocked_jira.create_issue.assert_not_called()
     mocked_jira.user_find_by_user_string.assert_not_called()
-    mocked_jira.update_issue_field.assert_called_once_with(
-        key="JBI-234",
-        fields={
-            "summary": "JBI Test",
-        },
-    )
     mocked_jira.set_issue_status.assert_not_called()
 
 
@@ -351,12 +339,6 @@ def test_change_to_known_status(context_update_example: ActionContext, mocked_ji
 
     mocked_jira.create_issue.assert_not_called()
     mocked_jira.user_find_by_user_string.assert_not_called()
-    mocked_jira.update_issue_field.assert_called_once_with(
-        key="JBI-234",
-        fields={
-            "summary": "JBI Test",
-        },
-    )
     mocked_jira.set_issue_status.assert_called_once_with("JBI-234", "In Progress")
 
 
@@ -378,12 +360,6 @@ def test_change_to_known_resolution(context_update_example: ActionContext, mocke
 
     mocked_jira.create_issue.assert_not_called()
     mocked_jira.user_find_by_user_string.assert_not_called()
-    mocked_jira.update_issue_field.assert_called_once_with(
-        key="JBI-234",
-        fields={
-            "summary": "JBI Test",
-        },
-    )
     mocked_jira.set_issue_status.assert_called_once_with("JBI-234", "Closed")
 
 
@@ -423,10 +399,7 @@ def test_change_to_unknown_resolution_with_resolution_map(
     )
     callable_object(context=context_update_resolution_example)
 
-    mocked_jira.update_issue_field.assert_called_once_with(
-        key="JBI-234",
-        fields={"summary": "JBI Test"},
-    )
+    mocked_jira.update_issue_field.assert_not_called()
 
 
 @pytest.mark.parametrize(

@@ -76,6 +76,10 @@ def update_issue_summary(context: ActionContext, **parameters):
 
     bug = context.bug
     issue_key = context.jira.issue
+
+    if "summary" not in context.event.changed_fields():
+        return context, ()
+
     logger.debug(
         "Update summary of Jira issue %s for Bug %s",
         issue_key,
