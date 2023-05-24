@@ -6,6 +6,8 @@ Each step takes an `ActionContext` and a list of arbitrary parameters.
 
 import logging
 
+from requests import exceptions as requests_exceptions
+
 from jbi import Operation
 from jbi.models import ActionContext
 from jbi.services import bugzilla, jira
@@ -30,7 +32,6 @@ def create_comment(context: ActionContext, **parameters):
 
 def create_issue(context: ActionContext, **parameters):
     """Create the Jira issue with the first comment as the description."""
-    sync_whiteboard_labels: bool = parameters.get("sync_whiteboard_labels", True)
     bug = context.bug
 
     # In the payload of a bug creation, the `comment` field is `null`.
@@ -38,11 +39,7 @@ def create_issue(context: ActionContext, **parameters):
     comment_list = bugzilla.get_client().get_comments(bug.id)
     description = comment_list[0].text if comment_list else ""
 
-    jira_create_response = jira.create_jira_issue(
-        context,
-        description,
-        sync_whiteboard_labels=sync_whiteboard_labels,
-    )
+    jira_create_response = jira.create_jira_issue(context, description)
     issue_key = jira_create_response.get("key")
 
     context = context.update(jira=context.jira.update(issue=issue_key))
@@ -74,13 +71,25 @@ def maybe_delete_duplicate(context: ActionContext, **parameters):
     return context, ()
 
 
-def update_issue(context: ActionContext, **parameters):
-    """Update the Jira issue's summary and labels if the linked bug is modified."""
-    sync_whiteboard_labels: bool = parameters.get("sync_whiteboard_labels", True)
+def update_issue_summary(context: ActionContext, **parameters):
+    """Update the Jira issue's summary if the linked bug is modified."""
 
-    resp = jira.update_jira_issue(context, sync_whiteboard_labels)
-
-    return context, (resp,)
+    bug = context.bug
+    issue_key = context.jira.issue
+    logger.debug(
+        "Update summary of Jira issue %s for Bug %s",
+        issue_key,
+        bug.id,
+        extra=context.dict(),
+    )
+    truncated_summary = (bug.summary or "")[: jira.JIRA_DESCRIPTION_CHAR_LIMIT]
+    fields: dict[str, str] = {
+        "summary": truncated_summary,
+    }
+    jira_response_update = jira.get_client().update_issue_field(
+        key=issue_key, fields=fields
+    )
+    return context, (jira_response_update,)
 
 
 def add_jira_comments_for_changes(context: ActionContext, **parameters):
@@ -232,4 +241,28 @@ def maybe_update_components(context: ActionContext, **parameters):
     resp = client.update_issue_field(
         key=context.jira.issue, fields={"components": jira_components}
     )
+    return context, (resp,)
+
+
+def sync_whiteboard_labels(context: ActionContext, **parameters):
+    """
+    Set whiteboard tags as labels on the Jira issue
+    """
+    try:
+        # Note: fetch existing first, see mozilla/jira-bugzilla-integration#393
+        resp = jira.get_client().update_issue_field(
+            key=context.jira.issue, fields={"labels": context.bug.get_jira_labels()}
+        )
+    except requests_exceptions.HTTPError as exc:
+        if exc.response.status_code != 400:
+            raise
+        # If `labels` is not a valid field in this project, then warn developers
+        # and ignore the error.
+        logger.error(
+            f"Could not set labels on issue {context.jira.issue}: %s",
+            str(exc),
+            extra=context.dict(),
+        )
+        return context, ()
+
     return context, (resp,)

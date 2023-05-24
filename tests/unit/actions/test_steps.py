@@ -5,6 +5,7 @@ import logging
 from unittest import mock
 
 import pytest
+import requests
 
 from jbi.actions import default
 from jbi.environment import get_settings
@@ -23,7 +24,7 @@ ALL_STEPS = {
         "maybe_update_issue_status",
     ],
     "existing": [
-        "update_issue",
+        "update_issue_summary",
         "maybe_assign_jira_user",
         "maybe_update_issue_resolution",
         "maybe_update_issue_status",
@@ -49,7 +50,6 @@ def test_created_public(
     mocked_jira.create_issue.assert_called_once_with(
         fields={
             "summary": "JBI Test",
-            "labels": ["bugzilla", "devtest", "[devtest]"],
             "issuetype": {"name": "Bug"},
             "description": "Initial comment",
             "project": {"key": "JBI"},
@@ -68,9 +68,13 @@ def test_modified_public(context_update_example: ActionContext, mocked_jira):
 
     assert context_update_example.bug.extract_from_see_also(), "see_also is not empty"
 
-    mocked_jira.update_issue_field.assert_called_once_with(
+    mocked_jira.update_issue_field.assert_any_call(
         key="JBI-234",
-        fields={"summary": "JBI Test", "labels": ["bugzilla", "devtest", "[devtest]"]},
+        fields={"labels": ["bugzilla", "devtest", "[devtest]"]},
+    )
+    mocked_jira.update_issue_field.assert_any_call(
+        key="JBI-234",
+        fields={"summary": "JBI Test"},
     )
 
 
@@ -118,31 +122,6 @@ def test_jira_returns_an_error(context_create_example: ActionContext, mocked_jir
     assert str(exc_info.value) == "Boom"
 
 
-def test_disabled_label_field(
-    context_create_example: ActionContext, mocked_jira, mocked_bugzilla
-):
-    mocked_jira.create_issue.return_value = {"key": "k"}
-    mocked_bugzilla.get_bug.return_value = context_create_example.bug
-    mocked_bugzilla.get_comments.return_value = [
-        comment_factory(text="Initial comment")
-    ]
-    callable_object = default.init(
-        jira_project_key=context_create_example.jira.project,
-        sync_whiteboard_labels=False,
-    )
-
-    callable_object(context=context_create_example)
-
-    mocked_jira.create_issue.assert_called_once_with(
-        fields={
-            "summary": "JBI Test",
-            "issuetype": {"name": "Bug"},
-            "description": "Initial comment",
-            "project": {"key": "JBI"},
-        },
-    )
-
-
 def test_create_with_no_assignee(
     context_create_example: ActionContext, mocked_jira, mocked_bugzilla
 ):
@@ -160,7 +139,6 @@ def test_create_with_no_assignee(
     mocked_jira.create_issue.assert_called_once_with(
         fields={
             "summary": "JBI Test",
-            "labels": ["bugzilla", "devtest", "[devtest]"],
             "issuetype": {"name": "Bug"},
             "description": "Initial comment",
             "project": {"key": "JBI"},
@@ -191,7 +169,6 @@ def test_create_with_assignee(
     mocked_jira.create_issue.assert_called_once_with(
         fields={
             "summary": "JBI Test",
-            "labels": ["bugzilla", "devtest", "[devtest]"],
             "issuetype": {"name": "Bug"},
             "description": "Initial comment",
             "project": {"key": "JBI"},
@@ -222,7 +199,6 @@ def test_clear_assignee(context_update_example: ActionContext, mocked_jira):
         key="JBI-234",
         fields={
             "summary": "JBI Test",
-            "labels": ["bugzilla", "devtest", "[devtest]"],
         },
     )
     mocked_jira.update_issue_field.assert_any_call(
@@ -252,7 +228,6 @@ def test_set_assignee(context_update_example: ActionContext, mocked_jira):
         key="JBI-234",
         fields={
             "summary": "JBI Test",
-            "labels": ["bugzilla", "devtest", "[devtest]"],
         },
     )
     mocked_jira.update_issue_field.assert_any_call(
@@ -286,7 +261,6 @@ def test_create_with_unknown_status(
     mocked_jira.create_issue.assert_called_once_with(
         fields={
             "summary": "JBI Test",
-            "labels": ["bugzilla", "devtest", "[devtest]"],
             "issuetype": {"name": "Bug"},
             "description": "Initial comment",
             "project": {"key": "JBI"},
@@ -322,7 +296,6 @@ def test_create_with_known_status(
     mocked_jira.create_issue.assert_called_once_with(
         fields={
             "summary": "JBI Test",
-            "labels": ["bugzilla", "devtest", "[devtest]"],
             "issuetype": {"name": "Bug"},
             "description": "Initial comment",
             "project": {"key": "JBI"},
@@ -355,7 +328,6 @@ def test_change_to_unknown_status(context_update_example: ActionContext, mocked_
         key="JBI-234",
         fields={
             "summary": "JBI Test",
-            "labels": ["bugzilla", "devtest", "[devtest]"],
         },
     )
     mocked_jira.set_issue_status.assert_not_called()
@@ -383,7 +355,6 @@ def test_change_to_known_status(context_update_example: ActionContext, mocked_ji
         key="JBI-234",
         fields={
             "summary": "JBI Test",
-            "labels": ["bugzilla", "devtest", "[devtest]"],
         },
     )
     mocked_jira.set_issue_status.assert_called_once_with("JBI-234", "In Progress")
@@ -411,7 +382,6 @@ def test_change_to_known_resolution(context_update_example: ActionContext, mocke
         key="JBI-234",
         fields={
             "summary": "JBI Test",
-            "labels": ["bugzilla", "devtest", "[devtest]"],
         },
     )
     mocked_jira.set_issue_status.assert_called_once_with("JBI-234", "Closed")
@@ -455,7 +425,7 @@ def test_change_to_unknown_resolution_with_resolution_map(
 
     mocked_jira.update_issue_field.assert_called_once_with(
         key="JBI-234",
-        fields={"summary": "JBI Test", "labels": ["bugzilla", "devtest", "[devtest]"]},
+        fields={"summary": "JBI Test"},
     )
 
 
@@ -549,3 +519,37 @@ def test_maybe_update_components(
             fields={"components": expected_jira_components},
         )
     assert captured_log_msgs == expected_logs
+
+
+def test_sync_whiteboard_labels(context_create_example: ActionContext, mocked_jira):
+    callable_object = default.init(
+        jira_project_key=context_create_example.jira.project,
+        steps={"new": ["sync_whiteboard_labels"]},
+    )
+    callable_object(context=context_create_example)
+
+    mocked_jira.update_issue_field.assert_called_once_with(
+        key=context_create_example.jira.issue,
+        fields={"labels": ["bugzilla", "devtest", "[devtest]"]},
+    )
+
+
+def test_sync_whiteboard_labels_failing(
+    context_update_example: ActionContext, mocked_jira, caplog
+):
+    mocked_jira.update_issue_field.side_effect = requests.exceptions.HTTPError(
+        "some message", response=mock.MagicMock(status_code=400)
+    )
+
+    callable_object = default.init(
+        jira_project_key=context_update_example.jira.project,
+        steps={"existing": ["sync_whiteboard_labels"]},
+    )
+
+    with caplog.at_level(logging.DEBUG):
+        callable_object(context=context_update_example)
+
+    captured_log_msgs = [
+        r.msg % r.args for r in caplog.records if r.name == "jbi.actions.steps"
+    ]
+    assert captured_log_msgs == ["Could not set labels on issue JBI-234: some message"]
