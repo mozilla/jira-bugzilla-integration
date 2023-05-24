@@ -86,7 +86,7 @@ def test_lookup_action_not_found(whiteboard, actions_example):
 
 def test_payload_empty_changes_list(webhook_change_status_assignee):
     webhook_change_status_assignee.event.changes = None
-    assert webhook_change_status_assignee.event.changed_fields() is None
+    assert webhook_change_status_assignee.event.changed_fields() == []
 
 
 def test_payload_changes_list(webhook_change_status_assignee):

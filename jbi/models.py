@@ -182,7 +182,7 @@ class BugzillaWebhookEvent(BaseModel):
     target: Optional[str]
     routing_key: Optional[str]
 
-    def changed_fields(self) -> Optional[list[str]]:
+    def changed_fields(self) -> list[str]:
         """Returns the names of changed fields in a bug"""
         if self.changes:
             return [c.field for c in self.changes]
@@ -192,7 +192,7 @@ class BugzillaWebhookEvent(BaseModel):
         if self.routing_key is not None and self.routing_key[0:11] == "bug.modify:":
             return self.routing_key[11:].split(",")
 
-        return None
+        return []
 
 
 class BugzillaWebhookAttachment(BaseModel):

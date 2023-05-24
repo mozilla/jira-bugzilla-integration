@@ -122,9 +122,7 @@ def maybe_assign_jira_user(context: ActionContext, **parameters):
             logger.debug(str(exc), extra=context.dict())
 
     if context.operation == Operation.UPDATE:
-        changed_fields = event.changed_fields() or []
-
-        if "assigned_to" not in changed_fields:
+        if "assigned_to" not in event.changed_fields():
             return context, ()
 
         if not bug.is_assigned():
@@ -166,9 +164,7 @@ def maybe_update_issue_resolution(
         return context, (resp,)
 
     if context.operation == Operation.UPDATE:
-        changed_fields = context.event.changed_fields() or []
-
-        if "resolution" in changed_fields:
+        if "resolution" in context.event.changed_fields():
             resp = jira.update_issue_resolution(context, jira_resolution)
             return context, (resp,)
 
@@ -198,7 +194,7 @@ def maybe_update_issue_status(context: ActionContext, **parameters):
         return context, (resp,)
 
     if context.operation == Operation.UPDATE:
-        changed_fields = context.event.changed_fields() or []
+        changed_fields = context.event.changed_fields()
 
         if "status" in changed_fields or "resolution" in changed_fields:
             resp = jira.update_issue_status(context, jira_status)
