@@ -261,8 +261,8 @@ def _build_labels_update(added, removed=None):
     updates = [{"add": label} for label in after]
     if removed:
         before = _whiteboard_as_labels(removed)
-        deleted = set(before).difference(set(after))
-        updates.extend([{"remove": label} for label in sorted(deleted)])
+        deleted = sorted(set(before).difference(set(after)))  # sorted for unit testing
+        updates.extend([{"remove": label} for label in deleted])
     return updates
 
 
