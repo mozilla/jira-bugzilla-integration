@@ -329,3 +329,24 @@ def test_runner_ignores_if_jira_issue_is_not_readable(
         "Handling incoming request",
         "Ignore incoming request: ignore unreadable issue JBI-234",
     ]
+
+
+def test_runner_ignores_request_if_jira_is_linked_but_without_whiteboard(
+    webhook_comment_example: BugzillaWebhookRequest,
+    actions_example: Actions,
+    settings: Settings,
+    mocked_bugzilla,
+):
+    mocked_bugzilla.get_bug.return_value = webhook_comment_example.bug
+    webhook_comment_example.bug.whiteboard = "[not-matching-local-config]"
+
+    assert webhook_comment_example.bug.extract_from_see_also() is not None
+
+    with pytest.raises(IgnoreInvalidRequestError) as exc_info:
+        execute_action(
+            request=webhook_comment_example,
+            actions=actions_example,
+            settings=settings,
+        )
+
+    assert str(exc_info.value) == "no bug whiteboard matching action tags: devtest"

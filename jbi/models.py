@@ -182,7 +182,7 @@ class BugzillaWebhookEvent(BaseModel):
     target: Optional[str]
     routing_key: Optional[str]
 
-    def changed_fields(self) -> Optional[list[str]]:
+    def changed_fields(self) -> list[str]:
         """Returns the names of changed fields in a bug"""
         if self.changes:
             return [c.field for c in self.changes]
@@ -192,7 +192,7 @@ class BugzillaWebhookEvent(BaseModel):
         if self.routing_key is not None and self.routing_key[0:11] == "bug.modify:":
             return self.routing_key[11:].split(",")
 
-        return None
+        return []
 
 
 class BugzillaWebhookAttachment(BaseModel):
@@ -245,24 +245,6 @@ class BugzillaBug(BaseModel):
     def is_assigned(self) -> bool:
         """Return `true` if the bug is assigned to a user."""
         return self.assigned_to != "nobody@mozilla.org"
-
-    def get_whiteboard_as_list(self) -> list[str]:
-        """Convert string whiteboard into list, splitting on ']' and removing '['."""
-        split_list = (
-            self.whiteboard.replace("[", "").split("]") if self.whiteboard else []
-        )
-        return [x.strip() for x in split_list if x not in ["", " "]]
-
-    def get_jira_labels(self) -> list[str]:
-        """
-        whiteboard labels are added as a convenience for users to search in jira;
-        bugzilla is an expected label in Jira
-        since jira-labels can't contain a " ", convert to "."
-        """
-        wb_list = self.get_whiteboard_as_list()
-        wb_bracket_list = [f"[{wb}]" for wb in wb_list]
-        without_spaces = [wb.replace(" ", ".") for wb in (wb_list + wb_bracket_list)]
-        return ["bugzilla"] + without_spaces
 
     def issue_type(self) -> str:
         """Get the Jira issue type for this bug"""
@@ -368,6 +350,7 @@ class JiraContext(Context):
 
     project: str
     issue: Optional[str]
+    labels: Optional[list[str]]
 
 
 BugId = TypedDict("BugId", {"id": Optional[int]})
