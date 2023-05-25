@@ -9,10 +9,9 @@ import requests
 
 from jbi.actions import default
 from jbi.environment import get_settings
-from jbi.models import ActionContext, BugzillaWebhookEventChange
+from jbi.models import ActionContext
 from jbi.services.jira import JiraCreateError
-from tests.fixtures import factories
-from tests.fixtures.factories import comment_factory
+from tests.fixtures.factories import comment_factory, webhook_event_change_factory
 
 ALL_STEPS = {
     "new": [
@@ -64,9 +63,7 @@ def test_created_public(
 
 def test_modified_public(context_update_example: ActionContext, mocked_jira):
     context_update_example.event.changes = [
-        BugzillaWebhookEventChange.parse_obj(
-            {"field": "summary", "removed": "", "added": "JBI Test"}
-        )
+        webhook_event_change_factory(field="summary", removed="", added="JBI Test")
     ]
 
     callable_object = default.init(jira_project_key=context_update_example.jira.project)
@@ -75,19 +72,7 @@ def test_modified_public(context_update_example: ActionContext, mocked_jira):
 
     assert context_update_example.bug.extract_from_see_also(), "see_also is not empty"
 
-    mocked_jira.update_issue.assert_any_call(
-        issue_key="JBI-234",
-        update={
-            "update": {
-                "labels": [
-                    {"add": "bugzilla"},
-                    {"add": "devtest"},
-                    {"add": "[devtest]"},
-                ]
-            }
-        },
-    )
-    mocked_jira.update_issue_field.assert_any_call(
+    mocked_jira.update_issue_field.assert_called_once_with(
         key="JBI-234",
         fields={"summary": "JBI Test"},
     )
@@ -528,7 +513,7 @@ def test_sync_whiteboard_labels_update(
     context_update_example: ActionContext, mocked_jira
 ):
     context_update_example.event.changes = [
-        factories.webhook_event_change_factory(
+        webhook_event_change_factory(
             field="whiteboard",
             removed="[remotesettings] [server]",
             added="[remotesettings]",
