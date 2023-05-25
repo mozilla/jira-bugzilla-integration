@@ -9,6 +9,8 @@ and when a comment is posted, it will be set to `Operation.COMMENT`.
 import logging
 from typing import Optional
 
+from statsd.defaults.env import statsd
+
 from jbi import ActionResult, Operation
 from jbi.actions import steps as steps_module
 from jbi.environment import get_settings
@@ -97,7 +99,15 @@ class Executor:
         responses = tuple()  # type: ignore
 
         for step in self.steps[context.operation]:
-            context, step_responses = step(context=context, **self.parameters)
+            try:
+                context, step_responses = step(context=context, **self.parameters)
+            except Exception:
+                if len(responses) > 0:
+                    # Count the number of workflows that produced at least request,
+                    # but could not complete entirely successfully.
+                    statsd.incr("jbi.bugzilla.partial.count")
+                raise
+
             for response in step_responses:
                 logger.debug(
                     "Received %s",

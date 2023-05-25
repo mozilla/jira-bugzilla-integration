@@ -2,6 +2,7 @@ import logging
 from unittest import mock
 
 import pytest
+import requests
 import responses
 
 from jbi.actions import default
@@ -95,3 +96,19 @@ def test_default_returns_callable_with_data(
     assert handled
     assert details["responses"][0] == {"key": "k"}
     assert details["responses"][1] == sentinel
+
+
+def test_counter_is_incremented_when_workflows_is_executed_partially(
+    context_create_example: ActionContext, mocked_bugzilla, mocked_jira
+):
+    mocked_bugzilla.get_bug.return_value = context_create_example.bug
+    mocked_jira.create_or_update_issue_remote_links.side_effect = requests.HTTPError(
+        "Unauthorized"
+    )
+    callable_object = default.init(jira_project_key=context_create_example.jira.project)
+
+    with mock.patch("jbi.actions.default.statsd") as mocked:
+        with pytest.raises(requests.HTTPError):
+            callable_object(context=context_create_example)
+
+    mocked.incr.assert_called_with("jbi.bugzilla.partial.count")
