@@ -245,36 +245,43 @@ def maybe_update_components(context: ActionContext, **parameters):
     return context, (resp,)
 
 
+def _whiteboard_as_labels(whiteboard: Optional[str]) -> list[str]:
+    """Split the whiteboard string into a list of labels"""
+    splitted = whiteboard.replace("[", "").split("]") if whiteboard else []
+    stripped = [x.strip() for x in splitted if x not in ["", " "]]
+    # Jira labels can't contain a " ", convert to "."
+    nospace = [wb.replace(" ", ".") for wb in stripped]
+    with_brackets = [f"[{wb}]" for wb in nospace]
+    return ["bugzilla"] + nospace + with_brackets
+
+
+def _build_labels_update(added, removed=None):
+    after = _whiteboard_as_labels(added)
+    # We don't bother detecting if label was already there.
+    updates = [{"add": label} for label in after]
+    if removed:
+        before = _whiteboard_as_labels(removed)
+        deleted = set(before).difference(set(after))
+        updates.extend([{"remove": label} for label in sorted(deleted)])
+    return updates
+
+
 def sync_whiteboard_labels(context: ActionContext, **parameters):
     """
     Set whiteboard tags as labels on the Jira issue
     """
 
-    def whiteboard_as_list(whiteboard: Optional[str]) -> list[str]:
-        splitted = whiteboard.replace("[", "").split("]") if whiteboard else []
-        stripped = [x.strip() for x in splitted if x not in ["", " "]]
-        # Jira labels can't contain a " ", convert to "."
-        nospace = [wb.replace(" ", ".") for wb in stripped]
-        with_brackets = [f"[{wb}]" for wb in nospace]
-        return ["bugzilla"] + nospace + with_brackets
-
     # On update of whiteboard field, add/remove corresponding labels
     if context.event.changes:
         changes_by_field = {change.field: change for change in context.event.changes}
         if change := changes_by_field.get("whiteboard"):
-            before = whiteboard_as_list(change.removed)
-            after = whiteboard_as_list(change.added)
-            # We don't bother detecting if label was already there.
-            updates = [{"add": label} for label in after]
-            if removed := set(before).difference(set(after)):
-                updates.extend([{"remove": label} for label in sorted(removed)])
+            updates = _build_labels_update(added=change.added, removed=change.removed)
         else:
             # Whiteboard field not changed, ignore.
             return context, ()
     else:
         # On creation, just add them all.
-        labels = whiteboard_as_list(context.bug.whiteboard)
-        updates = [{"add": label} for label in labels]
+        updates = _build_labels_update(added=context.bug.whiteboard)
 
     try:
         resp = jira.get_client().update_issue(
