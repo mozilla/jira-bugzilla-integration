@@ -7,6 +7,7 @@ from functools import lru_cache
 
 import requests
 from pydantic import parse_obj_as
+from statsd.defaults.env import statsd
 
 from jbi import Operation, environment
 from jbi.models import (
@@ -146,6 +147,9 @@ def check_health() -> ServiceHealth:
         jbi_webhooks = client.list_webhooks()
         all_webhooks_enabled = len(jbi_webhooks) > 0
         for webhook in jbi_webhooks:
+            # Report errors in each webhook
+            statsd.gauge(f"jbi.bugzilla.webhooks.{webhook.slug}.errors", webhook.errors)
+            # Warn developers when there are errors
             if webhook.errors > 0:
                 logger.warning(
                     "Webhook %s has %s error(s)", webhook.name, webhook.errors

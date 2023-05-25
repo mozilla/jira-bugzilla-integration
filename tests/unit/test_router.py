@@ -1,6 +1,7 @@
 import json
 import os
 from datetime import datetime
+from unittest import mock
 
 from fastapi.testclient import TestClient
 
@@ -8,18 +9,6 @@ from jbi.app import app
 from jbi.environment import get_settings
 from jbi.models import BugzillaWebhook, BugzillaWebhookRequest
 from tests.fixtures.factories import bugzilla_webhook_factory
-
-EXAMPLE_WEBHOOK = BugzillaWebhook(
-    id=0,
-    creator="",
-    name="",
-    url="http://server/bugzilla_webhook",
-    event="create,change,comment",
-    product="Any",
-    component="Any",
-    enabled=True,
-    errors=0,
-)
 
 
 def test_read_root(anon_client):
@@ -212,7 +201,7 @@ def test_read_heartbeat_bugzilla_webhooks_fails(
 ):
     mocked_bugzilla.logged_in.return_value = True
     mocked_bugzilla.list_webhooks.return_value = [
-        EXAMPLE_WEBHOOK.copy(update={"enabled": False})
+        bugzilla_webhook_factory(enabled=False)
     ]
 
     resp = anon_client.get("/__heartbeat__")
@@ -222,6 +211,26 @@ def test_read_heartbeat_bugzilla_webhooks_fails(
         "up": True,
         "all_webhooks_enabled": False,
     }
+
+
+def test_heartbeat_bugzilla_reports_webhooks_errors(
+    anon_client, mocked_jira, mocked_bugzilla
+):
+    mocked_bugzilla.logged_in.return_value = True
+    mocked_bugzilla.list_webhooks.return_value = [
+        bugzilla_webhook_factory(id=1, errors=0, product="Remote Settings"),
+        bugzilla_webhook_factory(id=2, errors=3, name="Search Toolbar"),
+    ]
+
+    with mock.patch("jbi.services.bugzilla.statsd") as mocked:
+        anon_client.get("/__heartbeat__")
+
+    mocked.gauge.assert_any_call(
+        "jbi.bugzilla.webhooks.1-test-webhooks-remote-settings.errors", 0
+    )
+    mocked.gauge.assert_any_call(
+        "jbi.bugzilla.webhooks.2-search-toolbar-firefox.errors", 3
+    )
 
 
 def test_read_heartbeat_bugzilla_services_fails(
@@ -244,7 +253,7 @@ def test_read_heartbeat_bugzilla_services_fails(
 def test_read_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
     """/__heartbeat__ returns 200 when checks succeed."""
     mocked_bugzilla.logged_in.return_value = True
-    mocked_bugzilla.list_webhooks.return_value = [EXAMPLE_WEBHOOK]
+    mocked_bugzilla.list_webhooks.return_value = [bugzilla_webhook_factory()]
     mocked_jira.get_server_info.return_value = {}
     mocked_jira.projects.return_value = [{"key": "DevTest"}]
     mocked_jira.get_project_components.return_value = [{"name": "Main"}]
@@ -315,7 +324,7 @@ def test_jira_heartbeat_missing_permissions(anon_client, mocked_jira, mocked_bug
 
 def test_jira_heartbeat_unknown_components(anon_client, mocked_jira, mocked_bugzilla):
     mocked_bugzilla.logged_in.return_value = True
-    mocked_bugzilla.list_webhooks.return_value = [EXAMPLE_WEBHOOK]
+    mocked_bugzilla.list_webhooks.return_value = [bugzilla_webhook_factory()]
     mocked_jira.get_server_info.return_value = {}
 
     resp = anon_client.get("/__heartbeat__")
@@ -327,7 +336,7 @@ def test_jira_heartbeat_unknown_components(anon_client, mocked_jira, mocked_bugz
 def test_head_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
     """/__heartbeat__ support head requests"""
     mocked_bugzilla.logged_in.return_value = True
-    mocked_bugzilla.list_webhooks.return_value = [EXAMPLE_WEBHOOK]
+    mocked_bugzilla.list_webhooks.return_value = [bugzilla_webhook_factory()]
     mocked_jira.get_server_info.return_value = {}
     mocked_jira.projects.return_value = [{"key": "DevTest"}]
     mocked_jira.get_project_components.return_value = [{"name": "Main"}]

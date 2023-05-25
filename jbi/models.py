@@ -349,6 +349,13 @@ class BugzillaWebhook(BaseModel):
     # Ignored fields:
     # creator: str
 
+    @property
+    def slug(self):
+        """Return readable identifier"""
+        name = self.name.replace(" ", "-").lower()
+        product = self.product.replace(" ", "-").lower()
+        return f"{self.id}-{name}-{product}"
+
 
 class BugzillaWebhooksResponse(BaseModel):
     """Bugzilla Webhooks List Response Object"""
