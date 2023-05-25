@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from jbi.app import app
 from jbi.environment import get_settings
 from jbi.models import BugzillaWebhook, BugzillaWebhookRequest
+from tests.fixtures.factories import bugzilla_webhook_factory
 
 EXAMPLE_WEBHOOK = BugzillaWebhook(
     id=0,
@@ -67,6 +68,22 @@ def test_powered_by_jbi_filtered(exclude_middleware, anon_client):
     resp = anon_client.get("/powered_by_jbi/?enabled=false")
     html = resp.text
     assert "DevTest" not in html
+
+
+def test_webhooks_details(anon_client, mocked_bugzilla):
+    mocked_bugzilla.list_webhooks.return_value = [
+        bugzilla_webhook_factory(),
+        bugzilla_webhook_factory(errors=42, enabled=False),
+    ]
+    resp = anon_client.get("/bugzilla_webhooks/")
+
+    wh1, wh2 = resp.json()
+
+    assert "creator" not in wh1
+    assert wh1["enabled"]
+    assert wh1["errors"] == 0
+    assert not wh2["enabled"]
+    assert wh2["errors"] == 42
 
 
 def test_statics_are_served(anon_client):

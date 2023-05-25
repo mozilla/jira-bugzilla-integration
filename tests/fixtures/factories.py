@@ -6,6 +6,7 @@ from jbi.models import (
     ActionContext,
     BugzillaBug,
     BugzillaComment,
+    BugzillaWebhook,
     BugzillaWebhookEvent,
     BugzillaWebhookRequest,
     BugzillaWebhookUser,
@@ -117,6 +118,23 @@ def jira_context_factory(**overrides):
         {
             "project": "JBI",
             "issue": None,
+            **overrides,
+        }
+    )
+
+
+def bugzilla_webhook_factory(**overrides):
+    return BugzillaWebhook.parse_obj(
+        {
+            "component": "General",
+            "creator": "admin@mozilla.bugs",
+            "enabled": True,
+            "errors": 0,
+            "event": "create,change,attachment,comment",
+            "id": 1,
+            "name": "Test Webhooks",
+            "product": "Firefox",
+            "url": "http://server.example.com/bugzilla_webhook",
             **overrides,
         }
     )

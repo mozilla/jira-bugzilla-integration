@@ -92,6 +92,12 @@ def get_whiteboard_tags(
     return actions.by_tag
 
 
+@router.get("/bugzilla_webhooks/")
+def get_bugzilla_webhooks():
+    """API for viewing webhooks details"""
+    return bugzilla.get_client().list_webhooks()
+
+
 @router.get("/jira_projects/")
 def get_jira_projects():
     """API for viewing projects that are currently accessible by API"""

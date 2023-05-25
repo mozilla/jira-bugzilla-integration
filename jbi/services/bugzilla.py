@@ -123,7 +123,7 @@ class BugzillaClient:
             raise BugzillaClientError(
                 f"Unexpected response content from 'GET {url}' (no 'webhooks' field)"
             )
-        return parsed.webhooks
+        return [wh for wh in parsed.webhooks if "/bugzilla_webhook" in wh.url]
 
 
 @lru_cache(maxsize=1)
@@ -143,8 +143,7 @@ def check_health() -> ServiceHealth:
     # and report disabled ones.
     all_webhooks_enabled = False
     if logged_in:
-        webhooks = client.list_webhooks()
-        jbi_webhooks = [wh for wh in webhooks if "/bugzilla_webhook" in wh.url]
+        jbi_webhooks = client.list_webhooks()
         all_webhooks_enabled = len(jbi_webhooks) > 0
         for webhook in jbi_webhooks:
             if webhook.errors > 0:
