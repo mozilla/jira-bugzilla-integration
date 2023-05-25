@@ -3,5 +3,5 @@ class FakeBugzillaAction:
         return {"bug": bug, "event": event}
 
 
-def init(**kwargs):
+def init():
     return FakeBugzillaAction()
