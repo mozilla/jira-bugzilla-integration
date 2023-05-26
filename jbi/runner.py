@@ -96,11 +96,10 @@ def execute_action(
                 )
 
             if event.target == "bug":
-                changed_fields = event.changed_fields() or []
                 action_context = action_context.update(
                     operation=Operation.UPDATE,
                     extra={
-                        "changed_fields": ", ".join(changed_fields),
+                        "changed_fields": ", ".join(event.changed_fields()),
                         **action_context.extra,
                     },
                 )

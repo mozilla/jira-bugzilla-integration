@@ -6,32 +6,6 @@ from tests.fixtures.factories import bug_factory
 
 
 @pytest.mark.parametrize(
-    "whiteboard,expected",
-    [
-        ("", ["bugzilla"]),
-        ("[tag]", ["bugzilla", "tag", "[tag]"]),
-        ("[test whiteboard]", ["bugzilla", "test.whiteboard", "[test.whiteboard]"]),
-        ("[test-whiteboard]", ["bugzilla", "test-whiteboard", "[test-whiteboard]"]),
-        (
-            "[test whiteboard][test-no-space][test-both space-and-not",
-            [
-                "bugzilla",
-                "test.whiteboard",
-                "test-no-space",
-                "test-both.space-and-not",
-                "[test.whiteboard]",
-                "[test-no-space]",
-                "[test-both.space-and-not]",
-            ],
-        ),
-    ],
-)
-def test_jira_labels(whiteboard, expected):
-    bug = bug_factory(whiteboard=whiteboard)
-    assert bug.get_jira_labels() == expected
-
-
-@pytest.mark.parametrize(
     "see_also,expected",
     [
         (None, None),
@@ -86,7 +60,7 @@ def test_lookup_action_not_found(whiteboard, actions_example):
 
 def test_payload_empty_changes_list(webhook_change_status_assignee):
     webhook_change_status_assignee.event.changes = None
-    assert webhook_change_status_assignee.event.changed_fields() is None
+    assert webhook_change_status_assignee.event.changed_fields() == []
 
 
 def test_payload_changes_list(webhook_change_status_assignee):

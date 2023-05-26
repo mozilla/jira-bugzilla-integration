@@ -7,6 +7,7 @@ from jbi.models import (
     BugzillaBug,
     BugzillaComment,
     BugzillaWebhookEvent,
+    BugzillaWebhookEventChange,
     BugzillaWebhookRequest,
     BugzillaWebhookUser,
     JiraContext,
@@ -72,6 +73,16 @@ def webhook_event_factory(**overrides):
         **overrides,
     }
     return BugzillaWebhookEvent.parse_obj(event)
+
+
+def webhook_event_change_factory(**overrides):
+    event = {
+        "field": "field",
+        "removed": "old value",
+        "added": "new value",
+        **overrides,
+    }
+    return BugzillaWebhookEventChange.parse_obj(event)
 
 
 def webhook_factory(**overrides):
