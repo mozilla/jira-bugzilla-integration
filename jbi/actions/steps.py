@@ -5,7 +5,7 @@ Each step takes an `ActionContext` and a list of arbitrary parameters.
 """
 
 import logging
-from typing import Optional
+from typing import Iterable, Optional
 
 from requests import exceptions as requests_exceptions
 
@@ -154,6 +154,8 @@ def maybe_update_issue_resolution(
     https://support.atlassian.com/jira-cloud-administration/docs/what-are-issue-statuses-priorities-and-resolutions/
     """
     resolution_map: dict[str, str] = parameters.get("resolution_map", {})
+    if not isinstance(resolution_map, dict):
+        raise TypeError("The 'resolution_map' parameter must be a dictionary.")
     jira_resolution = resolution_map.get(context.bug.resolution or "")
     if jira_resolution is None:
         logger.debug(
@@ -181,9 +183,12 @@ def maybe_update_issue_status(context: ActionContext, **parameters):
     Update the Jira issue resolution
     https://support.atlassian.com/jira-cloud-administration/docs/what-are-issue-statuses-priorities-and-resolutions/
     """
-    resolution_map: dict[str, str] = parameters.get("status_map", {})
+    status_map = parameters.get("status_map", {})
+    if not isinstance(status_map, dict):
+        raise TypeError("The 'status_map' parameter must be a dictionary.")
+
     bz_status = context.bug.resolution or context.bug.status
-    jira_status = resolution_map.get(bz_status or "")
+    jira_status = status_map.get(bz_status or "")
 
     if jira_status is None:
         logger.debug(
@@ -212,7 +217,9 @@ def maybe_update_components(context: ActionContext, **parameters):
     """
     Update the Jira issue components
     """
-    config_components: list[str] = parameters.get("jira_components", [])
+    config_components = parameters.get("jira_components", [])
+    if not isinstance(config_components, Iterable):
+        raise TypeError("The 'jira_components' parameter must be an iterable.")
     candidate_components = set(config_components)
     if context.bug.component:
         candidate_components.add(context.bug.component)
