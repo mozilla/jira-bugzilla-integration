@@ -66,8 +66,10 @@ def test_unknown_module_fails():
 
 def test_bad_module_fails():
     with pytest.raises(ValueError) as exc_info:
+        # use a module that exists in the source, but isn't properly set up as
+        # a valid action module
         Actions.parse_obj([{"whiteboard_tag": "x", "module": "jbi.runner"}])
-    assert "action is not properly setup" in str(exc_info.value)
+    assert "action 'jbi.runner' is not properly setup" in str(exc_info.value)
 
 
 def test_duplicated_whiteboard_tag_fails():

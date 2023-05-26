@@ -68,15 +68,17 @@ class Action(YamlModel):
             action_parameters: Optional[dict[str, Any]] = values["parameters"]
             action_module: ModuleType = importlib.import_module(module)
             if not action_module:
-                raise TypeError("Module is not found.")
+                raise TypeError(f"Module '{module}' is not found.")
             if not hasattr(action_module, "init"):
-                raise TypeError("Module is missing `init` method.")
+                raise TypeError(f"Module '{module}' is missing `init` method.")
 
             signature(action_module.init).bind(**action_parameters)  # type: ignore
         except ImportError as exception:
             raise ValueError(f"unknown Python module `{module}`.") from exception
         except (TypeError, AttributeError) as exception:
-            raise ValueError(f"action is not properly setup.{exception}") from exception
+            raise ValueError(
+                f"action '{module}' is not properly setup. {exception}"
+            ) from exception
         return values
 
 
