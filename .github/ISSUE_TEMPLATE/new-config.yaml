@@ -1,0 +1,63 @@
+name: New sync configuration
+description: Request a new Bugzilla to Jira sync connection
+title: "Sync <Bugzilla Product> with <Jira Project>"
+labels: ["configuration"]
+body:
+  - type: input
+    id: bugzilla_product
+    attributes:
+      label: Bugzilla Product
+      description: What Bugzilla [product](https://wiki.mozilla.org/BMO/UserGuide/BugFields#product) would you like to sync?
+      placeholder: ex. Firefox
+    validations:
+      required: true
+  - type: input
+    id: bugzilla_component
+    attributes:
+      label: Bugzilla Component
+      description: Optionally, what Bugzilla [component](https://wiki.mozilla.org/BMO/UserGuide/BugFields#component) would you like to scope the sync to?
+      placeholder: ex. General
+    validations:
+      required: false
+  - type: input
+    id: jira_project_key
+    attributes:
+      label: Jira Project Key
+      description: What is the key of the [Jira Project](https://mozilla-hub.atlassian.net/jira/projects) you'd like to sync your bugs to?
+      placeholder: ex. JB
+    validations:
+      required: true
+  - type: input
+    id: whiteboard_tag
+    attributes:
+      label: Whiteboard Tag
+      description: Adding a whiteboard tag to a bug marks it to be synced to Jira. What whiteboard tag do you want to use for this sync pipeline?
+      placeholder: ex. myTag
+    validations:
+      required: true
+  - type: input
+    id: project_contact
+    attributes:
+      label: Project Contact (Bugzilla user id)
+      description: What is the ID of the Bugzilla user that should be contacted if something goes wrong with the sync pipeline?
+      placeholder: "123456"
+    validations:
+      required: false
+  - type: checkboxes
+    id: sync_data_options
+    attributes:
+      label: Data Sync Options
+      description: Select the data you'd like to sync to Jira issues
+      options:
+        - label: Component (from the Bug and as specified in config)
+        - label: Status (please provide mapping, eg. `RESOLVED` -> `Done`)
+        - label: Resolution (please provide mapping, eg. `WONTFIX` -> `Won't do`)
+        - label: Whiteboard tags (as labels)
+        - label: Assignee (Bugzilla and Jira user must use the same email address)
+        - label: Field changes (recorded as comments on the issue)
+  - type: checkboxes
+    id: internal_tasks
+    attributes:
+      label: (Internal) For operators
+      options:
+        - label: '[Request](https://mozilla-hub.atlassian.net/servicedesk/customer/portal/4/group/36/create/172) Jira Automation permissions for project'
