@@ -56,7 +56,7 @@ body:
         - label: Assignee (Bugzilla and Jira user must use the same email address)
         - label: Field changes (recorded as comments on the issue)
   - type: checkboxes
-    id: permissions_request
+    id: internal_tasks
     attributes:
       label: (Internal) For operators
       options:
