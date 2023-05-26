@@ -7,6 +7,7 @@ import responses
 from requests.exceptions import ConnectionError
 
 from jbi.environment import get_settings
+from jbi.models import Actions
 from jbi.services import jira
 
 
@@ -84,3 +85,38 @@ def test_jira_retries_failing_connections_in_health_check(
         jira.check_health(actions_example)
 
     assert len(mocked_responses.calls) == 4
+
+
+@pytest.mark.parametrize(
+    "jira_components, project_components, expected_result",
+    [
+        (["Foo"], [{"name": "Foo"}], True),
+        (["Foo"], [{"name": "Foo"}, {"name": "Bar"}], True),
+        (["Foo", "Bar"], [{"name": "Foo"}, {"name": "Bar"}], True),
+        (None, [], True),
+        (["Foo"], [{"name": "Bar"}], False),
+        (["Foo", "Bar"], [{"name": "Foo"}], False),
+        (["Foo"], [], False),
+    ],
+)
+def test_all_projects_components_exist(
+    mocked_jira, action_factory, jira_components, project_components, expected_result
+):
+    action = action_factory(
+        parameters={"jira_project_key": "ABC", "jira_components": jira_components}
+    )
+    mocked_jira.get_project_components.return_value = project_components
+    actions = Actions(__root__=[action])
+    result = jira._all_projects_components_exist(actions)
+    assert result is expected_result
+
+
+def test_all_projects_components_exist_no_components_param(action_factory):
+    action = action_factory(
+        parameters={
+            "jira_project_key": "ABC",
+        }
+    )
+    actions = Actions(__root__=[action])
+    result = jira._all_projects_components_exist(actions)
+    assert result is True
