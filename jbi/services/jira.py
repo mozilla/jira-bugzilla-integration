@@ -131,7 +131,7 @@ def _fetch_project_permissions(actions):
     required_perms_by_project = {
         action.parameters["jira_project_key"]: action.required_jira_permissions
         for action in actions
-        if "jira_project_key" in action.parameters
+        if action.parameters.get("jira_project_key")
     }
     client = get_client()
     all_projects_perms = {}
@@ -186,7 +186,7 @@ def _all_projects_components_exist(actions: Actions):
     components_by_project = {
         action.parameters["jira_project_key"]: action.parameters["jira_components"]
         for action in actions
-        if "jira_components" in action.parameters
+        if action.parameters.get("jira_components")
     }
     success = True
     for project, specified_components in components_by_project.items():

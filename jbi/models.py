@@ -113,7 +113,7 @@ class Actions(YamlModel):
         return {
             action.jira_project_key
             for action in self.__root__
-            if "jira_project_key" in action.parameters
+            if action.parameters.get("jira_project_key")
         }
 
     @validator("__root__")
