@@ -55,3 +55,9 @@ body:
         - label: Whiteboard tags (as labels)
         - label: Assignee (Bugzilla and Jira user must use the same email address)
         - label: Field changes (recorded as comments on the issue)
+  - type: checkboxes
+    id: permissions_request
+    attributes:
+      label: (Internal) For operators
+      options:
+        - label: '[Request](https://mozilla-hub.atlassian.net/servicedesk/customer/portal/4/group/36/create/172) Jira Automation permissions for project'
