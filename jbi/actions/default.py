@@ -7,7 +7,7 @@ is created or updated, its `operation` attribute will be `Operation.CREATE` or `
 and when a comment is posted, it will be set to `Operation.COMMENT`.
 """
 import logging
-from typing import Optional
+from typing import Callable, Optional
 
 from jbi import ActionResult, Operation
 from jbi.actions import steps as steps_module
@@ -86,7 +86,7 @@ def init(
 class Executor:
     """Callable class that encapsulates the default action."""
 
-    def __init__(self, steps, **parameters):
+    def __init__(self, steps: dict[Operation, list[Callable]], **parameters):
         """Initialize Executor Object"""
         self.steps = steps
         self.parameters = parameters

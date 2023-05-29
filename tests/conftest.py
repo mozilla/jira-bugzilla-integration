@@ -229,7 +229,7 @@ def webhook_modify_private_example() -> BugzillaWebhookRequest:
 
 
 @pytest.fixture
-def action_factory() -> Action:
+def action_factory():
     return factories.action_factory
 
 

@@ -9,7 +9,7 @@ import re
 import warnings
 from inspect import signature
 from types import ModuleType
-from typing import Callable, Literal, Mapping, Optional, TypedDict
+from typing import Any, Callable, Literal, Mapping, Optional, TypedDict
 from urllib.parse import ParseResult, urlparse
 
 from pydantic import BaseModel, Extra, Field, PrivateAttr, root_validator, validator
@@ -23,19 +23,6 @@ logger = logging.getLogger(__name__)
 JIRA_HOSTNAMES = ("jira", "atlassian")
 
 
-class ActionParameters(BaseModel):
-    """Action parameters"""
-
-    # For runner
-    jira_project_key: str
-    steps: Optional[dict[str, list[str]]] = None
-    # For steps
-    status_map: Optional[dict[str, str]] = None
-    resolution_map: Optional[dict[str, str]] = None
-    jira_components: Optional[list[str]] = None
-    sync_whiteboard_labels: bool = True
-
-
 class Action(YamlModel):
     """
     Action is the inner model for each action in the configuration file"""
@@ -46,21 +33,21 @@ class Action(YamlModel):
     description: str
     enabled: bool = True
     allow_private: bool = False
-    parameters: ActionParameters
+    parameters: dict = {}
     _caller: Optional[Callable] = PrivateAttr(default=None)
     _required_jira_permissions: set[str] = PrivateAttr(default=None)
 
     @property
     def jira_project_key(self):
         """Return the configured project key."""
-        return self.parameters.jira_project_key
+        return self.parameters["jira_project_key"]
 
     @property
     def caller(self) -> Callable:
         """Return the initialized callable for this action."""
         if self._caller is None:
             action_module: ModuleType = importlib.import_module(self.module)
-            initialized: Callable = action_module.init(**self.parameters.dict())  # type: ignore
+            initialized: Callable = action_module.init(**self.parameters)  # type: ignore
             self._caller = initialized
         return self._caller
 
@@ -78,17 +65,14 @@ class Action(YamlModel):
         """Validate action: exists, has init function, and has expected params"""
         try:
             module: str = values["module"]  # type: ignore
-            try:
-                action_parameters = values["parameters"].dict()
-            except KeyError:
-                action_parameters = {}
+            action_parameters: Optional[dict[str, Any]] = values["parameters"]
             action_module: ModuleType = importlib.import_module(module)
             if not action_module:
-                raise TypeError("Module is not found.")
+                raise TypeError(f"Module '{module}' is not found.")
             if not hasattr(action_module, "init"):
-                raise TypeError("Module is missing `init` method.")
+                raise TypeError(f"Module '{module}' is missing `init` method.")
 
-            signature(action_module.init).bind(**action_parameters)
+            signature(action_module.init).bind(**action_parameters)  # type: ignore
         except ImportError as exception:
             raise ValueError(f"unknown Python module `{module}`.") from exception
         except (TypeError, AttributeError) as exception:
@@ -126,7 +110,11 @@ class Actions(YamlModel):
     @functools.cached_property
     def configured_jira_projects_keys(self) -> set[str]:
         """Return the list of Jira project keys from all configured actions"""
-        return {action.jira_project_key for action in self.__root__}
+        return {
+            action.jira_project_key
+            for action in self.__root__
+            if action.parameters.get("jira_project_key")
+        }
 
     @validator("__root__")
     def validate_actions(  # pylint: disable=no-self-argument
