@@ -309,7 +309,6 @@ class BugzillaWebhook(BaseModel):
     """Bugzilla Webhook"""
 
     id: int
-    creator: str
     name: str
     url: str
     event: str
@@ -317,6 +316,15 @@ class BugzillaWebhook(BaseModel):
     component: str
     enabled: bool
     errors: int
+    # Ignored fields:
+    # creator: str
+
+    @property
+    def slug(self):
+        """Return readable identifier"""
+        name = self.name.replace(" ", "-").lower()
+        product = self.product.replace(" ", "-").lower()
+        return f"{self.id}-{name}-{product}"
 
 
 class BugzillaWebhooksResponse(BaseModel):

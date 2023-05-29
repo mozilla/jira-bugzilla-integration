@@ -212,7 +212,7 @@ def test_bugzilla_list_webhooks(mocked_responses):
     webhooks = get_client().list_webhooks()
 
     assert len(webhooks) == 1
-    assert webhooks[0].creator == "Bob"
+    assert webhooks[0].event == "create,change,comment"
     assert "/bugzilla_webhook" in webhooks[0].url
 
 
