@@ -207,6 +207,12 @@
   parameters:
     jira_project_key: EXP
 
+- whiteboard_tag: omc
+  bugzilla_user_id: 711631
+  description: Firefox Messaging System whiteboard tag
+  parameters:
+    jira_project_key: OMC
+
 - whiteboard_tag: prodtest
   bugzilla_user_id: 644672
   description: Prod testing whiteboard tag (JBI Bin Project)

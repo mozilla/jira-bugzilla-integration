@@ -5,6 +5,7 @@ Each step takes an `ActionContext` and a list of arbitrary parameters.
 """
 
 import logging
+from typing import Optional
 
 from requests import exceptions as requests_exceptions
 
@@ -244,14 +245,47 @@ def maybe_update_components(context: ActionContext, **parameters):
     return context, (resp,)
 
 
+def _whiteboard_as_labels(whiteboard: Optional[str]) -> list[str]:
+    """Split the whiteboard string into a list of labels"""
+    splitted = whiteboard.replace("[", "").split("]") if whiteboard else []
+    stripped = [x.strip() for x in splitted if x not in ["", " "]]
+    # Jira labels can't contain a " ", convert to "."
+    nospace = [wb.replace(" ", ".") for wb in stripped]
+    with_brackets = [f"[{wb}]" for wb in nospace]
+    return ["bugzilla"] + nospace + with_brackets
+
+
+def _build_labels_update(added, removed=None):
+    after = _whiteboard_as_labels(added)
+    # We don't bother detecting if label was already there.
+    updates = [{"add": label} for label in after]
+    if removed:
+        before = _whiteboard_as_labels(removed)
+        deleted = sorted(set(before).difference(set(after)))  # sorted for unit testing
+        updates.extend([{"remove": label} for label in deleted])
+    return updates
+
+
 def sync_whiteboard_labels(context: ActionContext, **parameters):
     """
     Set whiteboard tags as labels on the Jira issue
     """
+
+    # On update of whiteboard field, add/remove corresponding labels
+    if context.event.changes:
+        changes_by_field = {change.field: change for change in context.event.changes}
+        if change := changes_by_field.get("whiteboard"):
+            updates = _build_labels_update(added=change.added, removed=change.removed)
+        else:
+            # Whiteboard field not changed, ignore.
+            return context, ()
+    else:
+        # On creation, just add them all.
+        updates = _build_labels_update(added=context.bug.whiteboard)
+
     try:
-        # Note: fetch existing first, see mozilla/jira-bugzilla-integration#393
-        resp = jira.get_client().update_issue_field(
-            key=context.jira.issue, fields={"labels": context.bug.get_jira_labels()}
+        resp = jira.get_client().update_issue(
+            issue_key=context.jira.issue, update={"update": {"labels": updates}}
         )
     except requests_exceptions.HTTPError as exc:
         if exc.response.status_code != 400:
