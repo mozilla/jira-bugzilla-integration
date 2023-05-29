@@ -7,6 +7,7 @@ from functools import lru_cache
 
 import requests
 from pydantic import parse_obj_as
+from statsd.defaults.env import statsd
 
 from jbi import Operation, environment
 from jbi.models import (
@@ -123,7 +124,7 @@ class BugzillaClient:
             raise BugzillaClientError(
                 f"Unexpected response content from 'GET {url}' (no 'webhooks' field)"
             )
-        return parsed.webhooks
+        return [wh for wh in parsed.webhooks if "/bugzilla_webhook" in wh.url]
 
 
 @lru_cache(maxsize=1)
@@ -143,10 +144,12 @@ def check_health() -> ServiceHealth:
     # and report disabled ones.
     all_webhooks_enabled = False
     if logged_in:
-        webhooks = client.list_webhooks()
-        jbi_webhooks = [wh for wh in webhooks if "/bugzilla_webhook" in wh.url]
+        jbi_webhooks = client.list_webhooks()
         all_webhooks_enabled = len(jbi_webhooks) > 0
         for webhook in jbi_webhooks:
+            # Report errors in each webhook
+            statsd.gauge(f"jbi.bugzilla.webhooks.{webhook.slug}.errors", webhook.errors)
+            # Warn developers when there are errors
             if webhook.errors > 0:
                 logger.warning(
                     "Webhook %s has %s error(s)", webhook.name, webhook.errors
