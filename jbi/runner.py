@@ -73,7 +73,9 @@ def execute_action(
                 f"private bugs are not valid for action {action.whiteboard_tag!r}"
             )
 
-        linked_issue_key: Optional[str] = bug.extract_from_see_also()
+        linked_issue_key: Optional[str] = bug.extract_from_see_also(
+            project_key=action.jira_project_key
+        )
 
         action_context = ActionContext(
             rid=request.rid,

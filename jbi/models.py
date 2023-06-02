@@ -239,7 +239,7 @@ class BugzillaBug(BaseModel):
         type_map: dict = {"enhancement": "Task", "task": "Task", "defect": "Bug"}
         return type_map.get(self.type, "Task")
 
-    def extract_from_see_also(self):
+    def extract_from_see_also(self, project_key):
         """Extract Jira Issue Key from see_also if jira url present"""
         if not self.see_also or len(self.see_also) == 0:
             return None
@@ -262,8 +262,10 @@ class BugzillaBug(BaseModel):
                 continue
 
             if any(part in JIRA_HOSTNAMES for part in host_parts):
+                # URL ending with /
                 parsed_jira_key = parsed_url.path.rstrip("/").split("/")[-1]
-                if parsed_jira_key:  # URL ending with /
+                # eg. filter for specified project SNT-1234
+                if parsed_jira_key and project_key in parsed_jira_key:
                     return parsed_jira_key
 
         return None
