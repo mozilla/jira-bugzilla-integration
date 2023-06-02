@@ -98,6 +98,8 @@ class Executor:
 
         responses = tuple()  # type: ignore
 
+        incomplete = False
+
         for step in self.steps[context.operation]:
             try:
                 context, step_responses = step(context=context, **self.parameters)
@@ -107,6 +109,11 @@ class Executor:
                     # but could not complete entirely successfully.
                     statsd.incr("jbi.bugzilla.aborted.count")
                 raise
+
+            if not step_responses:
+                # If the step did not generate HTTP response, it means the step
+                # skipped its operation (for various reasons, safety checks, etc.)
+                incomplete = True
 
             for response in step_responses:
                 logger.debug(
@@ -118,5 +125,8 @@ class Executor:
                     },
                 )
             responses += step_responses
+
+        if incomplete:
+            statsd.incr("jbi.bugzilla.incomplete.count")
 
         return True, {"responses": responses}

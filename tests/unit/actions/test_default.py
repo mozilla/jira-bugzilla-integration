@@ -112,3 +112,29 @@ def test_counter_is_incremented_when_workflows_was_aborted(
             callable_object(context=context_create_example)
 
     mocked.incr.assert_called_with("jbi.bugzilla.aborted.count")
+
+
+def test_counter_is_incremented_when_workflows_was_incomplete(
+    context_create_example: ActionContext, mocked_bugzilla, mocked_jira
+):
+    context_create_example.bug.resolution = "WONTFIX"
+    mocked_bugzilla.get_bug.return_value = context_create_example.bug
+
+    callable_object = default.init(
+        jira_project_key=context_create_example.jira.project,
+        steps={
+            "new": [
+                "create_issue",
+                "maybe_update_issue_resolution",
+            ]
+        },
+        resolution_map={
+            # Not matching WONTFIX, `maybe_` step will not complete
+            "DUPLICATE": "Duplicate",
+        },
+    )
+
+    with mock.patch("jbi.actions.default.statsd") as mocked:
+        callable_object(context=context_create_example)
+
+    mocked.incr.assert_called_with("jbi.bugzilla.incomplete.count")
