@@ -105,7 +105,7 @@ class Executor:
                 if len(responses) > 0:
                     # Count the number of workflows that produced at least request,
                     # but could not complete entirely successfully.
-                    statsd.incr("jbi.bugzilla.partial.count")
+                    statsd.incr("jbi.bugzilla.aborted.count")
                 raise
 
             for response in step_responses:

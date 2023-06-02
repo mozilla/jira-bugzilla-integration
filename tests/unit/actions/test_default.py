@@ -98,7 +98,7 @@ def test_default_returns_callable_with_data(
     assert details["responses"][1] == sentinel
 
 
-def test_counter_is_incremented_when_workflows_is_executed_partially(
+def test_counter_is_incremented_when_workflows_was_aborted(
     context_create_example: ActionContext, mocked_bugzilla, mocked_jira
 ):
     mocked_bugzilla.get_bug.return_value = context_create_example.bug
@@ -111,4 +111,4 @@ def test_counter_is_incremented_when_workflows_is_executed_partially(
         with pytest.raises(requests.HTTPError):
             callable_object(context=context_create_example)
 
-    mocked.incr.assert_called_with("jbi.bugzilla.partial.count")
+    mocked.incr.assert_called_with("jbi.bugzilla.aborted.count")
