@@ -35,12 +35,20 @@ def create_issue(context: ActionContext, **parameters):
     """Create the Jira issue with the first comment as the description."""
     bug = context.bug
 
+    # If not specified, issue type will be either 'Bug' or 'Task'
+    issue_type_map = parameters.get(
+        "issue_type_map", {"enhancement": "Task", "task": "Task", "defect": "Bug"}
+    )
+    if not isinstance(issue_type_map, dict):
+        raise TypeError("The 'issue_type_map' parameter must be a dictionary.")
+    issue_type = issue_type_map.get(bug.type, "Task")
+
     # In the payload of a bug creation, the `comment` field is `null`.
     # We fetch the list of comments to use the first one as the Jira issue description.
     comment_list = bugzilla.get_client().get_comments(bug.id)
     description = comment_list[0].text if comment_list else ""
 
-    jira_create_response = jira.create_jira_issue(context, description)
+    jira_create_response = jira.create_jira_issue(context, description, issue_type)
     issue_key = jira_create_response.get("key")
 
     context = context.update(jira=context.jira.update(issue=issue_key))

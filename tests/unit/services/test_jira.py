@@ -25,10 +25,7 @@ def test_jira_create_issue_is_instrumented(
         },
     )
 
-    jira.create_jira_issue(
-        context_create_example,
-        "Description",
-    )
+    jira.create_jira_issue(context_create_example, "Description", issue_type="Task")
     jira_client = jira.get_client()
 
     jira_client.create_issue({})

@@ -234,11 +234,6 @@ class BugzillaBug(BaseModel):
         """Return `true` if the bug is assigned to a user."""
         return self.assigned_to != "nobody@mozilla.org"
 
-    def issue_type(self) -> str:
-        """Get the Jira issue type for this bug"""
-        type_map: dict = {"enhancement": "Task", "task": "Task", "defect": "Bug"}
-        return type_map.get(self.type, "Task")
-
     def extract_from_see_also(self):
         """Extract Jira Issue Key from see_also if jira url present"""
         if not self.see_also or len(self.see_also) == 0:

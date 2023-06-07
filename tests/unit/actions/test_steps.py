@@ -61,6 +61,36 @@ def test_created_public(
     )
 
 
+def test_created_with_custom_issue_type(
+    context_create_example: ActionContext, mocked_jira, mocked_bugzilla
+):
+    context_create_example.bug.type = "task"
+    mocked_jira.create_issue.return_value = {"key": "k"}
+    mocked_bugzilla.get_bug.return_value = context_create_example.bug
+    mocked_bugzilla.get_comments.return_value = [
+        comment_factory(text="Initial comment")
+    ]
+
+    callable_object = default.init(
+        jira_project_key=context_create_example.jira.project,
+        steps={"new": ["create_issue"]},
+        issue_type_map={
+            "task": "Epic",
+        },
+    )
+
+    callable_object(context=context_create_example)
+
+    mocked_jira.create_issue.assert_called_once_with(
+        fields={
+            "summary": "JBI Test",
+            "issuetype": {"name": "Epic"},
+            "description": "Initial comment",
+            "project": {"key": "JBI"},
+        },
+    )
+
+
 def test_modified_public(context_update_example: ActionContext, mocked_jira):
     context_update_example.event.changes = [
         webhook_event_change_factory(field="summary", removed="", added="JBI Test")

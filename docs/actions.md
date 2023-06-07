@@ -78,6 +78,9 @@ to the Bugzilla ticket on the Jira issue.
 - `resolution_map` (optional)
     - mapping [str, str]
     - If defined, map the Bugzilla bug resolution to Jira issue resolution
+- `issue_type_map` (optional)
+    - mapping [str, str]
+    - If defined, map the Bugzilla type to Jira issue type (default: ``Bug`` if ``defect`` else ``Task``)
 
 Minimal configuration:
 ```yaml

@@ -221,10 +221,7 @@ class JiraCreateError(Exception):
     """Error raised on Jira issue creation."""
 
 
-def create_jira_issue(
-    context: ActionContext,
-    description: str,
-):
+def create_jira_issue(context: ActionContext, description: str, issue_type: str):
     """Create a Jira issue with basic fields in the project and return its key."""
     bug = context.bug
     logger.debug(
@@ -234,7 +231,7 @@ def create_jira_issue(
     )
     fields: dict[str, Any] = {
         "summary": bug.summary,
-        "issuetype": {"name": bug.issue_type()},
+        "issuetype": {"name": issue_type},
         "description": description[:JIRA_DESCRIPTION_CHAR_LIMIT],
         "project": {"key": context.jira.project},
     }
