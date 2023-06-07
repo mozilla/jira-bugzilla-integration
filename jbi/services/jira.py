@@ -30,12 +30,23 @@ logger = logging.getLogger(__name__)
 
 JIRA_DESCRIPTION_CHAR_LIMIT = 32767
 
+
+def fatal_code(exc):
+    """Do not retry 4XX errors, mark them as fatal."""
+    try:
+        return 400 <= exc.response.status_code < 500
+    except AttributeError:
+        # `ApiError` or `ConnectionError` won't have response attribute.
+        return False
+
+
 instrumented_method = instrument(
     prefix="jira",
     exceptions=(
         atlassian_errors.ApiError,
         requests_exceptions.RequestException,
     ),
+    giveup=fatal_code,
 )
 
 
