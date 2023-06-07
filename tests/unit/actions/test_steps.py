@@ -509,6 +509,29 @@ def test_sync_whiteboard_labels(context_create_example: ActionContext, mocked_ji
     )
 
 
+def test_sync_whiteboard_labels_without_brackets(
+    context_create_example: ActionContext, mocked_jira
+):
+    callable_object = default.init(
+        jira_project_key=context_create_example.jira.project,
+        steps={"new": ["sync_whiteboard_labels"]},
+        labels_brackets="no",
+    )
+    callable_object(context=context_create_example)
+
+    mocked_jira.update_issue.assert_called_once_with(
+        issue_key=context_create_example.jira.issue,
+        update={
+            "update": {
+                "labels": [
+                    {"add": "bugzilla"},
+                    {"add": "devtest"},
+                ]
+            }
+        },
+    )
+
+
 def test_sync_whiteboard_labels_update(
     context_update_example: ActionContext, mocked_jira
 ):
