@@ -212,6 +212,11 @@
   description: Firefox Messaging System whiteboard tag
   parameters:
     jira_project_key: OMC
+    issue_type_map:
+      defect: Task
+    status_map:
+      UNCONFIRMED: To Do
+      NEW: To Do
 
 - whiteboard_tag: prodtest
   bugzilla_user_id: 644672
