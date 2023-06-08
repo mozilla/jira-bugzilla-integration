@@ -132,7 +132,7 @@
       UNCONFIRMED: Backlog
       NEW: Backlog
       ASSIGNED: In Progress
-      REOPENED: In Progress
+      REOPENED: Backlog
       RESOLVED: Closed
       VERIFIED: Closed
       FIXED: Closed
