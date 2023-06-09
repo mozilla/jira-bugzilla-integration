@@ -259,7 +259,13 @@
   bugzilla_user_id: 696039
   description: Search/NewTab Team Tag
   parameters:
-    jira_project_key: SNT
+    jira_project_key: SNG
+
+- whiteboard_tag: sng
+  bugzilla_user_id: 696039
+  description: Search/NewTab Team Tag
+  parameters:
+    jira_project_key: SNG
 
 - whiteboard_tag: sp3
   bugzilla_user_id: 396948
