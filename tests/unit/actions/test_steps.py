@@ -61,6 +61,50 @@ def test_created_public(
     )
 
 
+def test_misconfigured_issue_type(
+    context_create_example: ActionContext, mocked_jira, mocked_bugzilla
+):
+    context_create_example.bug.type = "enhancement"
+
+    callable_object = default.init(
+        jira_project_key=context_create_example.jira.project,
+        steps={"new": ["create_issue"]},
+        issue_type_map=["Epic"],  # list instead dict!
+    )
+    with pytest.raises(TypeError):
+        callable_object(context=context_create_example)
+
+
+def test_created_with_custom_issue_type_and_fallback(
+    context_create_example: ActionContext, mocked_jira, mocked_bugzilla
+):
+    context_create_example.bug.type = "enhancement"
+    mocked_jira.create_issue.return_value = {"key": "k"}
+    mocked_bugzilla.get_bug.return_value = context_create_example.bug
+    mocked_bugzilla.get_comments.return_value = [
+        comment_factory(text="Initial comment")
+    ]
+
+    callable_object = default.init(
+        jira_project_key=context_create_example.jira.project,
+        steps={"new": ["create_issue"]},
+        issue_type_map={
+            "task": "Epic",
+        },
+    )
+
+    callable_object(context=context_create_example)
+
+    mocked_jira.create_issue.assert_called_once_with(
+        fields={
+            "summary": "JBI Test",
+            "issuetype": {"name": "Task"},
+            "description": "Initial comment",
+            "project": {"key": "JBI"},
+        },
+    )
+
+
 def test_created_with_custom_issue_type(
     context_create_example: ActionContext, mocked_jira, mocked_bugzilla
 ):
