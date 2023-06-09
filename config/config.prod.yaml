@@ -255,15 +255,9 @@
       comment:
         - create_comment
 
-- whiteboard_tag: snt
-  bugzilla_user_id: 696039
-  description: Search/NewTab Team Tag
-  parameters:
-    jira_project_key: SNG
-
 - whiteboard_tag: sng
   bugzilla_user_id: 696039
-  description: Search/NewTab Team Tag
+  description: Search Next Generation Team Tag
   parameters:
     jira_project_key: SNG
 
