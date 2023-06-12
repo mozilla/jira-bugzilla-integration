@@ -173,6 +173,7 @@ def test_read_heartbeat_all_services_fail(anon_client, mocked_jira, mocked_bugzi
             "all_projects_are_visible": False,
             "all_projects_have_permissions": False,
             "all_projects_components_exist": False,
+            "all_projects_issue_types_exist": False,
         },
         "bugzilla": {
             "up": False,
@@ -265,6 +266,10 @@ def test_read_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
             "DELETE_ISSUES": {"havePermission": True},
         },
     }
+    mocked_jira.issue_createmeta_issuetypes.return_value = [
+        {"name": "Task"},
+        {"name": "Bug"},
+    ]
 
     resp = anon_client.get("/__heartbeat__")
 
@@ -275,6 +280,7 @@ def test_read_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
             "all_projects_are_visible": True,
             "all_projects_have_permissions": True,
             "all_projects_components_exist": True,
+            "all_projects_issue_types_exist": True,
         },
         "bugzilla": {
             "up": True,
@@ -333,6 +339,20 @@ def test_jira_heartbeat_unknown_components(anon_client, mocked_jira, mocked_bugz
     assert not resp.json()["jira"]["all_projects_components_exist"]
 
 
+def test_jira_heartbeat_unknown_issue_types(anon_client, mocked_jira):
+    mocked_jira.get_server_info.return_value = {}
+    mocked_jira.issue_createmeta_issuetypes.return_value = [
+        {"name": "Task"},
+        # missing Bug
+    ]
+
+    resp = anon_client.get("/__heartbeat__")
+
+    assert resp.status_code == 503
+    assert resp.json()["jira"]["up"]
+    assert not resp.json()["jira"]["all_projects_issue_types_exist"]
+
+
 def test_head_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
     """/__heartbeat__ support head requests"""
     mocked_bugzilla.logged_in.return_value = True
@@ -348,6 +368,10 @@ def test_head_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
             "DELETE_ISSUES": {"havePermission": True},
         },
     }
+    mocked_jira.issue_createmeta_issuetypes.return_value = [
+        {"name": "Task"},
+        {"name": "Bug"},
+    ]
 
     resp = anon_client.head("/__heartbeat__")
 
