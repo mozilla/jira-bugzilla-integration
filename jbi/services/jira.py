@@ -85,6 +85,7 @@ class JiraClient(Jira):
     set_issue_status = instrumented_method(Jira.set_issue_status)
     issue_add_comment = instrumented_method(Jira.issue_add_comment)
     create_issue = instrumented_method(Jira.create_issue)
+    issue_createmeta_issuetypes = instrumented_method(Jira.issue_createmeta_issuetypes)
 
 
 @lru_cache(maxsize=1)
@@ -116,6 +117,8 @@ def check_health(actions: Actions) -> ServiceHealth:
         "all_projects_have_permissions": _all_projects_permissions(actions),
         "all_projects_components_exist": is_up
         and _all_projects_components_exist(actions),
+        "all_projects_issue_types_exist": is_up
+        and _all_project_issue_types_exist(actions),
     }
     return health
 
@@ -212,6 +215,27 @@ def _all_projects_components_exist(actions: Actions):
             )
             success = False
 
+    return success
+
+
+def _all_project_issue_types_exist(actions: Actions):
+    default_types = {"task": "Task", "defect": "Bug"}
+    issue_types_by_project = {
+        action.parameters["jira_project_key"]: set(
+            action.parameters.get("issues_types_map", default_types).values()
+        )
+        for action in actions
+    }
+    success = True
+    for project, specified_issue_types in issue_types_by_project.items():
+        all_issue_types = get_client().issue_createmeta_issuetypes(project)
+        all_issue_types_names = set(it["name"] for it in all_issue_types)
+        unknown = set(specified_issue_types) - all_issue_types_names
+        if unknown:
+            logger.error(
+                "Jira project %s does not have issue type %s", project, unknown
+            )
+            success = False
     return success
 
 
