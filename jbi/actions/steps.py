@@ -35,12 +35,20 @@ def create_issue(context: ActionContext, **parameters):
     """Create the Jira issue with the first comment as the description."""
     bug = context.bug
 
+    # If not specified, issue type will be either 'Bug' or 'Task'
+    issue_type_map = parameters.get(
+        "issue_type_map", {"enhancement": "Task", "task": "Task", "defect": "Bug"}
+    )
+    if not isinstance(issue_type_map, dict):
+        raise TypeError("The 'issue_type_map' parameter must be a dictionary.")
+    issue_type = issue_type_map.get(bug.type, "Task")
+
     # In the payload of a bug creation, the `comment` field is `null`.
     # We fetch the list of comments to use the first one as the Jira issue description.
     comment_list = bugzilla.get_client().get_comments(bug.id)
     description = comment_list[0].text if comment_list else ""
 
-    jira_create_response = jira.create_jira_issue(context, description)
+    jira_create_response = jira.create_jira_issue(context, description, issue_type)
     issue_key = jira_create_response.get("key")
 
     context = context.update(jira=context.jira.update(issue=issue_key))
@@ -252,22 +260,30 @@ def maybe_update_components(context: ActionContext, **parameters):
     return context, (resp,)
 
 
-def _whiteboard_as_labels(whiteboard: Optional[str]) -> list[str]:
+def _whiteboard_as_labels(labels_brackets: str, whiteboard: Optional[str]) -> list[str]:
     """Split the whiteboard string into a list of labels"""
     splitted = whiteboard.replace("[", "").split("]") if whiteboard else []
     stripped = [x.strip() for x in splitted if x not in ["", " "]]
     # Jira labels can't contain a " ", convert to "."
     nospace = [wb.replace(" ", ".") for wb in stripped]
     with_brackets = [f"[{wb}]" for wb in nospace]
-    return ["bugzilla"] + nospace + with_brackets
+
+    if labels_brackets == "yes":
+        labels = with_brackets
+    elif labels_brackets == "both":
+        labels = nospace + with_brackets
+    else:
+        labels = nospace
+
+    return ["bugzilla"] + labels
 
 
-def _build_labels_update(added, removed=None):
-    after = _whiteboard_as_labels(added)
+def _build_labels_update(labels_brackets, added, removed=None):
+    after = _whiteboard_as_labels(labels_brackets, added)
     # We don't bother detecting if label was already there.
     updates = [{"add": label} for label in after]
     if removed:
-        before = _whiteboard_as_labels(removed)
+        before = _whiteboard_as_labels(labels_brackets, removed)
         deleted = sorted(set(before).difference(set(after)))  # sorted for unit testing
         updates.extend([{"remove": label} for label in deleted])
     return updates
@@ -277,18 +293,29 @@ def sync_whiteboard_labels(context: ActionContext, **parameters):
     """
     Set whiteboard tags as labels on the Jira issue
     """
+    labels_brackets = parameters.get("labels_brackets", "no")
+    if labels_brackets not in ("yes", "no", "both"):
+        raise ValueError(
+            f"Invalid value {labels_brackets} for 'labels_brackets' parameter."
+        )
 
     # On update of whiteboard field, add/remove corresponding labels
     if context.event.changes:
         changes_by_field = {change.field: change for change in context.event.changes}
         if change := changes_by_field.get("whiteboard"):
-            updates = _build_labels_update(added=change.added, removed=change.removed)
+            updates = _build_labels_update(
+                added=change.added,
+                removed=change.removed,
+                labels_brackets=labels_brackets,
+            )
         else:
             # Whiteboard field not changed, ignore.
             return context, ()
     else:
         # On creation, just add them all.
-        updates = _build_labels_update(added=context.bug.whiteboard)
+        updates = _build_labels_update(
+            added=context.bug.whiteboard, labels_brackets=labels_brackets
+        )
 
     try:
         resp = jira.get_client().update_issue(

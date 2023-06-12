@@ -30,12 +30,23 @@ logger = logging.getLogger(__name__)
 
 JIRA_DESCRIPTION_CHAR_LIMIT = 32767
 
+
+def fatal_code(exc):
+    """Do not retry 4XX errors, mark them as fatal."""
+    try:
+        return 400 <= exc.response.status_code < 500
+    except AttributeError:
+        # `ApiError` or `ConnectionError` won't have response attribute.
+        return False
+
+
 instrumented_method = instrument(
     prefix="jira",
     exceptions=(
         atlassian_errors.ApiError,
         requests_exceptions.RequestException,
     ),
+    giveup=fatal_code,
 )
 
 
@@ -74,6 +85,7 @@ class JiraClient(Jira):
     set_issue_status = instrumented_method(Jira.set_issue_status)
     issue_add_comment = instrumented_method(Jira.issue_add_comment)
     create_issue = instrumented_method(Jira.create_issue)
+    issue_createmeta_issuetypes = instrumented_method(Jira.issue_createmeta_issuetypes)
 
 
 @lru_cache(maxsize=1)
@@ -105,6 +117,8 @@ def check_health(actions: Actions) -> ServiceHealth:
         "all_projects_have_permissions": _all_projects_permissions(actions),
         "all_projects_components_exist": is_up
         and _all_projects_components_exist(actions),
+        "all_projects_issue_types_exist": is_up
+        and _all_project_issue_types_exist(actions),
     }
     return health
 
@@ -204,6 +218,27 @@ def _all_projects_components_exist(actions: Actions):
     return success
 
 
+def _all_project_issue_types_exist(actions: Actions):
+    default_types = {"task": "Task", "defect": "Bug"}
+    issue_types_by_project = {
+        action.parameters["jira_project_key"]: set(
+            action.parameters.get("issues_types_map", default_types).values()
+        )
+        for action in actions
+    }
+    success = True
+    for project, specified_issue_types in issue_types_by_project.items():
+        all_issue_types = get_client().issue_createmeta_issuetypes(project)
+        all_issue_types_names = set(it["name"] for it in all_issue_types)
+        unknown = set(specified_issue_types) - all_issue_types_names
+        if unknown:
+            logger.error(
+                "Jira project %s does not have issue type %s", project, unknown
+            )
+            success = False
+    return success
+
+
 def get_issue(context: ActionContext, issue_key):
     """Return the Jira issue fields or `None` if not found."""
     try:
@@ -221,10 +256,7 @@ class JiraCreateError(Exception):
     """Error raised on Jira issue creation."""
 
 
-def create_jira_issue(
-    context: ActionContext,
-    description: str,
-):
+def create_jira_issue(context: ActionContext, description: str, issue_type: str):
     """Create a Jira issue with basic fields in the project and return its key."""
     bug = context.bug
     logger.debug(
@@ -234,7 +266,7 @@ def create_jira_issue(
     )
     fields: dict[str, Any] = {
         "summary": bug.summary,
-        "issuetype": {"name": bug.issue_type()},
+        "issuetype": {"name": issue_type},
         "description": description[:JIRA_DESCRIPTION_CHAR_LIMIT],
         "project": {"key": context.jira.project},
     }

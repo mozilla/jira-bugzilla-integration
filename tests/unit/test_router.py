@@ -173,6 +173,7 @@ def test_read_heartbeat_all_services_fail(anon_client, mocked_jira, mocked_bugzi
             "all_projects_are_visible": False,
             "all_projects_have_permissions": False,
             "all_projects_components_exist": False,
+            "all_projects_issue_types_exist": False,
         },
         "bugzilla": {
             "up": False,
@@ -181,7 +182,7 @@ def test_read_heartbeat_all_services_fail(anon_client, mocked_jira, mocked_bugzi
     }
 
 
-def test_read_heartbeat_jira_services_fails(anon_client, mocked_jira, mocked_bugzilla):
+def test_read_heartbeat_jira_services_fails(anon_client, mocked_jira):
     """/__heartbeat__ returns 503 when one service is unavailable."""
     mocked_jira.get_server_info.return_value = None
 
@@ -193,12 +194,11 @@ def test_read_heartbeat_jira_services_fails(anon_client, mocked_jira, mocked_bug
         "all_projects_are_visible": False,
         "all_projects_have_permissions": False,
         "all_projects_components_exist": False,
+        "all_projects_issue_types_exist": False,
     }
 
 
-def test_read_heartbeat_bugzilla_webhooks_fails(
-    anon_client, mocked_jira, mocked_bugzilla
-):
+def test_read_heartbeat_bugzilla_webhooks_fails(anon_client, mocked_bugzilla):
     mocked_bugzilla.logged_in.return_value = True
     mocked_bugzilla.list_webhooks.return_value = [
         bugzilla_webhook_factory(enabled=False)
@@ -213,9 +213,7 @@ def test_read_heartbeat_bugzilla_webhooks_fails(
     }
 
 
-def test_heartbeat_bugzilla_reports_webhooks_errors(
-    anon_client, mocked_jira, mocked_bugzilla
-):
+def test_heartbeat_bugzilla_reports_webhooks_errors(anon_client, mocked_bugzilla):
     mocked_bugzilla.logged_in.return_value = True
     mocked_bugzilla.list_webhooks.return_value = [
         bugzilla_webhook_factory(id=1, errors=0, product="Remote Settings"),
@@ -233,13 +231,9 @@ def test_heartbeat_bugzilla_reports_webhooks_errors(
     )
 
 
-def test_read_heartbeat_bugzilla_services_fails(
-    anon_client, mocked_jira, mocked_bugzilla
-):
+def test_read_heartbeat_bugzilla_services_fails(anon_client, mocked_bugzilla):
     """/__heartbeat__ returns 503 when one service is unavailable."""
     mocked_bugzilla.logged_in.return_value = False
-    mocked_jira.get_server_info.return_value = {}
-    mocked_jira.projects.return_value = [{"key": "DevTest"}]
 
     resp = anon_client.get("/__heartbeat__")
 
@@ -265,6 +259,10 @@ def test_read_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
             "DELETE_ISSUES": {"havePermission": True},
         },
     }
+    mocked_jira.issue_createmeta_issuetypes.return_value = [
+        {"name": "Task"},
+        {"name": "Bug"},
+    ]
 
     resp = anon_client.get("/__heartbeat__")
 
@@ -275,6 +273,7 @@ def test_read_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
             "all_projects_are_visible": True,
             "all_projects_have_permissions": True,
             "all_projects_components_exist": True,
+            "all_projects_issue_types_exist": True,
         },
         "bugzilla": {
             "up": True,
@@ -283,25 +282,20 @@ def test_read_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
     }
 
 
-def test_jira_heartbeat_visible_projects(anon_client, mocked_jira, mocked_bugzilla):
+def test_jira_heartbeat_visible_projects(anon_client, mocked_jira):
     """/__heartbeat__ fails if configured projects don't match."""
     mocked_jira.get_server_info.return_value = {}
 
     resp = anon_client.get("/__heartbeat__")
 
     assert resp.status_code == 503
-    assert resp.json()["jira"] == {
-        "up": True,
-        "all_projects_are_visible": False,
-        "all_projects_have_permissions": False,
-        "all_projects_components_exist": False,
-    }
+    assert resp.json()["jira"]["up"]
+    assert not resp.json()["jira"]["all_projects_are_visible"]
 
 
-def test_jira_heartbeat_missing_permissions(anon_client, mocked_jira, mocked_bugzilla):
+def test_jira_heartbeat_missing_permissions(anon_client, mocked_jira):
     """/__heartbeat__ fails if configured projects don't match."""
     mocked_jira.get_server_info.return_value = {}
-    mocked_jira.get_project_components.return_value = [{"name": "Main"}]
     mocked_jira.get_project_permission_scheme.return_value = {
         "permissions": {
             "ADD_COMMENTS": {"havePermission": True},
@@ -314,23 +308,32 @@ def test_jira_heartbeat_missing_permissions(anon_client, mocked_jira, mocked_bug
     resp = anon_client.get("/__heartbeat__")
 
     assert resp.status_code == 503
-    assert resp.json()["jira"] == {
-        "up": True,
-        "all_projects_are_visible": False,
-        "all_projects_have_permissions": False,
-        "all_projects_components_exist": True,
-    }
+    assert resp.json()["jira"]["up"]
+    assert not resp.json()["jira"]["all_projects_have_permissions"]
 
 
-def test_jira_heartbeat_unknown_components(anon_client, mocked_jira, mocked_bugzilla):
-    mocked_bugzilla.logged_in.return_value = True
-    mocked_bugzilla.list_webhooks.return_value = [bugzilla_webhook_factory()]
+def test_jira_heartbeat_unknown_components(anon_client, mocked_jira):
     mocked_jira.get_server_info.return_value = {}
 
     resp = anon_client.get("/__heartbeat__")
 
     assert resp.status_code == 503
+    assert resp.json()["jira"]["up"]
     assert not resp.json()["jira"]["all_projects_components_exist"]
+
+
+def test_jira_heartbeat_unknown_issue_types(anon_client, mocked_jira):
+    mocked_jira.get_server_info.return_value = {}
+    mocked_jira.issue_createmeta_issuetypes.return_value = [
+        {"name": "Task"},
+        # missing Bug
+    ]
+
+    resp = anon_client.get("/__heartbeat__")
+
+    assert resp.status_code == 503
+    assert resp.json()["jira"]["up"]
+    assert not resp.json()["jira"]["all_projects_issue_types_exist"]
 
 
 def test_head_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
@@ -348,6 +351,10 @@ def test_head_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
             "DELETE_ISSUES": {"havePermission": True},
         },
     }
+    mocked_jira.issue_createmeta_issuetypes.return_value = [
+        {"name": "Task"},
+        {"name": "Bug"},
+    ]
 
     resp = anon_client.head("/__heartbeat__")
 

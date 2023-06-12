@@ -50,6 +50,7 @@ body:
       description: Select the data you'd like to sync to Jira issues
       options:
         - label: Component (from the Bug and as specified in config)
+        - label: Issue Type (please provide mapping, eg. `enhancement` -> `Story`)
         - label: Status (please provide mapping, eg. `RESOLVED` -> `Done`)
         - label: Resolution (please provide mapping, eg. `WONTFIX` -> `Won't do`)
         - label: Whiteboard tags (as labels)

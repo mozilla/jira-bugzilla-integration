@@ -5,6 +5,7 @@
   description: Nonprod testing whiteboard tag (JBI Bin Project)
   parameters:
     jira_project_key: JB
+    labels_brackets: both
 
 - whiteboard_tag: flowstate
   allow_private: true
@@ -28,6 +29,7 @@
         - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_whiteboard_labels
+    labels_brackets: both
     status_map:
       ASSIGNED: In Progress
       FIXED: In Review
@@ -54,6 +56,7 @@
         - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_whiteboard_labels
+    labels_brackets: both
     status_map:
       ASSIGNED: To Do
       REOPENED: To Do
@@ -87,6 +90,7 @@
         - maybe_assign_jira_user
         - maybe_update_issue_status
         - sync_whiteboard_labels
+    labels_brackets: both
     status_map:
       UNCONFIRMED: Backlog
       NEW: Backlog
@@ -115,17 +119,20 @@
         - add_link_to_bugzilla
         - add_link_to_jira
         - maybe_assign_jira_user
+        - maybe_update_components
         - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_whiteboard_labels
       existing:
         - update_issue_summary
         - maybe_assign_jira_user
+        - maybe_update_components
         - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_whiteboard_labels
       comment:
         - create_comment
+    labels_brackets: both
     status_map:
       UNCONFIRMED: Backlog
       NEW: Backlog
@@ -165,6 +172,7 @@
         - sync_whiteboard_labels
       comment:
         - create_comment
+    labels_brackets: both
     status_map:
       UNCONFIRMED: To Do
       NEW: To Do
@@ -205,6 +213,7 @@
         - maybe_update_issue_status
       comment:
         - create_comment
+    labels_brackets: both
     status_map:
       UNCONFIRMED: Backlog
       NEW: Backlog
@@ -245,6 +254,7 @@
         - maybe_update_issue_status
       comment:
         - create_comment
+    labels_brackets: both
     status_map:
       UNCONFIRMED: To Do
       NEW: To Do
