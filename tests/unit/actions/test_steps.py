@@ -576,20 +576,19 @@ def test_sync_whiteboard_labels(context_create_example: ActionContext, mocked_ji
                 "labels": [
                     {"add": "bugzilla"},
                     {"add": "devtest"},
-                    {"add": "[devtest]"},
                 ]
             }
         },
     )
 
 
-def test_sync_whiteboard_labels_without_brackets(
+def test_sync_whiteboard_labels_with_brackets(
     context_create_example: ActionContext, mocked_jira
 ):
     callable_object = default.init(
         jira_project_key=context_create_example.jira.project,
         steps={"new": ["sync_whiteboard_labels"]},
-        labels_brackets="no",
+        labels_brackets="both",
     )
     callable_object(context=context_create_example)
 
@@ -600,6 +599,7 @@ def test_sync_whiteboard_labels_without_brackets(
                 "labels": [
                     {"add": "bugzilla"},
                     {"add": "devtest"},
+                    {"add": "[devtest]"},
                 ]
             }
         },
@@ -643,8 +643,6 @@ def test_sync_whiteboard_labels_update(
                 "labels": [
                     {"add": "bugzilla"},
                     {"add": "remotesettings"},
-                    {"add": "[remotesettings]"},
-                    {"remove": "[server]"},
                     {"remove": "server"},
                 ]
             }

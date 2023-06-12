@@ -293,7 +293,7 @@ def sync_whiteboard_labels(context: ActionContext, **parameters):
     """
     Set whiteboard tags as labels on the Jira issue
     """
-    labels_brackets = parameters.get("labels_brackets", "both")
+    labels_brackets = parameters.get("labels_brackets", "no")
     if labels_brackets not in ("yes", "no", "both"):
         raise ValueError(
             f"Invalid value {labels_brackets} for 'labels_brackets' parameter."

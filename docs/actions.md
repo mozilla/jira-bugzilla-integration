@@ -74,7 +74,7 @@ to the Bugzilla ticket on the Jira issue.
    - If defined, the created issues will be assigned the specified components.
 - `labels_brackets` (optional)
     - enum ["yes", "no", "both"]
-    - Controls whether issue labels should have brackets or not in the `sync_whiteboard_labels` step (default: "both")
+    - Controls whether issue labels should have brackets or not in the `sync_whiteboard_labels` step (default: "no")
 - `status_map` (optional)
     - mapping [str, str]
     - If defined, map the Bugzilla bug status (or resolution) to Jira issue status
