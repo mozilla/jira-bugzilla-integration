@@ -606,6 +606,19 @@ def test_sync_whiteboard_labels_without_brackets(
     )
 
 
+def test_sync_whiteboard_labels_misconfigured_brackets(
+    context_create_example: ActionContext,
+):
+    callable_object = default.init(
+        jira_project_key=context_create_example.jira.project,
+        steps={"new": ["sync_whiteboard_labels"]},
+        labels_brackets=42,
+    )
+    with pytest.raises(ValueError) as exc_info:
+        callable_object(context=context_create_example)
+    assert str(exc_info.value) == "Invalid value 42 for 'labels_brackets' parameter."
+
+
 def test_sync_whiteboard_labels_update(
     context_update_example: ActionContext, mocked_jira
 ):
