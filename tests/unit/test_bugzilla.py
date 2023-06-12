@@ -31,10 +31,16 @@ def test_extract_see_also(see_also, expected):
 @pytest.mark.parametrize(
     "whiteboard",
     [
+        "[DevTest-]",
+        "[-DevTest-]",
+        "[-DevTest]",
+        "[DevTest-test]",
+        "[test-DevTest]",
+        "[foo-DevTest-bar]",
+        "[foo-bar-DevTest-foo-bar]",
         "[example][DevTest]",
-        "[example][DevTest-test]",
-        "[example][test-DevTest]",
-        "[example][foo-DevTest-bar]",
+        "[DevTest][example]",
+        "[example][DevTest][example]",
     ],
 )
 def test_lookup_action_found(whiteboard, actions_example):
@@ -48,6 +54,11 @@ def test_lookup_action_found(whiteboard, actions_example):
     "whiteboard",
     [
         "example DevTest",
+        "[fooDevTest]",
+        "[DevTestbar]",
+        "[fooDevTestbar]",
+        "[fooDevTest-bar]",
+        "[foo-DevTestbar]",
         "[foo] devtest [bar]",
     ],
 )

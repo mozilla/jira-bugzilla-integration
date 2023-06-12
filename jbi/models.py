@@ -267,7 +267,8 @@ class BugzillaBug(BaseModel):
         """Find first matching action from bug's whiteboard list"""
         if self.whiteboard:
             for tag, action in actions.by_tag.items():
-                search_string = r"\[[^\]]*" + tag + r"[^\]]*\]"
+                # [tag-word], [word-tag], [tag-], [tag], but not [wordtag]
+                search_string = r"\[([^\]]*-)*" + tag + r"(-[^\]]*)*\]"
                 if re.search(search_string, self.whiteboard, flags=re.IGNORECASE):
                     return action
 
