@@ -260,22 +260,30 @@ def maybe_update_components(context: ActionContext, **parameters):
     return context, (resp,)
 
 
-def _whiteboard_as_labels(whiteboard: Optional[str]) -> list[str]:
+def _whiteboard_as_labels(labels_brackets: str, whiteboard: Optional[str]) -> list[str]:
     """Split the whiteboard string into a list of labels"""
     splitted = whiteboard.replace("[", "").split("]") if whiteboard else []
     stripped = [x.strip() for x in splitted if x not in ["", " "]]
     # Jira labels can't contain a " ", convert to "."
     nospace = [wb.replace(" ", ".") for wb in stripped]
     with_brackets = [f"[{wb}]" for wb in nospace]
-    return ["bugzilla"] + nospace + with_brackets
+
+    if labels_brackets == "yes":
+        labels = with_brackets
+    elif labels_brackets == "both":
+        labels = nospace + with_brackets
+    else:
+        labels = nospace
+
+    return ["bugzilla"] + labels
 
 
-def _build_labels_update(added, removed=None):
-    after = _whiteboard_as_labels(added)
+def _build_labels_update(labels_brackets, added, removed=None):
+    after = _whiteboard_as_labels(labels_brackets, added)
     # We don't bother detecting if label was already there.
     updates = [{"add": label} for label in after]
     if removed:
-        before = _whiteboard_as_labels(removed)
+        before = _whiteboard_as_labels(labels_brackets, removed)
         deleted = sorted(set(before).difference(set(after)))  # sorted for unit testing
         updates.extend([{"remove": label} for label in deleted])
     return updates
@@ -285,18 +293,29 @@ def sync_whiteboard_labels(context: ActionContext, **parameters):
     """
     Set whiteboard tags as labels on the Jira issue
     """
+    labels_brackets = parameters.get("labels_brackets", "no")
+    if labels_brackets not in ("yes", "no", "both"):
+        raise ValueError(
+            f"Invalid value {labels_brackets} for 'labels_brackets' parameter."
+        )
 
     # On update of whiteboard field, add/remove corresponding labels
     if context.event.changes:
         changes_by_field = {change.field: change for change in context.event.changes}
         if change := changes_by_field.get("whiteboard"):
-            updates = _build_labels_update(added=change.added, removed=change.removed)
+            updates = _build_labels_update(
+                added=change.added,
+                removed=change.removed,
+                labels_brackets=labels_brackets,
+            )
         else:
             # Whiteboard field not changed, ignore.
             return context, ()
     else:
         # On creation, just add them all.
-        updates = _build_labels_update(added=context.bug.whiteboard)
+        updates = _build_labels_update(
+            added=context.bug.whiteboard, labels_brackets=labels_brackets
+        )
 
     try:
         resp = jira.get_client().update_issue(

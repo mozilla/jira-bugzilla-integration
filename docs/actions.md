@@ -72,6 +72,9 @@ to the Bugzilla ticket on the Jira issue.
 - `jira_components` (optional)
    - list [str]
    - If defined, the created issues will be assigned the specified components.
+- `labels_brackets` (optional)
+    - enum ["yes", "no", "both"]
+    - Controls whether issue labels should have brackets or not in the `sync_whiteboard_labels` step (default: "no")
 - `status_map` (optional)
     - mapping [str, str]
     - If defined, map the Bugzilla bug status (or resolution) to Jira issue status
@@ -159,6 +162,7 @@ linked Jira issue status to "Closed". If the bug changes to a status not listed 
 - `maybe_update_issue_resolution`
 - `maybe_update_issue_status`
 - `create_comment`
+- `sync_whiteboard_labels`
 - `maybe_update_components`: looks at the component that's set on the bug (if any) and any components added to the project configuration with the `jira_components` parameter (see above). If those components are available on the Jira side as well, they're added to the Jira issue
 
 ### Custom Actions
