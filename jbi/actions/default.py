@@ -93,20 +93,16 @@ class Executor:
 
     def __call__(self, context: ActionContext) -> ActionResult:
         """Called from `runner` when the action is used."""
-
-        responses = tuple()  # type: ignore
-
         for step in self.steps[context.operation]:
-            context, step_responses = step(context=context, **self.parameters)
-            for response in step_responses:
-                logger.debug(
-                    "Received %s",
-                    response,
-                    extra={
-                        "response": response,
-                        **context.dict(),
-                    },
-                )
-            responses += step_responses
+            context = step(context=context, **self.parameters)
+        for response in context.responses:
+            logger.debug(
+                "Received %s",
+                response,
+                extra={
+                    "response": response,
+                    **context.dict(),
+                },
+            )
 
-        return True, {"responses": responses}
+        return True, {"responses": context.responses}

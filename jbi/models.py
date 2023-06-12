@@ -367,3 +367,4 @@ class ActionContext(Context, extra=Extra.forbid):
     jira: JiraContext
     bug: BugzillaBug
     extra: dict[str, str] = {}
+    responses: list = []
