@@ -30,12 +30,23 @@ logger = logging.getLogger(__name__)
 
 JIRA_DESCRIPTION_CHAR_LIMIT = 32767
 
+
+def fatal_code(exc):
+    """Do not retry 4XX errors, mark them as fatal."""
+    try:
+        return 400 <= exc.response.status_code < 500
+    except AttributeError:
+        # `ApiError` or `ConnectionError` won't have response attribute.
+        return False
+
+
 instrumented_method = instrument(
     prefix="jira",
     exceptions=(
         atlassian_errors.ApiError,
         requests_exceptions.RequestException,
     ),
+    giveup=fatal_code,
 )
 
 
@@ -221,10 +232,7 @@ class JiraCreateError(Exception):
     """Error raised on Jira issue creation."""
 
 
-def create_jira_issue(
-    context: ActionContext,
-    description: str,
-):
+def create_jira_issue(context: ActionContext, description: str, issue_type: str):
     """Create a Jira issue with basic fields in the project and return its key."""
     bug = context.bug
     logger.debug(
@@ -234,7 +242,7 @@ def create_jira_issue(
     )
     fields: dict[str, Any] = {
         "summary": bug.summary,
-        "issuetype": {"name": bug.issue_type()},
+        "issuetype": {"name": issue_type},
         "description": description[:JIRA_DESCRIPTION_CHAR_LIMIT],
         "project": {"key": context.jira.project},
     }

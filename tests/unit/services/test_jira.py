@@ -25,10 +25,7 @@ def test_jira_create_issue_is_instrumented(
         },
     )
 
-    jira.create_jira_issue(
-        context_create_example,
-        "Description",
-    )
+    jira.create_jira_issue(context_create_example, "Description", issue_type="Task")
     jira_client = jira.get_client()
 
     jira_client.create_issue({})
@@ -85,6 +82,24 @@ def test_jira_retries_failing_connections_in_health_check(
         jira.check_health(actions_example)
 
     assert len(mocked_responses.calls) == 4
+
+
+@pytest.mark.no_mocked_jira
+def test_jira_does_not_retry_4XX(mocked_responses, context_create_example):
+    url = f"{get_settings().jira_base_url}rest/api/2/issue"
+    mocked_responses.add(
+        responses.POST,
+        url,
+        json={},
+        status=400,
+    )
+
+    with pytest.raises(requests.HTTPError):
+        jira.create_jira_issue(
+            context=context_create_example, description="", issue_type="Task"
+        )
+
+    assert len(mocked_responses.calls) == 1
 
 
 @pytest.mark.parametrize(

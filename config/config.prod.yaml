@@ -132,7 +132,7 @@
       UNCONFIRMED: Backlog
       NEW: Backlog
       ASSIGNED: In Progress
-      REOPENED: In Progress
+      REOPENED: Backlog
       RESOLVED: Closed
       VERIFIED: Closed
       FIXED: Closed
@@ -156,11 +156,13 @@
         - add_link_to_bugzilla
         - add_link_to_jira
         - maybe_assign_jira_user
+        - maybe_update_components
         - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_whiteboard_labels
       existing:
         - update_issue_summary
+        - maybe_update_components
         - maybe_assign_jira_user
         - maybe_update_issue_resolution
         - maybe_update_issue_status
@@ -253,11 +255,11 @@
       comment:
         - create_comment
 
-- whiteboard_tag: snt
+- whiteboard_tag: sng
   bugzilla_user_id: 696039
-  description: Search/NewTab Team Tag
+  description: Search Next Generation Team Tag
   parameters:
-    jira_project_key: SNT
+    jira_project_key: SNG
 
 - whiteboard_tag: sp3
   bugzilla_user_id: 396948
