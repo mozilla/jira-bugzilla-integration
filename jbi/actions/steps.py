@@ -9,7 +9,7 @@ from typing import Iterable, Optional
 
 from requests import exceptions as requests_exceptions
 
-from jbi import Operation
+from jbi import IncompleteStepError, Operation
 from jbi.models import ActionContext
 from jbi.services import bugzilla, jira
 
@@ -345,7 +345,8 @@ def sync_whiteboard_labels(context: ActionContext, **parameters):
             str(exc),
             extra=context.dict(),
         )
-        return context
+        context.update(responses=context.responses + [exc.response])
+        raise IncompleteStepError(context) from exc
 
     context.update(responses=context.responses + [resp])
     return context

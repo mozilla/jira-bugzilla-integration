@@ -22,3 +22,11 @@ class Operation(str, Enum):
 
 
 ActionResult = tuple[bool, dict]
+
+
+class IncompleteStepError(Exception):
+    """Raised when a step could not complete successfully."""
+
+    def __init__(self, context, *args: object) -> None:
+        super().__init__(*args)
+        self.context = context

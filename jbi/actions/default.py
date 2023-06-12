@@ -9,7 +9,7 @@ and when a comment is posted, it will be set to `Operation.COMMENT`.
 import logging
 from typing import Callable, Optional
 
-from jbi import ActionResult, Operation
+from jbi import ActionResult, IncompleteStepError, Operation
 from jbi.actions import steps as steps_module
 from jbi.environment import get_settings
 from jbi.models import ActionContext
@@ -94,7 +94,11 @@ class Executor:
     def __call__(self, context: ActionContext) -> ActionResult:
         """Called from `runner` when the action is used."""
         for step in self.steps[context.operation]:
-            context = step(context=context, **self.parameters)
+            try:
+                context = step(context=context, **self.parameters)
+            except IncompleteStepError as exc:
+                context = exc.context
+
         for response in context.responses:
             logger.debug(
                 "Received %s",
