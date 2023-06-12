@@ -95,7 +95,9 @@ def test_jira_does_not_retry_4XX(mocked_responses, context_create_example):
     )
 
     with pytest.raises(requests.HTTPError):
-        jira.create_jira_issue(context=context_create_example, description="")
+        jira.create_jira_issue(
+            context=context_create_example, description="", issue_type="Task"
+        )
 
     assert len(mocked_responses.calls) == 1
 
