@@ -68,7 +68,7 @@ def execute_action(
             ) from err
         runner_context = runner_context.update(action=action)
 
-        if bug.is_private and not action.allow_private:
+        if bug.is_private:
             raise IgnoreInvalidRequestError(
                 f"private bugs are not valid for action {action.whiteboard_tag!r}"
             )

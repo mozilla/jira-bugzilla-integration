@@ -8,7 +8,6 @@
     labels_brackets: both
 
 - whiteboard_tag: flowstate
-  allow_private: true
   bugzilla_user_id: 91159
   description: Flowstate whiteboard tag
   parameters:

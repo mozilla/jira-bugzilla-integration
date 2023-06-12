@@ -32,7 +32,6 @@ class Action(YamlModel):
     bugzilla_user_id: int | list[int] | Literal["tbd"]
     description: str
     enabled: bool = True
-    allow_private: bool = False
     parameters: dict = {}
     _caller: Optional[Callable] = PrivateAttr(default=None)
     _required_jira_permissions: set[str] = PrivateAttr(default=None)

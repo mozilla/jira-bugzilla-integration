@@ -218,17 +218,6 @@ def webhook_change_status_assignee():
 
 
 @pytest.fixture
-def webhook_modify_private_example() -> BugzillaWebhookRequest:
-    event = factories.webhook_event_factory(
-        action="modify", routing_key="bug.modify:status"
-    )
-    webhook_payload = factories.webhook_factory(
-        bug={"id": 654321, "is_private": True}, event=event
-    )
-    return webhook_payload
-
-
-@pytest.fixture
 def action_factory():
     return factories.action_factory
 

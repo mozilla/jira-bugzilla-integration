@@ -83,27 +83,6 @@ def test_request_matched_whiteboard_with_dash(
     assert result_bug.id == bug.id
 
 
-def test_private_request_is_allowed(
-    webhook_create_private_example: BugzillaWebhookRequest,
-    settings: Settings,
-    actions_example,
-    mocked_bugzilla,
-):
-    bug = bug_factory(id=webhook_create_private_example.bug.id, is_private=True)
-    mocked_bugzilla.get_bug.return_value = bug
-
-    actions_example["devtest"].allow_private = True
-
-    result = execute_action(
-        request=webhook_create_private_example,
-        actions=actions_example,
-        settings=settings,
-    )
-
-    bug = BugzillaBug.parse_raw(result["bug"])
-    assert bug.id == 654321
-
-
 def test_added_comment_without_linked_issue_is_ignored(
     webhook_comment_example: BugzillaWebhookRequest,
     actions_example: Actions,
