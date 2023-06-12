@@ -264,7 +264,12 @@ class BugzillaBug(BaseModel):
         return None
 
     def lookup_action(self, actions: Actions) -> Action:
-        """Find first matching action from bug's whiteboard list"""
+        """
+        Find first matching action from bug's whiteboard list.
+
+        Tags are strings between brackets and can have prefixes/suffixes
+        using dashes (eg. ``[project]``, ``[project-moco]``, ``[backlog-project]``).
+        """
         if self.whiteboard:
             for tag, action in actions.by_tag.items():
                 # [tag-word], [word-tag], [tag-], [tag], but not [wordtag]
