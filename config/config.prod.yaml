@@ -47,30 +47,6 @@
       WORKSFORME: Closed
       REOPENED: In Progress
 
-- whiteboard_tag: flowstate
-  bugzilla_user_id: 91159
-  description: Flowstate whiteboard tag
-  parameters:
-    jira_project_key: MR2
-    steps:
-      new:
-        - create_issue
-        - maybe_delete_duplicate
-        - add_link_to_bugzilla
-        - add_link_to_jira
-        - maybe_assign_jira_user
-        - maybe_update_issue_resolution
-        - maybe_update_issue_status
-      existing:
-        - update_issue_summary
-        - maybe_assign_jira_user
-        - maybe_update_issue_resolution
-        - maybe_update_issue_status
-    status_map:
-      ASSIGNED: In Progress
-      FIXED: In Review
-      REOPENED: In Progress
-
 - whiteboard_tag: fxatps
   bugzilla_user_id: tbd
   description: Privacy & Security and Anti-Tracking Team whiteboard tag
