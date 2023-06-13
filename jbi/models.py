@@ -32,7 +32,6 @@ class Action(YamlModel):
     bugzilla_user_id: int | list[int] | Literal["tbd"]
     description: str
     enabled: bool = True
-    allow_private: bool = False
     parameters: dict = {}
     _caller: Optional[Callable] = PrivateAttr(default=None)
     _required_jira_permissions: set[str] = PrivateAttr(default=None)
@@ -172,15 +171,7 @@ class BugzillaWebhookEvent(BaseModel):
 
     def changed_fields(self) -> list[str]:
         """Returns the names of changed fields in a bug"""
-        if self.changes:
-            return [c.field for c in self.changes]
-
-        # Private bugs don't include the changes field in the event, but the
-        # field names are in the routing key.
-        if self.routing_key is not None and self.routing_key[0:11] == "bug.modify:":
-            return self.routing_key[11:].split(",")
-
-        return []
+        return [c.field for c in self.changes] if self.changes else []
 
 
 class BugzillaWebhookAttachment(BaseModel):
