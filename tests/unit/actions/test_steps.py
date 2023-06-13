@@ -260,7 +260,9 @@ def test_create_with_assignee(
 
 def test_clear_assignee(context_update_example: ActionContext, mocked_jira):
     context_update_example.event.action = "modify"
-    context_update_example.event.routing_key = "bug.modify:assigned_to"
+    context_update_example.event.changes = [
+        webhook_event_change_factory(field="assigned_to", removed="user", added="")
+    ]
 
     callable_object = default.init(
         jira_project_key=context_update_example.jira.project, steps=ALL_STEPS
@@ -279,7 +281,11 @@ def test_clear_assignee(context_update_example: ActionContext, mocked_jira):
 def test_set_assignee(context_update_example: ActionContext, mocked_jira):
     context_update_example.bug.assigned_to = "dtownsend@mozilla.com"
     context_update_example.event.action = "modify"
-    context_update_example.event.routing_key = "bug.modify:assigned_to"
+    context_update_example.event.changes = [
+        webhook_event_change_factory(
+            field="assigned_to", removed="", added="dtownsend@mozilla.com"
+        )
+    ]
 
     mocked_jira.user_find_by_user_string.return_value = [{"accountId": "6254"}]
 
@@ -393,7 +399,9 @@ def test_change_to_known_status(context_update_example: ActionContext, mocked_ji
     context_update_example.bug.status = "ASSIGNED"
     context_update_example.bug.resolution = ""
     context_update_example.event.action = "modify"
-    context_update_example.event.routing_key = "bug.modify:status"
+    context_update_example.event.changes = [
+        webhook_event_change_factory(field="status", removed="NEW", added="ASSIGNED")
+    ]
 
     callable_object = default.init(
         jira_project_key=context_update_example.jira.project,
@@ -414,7 +422,9 @@ def test_change_to_known_resolution(context_update_example: ActionContext, mocke
     context_update_example.bug.status = "RESOLVED"
     context_update_example.bug.resolution = "FIXED"
     context_update_example.event.action = "modify"
-    context_update_example.event.routing_key = "bug.modify:resolution"
+    context_update_example.event.changes = [
+        webhook_event_change_factory(field="resolution", removed="FIXED", added="OPEN")
+    ]
 
     callable_object = default.init(
         jira_project_key=context_update_example.jira.project,

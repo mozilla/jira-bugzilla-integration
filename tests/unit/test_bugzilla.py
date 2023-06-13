@@ -79,13 +79,3 @@ def test_payload_changes_list(webhook_change_status_assignee):
         "status",
         "assignee",
     ]
-
-
-def test_payload_changes_list_in_routing_key(webhook_change_status_assignee):
-    webhook_change_status_assignee.event.changes = None
-    webhook_change_status_assignee.event.routing_key = "bug.modify:assigned_to,status"
-
-    assert webhook_change_status_assignee.event.changed_fields() == [
-        "assigned_to",
-        "status",
-    ]
