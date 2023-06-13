@@ -259,7 +259,7 @@
   parameters:
     jira_project_key: SE
     jira_components:
-      - "Remote Settings"
+      - "remote-settings"
     steps:
       new:
         - create_issue
