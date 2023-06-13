@@ -222,7 +222,7 @@ def _all_project_issue_types_exist(actions: Actions):
     default_types = {"task": "Task", "defect": "Bug"}
     issue_types_by_project = {
         action.parameters["jira_project_key"]: set(
-            action.parameters.get("issues_types_map", default_types).values()
+            action.parameters.get("issue_type_map", default_types).values()
         )
         for action in actions
     }

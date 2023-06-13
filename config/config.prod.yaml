@@ -35,7 +35,7 @@
         - maybe_assign_jira_user
         - maybe_update_issue_resolution
         - maybe_update_issue_status
-        - sync_whiteboard_label
+        - sync_whiteboard_labels
     labels_brackets: both
     status_map:
       ASSIGNED: In Progress
