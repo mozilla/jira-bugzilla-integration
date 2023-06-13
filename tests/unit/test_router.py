@@ -259,10 +259,12 @@ def test_read_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
             "DELETE_ISSUES": {"havePermission": True},
         },
     }
-    mocked_jira.issue_createmeta_issuetypes.return_value = [
-        {"name": "Task"},
-        {"name": "Bug"},
-    ]
+    mocked_jira.get_project.return_value = {
+        "issueTypes": [
+            {"name": "Task"},
+            {"name": "Bug"},
+        ]
+    }
 
     resp = anon_client.get("/__heartbeat__")
 
@@ -324,10 +326,12 @@ def test_jira_heartbeat_unknown_components(anon_client, mocked_jira):
 
 def test_jira_heartbeat_unknown_issue_types(anon_client, mocked_jira):
     mocked_jira.get_server_info.return_value = {}
-    mocked_jira.issue_createmeta_issuetypes.return_value = [
-        {"name": "Task"},
-        # missing Bug
-    ]
+    mocked_jira.get_project.return_value = {
+        "issueTypes": [
+            {"name": "Task"},
+            # missing "Bug"
+        ]
+    }
 
     resp = anon_client.get("/__heartbeat__")
 
@@ -351,10 +355,12 @@ def test_head_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
             "DELETE_ISSUES": {"havePermission": True},
         },
     }
-    mocked_jira.issue_createmeta_issuetypes.return_value = [
-        {"name": "Task"},
-        {"name": "Bug"},
-    ]
+    mocked_jira.get_project.return_value = {
+        "issueTypes": [
+            {"name": "Task"},
+            {"name": "Bug"},
+        ]
+    }
 
     resp = anon_client.head("/__heartbeat__")
 

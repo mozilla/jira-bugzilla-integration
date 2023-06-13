@@ -85,7 +85,7 @@ class JiraClient(Jira):
     set_issue_status = instrumented_method(Jira.set_issue_status)
     issue_add_comment = instrumented_method(Jira.issue_add_comment)
     create_issue = instrumented_method(Jira.create_issue)
-    issue_createmeta_issuetypes = instrumented_method(Jira.issue_createmeta_issuetypes)
+    get_project = instrumented_method(Jira.get_project)
 
 
 @lru_cache(maxsize=1)
@@ -228,8 +228,8 @@ def _all_project_issue_types_exist(actions: Actions):
     }
     success = True
     for project, specified_issue_types in issue_types_by_project.items():
-        all_issue_types = get_client().issue_createmeta_issuetypes(project)
-        all_issue_types_names = set(it["name"] for it in all_issue_types)
+        response = get_client().get_project(project)
+        all_issue_types_names = set(it["name"] for it in response["issueTypes"])
         unknown = set(specified_issue_types) - all_issue_types_names
         if unknown:
             logger.error(
