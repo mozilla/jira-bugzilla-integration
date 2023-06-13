@@ -265,7 +265,7 @@ class BugzillaBug(BaseModel):
 
     def lookup_action(self, actions: Actions) -> Action:
         """
-        Find first matching action from bug's whiteboard list.
+        Find first matching action from bug's whiteboard field.
 
         Tags are strings between brackets and can have prefixes/suffixes
         using dashes (eg. ``[project]``, ``[project-moco]``, ``[backlog-project]``).
