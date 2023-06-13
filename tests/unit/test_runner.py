@@ -29,33 +29,33 @@ def test_bugzilla_object_is_always_fetched(
     )
     mocked_bugzilla.get_bug.return_value = fetched_bug
 
-    # when the runner executes a private bug
     execute_action(
         request=webhook_create_example,
         actions=actions_example,
         settings=settings,
     )
 
-    # then
     mocked_bugzilla.get_bug.assert_called_once_with(webhook_create_example.bug.id)
 
 
 def test_request_is_ignored_because_private(
-    webhook_create_private_example: BugzillaWebhookRequest,
+    webhook_create_example: BugzillaWebhookRequest,
     actions_example: Actions,
     settings: Settings,
     mocked_bugzilla,
 ):
-    bug = bug_factory(id=webhook_create_private_example.bug.id, is_private=True)
+    bug = bug_factory(id=webhook_create_example.bug.id, is_private=True)
+    webhook_create_example.bug = bug
     mocked_bugzilla.get_bug.return_value = bug
+
     with pytest.raises(IgnoreInvalidRequestError) as exc_info:
         execute_action(
-            request=webhook_create_private_example,
+            request=webhook_create_example,
             actions=actions_example,
             settings=settings,
         )
 
-    assert str(exc_info.value) == "private bugs are not valid for action 'devtest'"
+    assert str(exc_info.value) == "private bugs are not supported"
 
 
 def test_request_matched_whiteboard_with_dash(

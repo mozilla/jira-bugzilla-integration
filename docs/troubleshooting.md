@@ -12,7 +12,6 @@ If you have access to the configured Bugzilla account:
 - Open https://bugzilla.mozilla.org/userprefs.cgi?tab=webhooks
 - Check that Webhook is still **enabled**
 - Check that WebHook is setup to be executed for your product
-- (*if applies*) Check that account can read the private bugs
 
 ## Log Explorer Queries Examples
 
