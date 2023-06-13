@@ -12,6 +12,9 @@ System to sync Bugzilla bugs to Jira issues.
 - The events are transformed into Jira issues
 - The system sets the `see_also` field of the Bugzilla bug with the URL to the Jira issue
 
+> **Note:** whiteboard tags are string between brackets, and can have prefixes/suffixes using
+> dashes (eg. ``[project]``, ``[project-fx-h2]``, ``[backlog-project]``).
+
 ## Diagram Overview
 
 ``` mermaid

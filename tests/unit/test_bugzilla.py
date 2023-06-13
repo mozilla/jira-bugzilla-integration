@@ -53,9 +53,14 @@ def test_lookup_action_found(whiteboard, actions_example):
 @pytest.mark.parametrize(
     "whiteboard",
     [
-        "example DevTest",
+        "DevTest",
+        "foo DevTest",
+        "DevTest bar",
+        "foo DevTest bar",
         "[fooDevTest]",
+        "[foo DevTest]",
         "[DevTestbar]",
+        "[DevTest bar]",
         "[fooDevTestbar]",
         "[fooDevTest-bar]",
         "[foo-DevTestbar]",
