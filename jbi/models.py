@@ -3,16 +3,13 @@ Python Module for Pydantic Models and validation
 """
 import datetime
 import functools
-import importlib
 import logging
 import re
 import warnings
-from inspect import signature
-from types import ModuleType
-from typing import Any, Callable, Literal, Mapping, Optional, TypedDict
+from typing import Literal, Mapping, Optional, TypedDict
 from urllib.parse import ParseResult, urlparse
 
-from pydantic import BaseModel, Extra, Field, PrivateAttr, root_validator, validator
+from pydantic import BaseModel, Extra, Field, validator
 from pydantic_yaml import YamlModel
 
 from jbi import Operation
@@ -24,6 +21,8 @@ JIRA_HOSTNAMES = ("jira", "atlassian")
 
 
 class ActionSteps(BaseModel):
+    """Step functions to run for each type of Bugzilla webhook payload"""
+
     new: list[str] = [
         "create_issue",
         "maybe_delete_duplicate",
@@ -58,13 +57,10 @@ class Action(YamlModel):
     Action is the inner model for each action in the configuration file"""
 
     whiteboard_tag: str
-    module: str = "jbi.actions.default"
     bugzilla_user_id: int | list[int] | Literal["tbd"]
     description: str
     enabled: bool = True
     parameters: ActionParams
-    _caller: Optional[Callable] = PrivateAttr(default=None)
-    _required_jira_permissions: set[str] = PrivateAttr(default=None)
 
     @property
     def jira_project_key(self):
@@ -72,43 +68,16 @@ class Action(YamlModel):
         return self.parameters.jira_project_key
 
     @property
-    def caller(self) -> Callable:
-        """Return the initialized callable for this action."""
-        if self._caller is None:
-            action_module: ModuleType = importlib.import_module(self.module)
-            initialized: Callable = action_module.init(self.parameters)
-            self._caller = initialized
-        return self._caller
-
-    @property
     def required_jira_permissions(self) -> set[str]:
-        """Return the required Jira permissions for this action to be executed."""
-        if not self._required_jira_permissions:
-            action_module: ModuleType = importlib.import_module(self.module)
-            perms = getattr(action_module, "JIRA_REQUIRED_PERMISSIONS")
-            self._required_jira_permissions = perms
-        return self._required_jira_permissions
+        """Required permissions the Jira Service account must have to perform
+        step functions"""
 
-    @root_validator(skip_on_failure=True)
-    def validate_action_config(cls, values):
-        """Validate action: exists, has init function, and has expected params"""
-        try:
-            module: str = values["module"]
-            action_parameters: Optional[dict[str, Any]] = values["parameters"]
-            action_module: ModuleType = importlib.import_module(module)
-            if not action_module:
-                raise TypeError(f"Module '{module}' is not found.")
-            if not hasattr(action_module, "init"):
-                raise TypeError(f"Module '{module}' is missing `init` method.")
-
-            signature(action_module.init).bind(action_parameters)
-        except ImportError as exception:
-            raise ValueError(f"unknown Python module `{module}`.") from exception
-        except (TypeError, AttributeError) as exception:
-            raise ValueError(
-                f"action '{module}' is not properly setup. {exception}"
-            ) from exception
-        return values
+        return {
+            "ADD_COMMENTS",
+            "CREATE_ISSUES",
+            "DELETE_ISSUES",
+            "EDIT_ISSUES",
+        }
 
 
 class Actions(YamlModel):

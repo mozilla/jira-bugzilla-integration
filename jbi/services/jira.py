@@ -29,6 +29,12 @@ logger = logging.getLogger(__name__)
 
 
 JIRA_DESCRIPTION_CHAR_LIMIT = 32767
+JIRA_REQUIRED_PERMISSIONS = {
+    "ADD_COMMENTS",
+    "CREATE_ISSUES",
+    "DELETE_ISSUES",
+    "EDIT_ISSUES",
+}
 
 
 def fatal_code(exc):

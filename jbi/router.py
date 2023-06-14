@@ -69,13 +69,12 @@ def version(version_json: _version):
 def bugzilla_webhook(
     request: Request,
     actions: _actions,
-    settings: _settings,
     webhook_request: BugzillaWebhookRequest = Body(..., embed=False),
 ):
     """API endpoint that Bugzilla Webhook Events request"""
     webhook_request.rid = request.state.rid
     try:
-        result = execute_action(webhook_request, actions, settings)
+        result = execute_action(webhook_request, actions)
         return result
     except IgnoreInvalidRequestError as exception:
         return {"error": str(exception)}

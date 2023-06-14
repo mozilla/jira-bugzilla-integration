@@ -5,7 +5,7 @@ Each step takes an `ActionContext` and a list of arbitrary parameters.
 """
 
 import logging
-from typing import Iterable, Optional
+from typing import Optional
 
 from requests import exceptions as requests_exceptions
 
