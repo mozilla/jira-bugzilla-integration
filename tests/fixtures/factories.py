@@ -19,7 +19,6 @@ from jbi.models import (
 def action_params_factory(**overrides):
     params = {
         "jira_project_key": "JBI",
-        "steps": None,
         "jira_components": [],
         "labels_brackets": "no",
         "status_map": {},
@@ -36,9 +35,7 @@ def action_factory(**overrides):
         "bugzilla_user_id": "tbd",
         "description": "test config",
         "module": "tests.fixtures.noop_action",
-        "parameters": {
-            "jira_project_key": "JBI",
-        },
+        "parameters": action_params_factory(),
         **overrides,
     }
     return Action.parse_obj(action)

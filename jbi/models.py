@@ -23,11 +23,29 @@ logger = logging.getLogger(__name__)
 JIRA_HOSTNAMES = ("jira", "atlassian")
 
 
+class ActionSteps(BaseModel):
+    new: list[str] = [
+        "create_issue",
+        "maybe_delete_duplicate",
+        "add_link_to_bugzilla",
+        "add_link_to_jira",
+        "sync_whiteboard_labels",
+    ]
+    existing: list[str] = [
+        "update_issue_summary",
+        "sync_whiteboard_labels",
+        "add_jira_comments_for_changes",
+    ]
+    comment: list[str] = [
+        "create_comment",
+    ]
+
+
 class ActionParams(BaseModel):
     """Params passed to Action step functions"""
 
     jira_project_key: str
-    steps: Optional[dict[str, list[str]]]
+    steps: ActionSteps = ActionSteps()
     jira_components: list[str] = []
     labels_brackets: Optional[str] = Field("no", enum=["yes", "no", "both"])
     status_map: dict[str, str] = {}

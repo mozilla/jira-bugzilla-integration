@@ -15,11 +15,6 @@ def test_default_invalid_init():
         default.init()
 
 
-def test_default_invalid_operation(action_params_factory):
-    with pytest.raises(ValueError):
-        default.init(action_params_factory(steps={"bad-operation": []}))
-
-
 def test_default_invalid_step(action_params_factory):
     with pytest.raises(AttributeError):
         default.init(action_params_factory(steps={"new": ["unknown_step"]}))
@@ -29,6 +24,7 @@ def test_unspecified_groups_come_from_default_steps(action_params_factory):
     action = default.init(action_params_factory(steps={"comment": ["create_comment"]}))
 
     assert len(action.steps) == 3
+    assert action.steps
 
 
 def test_default_returns_callable_without_data(action_params_factory):

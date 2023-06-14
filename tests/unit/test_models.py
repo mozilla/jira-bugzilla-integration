@@ -3,7 +3,7 @@ import pytest
 from fastapi.encoders import jsonable_encoder
 
 from jbi import Operation
-from jbi.models import Actions
+from jbi.models import ActionParams, ActionSteps, Actions
 from tests.fixtures.factories import action_context_factory
 
 
@@ -60,3 +60,14 @@ def test_duplicated_whiteboard_tag_fails(action_factory):
             ]
         )
     assert "actions have duplicated lookup tags: ['x']" in str(exc_info.value)
+
+
+def test_step_overriding():
+    default_steps = ActionSteps()
+    params = ActionParams.parse_obj(
+        {"jira_project_key": "JBI", "steps": {"new": ["create_issue"]}}
+    )
+    assert params.steps.new == ["create_issue"]
+    assert params.steps.new != default_steps.new
+    assert params.steps.existing == default_steps.existing
+    assert params.steps.comment == default_steps.comment

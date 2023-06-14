@@ -7,12 +7,11 @@ is created or updated, its `operation` attribute will be `Operation.CREATE` or `
 and when a comment is posted, it will be set to `Operation.COMMENT`.
 """
 import logging
-from typing import Optional
 
 from jbi import ActionResult, Operation
 from jbi.actions import steps as steps_module
 from jbi.environment import get_settings
-from jbi.models import ActionContext, ActionParams
+from jbi.models import ActionContext, ActionParams, ActionSteps
 
 settings = get_settings()
 
@@ -25,26 +24,8 @@ JIRA_REQUIRED_PERMISSIONS = {
     "EDIT_ISSUES",
 }
 
-DEFAULT_STEPS = {
-    "new": [
-        "create_issue",
-        "maybe_delete_duplicate",
-        "add_link_to_bugzilla",
-        "add_link_to_jira",
-        "sync_whiteboard_labels",
-    ],
-    "existing": [
-        "update_issue_summary",
-        "sync_whiteboard_labels",
-        "add_jira_comments_for_changes",
-    ],
-    "comment": [
-        "create_comment",
-    ],
-}
 
-
-def groups2operation(steps):
+def groups2operation(steps: ActionSteps):
     """In the configuration files, the steps are grouped by `new`, `existing`,
     and `comment`. Internally, this correspond to enums of `Operation`.
     This helper remaps the list of steps.
@@ -56,7 +37,8 @@ def groups2operation(steps):
     }
     try:
         by_operation = {
-            group_to_operation[entry]: steps_list for entry, steps_list in steps.items()
+            group_to_operation[entry]: steps_list
+            for entry, steps_list in steps.dict().items()
         }
     except KeyError as err:
         raise ValueError(f"Unsupported entry in `steps`: {err}") from err
@@ -75,9 +57,7 @@ class Executor:
         self.parameters = parameters
         self.steps = self._initialize_steps(parameters.steps)
 
-    def _initialize_steps(self, steps: Optional[dict[str, list[str]]] = None):
-        steps = {**DEFAULT_STEPS, **(steps or {})}
-
+    def _initialize_steps(self, steps: ActionSteps):
         steps_by_operation = groups2operation(steps)
 
         # Turn the steps strings into references to functions of the `jbi.actions.steps` module.
