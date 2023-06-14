@@ -79,7 +79,7 @@ def execute_action(
             event=event,
             operation=Operation.IGNORE,
             jira=JiraContext(project=action.jira_project_key, issue=linked_issue_key),
-            extra={k: str(v) for k, v in action.parameters.items()},
+            extra={k: str(v) for k, v in action.parameters.dict().items()},
         )
 
         if action_context.jira.issue is None:

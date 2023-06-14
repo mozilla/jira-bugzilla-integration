@@ -36,17 +36,17 @@ def test_no_actions_fails():
     assert "ensure this value has at least 1 items" in str(exc_info.value)
 
 
-def test_unknown_module_fails():
+def test_unknown_module_fails(action_factory):
     with pytest.raises(ValueError) as exc_info:
-        Actions.parse_obj([{"whiteboard_tag": "x", "module": "path.to.unknown"}])
+        Actions.parse_obj([action_factory(module="path.to.unknown")])
     assert "unknown Python module `path.to.unknown`" in str(exc_info.value)
 
 
-def test_bad_module_fails():
+def test_bad_module_fails(action_factory):
     with pytest.raises(ValueError) as exc_info:
         # use a module that exists in the source, but isn't properly set up as
         # a valid action module
-        Actions.parse_obj([{"whiteboard_tag": "x", "module": "jbi.runner"}])
+        Actions.parse_obj([action_factory(module="jbi.runner")])
     assert "action 'jbi.runner' is not properly setup" in str(exc_info.value)
 
 

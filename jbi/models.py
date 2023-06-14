@@ -23,6 +23,18 @@ logger = logging.getLogger(__name__)
 JIRA_HOSTNAMES = ("jira", "atlassian")
 
 
+class ActionParams(BaseModel):
+    """Params passed to Action step functions"""
+
+    jira_project_key: str
+    steps: Optional[dict[str, list[str]]]
+    jira_components: list[str] = []
+    labels_brackets: Optional[str] = Field("no", enum=["yes", "no", "both"])
+    status_map: dict[str, str] = {}
+    resolution_map: dict[str, str] = {}
+    issue_type_map: dict[str, str] = {"task": "Task", "defect": "Bug"}
+
+
 class Action(YamlModel):
     """
     Action is the inner model for each action in the configuration file"""
@@ -32,21 +44,21 @@ class Action(YamlModel):
     bugzilla_user_id: int | list[int] | Literal["tbd"]
     description: str
     enabled: bool = True
-    parameters: dict = {}
+    parameters: ActionParams
     _caller: Optional[Callable] = PrivateAttr(default=None)
     _required_jira_permissions: set[str] = PrivateAttr(default=None)
 
     @property
     def jira_project_key(self):
         """Return the configured project key."""
-        return self.parameters["jira_project_key"]
+        return self.parameters.jira_project_key
 
     @property
     def caller(self) -> Callable:
         """Return the initialized callable for this action."""
         if self._caller is None:
             action_module: ModuleType = importlib.import_module(self.module)
-            initialized: Callable = action_module.init(**self.parameters)  # type: ignore
+            initialized: Callable = action_module.init(**self.parameters.dict())
             self._caller = initialized
         return self._caller
 
@@ -59,11 +71,11 @@ class Action(YamlModel):
             self._required_jira_permissions = perms
         return self._required_jira_permissions
 
-    @root_validator
-    def validate_action_config(cls, values):  # pylint: disable=no-self-argument
+    @root_validator(skip_on_failure=True)
+    def validate_action_config(self, values):
         """Validate action: exists, has init function, and has expected params"""
         try:
-            module: str = values["module"]  # type: ignore
+            module: str = values["module"]
             action_parameters: Optional[dict[str, Any]] = values["parameters"]
             action_module: ModuleType = importlib.import_module(module)
             if not action_module:
@@ -71,7 +83,7 @@ class Action(YamlModel):
             if not hasattr(action_module, "init"):
                 raise TypeError(f"Module '{module}' is missing `init` method.")
 
-            signature(action_module.init).bind(**action_parameters)  # type: ignore
+            signature(action_module.init).bind(**action_parameters.dict())
         except ImportError as exception:
             raise ValueError(f"unknown Python module `{module}`.") from exception
         except (TypeError, AttributeError) as exception:
@@ -109,11 +121,7 @@ class Actions(YamlModel):
     @functools.cached_property
     def configured_jira_projects_keys(self) -> set[str]:
         """Return the list of Jira project keys from all configured actions"""
-        return {
-            action.jira_project_key
-            for action in self.__root__
-            if action.parameters.get("jira_project_key")
-        }
+        return {action.jira_project_key for action in self.__root__}
 
     @validator("__root__")
     def validate_actions(  # pylint: disable=no-self-argument
@@ -172,6 +180,7 @@ class BugzillaWebhookEvent(BaseModel):
     def changed_fields(self) -> list[str]:
         """Returns the names of changed fields in a bug"""
         return [c.field for c in self.changes] if self.changes else []
+
 
 class BugzillaWebhookComment(BaseModel):
     """Bugzilla Comment Object"""

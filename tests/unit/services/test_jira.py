@@ -108,7 +108,7 @@ def test_jira_does_not_retry_4XX(mocked_responses, context_create_example):
         (["Foo"], [{"name": "Foo"}], True),
         (["Foo"], [{"name": "Foo"}, {"name": "Bar"}], True),
         (["Foo", "Bar"], [{"name": "Foo"}, {"name": "Bar"}], True),
-        (None, [], True),
+        ([], [], True),
         (["Foo"], [{"name": "Bar"}], False),
         (["Foo", "Bar"], [{"name": "Foo"}], False),
         (["Foo"], [], False),
