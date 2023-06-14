@@ -173,22 +173,6 @@ class BugzillaWebhookEvent(BaseModel):
         """Returns the names of changed fields in a bug"""
         return [c.field for c in self.changes] if self.changes else []
 
-
-class BugzillaWebhookAttachment(BaseModel):
-    """Bugzilla Attachment Object"""
-
-    content_type: Optional[str]
-    creation_time: Optional[datetime.datetime]
-    description: Optional[str]
-    file_name: Optional[str]
-    flags: Optional[list]
-    id: int
-    is_obsolete: Optional[bool]
-    is_patch: Optional[bool]
-    is_private: Optional[bool]
-    last_change_time: Optional[datetime.datetime]
-
-
 class BugzillaWebhookComment(BaseModel):
     """Bugzilla Comment Object"""
 
