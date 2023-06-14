@@ -7,12 +7,12 @@ is created or updated, its `operation` attribute will be `Operation.CREATE` or `
 and when a comment is posted, it will be set to `Operation.COMMENT`.
 """
 import logging
-from typing import Callable, Optional
+from typing import Optional
 
 from jbi import ActionResult, Operation
 from jbi.actions import steps as steps_module
 from jbi.environment import get_settings
-from jbi.models import ActionContext
+from jbi.models import ActionContext, ActionParams
 
 settings = get_settings()
 
@@ -63,33 +63,29 @@ def groups2operation(steps):
     return by_operation
 
 
-def init(
-    jira_project_key,
-    steps: Optional[dict[str, list[str]]] = None,
-    **kwargs,
-):
-    """Function that takes required and optional params and returns a callable object"""
-    # Merge specified steps with default ones.
-    steps = {**DEFAULT_STEPS, **(steps or {})}
-
-    steps_by_operation = groups2operation(steps)
-
-    # Turn the steps strings into references to functions of the `jbi.actions.steps` module.
-    steps_callables = {
-        group: [getattr(steps_module, step_str) for step_str in steps_list]
-        for group, steps_list in steps_by_operation.items()
-    }
-
-    return Executor(jira_project_key=jira_project_key, steps=steps_callables, **kwargs)
+def init(parameters: ActionParams):
+    return Executor(parameters)
 
 
 class Executor:
     """Callable class that encapsulates the default action."""
 
-    def __init__(self, steps: dict[Operation, list[Callable]], **parameters):
+    def __init__(self, parameters: ActionParams):
         """Initialize Executor Object"""
-        self.steps = steps
         self.parameters = parameters
+        self.steps = self._initialize_steps(parameters.steps)
+
+    def _initialize_steps(self, steps: Optional[dict[str, list[str]]] = None):
+        steps = {**DEFAULT_STEPS, **(steps or {})}
+
+        steps_by_operation = groups2operation(steps)
+
+        # Turn the steps strings into references to functions of the `jbi.actions.steps` module.
+        steps_callables = {
+            group: [getattr(steps_module, step_str) for step_str in steps_list]
+            for group, steps_list in steps_by_operation.items()
+        }
+        return steps_callables
 
     def __call__(self, context: ActionContext) -> ActionResult:
         """Called from `runner` when the action is used."""
@@ -97,7 +93,7 @@ class Executor:
         responses = tuple()  # type: ignore
 
         for step in self.steps[context.operation]:
-            context, step_responses = step(context=context, **self.parameters)
+            context, step_responses = step(context=context, parameters=self.parameters)
             for response in step_responses:
                 logger.debug(
                     "Received %s",

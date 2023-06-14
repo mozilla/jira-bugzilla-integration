@@ -7,31 +7,32 @@ import responses
 from jbi.actions import default
 from jbi.environment import get_settings
 from jbi.models import ActionContext
+from tests.conftest import action_params_factory
 
 
 def test_default_invalid_init():
     with pytest.raises(TypeError):
-        default.init()  # pylint: disable=no-value-for-parameter
+        default.init()
 
 
-def test_default_invalid_operation():
+def test_default_invalid_operation(action_params_factory):
     with pytest.raises(ValueError):
-        default.init(jira_project_key="", steps={"bad-operation": []})
+        default.init(action_params_factory(steps={"bad-operation": []}))
 
 
-def test_default_invalid_step():
+def test_default_invalid_step(action_params_factory):
     with pytest.raises(AttributeError):
-        default.init(jira_project_key="", steps={"new": ["unknown_step"]})
+        default.init(action_params_factory(steps={"new": ["unknown_step"]}))
 
 
-def test_unspecified_groups_come_from_default_steps():
-    action = default.init(jira_project_key="", steps={"comment": ["create_comment"]})
+def test_unspecified_groups_come_from_default_steps(action_params_factory):
+    action = default.init(action_params_factory(steps={"comment": ["create_comment"]}))
 
     assert len(action.steps) == 3
 
 
-def test_default_returns_callable_without_data():
-    callable_object = default.init(jira_project_key="")
+def test_default_returns_callable_without_data(action_params_factory):
+    callable_object = default.init(action_params_factory())
     assert callable_object
     with pytest.raises(TypeError) as exc_info:
         assert callable_object()
@@ -42,7 +43,10 @@ def test_default_returns_callable_without_data():
 @pytest.mark.no_mocked_bugzilla
 @pytest.mark.no_mocked_jira
 def test_default_logs_all_received_responses(
-    mocked_responses, caplog, context_comment_example: ActionContext
+    mocked_responses,
+    caplog,
+    context_comment_example: ActionContext,
+    action_params_factory,
 ):
     # In this test, we don't mock the Jira and Bugzilla clients
     # because we want to make sure that actual responses objects are logged
@@ -59,8 +63,9 @@ def test_default_logs_all_received_responses(
     )
 
     action = default.init(
-        jira_project_key="",
-        steps={"new": [], "existing": [], "comment": ["create_comment"]},
+        action_params_factory(
+            steps={"new": [], "existing": [], "comment": ["create_comment"]}
+        )
     )
 
     with caplog.at_level(logging.DEBUG):
@@ -81,14 +86,19 @@ def test_default_logs_all_received_responses(
 
 
 def test_default_returns_callable_with_data(
-    context_create_example: ActionContext, mocked_jira, mocked_bugzilla
+    context_create_example: ActionContext,
+    mocked_jira,
+    mocked_bugzilla,
+    action_params_factory,
 ):
     sentinel = mock.sentinel
     mocked_jira.create_issue.return_value = {"key": "k"}
     mocked_jira.create_or_update_issue_remote_links.return_value = sentinel
     mocked_bugzilla.get_bug.return_value = context_create_example.bug
     mocked_bugzilla.get_comments.return_value = []
-    callable_object = default.init(jira_project_key=context_create_example.jira.project)
+    callable_object = default.init(
+        action_params_factory(jira_project_key=context_create_example.jira.project)
+    )
 
     handled, details = callable_object(context=context_create_example)
 

@@ -4,6 +4,7 @@ from jbi import Operation
 from jbi.models import (
     Action,
     ActionContext,
+    ActionParams,
     BugzillaBug,
     BugzillaComment,
     BugzillaWebhook,
@@ -13,6 +14,20 @@ from jbi.models import (
     BugzillaWebhookUser,
     JiraContext,
 )
+
+
+def action_params_factory(**overrides):
+    params = {
+        "jira_project_key": "JBI",
+        "steps": None,
+        "jira_components": [],
+        "labels_brackets": "no",
+        "status_map": {},
+        "resolution_map": {},
+        "issue_type_map": {"task": "Task", "defect": "Bug"},
+        **overrides,
+    }
+    return ActionParams.parse_obj(params)
 
 
 def action_factory(**overrides):

@@ -7,11 +7,11 @@ A no-op action for testing.
 from jbi import Operation
 
 
-def init(**parameters):
+def init(parameters):
     return lambda context: (
         True,
         {
-            "parameters": parameters,
+            "parameters": parameters.dict(),
             "bug": context.bug.json(),
             "event": context.event.json(),
         },

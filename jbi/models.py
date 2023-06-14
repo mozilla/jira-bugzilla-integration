@@ -58,7 +58,7 @@ class Action(YamlModel):
         """Return the initialized callable for this action."""
         if self._caller is None:
             action_module: ModuleType = importlib.import_module(self.module)
-            initialized: Callable = action_module.init(**self.parameters.dict())
+            initialized: Callable = action_module.init(self.parameters)
             self._caller = initialized
         return self._caller
 
@@ -72,7 +72,7 @@ class Action(YamlModel):
         return self._required_jira_permissions
 
     @root_validator(skip_on_failure=True)
-    def validate_action_config(self, values):
+    def validate_action_config(cls, values):
         """Validate action: exists, has init function, and has expected params"""
         try:
             module: str = values["module"]
@@ -83,7 +83,7 @@ class Action(YamlModel):
             if not hasattr(action_module, "init"):
                 raise TypeError(f"Module '{module}' is missing `init` method.")
 
-            signature(action_module.init).bind(**action_parameters.dict())
+            signature(action_module.init).bind(action_parameters)
         except ImportError as exception:
             raise ValueError(f"unknown Python module `{module}`.") from exception
         except (TypeError, AttributeError) as exception:
