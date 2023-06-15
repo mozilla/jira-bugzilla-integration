@@ -50,7 +50,7 @@ class ActionParams(BaseModel):
     jira_project_key: str
     steps: ActionSteps = ActionSteps()
     jira_components: list[str] = []
-    labels_brackets: Optional[str] = Field("no", enum=["yes", "no", "both"])
+    labels_brackets: str = Field("no", enum=["yes", "no", "both"])
     status_map: dict[str, str] = {}
     resolution_map: dict[str, str] = {}
     issue_type_map: dict[str, str] = {"task": "Task", "defect": "Bug"}
