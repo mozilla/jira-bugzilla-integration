@@ -6,7 +6,6 @@ The system reads the actions configuration from a YAML file, one per environment
 Below is a full example of an action configuration:
 ```yaml
 - whiteboard_tag: example
-  allow_private: false
   bugzilla_user_id: 514230
   description: example configuration
   module: jbi.actions.default
@@ -18,11 +17,6 @@ A bit more about the different fields...
 - `whiteboard_tag`
     - string
     - The tag to be matched in the Bugzilla `whiteboard` field
-- `allow_private` (optional)
-    - bool [true, false]
-    - default: false
-    - If `false`, bugs will not be synchronized if they are not public. Note that in order to synchronize private bugs,
-     the bugzilla user that JBI runs as must be in the security groups that are making the bug private.
 - `bugzilla_user_id`
     - a bugzilla user id, a list of user ids, or a literal "tbd" to signify that no bugzilla user id is available
     - If an issue arises with the workflow, communication will be established with these users
