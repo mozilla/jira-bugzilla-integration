@@ -10,8 +10,9 @@ from jbi.environment import get_settings
 from jbi.models import Actions
 from jbi.services import jira
 
+pytestmark = pytest.mark.no_mocked_jira
 
-@pytest.mark.no_mocked_jira
+
 def test_jira_create_issue_is_instrumented(
     mocked_responses, context_create_example, mocked_statsd
 ):
@@ -34,7 +35,6 @@ def test_jira_create_issue_is_instrumented(
     mocked_statsd.timer.assert_called_with("jbi.jira.methods.create_issue.timer")
 
 
-@pytest.mark.no_mocked_jira
 def test_jira_calls_log_http_errors(mocked_responses, context_create_example, caplog):
     url = f"{get_settings().jira_base_url}rest/api/2/project/{context_create_example.jira.project}/components"
     mocked_responses.add(
@@ -64,7 +64,6 @@ def test_jira_calls_log_http_errors(mocked_responses, context_create_example, ca
     )
 
 
-@pytest.mark.no_mocked_jira
 def test_jira_retries_failing_connections_in_health_check(
     mocked_responses, actions_example
 ):
@@ -84,7 +83,6 @@ def test_jira_retries_failing_connections_in_health_check(
     assert len(mocked_responses.calls) == 4
 
 
-@pytest.mark.no_mocked_jira
 def test_jira_does_not_retry_4XX(mocked_responses, context_create_example):
     url = f"{get_settings().jira_base_url}rest/api/2/issue"
     mocked_responses.add(
@@ -115,23 +113,40 @@ def test_jira_does_not_retry_4XX(mocked_responses, context_create_example):
     ],
 )
 def test_all_projects_components_exist(
-    mocked_jira, action_factory, jira_components, project_components, expected_result
+    action_factory,
+    jira_components,
+    project_components,
+    expected_result,
+    mocked_responses,
 ):
+    url = f"{get_settings().jira_base_url}rest/api/2/project/ABC/components"
+    mocked_responses.add(
+        responses.GET,
+        url,
+        json=project_components,
+    )
     action = action_factory(
         parameters={"jira_project_key": "ABC", "jira_components": jira_components}
     )
-    mocked_jira.get_project_components.return_value = project_components
     actions = Actions(__root__=[action])
     result = jira._all_projects_components_exist(actions)
     assert result is expected_result
 
 
-def test_all_projects_components_exist_no_components_param(action_factory):
+def test_all_projects_components_exist_no_components_param(
+    action_factory, mocked_responses
+):
     action = action_factory(
         parameters={
             "jira_project_key": "ABC",
         }
     )
     actions = Actions(__root__=[action])
+    url = f"{get_settings().jira_base_url}rest/api/2/project/ABC/components"
+    mocked_responses.add(
+        responses.GET,
+        url,
+        json=[],
+    )
     result = jira._all_projects_components_exist(actions)
     assert result is True
