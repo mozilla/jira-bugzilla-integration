@@ -8,7 +8,6 @@ Below is a full example of an action configuration:
 - whiteboard_tag: example
   bugzilla_user_id: 514230
   description: example configuration
-  module: jbi.actions.default
   parameters:
     jira_project_key: EXMPL
 ```
@@ -28,10 +27,6 @@ A bit more about the different fields...
     - bool [true, false]
     - default: true
     - If false, matching events will not be synchronized
-- `module` (optional)
-    - string
-    - default: [jbi.actions.default](jbi/actions/default.py)
-    - The specified Python module must be available in the `PYTHONPATH`
 - `parameters` (optional)
     - dict
     - default: {}
@@ -94,7 +89,6 @@ Full configuration, that will set assignee, change the Jira issue status and res
 - whiteboard_tag: fidefe
   bugzilla_user_id: 514230
   description: full configuration
-  module: jbi.actions.default
   parameters:
     jira_project_key: FIDEFE
     steps:

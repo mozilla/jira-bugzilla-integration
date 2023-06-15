@@ -34,7 +34,6 @@ def action_factory(**overrides):
         "whiteboard_tag": "devtest",
         "bugzilla_user_id": "tbd",
         "description": "test config",
-        "module": "tests.fixtures.noop_action",
         "parameters": action_params_factory(),
         **overrides,
     }
