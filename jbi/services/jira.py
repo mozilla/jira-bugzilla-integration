@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 JIRA_DESCRIPTION_CHAR_LIMIT = 32767
+
 JIRA_REQUIRED_PERMISSIONS = {
     "ADD_COMMENTS",
     "CREATE_ISSUES",
@@ -146,12 +147,8 @@ def _all_projects_permissions(actions: Actions):
     return _validate_permissions(all_projects_perms)
 
 
-def _fetch_project_permissions(actions):
+def _fetch_project_permissions(actions: Actions):
     """Fetches permissions for the configured projects"""
-    required_perms_by_project = {
-        action.parameters.jira_project_key: action.required_jira_permissions
-        for action in actions
-    }
     client = get_client()
     all_projects_perms = {}
     # Query permissions for all configured projects in parallel threads.
@@ -160,33 +157,30 @@ def _fetch_project_permissions(actions):
             executor.submit(
                 client.get_permissions,
                 project_key=project_key,
-                permissions=",".join(required_permissions),
+                permissions=",".join(JIRA_REQUIRED_PERMISSIONS),
             ): project_key
-            for project_key, required_permissions in required_perms_by_project.items()
+            for project_key in actions.configured_jira_projects_keys
         }
         # Obtain futures' results unordered.
         for future in concurrent.futures.as_completed(futures_to_projects):
             project_key = futures_to_projects[future]
             response = future.result()
-            all_projects_perms[project_key] = (
-                required_perms_by_project[project_key],
-                response["permissions"],
-            )
+            all_projects_perms[project_key] = response["permissions"]
     return all_projects_perms
 
 
 def _validate_permissions(all_projects_perms):
     """Validates permissions for the configured projects"""
     misconfigured = []
-    for project_key, (required_perms, obtained_perms) in all_projects_perms.items():
-        missing = required_perms - set(obtained_perms.keys())
+    for project_key, obtained_perms in all_projects_perms.items():
+        missing_required_perms = JIRA_REQUIRED_PERMISSIONS - set(obtained_perms.keys())
         not_given = set(
             entry["key"]
             for entry in obtained_perms.values()
             if not entry["havePermission"]
         )
-        if missing | not_given:
-            misconfigured.append((project_key, missing | not_given))
+        if missing_permissions := missing_required_perms.union(not_given):
+            misconfigured.append((project_key, missing_permissions))
     for project_key, missing in misconfigured:
         logger.error(
             "Configured credentials don't have permissions %s on Jira project %s",

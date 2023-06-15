@@ -71,18 +71,6 @@ class Action(YamlModel):
         """Return the configured project key."""
         return self.parameters.jira_project_key
 
-    @property
-    def required_jira_permissions(self) -> set[str]:
-        """Required permissions the Jira Service account must have to perform
-        step functions"""
-
-        return {
-            "ADD_COMMENTS",
-            "CREATE_ISSUES",
-            "DELETE_ISSUES",
-            "EDIT_ISSUES",
-        }
-
 
 class Actions(YamlModel):
     """
