@@ -1,9 +1,9 @@
 # Action
-The system reads the actions configuration from a YAML file, one per environment. Each entry controls the synchronization between Bugzilla tickets and the Jira issues.
+The system reads the action configurations from a YAML file, one per environment. Each entry controls the synchronization between Bugzilla tickets and Jira issues.
 
 ## Configuration
 
-Below is a full example of an action configuration:
+Below is an example of an action configuration:
 ```yaml
 - whiteboard_tag: example
   bugzilla_user_id: 514230
@@ -28,9 +28,8 @@ A bit more about the different fields...
     - default: true
     - If false, matching events will not be synchronized
 - `parameters` (optional)
-    - dict
-    - default: {}
-    - The parameters will be validated to ensure the selected action accepts the specified values
+    - `ActionParams`
+    - The parameters passed to step functions when the action is run (see below)
 
 
 [View 'nonprod'  configurations here.](../config/config.nonprod.yaml)
@@ -38,18 +37,9 @@ A bit more about the different fields...
 [View 'prod' configurations here.](../config/config.prod.yaml)
 
 
-## Available Actions
+### Parameters
 
-### Default
-The `jbi.actions.default` action will take the list of steps to be executed when
-the Webhook is received from configuration.
-When none is specified, it will create or update the Jira issue, publish comments when
-assignee, status, or resolution are changed, or when a comment is posted on the Bugzilla ticket.
-
-It will also set the Jira issue URL in the Bugzilla bug `see_also` field, and add a link
-to the Bugzilla ticket on the Jira issue.
-
-**Parameters**
+Parameters are used by `step` functions to control what Bugzilla data is synced with Jira issues. Possible parameters are:
 
 - `jira_project_key` (**mandatory**)
     - string
@@ -83,7 +73,7 @@ Minimal configuration:
       jira_project_key: EXMPL
 ```
 
-Full configuration, that will set assignee, change the Jira issue status and resolution.
+A configuration that will set an assignee and change the Jira issue status and resolution.
 
 ```yaml
 - whiteboard_tag: fidefe
@@ -153,6 +143,3 @@ linked Jira issue status to "Closed". If the bug changes to a status not listed 
 - `sync_whiteboard_labels`
 - `maybe_update_components`: looks at the component that's set on the bug (if any) and any components added to the project configuration with the `jira_components` parameter (see above). If those components are available on the Jira side as well, they're added to the Jira issue
 
-### Custom Actions
-
-If you're looking for a unique capability for your team's data flow, you can add your own Python methods and functionality[...read more here.](../jbi/actions/README.md)

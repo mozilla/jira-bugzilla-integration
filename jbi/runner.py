@@ -55,7 +55,7 @@ def groups2operation(steps: ActionSteps):
 
 
 class Executor:
-    """Callable class that encapsulates the default action."""
+    """Callable class that runs step functions for an action."""
 
     def __init__(self, parameters: ActionParams):
         self.parameters = parameters

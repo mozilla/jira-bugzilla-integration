@@ -1,6 +1,3 @@
-"""
-Module for testing jbi/actions/default.py functionality
-"""
 import logging
 from unittest import mock
 
