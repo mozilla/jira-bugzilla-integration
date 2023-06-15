@@ -34,7 +34,7 @@ def test_duplicated_whiteboard_tag_fails(action_factory):
     assert "actions have duplicated lookup tags: ['x']" in str(exc_info.value)
 
 
-def test_step_overriding():
+def test_override_step_configuration_for_single_action_type():
     default_steps = ActionSteps()
     params = ActionParams.parse_obj(
         {"jira_project_key": "JBI", "steps": {"new": ["create_issue"]}}
