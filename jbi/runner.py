@@ -44,6 +44,9 @@ def execute_action(
         operation=Operation.HANDLE,
     )
     try:
+        if bug.is_private:
+            raise IgnoreInvalidRequestError("private bugs are not supported")
+
         logger.debug(
             "Handling incoming request",
             extra=runner_context.dict(),
@@ -67,11 +70,6 @@ def execute_action(
                 f"no bug whiteboard matching action tags: {err}"
             ) from err
         runner_context = runner_context.update(action=action)
-
-        if bug.is_private and not action.allow_private:
-            raise IgnoreInvalidRequestError(
-                f"private bugs are not valid for action {action.whiteboard_tag!r}"
-            )
 
         linked_issue_key: Optional[str] = bug.extract_from_see_also()
 

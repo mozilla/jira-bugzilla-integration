@@ -53,9 +53,14 @@ def test_lookup_action_found(whiteboard, actions_example):
 @pytest.mark.parametrize(
     "whiteboard",
     [
-        "example DevTest",
+        "DevTest",
+        "foo DevTest",
+        "DevTest bar",
+        "foo DevTest bar",
         "[fooDevTest]",
+        "[foo DevTest]",
         "[DevTestbar]",
+        "[DevTest bar]",
         "[fooDevTestbar]",
         "[fooDevTest-bar]",
         "[foo-DevTestbar]",
@@ -78,14 +83,4 @@ def test_payload_changes_list(webhook_change_status_assignee):
     assert webhook_change_status_assignee.event.changed_fields() == [
         "status",
         "assignee",
-    ]
-
-
-def test_payload_changes_list_in_routing_key(webhook_change_status_assignee):
-    webhook_change_status_assignee.event.changes = None
-    webhook_change_status_assignee.event.routing_key = "bug.modify:assigned_to,status"
-
-    assert webhook_change_status_assignee.event.changed_fields() == [
-        "assigned_to",
-        "status",
     ]

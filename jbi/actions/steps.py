@@ -305,7 +305,7 @@ def _build_labels_update(labels_brackets, added, removed=None):
 
 def sync_whiteboard_labels(context: ActionContext, **parameters):
     """
-    Set whiteboard tags as labels on the Jira issue
+    Set whiteboard tags as labels on the Jira issue.
     """
     labels_brackets = parameters.get("labels_brackets", "no")
     if labels_brackets not in ("yes", "no", "both"):
