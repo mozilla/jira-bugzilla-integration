@@ -7,8 +7,9 @@ from unittest import mock
 import pytest
 import requests
 
-from jbi.actions import default
+from jbi.actions import default, steps
 from jbi.environment import get_settings
+from jbi.errors import IncompleteStepError
 from jbi.models import ActionContext
 from jbi.services.jira import JiraCreateError
 from tests.fixtures.factories import comment_factory, webhook_event_change_factory
@@ -305,6 +306,25 @@ def test_set_assignee(context_update_example: ActionContext, mocked_jira):
     mocked_jira.set_issue_status.assert_not_called()
 
 
+def test_set_assignee_failing(
+    context_create_example: ActionContext, mocked_jira, caplog
+):
+    mocked_jira.update_issue_field.side_effect = requests.exceptions.HTTPError(
+        "unknown user", response=mock.MagicMock(status_code=400)
+    )
+    context_create_example.jira.issue = "key"
+    context_create_example.bug.assigned_to = "postmaster@localhost"
+
+    with pytest.raises(IncompleteStepError):
+        with caplog.at_level(logging.DEBUG):
+            steps.maybe_assign_jira_user(context=context_create_example)
+
+    captured_log_msgs = [
+        r.msg % r.args for r in caplog.records if r.name == "jbi.actions.steps"
+    ]
+    assert captured_log_msgs == ["User postmaster@localhost not found"]
+
+
 def test_create_with_unknown_status(
     context_create_example: ActionContext, mocked_jira, mocked_bugzilla
 ):
@@ -374,21 +394,30 @@ def test_create_with_known_status(
     mocked_jira.set_issue_status.assert_called_once_with("JBI-534", "In Progress")
 
 
-def test_change_to_unknown_status(context_update_example: ActionContext, mocked_jira):
+def test_change_to_unknown_status(
+    context_update_example: ActionContext, mocked_jira, caplog
+):
     context_update_example.bug.status = "NEW"
     context_update_example.bug.resolution = ""
     context_update_example.event.action = "modify"
     context_update_example.event.routing_key = "bug.modify:status"
 
-    callable_object = default.init(
-        jira_project_key=context_update_example.jira.project,
-        steps=ALL_STEPS,
-        status_map={
-            "ASSIGNED": "In Progress",
-            "FIXED": "Closed",
-        },
-    )
-    callable_object(context=context_update_example)
+    with pytest.raises(IncompleteStepError):
+        with caplog.at_level(logging.DEBUG):
+            steps.maybe_update_issue_status(
+                context_update_example,
+                status_map={
+                    "ASSIGNED": "In Progress",
+                    "FIXED": "Closed",
+                },
+            )
+
+    mocked_jira.update_issue_field.assert_not_called()
+
+    captured_log_msgs = [
+        r.msg % r.args for r in caplog.records if r.name == "jbi.actions.steps"
+    ]
+    assert captured_log_msgs == ["Bug status 'NEW' was not in the status map."]
 
     mocked_jira.create_issue.assert_not_called()
     mocked_jira.user_find_by_user_string.assert_not_called()
@@ -464,20 +493,27 @@ def test_change_to_known_resolution_with_resolution_map(
 
 
 def test_change_to_unknown_resolution_with_resolution_map(
-    context_update_resolution_example: ActionContext, mocked_jira
+    context_update_resolution_example: ActionContext, mocked_jira, caplog
 ):
     context_update_resolution_example.bug.resolution = "WONTFIX"
 
-    callable_object = default.init(
-        jira_project_key=context_update_resolution_example.jira.project,
-        steps=ALL_STEPS,
-        resolution_map={
-            "DUPLICATE": "Duplicate",
-        },
-    )
-    callable_object(context=context_update_resolution_example)
+    with pytest.raises(IncompleteStepError):
+        with caplog.at_level(logging.DEBUG):
+            steps.maybe_update_issue_resolution(
+                context_update_resolution_example,
+                resolution_map={
+                    "DUPLICATE": "Duplicate",
+                },
+            )
 
     mocked_jira.update_issue_field.assert_not_called()
+
+    captured_log_msgs = [
+        r.msg % r.args for r in caplog.records if r.name == "jbi.actions.steps"
+    ]
+    assert captured_log_msgs == [
+        "Bug resolution 'WONTFIX' was not in the resolution map."
+    ]
 
 
 @pytest.mark.parametrize(
@@ -570,6 +606,15 @@ def test_maybe_update_components(
             fields={"components": expected_jira_components},
         )
     assert captured_log_msgs == expected_logs
+
+
+def test_maybe_update_components_raises_incompletesteperror_on_mismatch(
+    context_update_example: ActionContext, mocked_jira
+):
+    mocked_jira.get_project_components.return_value = [{"name": "Backend"}]
+    context_update_example.bug.component = "Frontend"
+    with pytest.raises(IncompleteStepError):
+        steps.maybe_update_components(context_update_example)
 
 
 def test_sync_whiteboard_labels(context_create_example: ActionContext, mocked_jira):
@@ -667,13 +712,9 @@ def test_sync_whiteboard_labels_failing(
         "some message", response=mock.MagicMock(status_code=400)
     )
 
-    callable_object = default.init(
-        jira_project_key=context_update_example.jira.project,
-        steps={"existing": ["sync_whiteboard_labels"]},
-    )
-
-    with caplog.at_level(logging.DEBUG):
-        callable_object(context=context_update_example)
+    with pytest.raises(IncompleteStepError):
+        with caplog.at_level(logging.DEBUG):
+            steps.sync_whiteboard_labels(context=context_update_example)
 
     captured_log_msgs = [
         r.msg % r.args for r in caplog.records if r.name == "jbi.actions.steps"

@@ -142,6 +142,7 @@ def maybe_assign_jira_user(context: ActionContext, **parameters):
             return context
         except ValueError as exc:
             logger.debug(str(exc), extra=context.dict())
+            raise IncompleteStepError(context) from exc
 
     if context.operation == Operation.UPDATE:
         if "assigned_to" not in event.changed_fields():
@@ -174,15 +175,17 @@ def maybe_update_issue_resolution(
     resolution_map: dict[str, str] = parameters.get("resolution_map", {})
     if not isinstance(resolution_map, dict):
         raise TypeError("The 'resolution_map' parameter must be a dictionary.")
-    jira_resolution = resolution_map.get(context.bug.resolution or "")
+    bz_resolution = context.bug.resolution or ""
+    jira_resolution = resolution_map.get(bz_resolution)
     if jira_resolution is None:
         logger.debug(
-            "Bug resolution was not in the resolution map.",
+            "Bug resolution %r was not in the resolution map.",
+            bz_resolution,
             extra=context.update(
                 operation=Operation.IGNORE,
             ).dict(),
         )
-        return context
+        raise IncompleteStepError(context)
 
     if context.operation == Operation.CREATE:
         resp = jira.update_issue_resolution(context, jira_resolution)
@@ -212,12 +215,13 @@ def maybe_update_issue_status(context: ActionContext, **parameters):
 
     if jira_status is None:
         logger.debug(
-            "Bug status was not in the status map.",
+            "Bug status %r was not in the status map.",
+            bz_status,
             extra=context.update(
                 operation=Operation.IGNORE,
             ).dict(),
         )
-        return context
+        raise IncompleteStepError(context)
 
     if context.operation == Operation.CREATE:
         resp = jira.update_issue_status(context, jira_status)
@@ -264,7 +268,7 @@ def maybe_update_components(context: ActionContext, **parameters):
         )
 
     if not jira_components:
-        return context
+        raise IncompleteStepError(context)
 
     # Since we previously introspected the project components, we don't
     # have to catch any potential 400 error response here.
