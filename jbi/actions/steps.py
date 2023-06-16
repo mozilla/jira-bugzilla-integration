@@ -9,7 +9,8 @@ from typing import Iterable, Optional
 
 from requests import exceptions as requests_exceptions
 
-from jbi import IncompleteStepError, Operation
+from jbi import Operation
+from jbi.errors import IncompleteStepError
 from jbi.models import ActionContext
 from jbi.services import bugzilla, jira
 

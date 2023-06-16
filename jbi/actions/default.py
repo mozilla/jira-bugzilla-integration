@@ -9,7 +9,8 @@ and when a comment is posted, it will be set to `Operation.COMMENT`.
 import logging
 from typing import Callable, Optional
 
-from jbi import ActionResult, IncompleteStepError, Operation
+from jbi import ActionResult, Operation
+from jbi.errors import IncompleteStepError
 from jbi.actions import steps as steps_module
 from jbi.environment import get_settings
 from jbi.models import ActionContext
