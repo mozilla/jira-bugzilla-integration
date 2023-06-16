@@ -7,6 +7,7 @@ import importlib
 import logging
 import re
 import warnings
+from copy import copy
 from inspect import signature
 from types import ModuleType
 from typing import Any, Callable, Literal, Mapping, Optional, TypedDict
@@ -359,12 +360,25 @@ class ActionContext(Context, extra=Extra.forbid):
 
     rid: str
     operation: Operation
+    current_step: Optional[str]
     event: BugzillaWebhookEvent
     jira: JiraContext
     bug: BugzillaBug
     extra: dict[str, str] = {}
-    responses: list = []
+    responses_by_step: dict[str, list] = {}
 
-    def append_response(self, response):
+    @property
+    def responses(self):
+        """Return flat list of all responses"""
+        # return list(itertools.chain.from_iterable(self.responses_by_step.values()))
+        for responses in self.responses_by_step.values():
+            for response in responses:
+                yield response
+
+    def append_responses(self, *responses):
         """Shortcut function to add responses to the existing list."""
-        return self.update(responses=self.responses + [response])
+        if not self.current_step:
+            raise ValueError("`current_step` unset in context.")
+        copied = copy(self.responses_by_step)
+        copied.setdefault(self.current_step, []).extend(responses)
+        return self.update(responses_by_step=copied)

@@ -29,7 +29,7 @@ def create_comment(context: ActionContext, **parameters):
         return context
 
     jira_response = jira.add_jira_comment(context)
-    context = context.append_response(jira_response)
+    context = context.append_responses(jira_response)
     return context
 
 
@@ -55,22 +55,22 @@ def create_issue(context: ActionContext, **parameters):
 
     context = context.update(
         jira=context.jira.update(issue=issue_key),
-        responses=context.responses + [jira_create_response],
     )
+    context = context.append_responses(jira_create_response)
     return context
 
 
 def add_link_to_jira(context: ActionContext, **parameters):
     """Add the URL to the Jira issue in the `see_also` field on the Bugzilla ticket"""
     bugzilla_response = bugzilla.add_link_to_jira(context)
-    context = context.append_response(bugzilla_response)
+    context = context.append_responses(bugzilla_response)
     return context
 
 
 def add_link_to_bugzilla(context: ActionContext, **parameters):
     """Add the URL of the Bugzilla ticket to the links of the Jira issue"""
     jira_response = jira.add_link_to_bugzilla(context)
-    context = context.append_response(jira_response)
+    context = context.append_responses(jira_response)
     return context
 
 
@@ -83,7 +83,7 @@ def maybe_delete_duplicate(context: ActionContext, **parameters):
     latest_bug = bugzilla.get_client().get_bug(context.bug.id)
     jira_response_delete = jira.delete_jira_issue_if_duplicate(context, latest_bug)
     if jira_response_delete:
-        context = context.append_response(jira_response_delete)
+        context = context.append_responses(jira_response_delete)
     return context
 
 
@@ -109,7 +109,7 @@ def update_issue_summary(context: ActionContext, **parameters):
     jira_response_update = jira.get_client().update_issue_field(
         key=issue_key, fields=fields
     )
-    context = context.append_response(jira_response_update)
+    context = context.append_responses(jira_response_update)
     return context
 
 
@@ -117,7 +117,7 @@ def add_jira_comments_for_changes(context: ActionContext, **parameters):
     """Add a Jira comment for each field (assignee, status, resolution) change on
     the Bugzilla ticket."""
     comments_responses = jira.add_jira_comments_for_changes(context)
-    context.update(responses=context.responses + comments_responses)
+    context.append_responses(comments_responses)
     return context
 
 
@@ -138,7 +138,7 @@ def maybe_assign_jira_user(context: ActionContext, **parameters):
 
         try:
             resp = jira.assign_jira_user(context, bug.assigned_to)  # type: ignore
-            context.append_response(resp)
+            context.append_responses(resp)
             return context
         except ValueError as exc:
             logger.debug(str(exc), extra=context.dict())
@@ -157,7 +157,7 @@ def maybe_assign_jira_user(context: ActionContext, **parameters):
                 logger.debug(str(exc), extra=context.dict())
                 # If that failed then just fall back to clearing the assignee.
                 resp = jira.clear_assignee(context)
-        context.append_response(resp)
+        context.append_responses(resp)
         return context
 
     # This happens when exceptions are raised an ignored.
@@ -189,13 +189,13 @@ def maybe_update_issue_resolution(
 
     if context.operation == Operation.CREATE:
         resp = jira.update_issue_resolution(context, jira_resolution)
-        context.append_response(resp)
+        context.append_responses(resp)
         return context
 
     if context.operation == Operation.UPDATE:
         if "resolution" in context.event.changed_fields():
             resp = jira.update_issue_resolution(context, jira_resolution)
-            context.append_response(resp)
+            context.append_responses(resp)
             return context
 
     return context
@@ -225,7 +225,7 @@ def maybe_update_issue_status(context: ActionContext, **parameters):
 
     if context.operation == Operation.CREATE:
         resp = jira.update_issue_status(context, jira_status)
-        context.append_response(resp)
+        context.append_responses(resp)
         return context
 
     if context.operation == Operation.UPDATE:
@@ -233,7 +233,7 @@ def maybe_update_issue_status(context: ActionContext, **parameters):
 
         if "status" in changed_fields or "resolution" in changed_fields:
             resp = jira.update_issue_status(context, jira_status)
-            context.append_response(resp)
+            context.append_responses(resp)
             return context
 
     return context
@@ -275,7 +275,7 @@ def maybe_update_components(context: ActionContext, **parameters):
     resp = client.update_issue_field(
         key=context.jira.issue, fields={"components": jira_components}
     )
-    context.append_response(resp)
+    context.append_responses(resp)
     return context
 
 
@@ -350,8 +350,8 @@ def sync_whiteboard_labels(context: ActionContext, **parameters):
             str(exc),
             extra=context.dict(),
         )
-        context.append_response(exc.response)
+        context.append_responses(exc.response)
         raise IncompleteStepError(context) from exc
 
-    context.append_response(resp)
+    context.append_responses(resp)
     return context

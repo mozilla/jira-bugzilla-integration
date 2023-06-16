@@ -711,6 +711,7 @@ def test_sync_whiteboard_labels_failing(
     mocked_jira.update_issue.side_effect = requests.exceptions.HTTPError(
         "some message", response=mock.MagicMock(status_code=400)
     )
+    context_update_example.current_step = "sync_whiteboard_labels"
 
     with pytest.raises(IncompleteStepError):
         with caplog.at_level(logging.DEBUG):

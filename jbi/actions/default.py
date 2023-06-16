@@ -96,6 +96,7 @@ class Executor:
         """Called from `runner` when the action is used."""
         for step in self.steps[context.operation]:
             try:
+                context = context.update(current_step=step.__name__)
                 context = step(context=context, **self.parameters)
             except IncompleteStepError as exc:
                 context = exc.context
@@ -109,5 +110,4 @@ class Executor:
                     **context.dict(),
                 },
             )
-
-        return True, {"responses": context.responses}
+        return True, {"responses": list(context.responses)}
