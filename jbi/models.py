@@ -364,3 +364,7 @@ class ActionContext(Context, extra=Extra.forbid):
     bug: BugzillaBug
     extra: dict[str, str] = {}
     responses: list = []
+
+    def append_response(self, response):
+        """Shortcut function to add responses to the existing list."""
+        return self.update(responses=self.responses + [response])
