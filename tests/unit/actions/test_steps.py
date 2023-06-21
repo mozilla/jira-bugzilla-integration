@@ -7,11 +7,12 @@ from unittest import mock
 import pytest
 import requests
 
-from jbi.actions import default
+from jbi.actions import default, steps
 from jbi.environment import get_settings
-from jbi.models import ActionContext, BugzillaWebhookEventChange
+from jbi.errors import IncompleteStepError
+from jbi.models import ActionContext
 from jbi.services.jira import JiraCreateError
-from tests.fixtures.factories import comment_factory
+from tests.fixtures.factories import comment_factory, webhook_event_change_factory
 
 ALL_STEPS = {
     "new": [
@@ -61,11 +62,83 @@ def test_created_public(
     )
 
 
+def test_misconfigured_issue_type(
+    context_create_example: ActionContext, mocked_jira, mocked_bugzilla
+):
+    context_create_example.bug.type = "enhancement"
+
+    callable_object = default.init(
+        jira_project_key=context_create_example.jira.project,
+        steps={"new": ["create_issue"]},
+        issue_type_map=["Epic"],  # list instead dict!
+    )
+    with pytest.raises(TypeError):
+        callable_object(context=context_create_example)
+
+
+def test_created_with_custom_issue_type_and_fallback(
+    context_create_example: ActionContext, mocked_jira, mocked_bugzilla
+):
+    context_create_example.bug.type = "enhancement"
+    mocked_jira.create_issue.return_value = {"key": "k"}
+    mocked_bugzilla.get_bug.return_value = context_create_example.bug
+    mocked_bugzilla.get_comments.return_value = [
+        comment_factory(text="Initial comment")
+    ]
+
+    callable_object = default.init(
+        jira_project_key=context_create_example.jira.project,
+        steps={"new": ["create_issue"]},
+        issue_type_map={
+            "task": "Epic",
+        },
+    )
+
+    callable_object(context=context_create_example)
+
+    mocked_jira.create_issue.assert_called_once_with(
+        fields={
+            "summary": "JBI Test",
+            "issuetype": {"name": "Task"},
+            "description": "Initial comment",
+            "project": {"key": "JBI"},
+        },
+    )
+
+
+def test_created_with_custom_issue_type(
+    context_create_example: ActionContext, mocked_jira, mocked_bugzilla
+):
+    context_create_example.bug.type = "task"
+    mocked_jira.create_issue.return_value = {"key": "k"}
+    mocked_bugzilla.get_bug.return_value = context_create_example.bug
+    mocked_bugzilla.get_comments.return_value = [
+        comment_factory(text="Initial comment")
+    ]
+
+    callable_object = default.init(
+        jira_project_key=context_create_example.jira.project,
+        steps={"new": ["create_issue"]},
+        issue_type_map={
+            "task": "Epic",
+        },
+    )
+
+    callable_object(context=context_create_example)
+
+    mocked_jira.create_issue.assert_called_once_with(
+        fields={
+            "summary": "JBI Test",
+            "issuetype": {"name": "Epic"},
+            "description": "Initial comment",
+            "project": {"key": "JBI"},
+        },
+    )
+
+
 def test_modified_public(context_update_example: ActionContext, mocked_jira):
     context_update_example.event.changes = [
-        BugzillaWebhookEventChange.parse_obj(
-            {"field": "summary", "removed": "", "added": "JBI Test"}
-        )
+        webhook_event_change_factory(field="summary", removed="", added="JBI Test")
     ]
 
     callable_object = default.init(jira_project_key=context_update_example.jira.project)
@@ -74,11 +147,7 @@ def test_modified_public(context_update_example: ActionContext, mocked_jira):
 
     assert context_update_example.bug.extract_from_see_also(), "see_also is not empty"
 
-    mocked_jira.update_issue_field.assert_any_call(
-        key="JBI-234",
-        fields={"labels": ["bugzilla", "devtest", "[devtest]"]},
-    )
-    mocked_jira.update_issue_field.assert_any_call(
+    mocked_jira.update_issue_field.assert_called_once_with(
         key="JBI-234",
         fields={"summary": "JBI Test"},
     )
@@ -192,26 +261,30 @@ def test_create_with_assignee(
 
 def test_clear_assignee(context_update_example: ActionContext, mocked_jira):
     context_update_example.event.action = "modify"
-    context_update_example.event.routing_key = "bug.modify:assigned_to"
+    context_update_example.event.changes = [
+        webhook_event_change_factory(field="assigned_to", removed="user", added="")
+    ]
 
     callable_object = default.init(
         jira_project_key=context_update_example.jira.project, steps=ALL_STEPS
     )
     callable_object(context=context_update_example)
 
-    mocked_jira.create_issue.assert_not_called()
     mocked_jira.user_find_by_user_string.assert_not_called()
     mocked_jira.update_issue_field.assert_any_call(
         key="JBI-234",
         fields={"assignee": None},
     )
-    mocked_jira.set_issue_status.assert_not_called()
 
 
 def test_set_assignee(context_update_example: ActionContext, mocked_jira):
     context_update_example.bug.assigned_to = "dtownsend@mozilla.com"
     context_update_example.event.action = "modify"
-    context_update_example.event.routing_key = "bug.modify:assigned_to"
+    context_update_example.event.changes = [
+        webhook_event_change_factory(
+            field="assigned_to", removed="", added="dtownsend@mozilla.com"
+        )
+    ]
 
     mocked_jira.user_find_by_user_string.return_value = [{"accountId": "6254"}]
 
@@ -229,6 +302,52 @@ def test_set_assignee(context_update_example: ActionContext, mocked_jira):
         fields={"assignee": {"accountId": "6254"}},
     )
     mocked_jira.set_issue_status.assert_not_called()
+
+
+def test_set_assignee_failing_create(
+    context_create_example: ActionContext, mocked_jira, caplog
+):
+    mocked_jira.update_issue_field.side_effect = requests.exceptions.HTTPError(
+        "unknown user", response=mock.MagicMock(status_code=400)
+    )
+    context_create_example.jira.issue = "key"
+    context_create_example.bug.assigned_to = "postmaster@localhost"
+
+    with pytest.raises(IncompleteStepError):
+        with caplog.at_level(logging.DEBUG):
+            steps.maybe_assign_jira_user(context=context_create_example)
+
+    captured_log_msgs = [
+        r.msg % r.args for r in caplog.records if r.name == "jbi.actions.steps"
+    ]
+    assert captured_log_msgs == ["User postmaster@localhost not found"]
+
+
+def test_set_assignee_failing_update(
+    context_update_example: ActionContext, mocked_jira, caplog
+):
+    mocked_jira.user_find_by_user_string.return_value = []
+    context_update_example.jira.issue = "key"
+    context_update_example.bug.assigned_to = "postmaster@localhost"
+    context_update_example.event.changes = [
+        webhook_event_change_factory(
+            field="assigned_to", removed="", added="postmaster@localhost"
+        )
+    ]
+
+    context_update_example.current_step = "maybe_assign_jira_user"
+    with caplog.at_level(logging.DEBUG):
+        steps.maybe_assign_jira_user(context=context_update_example)
+
+    captured_log_msgs = [
+        r.msg % r.args for r in caplog.records if r.name == "jbi.actions.steps"
+    ]
+    assert captured_log_msgs == ["User postmaster@localhost not found"]
+    # Assignee is cleared if failed to update
+    mocked_jira.update_issue_field.assert_any_call(
+        key="key",
+        fields={"assignee": None},
+    )
 
 
 def test_create_with_unknown_status(
@@ -300,21 +419,30 @@ def test_create_with_known_status(
     mocked_jira.set_issue_status.assert_called_once_with("JBI-534", "In Progress")
 
 
-def test_change_to_unknown_status(context_update_example: ActionContext, mocked_jira):
+def test_change_to_unknown_status(
+    context_update_example: ActionContext, mocked_jira, caplog
+):
     context_update_example.bug.status = "NEW"
     context_update_example.bug.resolution = ""
     context_update_example.event.action = "modify"
     context_update_example.event.routing_key = "bug.modify:status"
 
-    callable_object = default.init(
-        jira_project_key=context_update_example.jira.project,
-        steps=ALL_STEPS,
-        status_map={
-            "ASSIGNED": "In Progress",
-            "FIXED": "Closed",
-        },
-    )
-    callable_object(context=context_update_example)
+    with pytest.raises(IncompleteStepError):
+        with caplog.at_level(logging.DEBUG):
+            steps.maybe_update_issue_status(
+                context_update_example,
+                status_map={
+                    "ASSIGNED": "In Progress",
+                    "FIXED": "Closed",
+                },
+            )
+
+    mocked_jira.update_issue_field.assert_not_called()
+
+    captured_log_msgs = [
+        r.msg % r.args for r in caplog.records if r.name == "jbi.actions.steps"
+    ]
+    assert captured_log_msgs == ["Bug status 'NEW' was not in the status map."]
 
     mocked_jira.create_issue.assert_not_called()
     mocked_jira.user_find_by_user_string.assert_not_called()
@@ -325,7 +453,9 @@ def test_change_to_known_status(context_update_example: ActionContext, mocked_ji
     context_update_example.bug.status = "ASSIGNED"
     context_update_example.bug.resolution = ""
     context_update_example.event.action = "modify"
-    context_update_example.event.routing_key = "bug.modify:status"
+    context_update_example.event.changes = [
+        webhook_event_change_factory(field="status", removed="NEW", added="ASSIGNED")
+    ]
 
     callable_object = default.init(
         jira_project_key=context_update_example.jira.project,
@@ -346,7 +476,9 @@ def test_change_to_known_resolution(context_update_example: ActionContext, mocke
     context_update_example.bug.status = "RESOLVED"
     context_update_example.bug.resolution = "FIXED"
     context_update_example.event.action = "modify"
-    context_update_example.event.routing_key = "bug.modify:resolution"
+    context_update_example.event.changes = [
+        webhook_event_change_factory(field="resolution", removed="FIXED", added="OPEN")
+    ]
 
     callable_object = default.init(
         jira_project_key=context_update_example.jira.project,
@@ -386,20 +518,27 @@ def test_change_to_known_resolution_with_resolution_map(
 
 
 def test_change_to_unknown_resolution_with_resolution_map(
-    context_update_resolution_example: ActionContext, mocked_jira
+    context_update_resolution_example: ActionContext, mocked_jira, caplog
 ):
     context_update_resolution_example.bug.resolution = "WONTFIX"
 
-    callable_object = default.init(
-        jira_project_key=context_update_resolution_example.jira.project,
-        steps=ALL_STEPS,
-        resolution_map={
-            "DUPLICATE": "Duplicate",
-        },
-    )
-    callable_object(context=context_update_resolution_example)
+    with pytest.raises(IncompleteStepError):
+        with caplog.at_level(logging.DEBUG):
+            steps.maybe_update_issue_resolution(
+                context_update_resolution_example,
+                resolution_map={
+                    "DUPLICATE": "Duplicate",
+                },
+            )
 
     mocked_jira.update_issue_field.assert_not_called()
+
+    captured_log_msgs = [
+        r.msg % r.args for r in caplog.records if r.name == "jbi.actions.steps"
+    ]
+    assert captured_log_msgs == [
+        "Bug resolution 'WONTFIX' was not in the resolution map."
+    ]
 
 
 @pytest.mark.parametrize(
@@ -494,6 +633,15 @@ def test_maybe_update_components(
     assert captured_log_msgs == expected_logs
 
 
+def test_maybe_update_components_raises_incompletesteperror_on_mismatch(
+    context_update_example: ActionContext, mocked_jira
+):
+    mocked_jira.get_project_components.return_value = [{"name": "Backend"}]
+    context_update_example.bug.component = "Frontend"
+    with pytest.raises(IncompleteStepError):
+        steps.maybe_update_components(context_update_example)
+
+
 def test_sync_whiteboard_labels(context_create_example: ActionContext, mocked_jira):
     callable_object = default.init(
         jira_project_key=context_create_example.jira.project,
@@ -501,26 +649,98 @@ def test_sync_whiteboard_labels(context_create_example: ActionContext, mocked_ji
     )
     callable_object(context=context_create_example)
 
-    mocked_jira.update_issue_field.assert_called_once_with(
-        key=context_create_example.jira.issue,
-        fields={"labels": ["bugzilla", "devtest", "[devtest]"]},
+    mocked_jira.update_issue.assert_called_once_with(
+        issue_key=context_create_example.jira.issue,
+        update={
+            "update": {
+                "labels": [
+                    {"add": "bugzilla"},
+                    {"add": "devtest"},
+                ]
+            }
+        },
+    )
+
+
+def test_sync_whiteboard_labels_with_brackets(
+    context_create_example: ActionContext, mocked_jira
+):
+    callable_object = default.init(
+        jira_project_key=context_create_example.jira.project,
+        steps={"new": ["sync_whiteboard_labels"]},
+        labels_brackets="both",
+    )
+    callable_object(context=context_create_example)
+
+    mocked_jira.update_issue.assert_called_once_with(
+        issue_key=context_create_example.jira.issue,
+        update={
+            "update": {
+                "labels": [
+                    {"add": "bugzilla"},
+                    {"add": "devtest"},
+                    {"add": "[devtest]"},
+                ]
+            }
+        },
+    )
+
+
+def test_sync_whiteboard_labels_misconfigured_brackets(
+    context_create_example: ActionContext,
+):
+    callable_object = default.init(
+        jira_project_key=context_create_example.jira.project,
+        steps={"new": ["sync_whiteboard_labels"]},
+        labels_brackets=42,
+    )
+    with pytest.raises(ValueError) as exc_info:
+        callable_object(context=context_create_example)
+    assert str(exc_info.value) == "Invalid value 42 for 'labels_brackets' parameter."
+
+
+def test_sync_whiteboard_labels_update(
+    context_update_example: ActionContext, mocked_jira
+):
+    context_update_example.event.changes = [
+        webhook_event_change_factory(
+            field="whiteboard",
+            removed="[remotesettings] [server]",
+            added="[remotesettings]",
+        )
+    ]
+
+    callable_object = default.init(
+        jira_project_key=context_update_example.jira.project,
+        steps={"existing": ["sync_whiteboard_labels"]},
+    )
+    callable_object(context=context_update_example)
+
+    mocked_jira.update_issue.assert_called_once_with(
+        issue_key=context_update_example.jira.issue,
+        update={
+            "update": {
+                "labels": [
+                    {"add": "bugzilla"},
+                    {"add": "remotesettings"},
+                    {"remove": "server"},
+                ]
+            }
+        },
     )
 
 
 def test_sync_whiteboard_labels_failing(
     context_update_example: ActionContext, mocked_jira, caplog
 ):
-    mocked_jira.update_issue_field.side_effect = requests.exceptions.HTTPError(
+    mocked_jira.update_issue.side_effect = requests.exceptions.HTTPError(
         "some message", response=mock.MagicMock(status_code=400)
     )
+    context_update_example.current_step = "sync_whiteboard_labels"
 
-    callable_object = default.init(
-        jira_project_key=context_update_example.jira.project,
-        steps={"existing": ["sync_whiteboard_labels"]},
-    )
-
-    with caplog.at_level(logging.DEBUG):
-        callable_object(context=context_update_example)
+    with pytest.raises(IncompleteStepError):
+        with caplog.at_level(logging.DEBUG):
+            steps.sync_whiteboard_labels(context=context_update_example)
 
     captured_log_msgs = [
         r.msg % r.args for r in caplog.records if r.name == "jbi.actions.steps"

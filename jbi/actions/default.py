@@ -6,14 +6,16 @@ The `runner` will call this action with an initialized context. When a Bugzilla 
 is created or updated, its `operation` attribute will be `Operation.CREATE` or `Operation.UPDATE`,
 and when a comment is posted, it will be set to `Operation.COMMENT`.
 """
+import itertools
 import logging
-from typing import Optional
+from typing import Callable, Optional
 
 from statsd.defaults.env import statsd
 
 from jbi import ActionResult, Operation
 from jbi.actions import steps as steps_module
 from jbi.environment import get_settings
+from jbi.errors import IncompleteStepError
 from jbi.models import ActionContext
 
 settings = get_settings()
@@ -88,33 +90,37 @@ def init(
 class Executor:
     """Callable class that encapsulates the default action."""
 
-    def __init__(self, steps, **parameters):
+    def __init__(self, steps: dict[Operation, list[Callable]], **parameters):
         """Initialize Executor Object"""
         self.steps = steps
         self.parameters = parameters
 
     def __call__(self, context: ActionContext) -> ActionResult:
         """Called from `runner` when the action is used."""
-
-        responses = tuple()  # type: ignore
-
-        incomplete = False
+        has_produced_request = False
 
         for step in self.steps[context.operation]:
+            context = context.update(current_step=step.__name__)
             try:
-                context, step_responses = step(context=context, **self.parameters)
+                context = step(context=context, **self.parameters)
+            except IncompleteStepError as exc:
+                # Step did not execute all its operations.
+                context = exc.context
+                statsd.incr(
+                    f"jbi.action.{context.jira.project.lower()}.incomplete.count"
+                )
             except Exception:
-                if len(responses) > 0:
-                    # Count the number of workflows that produced at least request,
-                    # but could not complete entirely successfully.
-                    statsd.incr("jbi.bugzilla.aborted.count")
+                if has_produced_request:
+                    # Count the number of workflows that produced at least one request,
+                    # but could not complete entirely with success.
+                    statsd.incr(
+                        f"jbi.action.{context.jira.project.lower()}.aborted.count"
+                    )
                 raise
 
-            if not step_responses:
-                # If the step did not generate HTTP response, it means the step
-                # skipped its operation (for various reasons, safety checks, etc.)
-                incomplete = True
-
+            step_responses = context.responses_by_step[step.__name__]
+            if step_responses:
+                has_produced_request = True
             for response in step_responses:
                 logger.debug(
                     "Received %s",
@@ -124,9 +130,9 @@ class Executor:
                         **context.dict(),
                     },
                 )
-            responses += step_responses
 
-        if incomplete:
-            statsd.incr("jbi.bugzilla.incomplete.count")
-
+        # Flatten the list of all received responses.
+        responses = list(
+            itertools.chain.from_iterable(context.responses_by_step.values())
+        )
         return True, {"responses": responses}

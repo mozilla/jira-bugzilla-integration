@@ -146,7 +146,12 @@ def context_update_resolution_example() -> ActionContext:
         see_also=["https://mozilla.atlassian.net/browse/JBI-234"]
     )
     event = factories.webhook_event_factory(
-        action="modify", routing_key="bug.modify:resolution"
+        action="modify",
+        changes=[
+            factories.webhook_event_change_factory(
+                field="resolution", removed="OPEN", added="FIXED"
+            ),
+        ],
     )
     context = factories.action_context_factory(
         operation=Operation.UPDATE,
@@ -191,26 +196,14 @@ def webhook_private_comment_example() -> BugzillaWebhookRequest:
 
 
 @pytest.fixture
-def webhook_create_private_example() -> BugzillaWebhookRequest:
-    return factories.webhook_factory(
-        event=factories.webhook_event_factory(),
-        bug={"id": 654321, "is_private": True},
-    )
-
-
-@pytest.fixture
 def webhook_change_status_assignee():
     changes = [
-        {
-            "field": "status",
-            "removed": "OPEN",
-            "added": "FIXED",
-        },
-        {
-            "field": "assignee",
-            "removed": "nobody@mozilla.org",
-            "added": "mathieu@mozilla.com",
-        },
+        factories.webhook_event_change_factory(
+            field="status", removed="OPEN", added="FIXED"
+        ),
+        factories.webhook_event_change_factory(
+            field="assignee", removed="nobody@mozilla.org", added="mathieu@mozilla.com"
+        ),
     ]
     event = factories.webhook_event_factory(routing_key="bug.modify", changes=changes)
     webhook_payload = factories.webhook_factory(event=event)
@@ -218,18 +211,7 @@ def webhook_change_status_assignee():
 
 
 @pytest.fixture
-def webhook_modify_private_example() -> BugzillaWebhookRequest:
-    event = factories.webhook_event_factory(
-        action="modify", routing_key="bug.modify:status"
-    )
-    webhook_payload = factories.webhook_factory(
-        bug={"id": 654321, "is_private": True}, event=event
-    )
-    return webhook_payload
-
-
-@pytest.fixture
-def action_factory() -> Action:
+def action_factory():
     return factories.action_factory
 
 

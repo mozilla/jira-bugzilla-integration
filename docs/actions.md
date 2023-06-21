@@ -6,7 +6,6 @@ The system reads the actions configuration from a YAML file, one per environment
 Below is a full example of an action configuration:
 ```yaml
 - whiteboard_tag: example
-  allow_private: false
   bugzilla_user_id: 514230
   description: example configuration
   module: jbi.actions.default
@@ -18,11 +17,6 @@ A bit more about the different fields...
 - `whiteboard_tag`
     - string
     - The tag to be matched in the Bugzilla `whiteboard` field
-- `allow_private` (optional)
-    - bool [true, false]
-    - default: false
-    - If `false`, bugs will not be synchronized if they are not public. Note that in order to synchronize private bugs,
-     the bugzilla user that JBI runs as must be in the security groups that are making the bug private.
 - `bugzilla_user_id`
     - a bugzilla user id, a list of user ids, or a literal "tbd" to signify that no bugzilla user id is available
     - If an issue arises with the workflow, communication will be established with these users
@@ -72,12 +66,18 @@ to the Bugzilla ticket on the Jira issue.
 - `jira_components` (optional)
    - list [str]
    - If defined, the created issues will be assigned the specified components.
+- `labels_brackets` (optional)
+    - enum ["yes", "no", "both"]
+    - Controls whether issue labels should have brackets or not in the `sync_whiteboard_labels` step (default: "no")
 - `status_map` (optional)
     - mapping [str, str]
     - If defined, map the Bugzilla bug status (or resolution) to Jira issue status
 - `resolution_map` (optional)
     - mapping [str, str]
     - If defined, map the Bugzilla bug resolution to Jira issue resolution
+- `issue_type_map` (optional)
+    - mapping [str, str]
+    - If defined, map the Bugzilla type to Jira issue type (default: ``Bug`` if ``defect`` else ``Task``)
 
 Minimal configuration:
 ```yaml
@@ -156,6 +156,8 @@ linked Jira issue status to "Closed". If the bug changes to a status not listed 
 - `maybe_update_issue_resolution`
 - `maybe_update_issue_status`
 - `create_comment`
+- `sync_whiteboard_labels`
+- `maybe_update_components`: looks at the component that's set on the bug (if any) and any components added to the project configuration with the `jira_components` parameter (see above). If those components are available on the Jira side as well, they're added to the Jira issue
 
 ### Custom Actions
 

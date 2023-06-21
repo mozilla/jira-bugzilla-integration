@@ -6,12 +6,14 @@
   # module: jbi.actions.default
   parameters:
     jira_project_key: WEBEXT
+    labels_brackets: both
 
 - whiteboard_tag: fidedi
   bugzilla_user_id: tbd
   description: Firefox Desktop Integration whiteboard tag
   parameters:
     jira_project_key: FIDEDI
+    labels_brackets: both
 
 - whiteboard_tag: fidefe
   bugzilla_user_id: 159069
@@ -34,6 +36,7 @@
         - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_whiteboard_labels
+    labels_brackets: both
     status_map:
       ASSIGNED: In Progress
       FIXED: Closed
@@ -44,35 +47,12 @@
       WORKSFORME: Closed
       REOPENED: In Progress
 
-- whiteboard_tag: flowstate
-  bugzilla_user_id: 91159
-  description: Flowstate whiteboard tag
-  parameters:
-    jira_project_key: MR2
-    steps:
-      new:
-        - create_issue
-        - maybe_delete_duplicate
-        - add_link_to_bugzilla
-        - add_link_to_jira
-        - maybe_assign_jira_user
-        - maybe_update_issue_resolution
-        - maybe_update_issue_status
-      existing:
-        - update_issue_summary
-        - maybe_assign_jira_user
-        - maybe_update_issue_resolution
-        - maybe_update_issue_status
-    status_map:
-      ASSIGNED: In Progress
-      FIXED: In Review
-      REOPENED: In Progress
-
 - whiteboard_tag: fxatps
   bugzilla_user_id: tbd
   description: Privacy & Security and Anti-Tracking Team whiteboard tag
   parameters:
     jira_project_key: FXATPS
+    labels_brackets: both
 
 - whiteboard_tag: fxcm
   bugzilla_user_id: 713707
@@ -95,6 +75,7 @@
         - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_whiteboard_labels
+    labels_brackets: both
     status_map:
       ASSIGNED: To Do
       REOPENED: To Do
@@ -128,11 +109,12 @@
         - maybe_assign_jira_user
         - maybe_update_issue_status
         - sync_whiteboard_labels
+    labels_brackets: both
     status_map:
       UNCONFIRMED: Backlog
       NEW: Backlog
       ASSIGNED: In Progress
-      REOPENED: In Progress
+      REOPENED: Backlog
       RESOLVED: Closed
       VERIFIED: Closed
       FIXED: Closed
@@ -156,17 +138,20 @@
         - add_link_to_bugzilla
         - add_link_to_jira
         - maybe_assign_jira_user
+        - maybe_update_components
         - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_whiteboard_labels
       existing:
         - update_issue_summary
+        - maybe_update_components
         - maybe_assign_jira_user
         - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_whiteboard_labels
       comment:
         - create_comment
+    labels_brackets: both
     status_map:
       UNCONFIRMED: Backlog
       NEW: Backlog
@@ -188,42 +173,61 @@
   description: Firefox Sync Team whiteboard tag
   parameters:
     jira_project_key: SYNC
+    labels_brackets: both
 
 - whiteboard_tag: disco
   bugzilla_user_id: 624105
   description: DISCO whiteboard tag
   parameters:
     jira_project_key: DISCO
+    labels_brackets: both
 
 - whiteboard_tag: mv3
   bugzilla_user_id: tbd
   description: MV3 whiteboard tag
   parameters:
     jira_project_key: WEBEXT
+    labels_brackets: both
 
 - whiteboard_tag: nimbus
   bugzilla_user_id: 624105
   description: Nimbus whiteboard tag
   parameters:
     jira_project_key: EXP
+    labels_brackets: both
+
+- whiteboard_tag: omc
+  bugzilla_user_id: 711631
+  description: Firefox Messaging System whiteboard tag
+  parameters:
+    jira_project_key: OMC
+    labels_brackets: both
+    issue_type_map:
+      defect: Task
+    status_map:
+      UNCONFIRMED: To Do
+      NEW: To Do
 
 - whiteboard_tag: prodtest
   bugzilla_user_id: 644672
   description: Prod testing whiteboard tag (JBI Bin Project)
   parameters:
     jira_project_key: JB
+    labels_brackets: both
 
 - whiteboard_tag: proton
   bugzilla_user_id: tbd
   description: Proton whiteboard tag for Firefox Frontend
   parameters:
     jira_project_key: FIDEFE
+    labels_brackets: both
 
 - whiteboard_tag: relops
   bugzilla_user_id: tbd
   description: Release Operations Team Tag
   parameters:
     jira_project_key: RELOPS
+    labels_brackets: both
 
 - whiteboard_tag: remote-settings
   bugzilla_user_id: 576226
@@ -231,7 +235,7 @@
   parameters:
     jira_project_key: SE
     jira_components:
-      - "Remote Settings"
+      - "remote-settings"
     steps:
       new:
         - create_issue
@@ -246,12 +250,14 @@
         - sync_whiteboard_labels
       comment:
         - create_comment
+    labels_brackets: both
 
-- whiteboard_tag: snt
+- whiteboard_tag: sng
   bugzilla_user_id: 696039
-  description: Search/NewTab Team Tag
+  description: Search Next Generation Team Tag
   parameters:
-    jira_project_key: SNT
+    jira_project_key: SNG
+    labels_brackets: both
 
 - whiteboard_tag: sp3
   bugzilla_user_id: 396948
@@ -276,6 +282,7 @@
         - sync_whiteboard_labels
       comment:
         - create_comment
+    labels_brackets: both
     status_map:
       UNCONFIRMED: To Do
       NEW: To Do

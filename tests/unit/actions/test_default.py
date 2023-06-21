@@ -101,6 +101,7 @@ def test_default_returns_callable_with_data(
 def test_counter_is_incremented_when_workflows_was_aborted(
     context_create_example: ActionContext, mocked_bugzilla, mocked_jira
 ):
+    context_create_example.jira.project = "FENIX"
     mocked_bugzilla.get_bug.return_value = context_create_example.bug
     mocked_jira.create_or_update_issue_remote_links.side_effect = requests.HTTPError(
         "Unauthorized"
@@ -111,12 +112,13 @@ def test_counter_is_incremented_when_workflows_was_aborted(
         with pytest.raises(requests.HTTPError):
             callable_object(context=context_create_example)
 
-    mocked.incr.assert_called_with("jbi.bugzilla.aborted.count")
+    mocked.incr.assert_called_with("jbi.action.fenix.aborted.count")
 
 
 def test_counter_is_incremented_when_workflows_was_incomplete(
     context_create_example: ActionContext, mocked_bugzilla, mocked_jira
 ):
+    context_create_example.jira.project = "FENIX"
     context_create_example.bug.resolution = "WONTFIX"
     mocked_bugzilla.get_bug.return_value = context_create_example.bug
 
@@ -137,4 +139,4 @@ def test_counter_is_incremented_when_workflows_was_incomplete(
     with mock.patch("jbi.actions.default.statsd") as mocked:
         callable_object(context=context_create_example)
 
-    mocked.incr.assert_called_with("jbi.bugzilla.incomplete.count")
+    mocked.incr.assert_called_with("jbi.action.fenix.incomplete.count")

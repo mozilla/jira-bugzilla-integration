@@ -44,6 +44,9 @@ def execute_action(
         operation=Operation.HANDLE,
     )
     try:
+        if bug.is_private:
+            raise IgnoreInvalidRequestError("private bugs are not supported")
+
         logger.debug(
             "Handling incoming request",
             extra=runner_context.dict(),
@@ -68,11 +71,6 @@ def execute_action(
             ) from err
         runner_context = runner_context.update(action=action)
 
-        if bug.is_private and not action.allow_private:
-            raise IgnoreInvalidRequestError(
-                f"private bugs are not valid for action {action.whiteboard_tag!r}"
-            )
-
         linked_issue_key: Optional[str] = bug.extract_from_see_also()
 
         action_context = ActionContext(
@@ -81,7 +79,7 @@ def execute_action(
             event=event,
             operation=Operation.IGNORE,
             jira=JiraContext(project=action.jira_project_key, issue=linked_issue_key),
-            extra={k: str(v) for k, v in action.parameters.dict().items()},
+            extra={k: str(v) for k, v in action.parameters.items()},
         )
 
         if action_context.jira.issue is None:

@@ -30,12 +30,23 @@ logger = logging.getLogger(__name__)
 
 JIRA_DESCRIPTION_CHAR_LIMIT = 32767
 
+
+def fatal_code(exc):
+    """Do not retry 4XX errors, mark them as fatal."""
+    try:
+        return 400 <= exc.response.status_code < 500
+    except AttributeError:
+        # `ApiError` or `ConnectionError` won't have response attribute.
+        return False
+
+
 instrumented_method = instrument(
     prefix="jira",
     exceptions=(
         atlassian_errors.ApiError,
         requests_exceptions.RequestException,
     ),
+    giveup=fatal_code,
 )
 
 
@@ -69,10 +80,12 @@ class JiraClient(Jira):
     get_permissions = instrumented_method(Jira.get_permissions)
     get_project_components = instrumented_method(Jira.get_project_components)
     projects = instrumented_method(Jira.projects)
+    update_issue = instrumented_method(Jira.update_issue)
     update_issue_field = instrumented_method(Jira.update_issue_field)
     set_issue_status = instrumented_method(Jira.set_issue_status)
     issue_add_comment = instrumented_method(Jira.issue_add_comment)
     create_issue = instrumented_method(Jira.create_issue)
+    get_project = instrumented_method(Jira.get_project)
 
 
 @lru_cache(maxsize=1)
@@ -104,6 +117,8 @@ def check_health(actions: Actions) -> ServiceHealth:
         "all_projects_have_permissions": _all_projects_permissions(actions),
         "all_projects_components_exist": is_up
         and _all_projects_components_exist(actions),
+        "all_projects_issue_types_exist": is_up
+        and _all_project_issue_types_exist(actions),
     }
     return health
 
@@ -128,8 +143,9 @@ def _all_projects_permissions(actions: Actions):
 def _fetch_project_permissions(actions):
     """Fetches permissions for the configured projects"""
     required_perms_by_project = {
-        action.parameters.jira_project_key: action.required_jira_permissions
+        action.parameters["jira_project_key"]: action.required_jira_permissions
         for action in actions
+        if action.parameters.get("jira_project_key")
     }
     client = get_client()
     all_projects_perms = {}
@@ -182,8 +198,9 @@ def _validate_permissions(all_projects_perms):
 
 def _all_projects_components_exist(actions: Actions):
     components_by_project = {
-        action.parameters.jira_project_key: action.parameters.jira_components
+        action.parameters["jira_project_key"]: action.parameters["jira_components"]
         for action in actions
+        if action.parameters.get("jira_components")
     }
     success = True
     for project, specified_components in components_by_project.items():
@@ -198,6 +215,27 @@ def _all_projects_components_exist(actions: Actions):
             )
             success = False
 
+    return success
+
+
+def _all_project_issue_types_exist(actions: Actions):
+    default_types = {"task": "Task", "defect": "Bug"}
+    issue_types_by_project = {
+        action.parameters["jira_project_key"]: set(
+            action.parameters.get("issue_type_map", default_types).values()
+        )
+        for action in actions
+    }
+    success = True
+    for project, specified_issue_types in issue_types_by_project.items():
+        response = get_client().get_project(project)
+        all_issue_types_names = set(it["name"] for it in response["issueTypes"])
+        unknown = set(specified_issue_types) - all_issue_types_names
+        if unknown:
+            logger.error(
+                "Jira project %s does not have issue type %s", project, unknown
+            )
+            success = False
     return success
 
 
@@ -218,10 +256,7 @@ class JiraCreateError(Exception):
     """Error raised on Jira issue creation."""
 
 
-def create_jira_issue(
-    context: ActionContext,
-    description: str,
-):
+def create_jira_issue(context: ActionContext, description: str, issue_type: str):
     """Create a Jira issue with basic fields in the project and return its key."""
     bug = context.bug
     logger.debug(
@@ -231,7 +266,7 @@ def create_jira_issue(
     )
     fields: dict[str, Any] = {
         "summary": bug.summary,
-        "issuetype": {"name": bug.issue_type()},
+        "issuetype": {"name": issue_type},
         "description": description[:JIRA_DESCRIPTION_CHAR_LIMIT],
         "project": {"key": context.jira.project},
     }
@@ -385,7 +420,7 @@ def assign_jira_user(context: ActionContext, email: str):
             key=issue_key,
             fields={"assignee": {"accountId": jira_user_id}},
         )
-    except IOError as exc:
+    except (requests_exceptions.HTTPError, IOError) as exc:
         raise ValueError(
             f"Could not assign {jira_user_id} to issue {issue_key}"
         ) from exc

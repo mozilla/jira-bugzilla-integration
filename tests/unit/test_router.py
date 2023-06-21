@@ -1,24 +1,14 @@
 import json
 import os
 from datetime import datetime
+from unittest import mock
 
 from fastapi.testclient import TestClient
 
 from jbi.app import app
 from jbi.environment import get_settings
 from jbi.models import BugzillaWebhook, BugzillaWebhookRequest
-
-EXAMPLE_WEBHOOK = BugzillaWebhook(
-    id=0,
-    creator="",
-    name="",
-    url="http://server/bugzilla_webhook",
-    event="create,change,comment",
-    product="Any",
-    component="Any",
-    enabled=True,
-    errors=0,
-)
+from tests.fixtures.factories import bugzilla_webhook_factory
 
 
 def test_read_root(anon_client):
@@ -67,6 +57,22 @@ def test_powered_by_jbi_filtered(exclude_middleware, anon_client):
     resp = anon_client.get("/powered_by_jbi/?enabled=false")
     html = resp.text
     assert "DevTest" not in html
+
+
+def test_webhooks_details(anon_client, mocked_bugzilla):
+    mocked_bugzilla.list_webhooks.return_value = [
+        bugzilla_webhook_factory(),
+        bugzilla_webhook_factory(errors=42, enabled=False),
+    ]
+    resp = anon_client.get("/bugzilla_webhooks/")
+
+    wh1, wh2 = resp.json()
+
+    assert "creator" not in wh1
+    assert wh1["enabled"]
+    assert wh1["errors"] == 0
+    assert not wh2["enabled"]
+    assert wh2["errors"] == 42
 
 
 def test_statics_are_served(anon_client):
@@ -167,6 +173,7 @@ def test_read_heartbeat_all_services_fail(anon_client, mocked_jira, mocked_bugzi
             "all_projects_are_visible": False,
             "all_projects_have_permissions": False,
             "all_projects_components_exist": False,
+            "all_projects_issue_types_exist": False,
         },
         "bugzilla": {
             "up": False,
@@ -175,7 +182,7 @@ def test_read_heartbeat_all_services_fail(anon_client, mocked_jira, mocked_bugzi
     }
 
 
-def test_read_heartbeat_jira_services_fails(anon_client, mocked_jira, mocked_bugzilla):
+def test_read_heartbeat_jira_services_fails(anon_client, mocked_jira):
     """/__heartbeat__ returns 503 when one service is unavailable."""
     mocked_jira.get_server_info.return_value = None
 
@@ -187,15 +194,14 @@ def test_read_heartbeat_jira_services_fails(anon_client, mocked_jira, mocked_bug
         "all_projects_are_visible": False,
         "all_projects_have_permissions": False,
         "all_projects_components_exist": False,
+        "all_projects_issue_types_exist": False,
     }
 
 
-def test_read_heartbeat_bugzilla_webhooks_fails(
-    anon_client, mocked_jira, mocked_bugzilla
-):
+def test_read_heartbeat_bugzilla_webhooks_fails(anon_client, mocked_bugzilla):
     mocked_bugzilla.logged_in.return_value = True
     mocked_bugzilla.list_webhooks.return_value = [
-        EXAMPLE_WEBHOOK.copy(update={"enabled": False})
+        bugzilla_webhook_factory(enabled=False)
     ]
 
     resp = anon_client.get("/__heartbeat__")
@@ -207,13 +213,27 @@ def test_read_heartbeat_bugzilla_webhooks_fails(
     }
 
 
-def test_read_heartbeat_bugzilla_services_fails(
-    anon_client, mocked_jira, mocked_bugzilla
-):
+def test_heartbeat_bugzilla_reports_webhooks_errors(anon_client, mocked_bugzilla):
+    mocked_bugzilla.logged_in.return_value = True
+    mocked_bugzilla.list_webhooks.return_value = [
+        bugzilla_webhook_factory(id=1, errors=0, product="Remote Settings"),
+        bugzilla_webhook_factory(id=2, errors=3, name="Search Toolbar"),
+    ]
+
+    with mock.patch("jbi.services.bugzilla.statsd") as mocked:
+        anon_client.get("/__heartbeat__")
+
+    mocked.gauge.assert_any_call(
+        "jbi.bugzilla.webhooks.1-test-webhooks-remote-settings.errors", 0
+    )
+    mocked.gauge.assert_any_call(
+        "jbi.bugzilla.webhooks.2-search-toolbar-firefox.errors", 3
+    )
+
+
+def test_read_heartbeat_bugzilla_services_fails(anon_client, mocked_bugzilla):
     """/__heartbeat__ returns 503 when one service is unavailable."""
     mocked_bugzilla.logged_in.return_value = False
-    mocked_jira.get_server_info.return_value = {}
-    mocked_jira.projects.return_value = [{"key": "DevTest"}]
 
     resp = anon_client.get("/__heartbeat__")
 
@@ -227,7 +247,7 @@ def test_read_heartbeat_bugzilla_services_fails(
 def test_read_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
     """/__heartbeat__ returns 200 when checks succeed."""
     mocked_bugzilla.logged_in.return_value = True
-    mocked_bugzilla.list_webhooks.return_value = [EXAMPLE_WEBHOOK]
+    mocked_bugzilla.list_webhooks.return_value = [bugzilla_webhook_factory()]
     mocked_jira.get_server_info.return_value = {}
     mocked_jira.projects.return_value = [{"key": "DevTest"}]
     mocked_jira.get_project_components.return_value = [{"name": "Main"}]
@@ -239,6 +259,12 @@ def test_read_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
             "DELETE_ISSUES": {"havePermission": True},
         },
     }
+    mocked_jira.get_project.return_value = {
+        "issueTypes": [
+            {"name": "Task"},
+            {"name": "Bug"},
+        ]
+    }
 
     resp = anon_client.get("/__heartbeat__")
 
@@ -249,6 +275,7 @@ def test_read_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
             "all_projects_are_visible": True,
             "all_projects_have_permissions": True,
             "all_projects_components_exist": True,
+            "all_projects_issue_types_exist": True,
         },
         "bugzilla": {
             "up": True,
@@ -257,25 +284,20 @@ def test_read_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
     }
 
 
-def test_jira_heartbeat_visible_projects(anon_client, mocked_jira, mocked_bugzilla):
+def test_jira_heartbeat_visible_projects(anon_client, mocked_jira):
     """/__heartbeat__ fails if configured projects don't match."""
     mocked_jira.get_server_info.return_value = {}
 
     resp = anon_client.get("/__heartbeat__")
 
     assert resp.status_code == 503
-    assert resp.json()["jira"] == {
-        "up": True,
-        "all_projects_are_visible": False,
-        "all_projects_have_permissions": False,
-        "all_projects_components_exist": False,
-    }
+    assert resp.json()["jira"]["up"]
+    assert not resp.json()["jira"]["all_projects_are_visible"]
 
 
-def test_jira_heartbeat_missing_permissions(anon_client, mocked_jira, mocked_bugzilla):
+def test_jira_heartbeat_missing_permissions(anon_client, mocked_jira):
     """/__heartbeat__ fails if configured projects don't match."""
     mocked_jira.get_server_info.return_value = {}
-    mocked_jira.get_project_components.return_value = [{"name": "Main"}]
     mocked_jira.get_project_permission_scheme.return_value = {
         "permissions": {
             "ADD_COMMENTS": {"havePermission": True},
@@ -288,29 +310,40 @@ def test_jira_heartbeat_missing_permissions(anon_client, mocked_jira, mocked_bug
     resp = anon_client.get("/__heartbeat__")
 
     assert resp.status_code == 503
-    assert resp.json()["jira"] == {
-        "up": True,
-        "all_projects_are_visible": False,
-        "all_projects_have_permissions": False,
-        "all_projects_components_exist": True,
-    }
+    assert resp.json()["jira"]["up"]
+    assert not resp.json()["jira"]["all_projects_have_permissions"]
 
 
-def test_jira_heartbeat_unknown_components(anon_client, mocked_jira, mocked_bugzilla):
-    mocked_bugzilla.logged_in.return_value = True
-    mocked_bugzilla.list_webhooks.return_value = [EXAMPLE_WEBHOOK]
+def test_jira_heartbeat_unknown_components(anon_client, mocked_jira):
     mocked_jira.get_server_info.return_value = {}
 
     resp = anon_client.get("/__heartbeat__")
 
     assert resp.status_code == 503
+    assert resp.json()["jira"]["up"]
     assert not resp.json()["jira"]["all_projects_components_exist"]
+
+
+def test_jira_heartbeat_unknown_issue_types(anon_client, mocked_jira):
+    mocked_jira.get_server_info.return_value = {}
+    mocked_jira.get_project.return_value = {
+        "issueTypes": [
+            {"name": "Task"},
+            # missing "Bug"
+        ]
+    }
+
+    resp = anon_client.get("/__heartbeat__")
+
+    assert resp.status_code == 503
+    assert resp.json()["jira"]["up"]
+    assert not resp.json()["jira"]["all_projects_issue_types_exist"]
 
 
 def test_head_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
     """/__heartbeat__ support head requests"""
     mocked_bugzilla.logged_in.return_value = True
-    mocked_bugzilla.list_webhooks.return_value = [EXAMPLE_WEBHOOK]
+    mocked_bugzilla.list_webhooks.return_value = [bugzilla_webhook_factory()]
     mocked_jira.get_server_info.return_value = {}
     mocked_jira.projects.return_value = [{"key": "DevTest"}]
     mocked_jira.get_project_components.return_value = [{"name": "Main"}]
@@ -321,6 +354,12 @@ def test_head_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
             "EDIT_ISSUES": {"havePermission": True},
             "DELETE_ISSUES": {"havePermission": True},
         },
+    }
+    mocked_jira.get_project.return_value = {
+        "issueTypes": [
+            {"name": "Task"},
+            {"name": "Bug"},
+        ]
     }
 
     resp = anon_client.head("/__heartbeat__")

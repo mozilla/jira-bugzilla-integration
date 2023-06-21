@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 ServiceHealth = dict[str, bool]
 
 
-def instrument(prefix: str, exceptions: Sequence[Type[Exception]]):
+def instrument(prefix: str, exceptions: Sequence[Type[Exception]], **backoff_params):
     """This decorator wraps a function such that it increments a counter every
     time it is called and times its execution. It retries the function if the
     specified exceptions are raised.
@@ -32,6 +32,7 @@ def instrument(prefix: str, exceptions: Sequence[Type[Exception]]):
             backoff.expo,
             exceptions,
             max_tries=settings.max_retries + 1,
+            **backoff_params,
         )
         def wrapper(*args, **kwargs):
             # Increment the call counter.

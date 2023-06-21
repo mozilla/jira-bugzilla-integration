@@ -7,6 +7,7 @@ import responses
 from requests.exceptions import ConnectionError
 
 from jbi.environment import get_settings
+from jbi.models import Actions
 from jbi.services import jira
 
 
@@ -24,10 +25,7 @@ def test_jira_create_issue_is_instrumented(
         },
     )
 
-    jira.create_jira_issue(
-        context_create_example,
-        "Description",
-    )
+    jira.create_jira_issue(context_create_example, "Description", issue_type="Task")
     jira_client = jira.get_client()
 
     jira_client.create_issue({})
@@ -84,3 +82,56 @@ def test_jira_retries_failing_connections_in_health_check(
         jira.check_health(actions_example)
 
     assert len(mocked_responses.calls) == 4
+
+
+@pytest.mark.no_mocked_jira
+def test_jira_does_not_retry_4XX(mocked_responses, context_create_example):
+    url = f"{get_settings().jira_base_url}rest/api/2/issue"
+    mocked_responses.add(
+        responses.POST,
+        url,
+        json={},
+        status=400,
+    )
+
+    with pytest.raises(requests.HTTPError):
+        jira.create_jira_issue(
+            context=context_create_example, description="", issue_type="Task"
+        )
+
+    assert len(mocked_responses.calls) == 1
+
+
+@pytest.mark.parametrize(
+    "jira_components, project_components, expected_result",
+    [
+        (["Foo"], [{"name": "Foo"}], True),
+        (["Foo"], [{"name": "Foo"}, {"name": "Bar"}], True),
+        (["Foo", "Bar"], [{"name": "Foo"}, {"name": "Bar"}], True),
+        (None, [], True),
+        (["Foo"], [{"name": "Bar"}], False),
+        (["Foo", "Bar"], [{"name": "Foo"}], False),
+        (["Foo"], [], False),
+    ],
+)
+def test_all_projects_components_exist(
+    mocked_jira, action_factory, jira_components, project_components, expected_result
+):
+    action = action_factory(
+        parameters={"jira_project_key": "ABC", "jira_components": jira_components}
+    )
+    mocked_jira.get_project_components.return_value = project_components
+    actions = Actions(__root__=[action])
+    result = jira._all_projects_components_exist(actions)
+    assert result is expected_result
+
+
+def test_all_projects_components_exist_no_components_param(action_factory):
+    action = action_factory(
+        parameters={
+            "jira_project_key": "ABC",
+        }
+    )
+    actions = Actions(__root__=[action])
+    result = jira._all_projects_components_exist(actions)
+    assert result is True

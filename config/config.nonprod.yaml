@@ -5,33 +5,7 @@
   description: Nonprod testing whiteboard tag (JBI Bin Project)
   parameters:
     jira_project_key: JB
-
-- whiteboard_tag: flowstate
-  allow_private: true
-  bugzilla_user_id: 91159
-  description: Flowstate whiteboard tag
-  parameters:
-    jira_project_key: JB
-    steps:
-      new:
-        - create_issue
-        - maybe_delete_duplicate
-        - add_link_to_bugzilla
-        - add_link_to_jira
-        - maybe_assign_jira_user
-        - maybe_update_issue_resolution
-        - maybe_update_issue_status
-        - sync_whiteboard_labels
-      existing:
-        - update_issue_summary
-        - maybe_assign_jira_user
-        - maybe_update_issue_resolution
-        - maybe_update_issue_status
-        - sync_whiteboard_labels
-    status_map:
-      ASSIGNED: In Progress
-      FIXED: In Review
-      REOPENED: In Progress
+    labels_brackets: both
 
 - whiteboard_tag: fxcm
   bugzilla_user_id: tbd
@@ -54,6 +28,7 @@
         - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_whiteboard_labels
+    labels_brackets: both
     status_map:
       ASSIGNED: To Do
       REOPENED: To Do
@@ -87,6 +62,7 @@
         - maybe_assign_jira_user
         - maybe_update_issue_status
         - sync_whiteboard_labels
+    labels_brackets: both
     status_map:
       UNCONFIRMED: Backlog
       NEW: Backlog
@@ -115,17 +91,20 @@
         - add_link_to_bugzilla
         - add_link_to_jira
         - maybe_assign_jira_user
+        - maybe_update_components
         - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_whiteboard_labels
       existing:
         - update_issue_summary
         - maybe_assign_jira_user
+        - maybe_update_components
         - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_whiteboard_labels
       comment:
         - create_comment
+    labels_brackets: both
     status_map:
       UNCONFIRMED: Backlog
       NEW: Backlog
@@ -165,6 +144,7 @@
         - sync_whiteboard_labels
       comment:
         - create_comment
+    labels_brackets: both
     status_map:
       UNCONFIRMED: To Do
       NEW: To Do
@@ -205,6 +185,7 @@
         - maybe_update_issue_status
       comment:
         - create_comment
+    labels_brackets: both
     status_map:
       UNCONFIRMED: Backlog
       NEW: Backlog
@@ -245,6 +226,7 @@
         - maybe_update_issue_status
       comment:
         - create_comment
+    labels_brackets: both
     status_map:
       UNCONFIRMED: To Do
       NEW: To Do

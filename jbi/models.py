@@ -7,9 +7,11 @@ import importlib
 import logging
 import re
 import warnings
+from collections import defaultdict
+from copy import copy
 from inspect import signature
 from types import ModuleType
-from typing import Callable, Literal, Mapping, Optional, TypedDict
+from typing import Any, Callable, DefaultDict, Literal, Mapping, Optional, TypedDict
 from urllib.parse import ParseResult, urlparse
 
 from pydantic import BaseModel, Extra, Field, PrivateAttr, root_validator, validator
@@ -23,19 +25,6 @@ logger = logging.getLogger(__name__)
 JIRA_HOSTNAMES = ("jira", "atlassian")
 
 
-class ActionParameters(BaseModel):
-    """Action parameters"""
-
-    # For runner
-    jira_project_key: str
-    steps: Optional[dict[str, list[str]]] = None
-    # For steps
-    status_map: Optional[dict[str, str]] = None
-    resolution_map: Optional[dict[str, str]] = None
-    jira_components: Optional[list[str]] = None
-    sync_whiteboard_labels: bool = True
-
-
 class Action(YamlModel):
     """
     Action is the inner model for each action in the configuration file"""
@@ -45,22 +34,21 @@ class Action(YamlModel):
     bugzilla_user_id: int | list[int] | Literal["tbd"]
     description: str
     enabled: bool = True
-    allow_private: bool = False
-    parameters: ActionParameters
+    parameters: dict = {}
     _caller: Optional[Callable] = PrivateAttr(default=None)
     _required_jira_permissions: set[str] = PrivateAttr(default=None)
 
     @property
     def jira_project_key(self):
         """Return the configured project key."""
-        return self.parameters.jira_project_key
+        return self.parameters["jira_project_key"]
 
     @property
     def caller(self) -> Callable:
         """Return the initialized callable for this action."""
         if self._caller is None:
             action_module: ModuleType = importlib.import_module(self.module)
-            initialized: Callable = action_module.init(**self.parameters.dict())  # type: ignore
+            initialized: Callable = action_module.init(**self.parameters)  # type: ignore
             self._caller = initialized
         return self._caller
 
@@ -78,17 +66,14 @@ class Action(YamlModel):
         """Validate action: exists, has init function, and has expected params"""
         try:
             module: str = values["module"]  # type: ignore
-            try:
-                action_parameters = values["parameters"].dict()
-            except KeyError:
-                action_parameters = {}
+            action_parameters: Optional[dict[str, Any]] = values["parameters"]
             action_module: ModuleType = importlib.import_module(module)
             if not action_module:
-                raise TypeError("Module is not found.")
+                raise TypeError(f"Module '{module}' is not found.")
             if not hasattr(action_module, "init"):
-                raise TypeError("Module is missing `init` method.")
+                raise TypeError(f"Module '{module}' is missing `init` method.")
 
-            signature(action_module.init).bind(**action_parameters)
+            signature(action_module.init).bind(**action_parameters)  # type: ignore
         except ImportError as exception:
             raise ValueError(f"unknown Python module `{module}`.") from exception
         except (TypeError, AttributeError) as exception:
@@ -126,7 +111,11 @@ class Actions(YamlModel):
     @functools.cached_property
     def configured_jira_projects_keys(self) -> set[str]:
         """Return the list of Jira project keys from all configured actions"""
-        return {action.jira_project_key for action in self.__root__}
+        return {
+            action.jira_project_key
+            for action in self.__root__
+            if action.parameters.get("jira_project_key")
+        }
 
     @validator("__root__")
     def validate_actions(  # pylint: disable=no-self-argument
@@ -184,15 +173,7 @@ class BugzillaWebhookEvent(BaseModel):
 
     def changed_fields(self) -> list[str]:
         """Returns the names of changed fields in a bug"""
-        if self.changes:
-            return [c.field for c in self.changes]
-
-        # Private bugs don't include the changes field in the event, but the
-        # field names are in the routing key.
-        if self.routing_key is not None and self.routing_key[0:11] == "bug.modify:":
-            return self.routing_key[11:].split(",")
-
-        return []
+        return [c.field for c in self.changes] if self.changes else []
 
 
 class BugzillaWebhookAttachment(BaseModel):
@@ -246,29 +227,6 @@ class BugzillaBug(BaseModel):
         """Return `true` if the bug is assigned to a user."""
         return self.assigned_to != "nobody@mozilla.org"
 
-    def get_whiteboard_as_list(self) -> list[str]:
-        """Convert string whiteboard into list, splitting on ']' and removing '['."""
-        split_list = (
-            self.whiteboard.replace("[", "").split("]") if self.whiteboard else []
-        )
-        return [x.strip() for x in split_list if x not in ["", " "]]
-
-    def get_jira_labels(self) -> list[str]:
-        """
-        whiteboard labels are added as a convenience for users to search in jira;
-        bugzilla is an expected label in Jira
-        since jira-labels can't contain a " ", convert to "."
-        """
-        wb_list = self.get_whiteboard_as_list()
-        wb_bracket_list = [f"[{wb}]" for wb in wb_list]
-        without_spaces = [wb.replace(" ", ".") for wb in (wb_list + wb_bracket_list)]
-        return ["bugzilla"] + without_spaces
-
-    def issue_type(self) -> str:
-        """Get the Jira issue type for this bug"""
-        type_map: dict = {"enhancement": "Task", "task": "Task", "defect": "Bug"}
-        return type_map.get(self.type, "Task")
-
     def extract_from_see_also(self):
         """Extract Jira Issue Key from see_also if jira url present"""
         if not self.see_also or len(self.see_also) == 0:
@@ -299,10 +257,16 @@ class BugzillaBug(BaseModel):
         return None
 
     def lookup_action(self, actions: Actions) -> Action:
-        """Find first matching action from bug's whiteboard list"""
+        """
+        Find first matching action from bug's whiteboard field.
+
+        Tags are strings between brackets and can have prefixes/suffixes
+        using dashes (eg. ``[project]``, ``[project-moco]``, ``[backlog-project]``).
+        """
         if self.whiteboard:
             for tag, action in actions.by_tag.items():
-                search_string = r"\[[^\]]*" + tag + r"[^\]]*\]"
+                # [tag-word], [word-tag], [tag-], [tag], but not [wordtag]
+                search_string = r"\[([^\]]*-)*" + tag + r"(-[^\]]*)*\]"
                 if re.search(search_string, self.whiteboard, flags=re.IGNORECASE):
                     return action
 
@@ -339,7 +303,6 @@ class BugzillaWebhook(BaseModel):
     """Bugzilla Webhook"""
 
     id: int
-    creator: str
     name: str
     url: str
     event: str
@@ -347,6 +310,15 @@ class BugzillaWebhook(BaseModel):
     component: str
     enabled: bool
     errors: int
+    # Ignored fields:
+    # creator: str
+
+    @property
+    def slug(self):
+        """Return readable identifier"""
+        name = self.name.replace(" ", "-").lower()
+        product = self.product.replace(" ", "-").lower()
+        return f"{self.id}-{name}-{product}"
 
 
 class BugzillaWebhooksResponse(BaseModel):
@@ -368,6 +340,7 @@ class JiraContext(Context):
 
     project: str
     issue: Optional[str]
+    labels: Optional[list[str]]
 
 
 BugId = TypedDict("BugId", {"id": Optional[int]})
@@ -388,7 +361,17 @@ class ActionContext(Context, extra=Extra.forbid):
 
     rid: str
     operation: Operation
+    current_step: Optional[str]
     event: BugzillaWebhookEvent
     jira: JiraContext
     bug: BugzillaBug
     extra: dict[str, str] = {}
+    responses_by_step: DefaultDict[str, list] = defaultdict(list)
+
+    def append_responses(self, *responses):
+        """Shortcut function to add responses to the existing list."""
+        if not self.current_step:
+            raise ValueError("`current_step` unset in context.")
+        copied = copy(self.responses_by_step)
+        copied[self.current_step].extend(responses)
+        return self.update(responses_by_step=copied)
