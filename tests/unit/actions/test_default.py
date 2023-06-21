@@ -88,10 +88,7 @@ def test_default_returns_callable_with_data(
     mocked_jira.create_or_update_issue_remote_links.return_value = sentinel
     mocked_bugzilla.get_bug.return_value = context_create_example.bug
     mocked_bugzilla.get_comments.return_value = []
-    callable_object = default.init(
-        jira_project_key=context_create_example.jira.project,
-        steps={"new": ["create_issue", "add_link_to_bugzilla"]},
-    )
+    callable_object = default.init(jira_project_key=context_create_example.jira.project)
 
     handled, details = callable_object(context=context_create_example)
 

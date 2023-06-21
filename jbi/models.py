@@ -7,10 +7,11 @@ import importlib
 import logging
 import re
 import warnings
+from collections import defaultdict
 from copy import copy
 from inspect import signature
 from types import ModuleType
-from typing import Any, Callable, Literal, Mapping, Optional, TypedDict
+from typing import Any, Callable, DefaultDict, Literal, Mapping, Optional, TypedDict
 from urllib.parse import ParseResult, urlparse
 
 from pydantic import BaseModel, Extra, Field, PrivateAttr, root_validator, validator
@@ -365,20 +366,12 @@ class ActionContext(Context, extra=Extra.forbid):
     jira: JiraContext
     bug: BugzillaBug
     extra: dict[str, str] = {}
-    responses_by_step: dict[str, list] = {}
-
-    @property
-    def responses(self):
-        """Return flat list of all responses"""
-        # return list(itertools.chain.from_iterable(self.responses_by_step.values()))
-        for responses in self.responses_by_step.values():
-            for response in responses:
-                yield response
+    responses_by_step: DefaultDict[str, list] = defaultdict(list)
 
     def append_responses(self, *responses):
         """Shortcut function to add responses to the existing list."""
         if not self.current_step:
             raise ValueError("`current_step` unset in context.")
         copied = copy(self.responses_by_step)
-        copied.setdefault(self.current_step, []).extend(responses)
+        copied[self.current_step].extend(responses)
         return self.update(responses_by_step=copied)

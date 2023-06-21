@@ -6,6 +6,7 @@ The `runner` will call this action with an initialized context. When a Bugzilla 
 is created or updated, its `operation` attribute will be `Operation.CREATE` or `Operation.UPDATE`,
 and when a comment is posted, it will be set to `Operation.COMMENT`.
 """
+import itertools
 import logging
 from typing import Callable, Optional
 
@@ -95,19 +96,26 @@ class Executor:
     def __call__(self, context: ActionContext) -> ActionResult:
         """Called from `runner` when the action is used."""
         for step in self.steps[context.operation]:
+            context = context.update(current_step=step.__name__)
             try:
-                context = context.update(current_step=step.__name__)
                 context = step(context=context, **self.parameters)
             except IncompleteStepError as exc:
+                # Step did not execute all its operations.
                 context = exc.context
 
-        for response in context.responses:
-            logger.debug(
-                "Received %s",
-                response,
-                extra={
-                    "response": response,
-                    **context.dict(),
-                },
-            )
-        return True, {"responses": list(context.responses)}
+            step_responses = context.responses_by_step[step.__name__]
+            for response in step_responses:
+                logger.debug(
+                    "Received %s",
+                    response,
+                    extra={
+                        "response": response,
+                        **context.dict(),
+                    },
+                )
+
+        # Flatten the list of all received responses.
+        responses = list(
+            itertools.chain.from_iterable(context.responses_by_step.values())
+        )
+        return True, {"responses": responses}

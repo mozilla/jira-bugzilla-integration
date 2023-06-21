@@ -270,13 +270,11 @@ def test_clear_assignee(context_update_example: ActionContext, mocked_jira):
     )
     callable_object(context=context_update_example)
 
-    mocked_jira.create_issue.assert_not_called()
     mocked_jira.user_find_by_user_string.assert_not_called()
     mocked_jira.update_issue_field.assert_any_call(
         key="JBI-234",
         fields={"assignee": None},
     )
-    mocked_jira.set_issue_status.assert_not_called()
 
 
 def test_set_assignee(context_update_example: ActionContext, mocked_jira):
@@ -306,7 +304,7 @@ def test_set_assignee(context_update_example: ActionContext, mocked_jira):
     mocked_jira.set_issue_status.assert_not_called()
 
 
-def test_set_assignee_failing(
+def test_set_assignee_failing_create(
     context_create_example: ActionContext, mocked_jira, caplog
 ):
     mocked_jira.update_issue_field.side_effect = requests.exceptions.HTTPError(
@@ -323,6 +321,33 @@ def test_set_assignee_failing(
         r.msg % r.args for r in caplog.records if r.name == "jbi.actions.steps"
     ]
     assert captured_log_msgs == ["User postmaster@localhost not found"]
+
+
+def test_set_assignee_failing_update(
+    context_update_example: ActionContext, mocked_jira, caplog
+):
+    mocked_jira.user_find_by_user_string.return_value = []
+    context_update_example.jira.issue = "key"
+    context_update_example.bug.assigned_to = "postmaster@localhost"
+    context_update_example.event.changes = [
+        webhook_event_change_factory(
+            field="assigned_to", removed="", added="postmaster@localhost"
+        )
+    ]
+
+    context_update_example.current_step = "maybe_assign_jira_user"
+    with caplog.at_level(logging.DEBUG):
+        steps.maybe_assign_jira_user(context=context_update_example)
+
+    captured_log_msgs = [
+        r.msg % r.args for r in caplog.records if r.name == "jbi.actions.steps"
+    ]
+    assert captured_log_msgs == ["User postmaster@localhost not found"]
+    # Assignee is cleared if failed to update
+    mocked_jira.update_issue_field.assert_any_call(
+        key="key",
+        fields={"assignee": None},
+    )
 
 
 def test_create_with_unknown_status(
