@@ -8,9 +8,7 @@ import re
 import warnings
 from collections import defaultdict
 from copy import copy
-from inspect import signature
-from types import ModuleType
-from typing import Any, Callable, DefaultDict, Literal, Mapping, Optional, TypedDict
+from typing import DefaultDict, Literal, Mapping, Optional, TypedDict
 from urllib.parse import ParseResult, urlparse
 
 from pydantic import BaseModel, Extra, Field, validator
