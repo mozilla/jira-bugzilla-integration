@@ -1,6 +1,7 @@
 """
 Execute actions from Webhook requests
 """
+import itertools
 import logging
 from typing import Optional
 
@@ -9,7 +10,11 @@ from statsd.defaults.env import statsd
 from jbi import ActionResult, Operation
 from jbi import steps as steps_module
 from jbi.environment import get_settings
-from jbi.errors import ActionNotFoundError, IgnoreInvalidRequestError
+from jbi.errors import (
+    ActionNotFoundError,
+    IgnoreInvalidRequestError,
+    IncompleteStepError,
+)
 from jbi.models import (
     ActionContext,
     ActionParams,
@@ -67,10 +72,15 @@ class Executor:
     def __call__(self, context: ActionContext) -> ActionResult:
         """Called from `runner` when the action is used."""
 
-        responses = tuple()  # type: ignore
-
         for step in self.steps[context.operation]:
-            context, step_responses = step(context=context, parameters=self.parameters)
+            context = context.update(current_step=step.__name__)
+            try:
+                context = step(context=context, parameters=self.parameters)
+            except IncompleteStepError as exc:
+                # Step did not execute all its operations.
+                context = exc.context
+
+            step_responses = context.responses_by_step[step.__name__]
             for response in step_responses:
                 logger.debug(
                     "Received %s",
@@ -80,8 +90,11 @@ class Executor:
                         **context.dict(),
                     },
                 )
-            responses += step_responses
 
+        # Flatten the list of all received responses.
+        responses = list(
+            itertools.chain.from_iterable(context.responses_by_step.values())
+        )
         return True, {"responses": responses}
 
 

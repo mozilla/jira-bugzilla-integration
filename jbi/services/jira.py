@@ -423,7 +423,7 @@ def assign_jira_user(context: ActionContext, email: str):
             key=issue_key,
             fields={"assignee": {"accountId": jira_user_id}},
         )
-    except IOError as exc:
+    except (requests_exceptions.HTTPError, IOError) as exc:
         raise ValueError(
             f"Could not assign {jira_user_id} to issue {issue_key}"
         ) from exc
