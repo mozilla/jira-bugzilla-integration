@@ -74,6 +74,7 @@ def execute_action(
         linked_issue_key: Optional[str] = bug.extract_from_see_also()
 
         action_context = ActionContext(
+            action=action,
             rid=request.rid,
             bug=bug,
             event=event,

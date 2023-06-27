@@ -107,14 +107,14 @@ class Executor:
                 # Step did not execute all its operations.
                 context = exc.context
                 statsd.incr(
-                    f"jbi.action.{context.jira.project.lower()}.incomplete.count"
+                    f"jbi.action.{context.action.whiteboard_tag}.incomplete.count"
                 )
             except Exception:
                 if has_produced_request:
                     # Count the number of workflows that produced at least one request,
                     # but could not complete entirely with success.
                     statsd.incr(
-                        f"jbi.action.{context.jira.project.lower()}.aborted.count"
+                        f"jbi.action.{context.action.whiteboard_tag}.aborted.count"
                     )
                 raise
 

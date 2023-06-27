@@ -5,9 +5,11 @@ import pytest
 import requests
 import responses
 
+from jbi import Operation
 from jbi.actions import default
 from jbi.environment import get_settings
 from jbi.models import ActionContext
+from tests.fixtures import factories
 
 
 def test_default_invalid_init():
@@ -99,9 +101,12 @@ def test_default_returns_callable_with_data(
 
 
 def test_counter_is_incremented_when_workflows_was_aborted(
-    context_create_example: ActionContext, mocked_bugzilla, mocked_jira
+    mocked_bugzilla, mocked_jira
 ):
-    context_create_example.jira.project = "FENIX"
+    context_create_example: ActionContext = factories.action_context_factory(
+        operation=Operation.CREATE,
+        action=factories.action_factory(whiteboard_tag="fnx"),
+    )
     mocked_bugzilla.get_bug.return_value = context_create_example.bug
     mocked_jira.create_or_update_issue_remote_links.side_effect = requests.HTTPError(
         "Unauthorized"
@@ -112,14 +117,17 @@ def test_counter_is_incremented_when_workflows_was_aborted(
         with pytest.raises(requests.HTTPError):
             callable_object(context=context_create_example)
 
-    mocked.incr.assert_called_with("jbi.action.fenix.aborted.count")
+    mocked.incr.assert_called_with("jbi.action.fnx.aborted.count")
 
 
 def test_counter_is_incremented_when_workflows_was_incomplete(
-    context_create_example: ActionContext, mocked_bugzilla, mocked_jira
+    mocked_bugzilla, mocked_jira
 ):
-    context_create_example.jira.project = "FENIX"
-    context_create_example.bug.resolution = "WONTFIX"
+    context_create_example: ActionContext = factories.action_context_factory(
+        operation=Operation.CREATE,
+        action=factories.action_factory(whiteboard_tag="fnx"),
+        bug=factories.bug_factory(resolution="WONTFIX"),
+    )
     mocked_bugzilla.get_bug.return_value = context_create_example.bug
 
     callable_object = default.init(
@@ -139,4 +147,4 @@ def test_counter_is_incremented_when_workflows_was_incomplete(
     with mock.patch("jbi.actions.default.statsd") as mocked:
         callable_object(context=context_create_example)
 
-    mocked.incr.assert_called_with("jbi.action.fenix.incomplete.count")
+    mocked.incr.assert_called_with("jbi.action.fnx.incomplete.count")

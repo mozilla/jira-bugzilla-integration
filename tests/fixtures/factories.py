@@ -114,6 +114,7 @@ def comment_factory(**overrides):
 def action_context_factory(**overrides):
     return ActionContext.parse_obj(
         {
+            "action": action_factory(),
             "rid": token_hex(16),
             "operation": Operation.IGNORE,
             "bug": bug_factory(),
