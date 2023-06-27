@@ -327,6 +327,7 @@ class RunnerContext(Context, extra=Extra.forbid):
 class ActionContext(Context, extra=Extra.forbid):
     """Logging context from actions"""
 
+    action: Action
     rid: str
     operation: Operation
     current_step: Optional[str]

@@ -71,6 +71,7 @@ class Executor:
 
     def __call__(self, context: ActionContext) -> ActionResult:
         """Called from `runner` when the action is used."""
+        has_produced_request = False
 
         for step in self.steps[context.operation]:
             context = context.update(current_step=step.__name__)
@@ -79,8 +80,21 @@ class Executor:
             except IncompleteStepError as exc:
                 # Step did not execute all its operations.
                 context = exc.context
+                statsd.incr(
+                    f"jbi.action.{context.action.whiteboard_tag}.incomplete.count"
+                )
+            except Exception:
+                if has_produced_request:
+                    # Count the number of workflows that produced at least one request,
+                    # but could not complete entirely with success.
+                    statsd.incr(
+                        f"jbi.action.{context.action.whiteboard_tag}.aborted.count"
+                    )
+                raise
 
             step_responses = context.responses_by_step[step.__name__]
+            if step_responses:
+                has_produced_request = True
             for response in step_responses:
                 logger.debug(
                     "Received %s",
@@ -149,6 +163,7 @@ def execute_action(
         linked_issue_key: Optional[str] = bug.extract_from_see_also()
 
         action_context = ActionContext(
+            action=action,
             rid=request.rid,
             bug=bug,
             event=event,
