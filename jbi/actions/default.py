@@ -10,6 +10,8 @@ import itertools
 import logging
 from typing import Callable, Optional
 
+from statsd.defaults.env import statsd
+
 from jbi import ActionResult, Operation
 from jbi.actions import steps as steps_module
 from jbi.environment import get_settings
@@ -95,6 +97,8 @@ class Executor:
 
     def __call__(self, context: ActionContext) -> ActionResult:
         """Called from `runner` when the action is used."""
+        has_produced_request = False
+
         for step in self.steps[context.operation]:
             context = context.update(current_step=step.__name__)
             try:
@@ -102,8 +106,21 @@ class Executor:
             except IncompleteStepError as exc:
                 # Step did not execute all its operations.
                 context = exc.context
+                statsd.incr(
+                    f"jbi.action.{context.action.whiteboard_tag}.incomplete.count"
+                )
+            except Exception:
+                if has_produced_request:
+                    # Count the number of workflows that produced at least one request,
+                    # but could not complete entirely with success.
+                    statsd.incr(
+                        f"jbi.action.{context.action.whiteboard_tag}.aborted.count"
+                    )
+                raise
 
             step_responses = context.responses_by_step[step.__name__]
+            if step_responses:
+                has_produced_request = True
             for response in step_responses:
                 logger.debug(
                     "Received %s",

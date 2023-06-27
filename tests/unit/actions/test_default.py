@@ -2,11 +2,14 @@ import logging
 from unittest import mock
 
 import pytest
+import requests
 import responses
 
+from jbi import Operation
 from jbi.actions import default
 from jbi.environment import get_settings
 from jbi.models import ActionContext
+from tests.fixtures import factories
 
 
 def test_default_invalid_init():
@@ -95,3 +98,53 @@ def test_default_returns_callable_with_data(
     assert handled
     assert details["responses"][0] == {"key": "k"}
     assert details["responses"][1] == sentinel
+
+
+def test_counter_is_incremented_when_workflows_was_aborted(
+    mocked_bugzilla, mocked_jira
+):
+    context_create_example: ActionContext = factories.action_context_factory(
+        operation=Operation.CREATE,
+        action=factories.action_factory(whiteboard_tag="fnx"),
+    )
+    mocked_bugzilla.get_bug.return_value = context_create_example.bug
+    mocked_jira.create_or_update_issue_remote_links.side_effect = requests.HTTPError(
+        "Unauthorized"
+    )
+    callable_object = default.init(jira_project_key=context_create_example.jira.project)
+
+    with mock.patch("jbi.actions.default.statsd") as mocked:
+        with pytest.raises(requests.HTTPError):
+            callable_object(context=context_create_example)
+
+    mocked.incr.assert_called_with("jbi.action.fnx.aborted.count")
+
+
+def test_counter_is_incremented_when_workflows_was_incomplete(
+    mocked_bugzilla, mocked_jira
+):
+    context_create_example: ActionContext = factories.action_context_factory(
+        operation=Operation.CREATE,
+        action=factories.action_factory(whiteboard_tag="fnx"),
+        bug=factories.bug_factory(resolution="WONTFIX"),
+    )
+    mocked_bugzilla.get_bug.return_value = context_create_example.bug
+
+    callable_object = default.init(
+        jira_project_key=context_create_example.jira.project,
+        steps={
+            "new": [
+                "create_issue",
+                "maybe_update_issue_resolution",
+            ]
+        },
+        resolution_map={
+            # Not matching WONTFIX, `maybe_` step will not complete
+            "DUPLICATE": "Duplicate",
+        },
+    )
+
+    with mock.patch("jbi.actions.default.statsd") as mocked:
+        callable_object(context=context_create_example)
+
+    mocked.incr.assert_called_with("jbi.action.fnx.incomplete.count")
