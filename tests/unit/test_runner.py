@@ -56,29 +56,6 @@ def test_request_is_ignored_because_private(
     assert str(exc_info.value) == "private bugs are not supported"
 
 
-# TODO:
-# def test_request_matched_whiteboard_with_dash(
-#     webhook_create_example,
-#     action_factory,
-#     mocked_bugzilla,
-# ):
-#     action_tag = "data-quality"
-#     actions_example_with_inner_match = Actions.parse_obj(
-#         [action_factory(whiteboard_tag=action_tag)]
-#     )
-#     bug = bug_factory(whiteboard=f"[{action_tag}-backlog]")
-#     webhook_create_example.bug = bug
-#     mocked_bugzilla.get_bug.return_value = bug
-
-#     result = execute_action(
-#         request=webhook_create_example,
-#         actions=actions_example_with_inner_match,
-#     )
-#     breakpoint()
-#     result_bug = BugzillaBug.parse_raw(result["bug"])
-#     assert result_bug.id == bug.id
-
-
 def test_added_comment_without_linked_issue_is_ignored(
     webhook_comment_example: BugzillaWebhookRequest,
     actions_example: Actions,
