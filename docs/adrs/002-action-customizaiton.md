@@ -36,4 +36,18 @@ Considering the positive consequences of Option 2 and the fact that workflow cus
 - Good, because it validates that configured parameters are useable by step functions
 - Good, because we can safely assume that action parameters are of a certain type
 - Good, because it aligns with the evolved designs that emphasize customization through action steps
-- Bad, because it limits customization ability compared to the previous method with custom modules
+
+Option 2 also still provides plenty of freedom to customize an action workflow. One can
+simply supply one large function that contains all of the logic of that action, e.g.
+
+```yaml
+parameters:
+  jira_project_key: FIDEFE
+  steps:
+    new:
+      - my_giant_big_step
+    existing:
+      - my_giant_big_step
+```
+
+While this is perhaps less "elegant" than the module-based approached, it still provides an equivalent amount of customization.
