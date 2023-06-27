@@ -211,6 +211,11 @@ def webhook_change_status_assignee():
 
 
 @pytest.fixture
+def action_params_factory():
+    return factories.action_params_factory
+
+
+@pytest.fixture
 def action_factory():
     return factories.action_factory
 

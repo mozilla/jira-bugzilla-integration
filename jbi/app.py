@@ -39,7 +39,7 @@ sentry_sdk.init(
 
 app = FastAPI(
     title="Jira Bugzilla Integration (JBI)",
-    description="Platform providing default and customized synchronization for bugzilla bugs.",
+    description="Platform providing synchronization of Bugzilla bugs to Jira issues.",
     version=version_info["version"],
     debug=settings.app_debug,
 )

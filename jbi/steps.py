@@ -5,19 +5,19 @@ Each step takes an `ActionContext` and a list of arbitrary parameters.
 """
 
 import logging
-from typing import Iterable, Optional
+from typing import Optional
 
 from requests import exceptions as requests_exceptions
 
 from jbi import Operation
 from jbi.errors import IncompleteStepError
-from jbi.models import ActionContext
+from jbi.models import ActionContext, ActionParams
 from jbi.services import bugzilla, jira
 
 logger = logging.getLogger(__name__)
 
 
-def create_comment(context: ActionContext, **parameters):
+def create_comment(context: ActionContext, parameters: ActionParams):
     """Create a Jira comment using `context.bug.comment`"""
     bug = context.bug
 
@@ -33,17 +33,10 @@ def create_comment(context: ActionContext, **parameters):
     return context
 
 
-def create_issue(context: ActionContext, **parameters):
+def create_issue(context: ActionContext, parameters: ActionParams):
     """Create the Jira issue with the first comment as the description."""
     bug = context.bug
-
-    # If not specified, issue type will be either 'Bug' or 'Task'
-    issue_type_map = parameters.get(
-        "issue_type_map", {"enhancement": "Task", "task": "Task", "defect": "Bug"}
-    )
-    if not isinstance(issue_type_map, dict):
-        raise TypeError("The 'issue_type_map' parameter must be a dictionary.")
-    issue_type = issue_type_map.get(bug.type, "Task")
+    issue_type = parameters.issue_type_map.get(bug.type or "", "Task")
 
     # In the payload of a bug creation, the `comment` field is `null`.
     # We fetch the list of comments to use the first one as the Jira issue description.
@@ -60,21 +53,21 @@ def create_issue(context: ActionContext, **parameters):
     return context
 
 
-def add_link_to_jira(context: ActionContext, **parameters):
+def add_link_to_jira(context: ActionContext, parameters: ActionParams):
     """Add the URL to the Jira issue in the `see_also` field on the Bugzilla ticket"""
     bugzilla_response = bugzilla.add_link_to_jira(context)
     context = context.append_responses(bugzilla_response)
     return context
 
 
-def add_link_to_bugzilla(context: ActionContext, **parameters):
+def add_link_to_bugzilla(context: ActionContext, parameters: ActionParams):
     """Add the URL of the Bugzilla ticket to the links of the Jira issue"""
     jira_response = jira.add_link_to_bugzilla(context)
     context = context.append_responses(jira_response)
     return context
 
 
-def maybe_delete_duplicate(context: ActionContext, **parameters):
+def maybe_delete_duplicate(context: ActionContext, parameters: ActionParams):
     """
     In the time taken to create the Jira issue the bug may have been updated so
     re-retrieve it to ensure we have the latest data, and delete any duplicate
@@ -87,7 +80,7 @@ def maybe_delete_duplicate(context: ActionContext, **parameters):
     return context
 
 
-def update_issue_summary(context: ActionContext, **parameters):
+def update_issue_summary(context: ActionContext, parameters: ActionParams):
     """Update the Jira issue's summary if the linked bug is modified."""
 
     bug = context.bug
@@ -113,7 +106,7 @@ def update_issue_summary(context: ActionContext, **parameters):
     return context
 
 
-def add_jira_comments_for_changes(context: ActionContext, **parameters):
+def add_jira_comments_for_changes(context: ActionContext, parameters: ActionParams):
     """Add a Jira comment for each field (assignee, status, resolution) change on
     the Bugzilla ticket."""
     comments_responses = jira.add_jira_comments_for_changes(context)
@@ -121,7 +114,7 @@ def add_jira_comments_for_changes(context: ActionContext, **parameters):
     return context
 
 
-def maybe_assign_jira_user(context: ActionContext, **parameters):
+def maybe_assign_jira_user(context: ActionContext, parameters: ActionParams):
     """Assign the user on the Jira issue, based on the Bugzilla assignee email.
 
     It will attempt to assign the Jira issue the same person as the bug is assigned to. This relies on
@@ -166,17 +159,16 @@ def maybe_assign_jira_user(context: ActionContext, **parameters):
 
 def maybe_update_issue_resolution(
     context: ActionContext,
-    **parameters,
+    parameters: ActionParams,
 ):
     """
     Update the Jira issue status
     https://support.atlassian.com/jira-cloud-administration/docs/what-are-issue-statuses-priorities-and-resolutions/
     """
-    resolution_map: dict[str, str] = parameters.get("resolution_map", {})
-    if not isinstance(resolution_map, dict):
-        raise TypeError("The 'resolution_map' parameter must be a dictionary.")
+
     bz_resolution = context.bug.resolution or ""
-    jira_resolution = resolution_map.get(bz_resolution)
+    jira_resolution = parameters.resolution_map.get(bz_resolution)
+
     if jira_resolution is None:
         logger.debug(
             "Bug resolution %r was not in the resolution map.",
@@ -201,17 +193,13 @@ def maybe_update_issue_resolution(
     return context
 
 
-def maybe_update_issue_status(context: ActionContext, **parameters):
+def maybe_update_issue_status(context: ActionContext, parameters: ActionParams):
     """
     Update the Jira issue resolution
     https://support.atlassian.com/jira-cloud-administration/docs/what-are-issue-statuses-priorities-and-resolutions/
     """
-    status_map = parameters.get("status_map", {})
-    if not isinstance(status_map, dict):
-        raise TypeError("The 'status_map' parameter must be a dictionary.")
-
     bz_status = context.bug.resolution or context.bug.status
-    jira_status = status_map.get(bz_status or "")
+    jira_status = parameters.status_map.get(bz_status or "")
 
     if jira_status is None:
         logger.debug(
@@ -239,14 +227,11 @@ def maybe_update_issue_status(context: ActionContext, **parameters):
     return context
 
 
-def maybe_update_components(context: ActionContext, **parameters):
+def maybe_update_components(context: ActionContext, parameters: ActionParams):
     """
     Update the Jira issue components
     """
-    config_components = parameters.get("jira_components", [])
-    if not isinstance(config_components, Iterable):
-        raise TypeError("The 'jira_components' parameter must be an iterable.")
-    candidate_components = set(config_components)
+    candidate_components = set(parameters.jira_components)
     if context.bug.component:
         candidate_components.add(context.bug.component)
     client = jira.get_client()
@@ -308,16 +293,10 @@ def _build_labels_update(labels_brackets, added, removed=None):
     return updates
 
 
-def sync_whiteboard_labels(context: ActionContext, **parameters):
+def sync_whiteboard_labels(context: ActionContext, parameters: ActionParams):
     """
     Set whiteboard tags as labels on the Jira issue.
     """
-    labels_brackets = parameters.get("labels_brackets", "no")
-    if labels_brackets not in ("yes", "no", "both"):
-        raise ValueError(
-            f"Invalid value {labels_brackets} for 'labels_brackets' parameter."
-        )
-
     # On update of whiteboard field, add/remove corresponding labels
     if context.event.changes:
         changes_by_field = {change.field: change for change in context.event.changes}
@@ -325,7 +304,7 @@ def sync_whiteboard_labels(context: ActionContext, **parameters):
             updates = _build_labels_update(
                 added=change.added,
                 removed=change.removed,
-                labels_brackets=labels_brackets,
+                labels_brackets=parameters.labels_brackets,
             )
         else:
             # Whiteboard field not changed, ignore.
@@ -333,7 +312,7 @@ def sync_whiteboard_labels(context: ActionContext, **parameters):
     else:
         # On creation, just add them all.
         updates = _build_labels_update(
-            added=context.bug.whiteboard, labels_brackets=labels_brackets
+            added=context.bug.whiteboard, labels_brackets=parameters.labels_brackets
         )
 
     try:

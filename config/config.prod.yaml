@@ -3,7 +3,6 @@
 - whiteboard_tag: addons
   bugzilla_user_id: tbd
   description: Addons whiteboard tag for AMO Team
-  # module: jbi.actions.default
   parameters:
     jira_project_key: WEBEXT
     labels_brackets: both
