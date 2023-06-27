@@ -1,8 +1,7 @@
 # Restrict Workflow Customization and Validate Default Action Parameters
 
-Status: Proposed
-
-Date: 2023-06-23
+- Status: Accepted
+- Date: 2023-06-23
 
 Tracking issue: [#544](https://github.com/mozilla/jira-bugzilla-integration/issues/544)
 
