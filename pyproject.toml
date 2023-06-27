@@ -7,14 +7,14 @@ license = "MPL"
 
 [tool.poetry.dependencies]
 python = ">=3.10 <3.12"
-fastapi = "^0.97.0"
+fastapi = "^0.98.0"
 pydantic = {version = "^1.10.9", extras = ["dotenv", "email"]}
 uvicorn = {extras = ["standard"], version = "^0.22.0"}
 atlassian-python-api = "^3.39.0"
 dockerflow = "2022.8.0"
 Jinja2 = "^3.1.2"
 pydantic-yaml = {extras = ["pyyaml","ruamel"], version = "^0.11.2"}
-sentry-sdk = {extras = ["fastapi"], version = "^1.25.1"}
+sentry-sdk = {extras = ["fastapi"], version = "^1.26.0"}
 backoff = "^2.2.1"
 statsd = "^4.0.1"
 requests = "^2.31.0"
@@ -29,7 +29,7 @@ detect-secrets = "^1.4.0"
 bandit = "^1.7.5"
 pylint = "^2.17.4"
 pylint-pytest = "^1.1.2"
-pytest = "^7.3.2"
+pytest = "^7.4.0"
 yamllint = "^1.32.0"
 pytest-dotenv = "^0.5.2"
 types-requests = "^2.31.0"
