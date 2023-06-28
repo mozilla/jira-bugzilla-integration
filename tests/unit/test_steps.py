@@ -710,6 +710,34 @@ def test_maybe_update_components_raises_incompletesteperror_on_mismatch(
         steps.maybe_update_components(context_update_example, action_params)
 
 
+def test_maybe_update_components_failing(
+    context_update_example: ActionContext, mocked_jira, caplog, action_params_factory
+):
+    mocked_jira.get_project_components.return_value = [
+        {"id": 1, "name": context_update_example.bug.component}
+    ]
+    mocked_jira.update_issue_field.side_effect = requests.exceptions.HTTPError(
+        "Field 'components' cannot be set", response=mock.MagicMock(status_code=400)
+    )
+    context_update_example.current_step = "maybe_update_components"
+
+    action_params = action_params_factory(
+        jira_project_key=context_update_example.jira.project,
+    )
+    with pytest.raises(IncompleteStepError):
+        with caplog.at_level(logging.DEBUG):
+            steps.maybe_update_components(
+                context=context_update_example, parameters=action_params
+            )
+
+    captured_log_msgs = [
+        r.msg % r.args for r in caplog.records if r.name == "jbi.steps"
+    ]
+    assert captured_log_msgs == [
+        "Could not set components on issue JBI-234: Field 'components' cannot be set"
+    ]
+
+
 def test_sync_whiteboard_labels(
     context_create_example: ActionContext, mocked_jira, action_params_factory
 ):
