@@ -85,33 +85,28 @@ def test_request_is_ignored_because_no_action(
 
 
 def test_execution_logging_for_successful_requests(
-    caplog,
+    capturelogs,
     webhook_create_example: BugzillaWebhookRequest,
     actions_example: Actions,
     mocked_bugzilla,
 ):
     mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
 
-    with caplog.at_level(logging.DEBUG):
+    with capturelogs.for_logger("jbi.runner").at_level(logging.DEBUG):
         execute_action(
             request=webhook_create_example,
             actions=actions_example,
         )
 
-    captured_log_msgs = (
-        r.msg % r.args for r in caplog.records if r.name == "jbi.runner"
-    )
-
-    for message in [
+    assert {
         "Handling incoming request",
         "Execute action 'devtest' for Bug 654321",
         "Action 'devtest' executed successfully for Bug 654321",
-    ]:
-        assert message in captured_log_msgs
+    }.issubset(set(capturelogs.messages))
 
 
 def test_execution_logging_for_ignored_requests(
-    caplog,
+    capturelogs,
     webhook_create_example: BugzillaWebhookRequest,
     actions_example: Actions,
     mocked_bugzilla,
@@ -120,25 +115,21 @@ def test_execution_logging_for_ignored_requests(
     webhook_create_example.bug.whiteboard = "foo"
     mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
 
-    with caplog.at_level(logging.DEBUG):
+    with capturelogs.for_logger("jbi.runner").at_level(logging.DEBUG):
         with pytest.raises(IgnoreInvalidRequestError):
             execute_action(
                 request=webhook_create_example,
                 actions=actions_example,
             )
 
-    captured_log_msgs = [
-        r.msg % r.args for r in caplog.records if r.name == "jbi.runner"
-    ]
-
-    assert captured_log_msgs == [
+    assert capturelogs.messages == [
         "Handling incoming request",
         "Ignore incoming request: no bug whiteboard matching action tags: devtest",
     ]
 
 
 def test_action_is_logged_as_success_if_returns_true(
-    caplog,
+    capturelogs,
     webhook_create_example: BugzillaWebhookRequest,
     actions_example: Actions,
     mocked_bugzilla,
@@ -146,15 +137,13 @@ def test_action_is_logged_as_success_if_returns_true(
     mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
 
     with mock.patch("jbi.runner.Executor.__call__", return_value=(True, {})):
-        with caplog.at_level(logging.DEBUG):
+        with capturelogs.for_logger("jbi.runner").at_level(logging.DEBUG):
             execute_action(
                 request=webhook_create_example,
                 actions=actions_example,
             )
 
-    captured_log_msgs = [
-        (r.msg % r.args, r.operation) for r in caplog.records if r.name == "jbi.runner"
-    ]
+    captured_log_msgs = [(r.getMessage(), r.operation) for r in capturelogs.records]
 
     assert captured_log_msgs == [
         ("Handling incoming request", Operation.HANDLE),
@@ -164,12 +153,12 @@ def test_action_is_logged_as_success_if_returns_true(
         ),
         ("Action 'devtest' executed successfully for Bug 654321", Operation.SUCCESS),
     ]
-    assert caplog.records[-1].bug["id"] == 654321
-    assert caplog.records[-1].action["whiteboard_tag"] == "devtest"
+    assert capturelogs.records[-1].bug["id"] == 654321
+    assert capturelogs.records[-1].action["whiteboard_tag"] == "devtest"
 
 
 def test_action_is_logged_as_ignore_if_returns_false(
-    caplog,
+    capturelogs,
     webhook_create_example: BugzillaWebhookRequest,
     actions_example: Actions,
     mocked_bugzilla,
@@ -177,15 +166,13 @@ def test_action_is_logged_as_ignore_if_returns_false(
     mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
 
     with mock.patch("jbi.runner.Executor.__call__", return_value=(False, {})):
-        with caplog.at_level(logging.DEBUG):
+        with capturelogs.for_logger("jbi.runner").at_level(logging.DEBUG):
             execute_action(
                 request=webhook_create_example,
                 actions=actions_example,
             )
 
-    captured_log_msgs = [
-        (r.msg % r.args, r.operation) for r in caplog.records if r.name == "jbi.runner"
-    ]
+    captured_log_msgs = [(r.getMessage(), r.operation) for r in capturelogs.records]
 
     assert captured_log_msgs == [
         ("Handling incoming request", Operation.HANDLE),
@@ -235,12 +222,12 @@ def test_runner_ignores_if_jira_issue_is_not_readable(
     actions_example: Actions,
     mocked_bugzilla,
     mocked_jira,
-    caplog,
+    capturelogs,
 ):
     mocked_jira.get_issue.return_value = None
     mocked_bugzilla.get_bug.return_value = webhook_comment_example.bug
 
-    with caplog.at_level(logging.DEBUG):
+    with capturelogs.for_logger("jbi.runner").at_level(logging.DEBUG):
         with pytest.raises(IgnoreInvalidRequestError) as exc_info:
             execute_action(
                 request=webhook_comment_example,
@@ -248,10 +235,7 @@ def test_runner_ignores_if_jira_issue_is_not_readable(
             )
 
     assert str(exc_info.value) == "ignore unreadable issue JBI-234"
-    captured_log_msgs = [
-        r.msg % r.args for r in caplog.records if r.name == "jbi.runner"
-    ]
-    assert captured_log_msgs == [
+    assert capturelogs.messages == [
         "Handling incoming request",
         "Ignore incoming request: ignore unreadable issue JBI-234",
     ]
@@ -306,7 +290,7 @@ def test_default_returns_callable_without_data(action_params_factory):
 @pytest.mark.no_mocked_jira
 def test_default_logs_all_received_responses(
     mocked_responses,
-    caplog,
+    capturelogs,
     context_comment_example: ActionContext,
     action_params_factory,
 ):
@@ -330,11 +314,13 @@ def test_default_logs_all_received_responses(
         )
     )
 
-    with caplog.at_level(logging.DEBUG):
+    with capturelogs.for_logger("jbi.runner").at_level(logging.DEBUG):
         action(context=context_comment_example)
 
     captured_log_msgs = (
-        (r.msg % r.args, r.response) for r in caplog.records if r.name == "jbi.runner"
+        (r.msg % r.args, r.response)
+        for r in capturelogs.records
+        if r.name == "jbi.runner"
     )
 
     assert (

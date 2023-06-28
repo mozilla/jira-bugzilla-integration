@@ -23,6 +23,37 @@ from jbi.services import bugzilla, jira
 from tests.fixtures import factories
 
 
+class FilteredLogCaptureFixture(pytest.LogCaptureFixture):
+    """A custom implementation to simplify capture
+    of logs for a particular logger."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.logger_name = ""  # root (all)
+
+    @property
+    def records(self):
+        """Return filtered list of messages"""
+        return [
+            r
+            for r in super().records
+            if not self.logger_name or r.name == self.logger_name
+        ]
+
+    def for_logger(self, logger_name):
+        """Specify logger to filter captured messages"""
+        self.logger_name = logger_name
+        return self
+
+
+@pytest.fixture()
+def capturelogs(request):
+    """A custom log capture that can filter on logger name."""
+    result = FilteredLogCaptureFixture(request.node)
+    yield result
+    result._finalize()
+
+
 @pytest.fixture(autouse=True)
 def mocked_statsd():
     with mock.patch("jbi.services.common.statsd") as _mocked_statsd:
