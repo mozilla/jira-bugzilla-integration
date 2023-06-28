@@ -52,7 +52,6 @@ GET /whiteboard_tags/
         "bugzilla_user_id": 514230,
         "description": "Addons whiteboard tag for AMO Team",
         "enabled": true,
-        "module": "jbi.actions.default",
         "parameters": {
             "jira_project_key": "WEBEXT"
         }

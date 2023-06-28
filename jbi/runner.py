@@ -1,17 +1,25 @@
 """
 Execute actions from Webhook requests
 """
+import itertools
 import logging
 from typing import Optional
 
 from statsd.defaults.env import statsd
 
-from jbi import Operation
-from jbi.environment import Settings
-from jbi.errors import ActionNotFoundError, IgnoreInvalidRequestError
+from jbi import ActionResult, Operation
+from jbi import steps as steps_module
+from jbi.environment import get_settings
+from jbi.errors import (
+    ActionNotFoundError,
+    IgnoreInvalidRequestError,
+    IncompleteStepError,
+)
 from jbi.models import (
     ActionContext,
+    ActionParams,
     Actions,
+    ActionSteps,
     BugzillaWebhookComment,
     BugzillaWebhookRequest,
     JiraContext,
@@ -21,12 +29,93 @@ from jbi.services import bugzilla, jira
 
 logger = logging.getLogger(__name__)
 
+settings = get_settings()
+
+
+GROUP_TO_OPERATION = {
+    "new": Operation.CREATE,
+    "existing": Operation.UPDATE,
+    "comment": Operation.COMMENT,
+}
+
+
+def groups2operation(steps: ActionSteps):
+    """In the configuration files, the steps are grouped by `new`, `existing`,
+    and `comment`. Internally, this correspond to enums of `Operation`.
+    This helper remaps the list of steps.
+    """
+    try:
+        by_operation = {
+            GROUP_TO_OPERATION[entry]: steps_list
+            for entry, steps_list in steps.dict().items()
+        }
+    except KeyError as err:
+        raise ValueError(f"Unsupported entry in `steps`: {err}") from err
+    return by_operation
+
+
+class Executor:
+    """Callable class that runs step functions for an action."""
+
+    def __init__(self, parameters: ActionParams):
+        self.parameters = parameters
+        self.steps = self._initialize_steps(parameters.steps)
+
+    def _initialize_steps(self, steps: ActionSteps):
+        steps_by_operation = groups2operation(steps)
+        steps_callables = {
+            group: [getattr(steps_module, step_str) for step_str in steps_list]
+            for group, steps_list in steps_by_operation.items()
+        }
+        return steps_callables
+
+    def __call__(self, context: ActionContext) -> ActionResult:
+        """Called from `runner` when the action is used."""
+        has_produced_request = False
+
+        for step in self.steps[context.operation]:
+            context = context.update(current_step=step.__name__)
+            try:
+                context = step(context=context, parameters=self.parameters)
+            except IncompleteStepError as exc:
+                # Step did not execute all its operations.
+                context = exc.context
+                statsd.incr(
+                    f"jbi.action.{context.action.whiteboard_tag}.incomplete.count"
+                )
+            except Exception:
+                if has_produced_request:
+                    # Count the number of workflows that produced at least one request,
+                    # but could not complete entirely with success.
+                    statsd.incr(
+                        f"jbi.action.{context.action.whiteboard_tag}.aborted.count"
+                    )
+                raise
+
+            step_responses = context.responses_by_step[step.__name__]
+            if step_responses:
+                has_produced_request = True
+            for response in step_responses:
+                logger.debug(
+                    "Received %s",
+                    response,
+                    extra={
+                        "response": response,
+                        **context.dict(),
+                    },
+                )
+
+        # Flatten the list of all received responses.
+        responses = list(
+            itertools.chain.from_iterable(context.responses_by_step.values())
+        )
+        return True, {"responses": responses}
+
 
 @statsd.timer("jbi.action.execution.timer")
 def execute_action(
     request: BugzillaWebhookRequest,
     actions: Actions,
-    settings: Settings,
 ):
     """Execute the configured action for the specified `request`.
 
@@ -74,12 +163,13 @@ def execute_action(
         linked_issue_key: Optional[str] = bug.extract_from_see_also()
 
         action_context = ActionContext(
+            action=action,
             rid=request.rid,
             bug=bug,
             event=event,
             operation=Operation.IGNORE,
             jira=JiraContext(project=action.jira_project_key, issue=linked_issue_key),
-            extra={k: str(v) for k, v in action.parameters.items()},
+            extra={k: str(v) for k, v in action.parameters.dict().items()},
         )
 
         if action_context.jira.issue is None:
@@ -111,14 +201,13 @@ def execute_action(
             )
 
         logger.info(
-            "Execute action '%s:%s' for Bug %s",
+            "Execute action '%s' for Bug %s",
             action.whiteboard_tag,
-            action.module,
             bug.id,
             extra=runner_context.update(operation=Operation.EXECUTE).dict(),
         )
-
-        handled, details = action.caller(context=action_context)
+        executor = Executor(parameters=action.parameters)
+        handled, details = executor(context=action_context)
 
         logger.info(
             "Action %r executed successfully for Bug %s",

@@ -3,18 +3,15 @@ Python Module for Pydantic Models and validation
 """
 import datetime
 import functools
-import importlib
 import logging
 import re
 import warnings
 from collections import defaultdict
 from copy import copy
-from inspect import signature
-from types import ModuleType
-from typing import Any, Callable, DefaultDict, Literal, Mapping, Optional, TypedDict
+from typing import DefaultDict, Literal, Mapping, Optional, TypedDict
 from urllib.parse import ParseResult, urlparse
 
-from pydantic import BaseModel, Extra, Field, PrivateAttr, root_validator, validator
+from pydantic import BaseModel, Extra, Field, validator
 from pydantic_yaml import YamlModel
 
 from jbi import Operation
@@ -25,62 +22,52 @@ logger = logging.getLogger(__name__)
 JIRA_HOSTNAMES = ("jira", "atlassian")
 
 
+class ActionSteps(BaseModel):
+    """Step functions to run for each type of Bugzilla webhook payload"""
+
+    new: list[str] = [
+        "create_issue",
+        "maybe_delete_duplicate",
+        "add_link_to_bugzilla",
+        "add_link_to_jira",
+        "sync_whiteboard_labels",
+    ]
+    existing: list[str] = [
+        "update_issue_summary",
+        "sync_whiteboard_labels",
+        "add_jira_comments_for_changes",
+    ]
+    comment: list[str] = [
+        "create_comment",
+    ]
+
+
+class ActionParams(BaseModel):
+    """Params passed to Action step functions"""
+
+    jira_project_key: str
+    steps: ActionSteps = ActionSteps()
+    jira_components: list[str] = []
+    labels_brackets: str = Field("no", enum=["yes", "no", "both"])
+    status_map: dict[str, str] = {}
+    resolution_map: dict[str, str] = {}
+    issue_type_map: dict[str, str] = {"task": "Task", "defect": "Bug"}
+
+
 class Action(YamlModel):
     """
     Action is the inner model for each action in the configuration file"""
 
     whiteboard_tag: str
-    module: str = "jbi.actions.default"
     bugzilla_user_id: int | list[int] | Literal["tbd"]
     description: str
     enabled: bool = True
-    parameters: dict = {}
-    _caller: Optional[Callable] = PrivateAttr(default=None)
-    _required_jira_permissions: set[str] = PrivateAttr(default=None)
+    parameters: ActionParams
 
     @property
     def jira_project_key(self):
         """Return the configured project key."""
-        return self.parameters["jira_project_key"]
-
-    @property
-    def caller(self) -> Callable:
-        """Return the initialized callable for this action."""
-        if self._caller is None:
-            action_module: ModuleType = importlib.import_module(self.module)
-            initialized: Callable = action_module.init(**self.parameters)  # type: ignore
-            self._caller = initialized
-        return self._caller
-
-    @property
-    def required_jira_permissions(self) -> set[str]:
-        """Return the required Jira permissions for this action to be executed."""
-        if not self._required_jira_permissions:
-            action_module: ModuleType = importlib.import_module(self.module)
-            perms = getattr(action_module, "JIRA_REQUIRED_PERMISSIONS")
-            self._required_jira_permissions = perms
-        return self._required_jira_permissions
-
-    @root_validator
-    def validate_action_config(cls, values):  # pylint: disable=no-self-argument
-        """Validate action: exists, has init function, and has expected params"""
-        try:
-            module: str = values["module"]  # type: ignore
-            action_parameters: Optional[dict[str, Any]] = values["parameters"]
-            action_module: ModuleType = importlib.import_module(module)
-            if not action_module:
-                raise TypeError(f"Module '{module}' is not found.")
-            if not hasattr(action_module, "init"):
-                raise TypeError(f"Module '{module}' is missing `init` method.")
-
-            signature(action_module.init).bind(**action_parameters)  # type: ignore
-        except ImportError as exception:
-            raise ValueError(f"unknown Python module `{module}`.") from exception
-        except (TypeError, AttributeError) as exception:
-            raise ValueError(
-                f"action '{module}' is not properly setup. {exception}"
-            ) from exception
-        return values
+        return self.parameters.jira_project_key
 
 
 class Actions(YamlModel):
@@ -111,11 +98,7 @@ class Actions(YamlModel):
     @functools.cached_property
     def configured_jira_projects_keys(self) -> set[str]:
         """Return the list of Jira project keys from all configured actions"""
-        return {
-            action.jira_project_key
-            for action in self.__root__
-            if action.parameters.get("jira_project_key")
-        }
+        return {action.jira_project_key for action in self.__root__}
 
     @validator("__root__")
     def validate_actions(  # pylint: disable=no-self-argument
@@ -174,21 +157,6 @@ class BugzillaWebhookEvent(BaseModel):
     def changed_fields(self) -> list[str]:
         """Returns the names of changed fields in a bug"""
         return [c.field for c in self.changes] if self.changes else []
-
-
-class BugzillaWebhookAttachment(BaseModel):
-    """Bugzilla Attachment Object"""
-
-    content_type: Optional[str]
-    creation_time: Optional[datetime.datetime]
-    description: Optional[str]
-    file_name: Optional[str]
-    flags: Optional[list]
-    id: int
-    is_obsolete: Optional[bool]
-    is_patch: Optional[bool]
-    is_private: Optional[bool]
-    last_change_time: Optional[datetime.datetime]
 
 
 class BugzillaWebhookComment(BaseModel):
@@ -359,6 +327,7 @@ class RunnerContext(Context, extra=Extra.forbid):
 class ActionContext(Context, extra=Extra.forbid):
     """Logging context from actions"""
 
+    action: Action
     rid: str
     operation: Operation
     current_step: Optional[str]

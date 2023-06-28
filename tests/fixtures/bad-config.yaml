@@ -3,6 +3,5 @@
 - whiteboard_tag: A
   bugzilla_user_id: foobar
   description: test config
-  module: jbi.actions.default
   parameters:
     jira_project_key: KEY
