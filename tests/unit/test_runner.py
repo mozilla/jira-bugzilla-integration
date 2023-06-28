@@ -1,9 +1,4 @@
-"""
-Module for testing jbi/runner.py
-"""
 import logging
-
-# pylint: disable=cannot-enumerate-pytest-fixtures
 from unittest import mock
 
 import pytest
