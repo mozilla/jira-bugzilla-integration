@@ -255,12 +255,27 @@ def maybe_update_components(context: ActionContext, parameters: ActionParams):
     if not jira_components:
         raise IncompleteStepError(context)
 
-    # Since we previously introspected the project components, we don't
-    # have to catch any potential 400 error response here.
-    resp = client.update_issue_field(
-        key=context.jira.issue, fields={"components": jira_components}
-    )
-    context.append_responses(resp)
+    # Although we previously introspected the project components, we
+    # still have to catch any potential 400 error response here, because
+    # the `components` field may not be on the create / update issue.
+    try:
+        resp = client.update_issue_field(
+            key=context.jira.issue, fields={"components": jira_components}
+        )
+        context.append_responses(resp)
+    except requests_exceptions.HTTPError as exc:
+        if exc.response.status_code != 400:
+            raise
+        # If `components` is not a valid field on create/update screens,
+        # then warn developers and ignore the error.
+        logger.error(
+            f"Could not set components on issue {context.jira.issue}: %s",
+            str(exc),
+            extra=context.dict(),
+        )
+        context.append_responses(exc.response)
+        raise IncompleteStepError(context) from exc
+
     return context
 
 
