@@ -616,7 +616,39 @@ def test_change_to_unknown_resolution_with_resolution_map(
             "Toolbar",
             ["Remote Settings"],
             [{"id": "42"}],
-            ["Could not find components {'Toolbar'} in project"],
+            ["Could not find components 'JBI::Toolbar, Toolbar' in project"],
+        ),
+        (
+            [
+                {
+                    "id": "10000",
+                    "name": "JBI::Framework",
+                },
+                {
+                    "id": "20000",
+                    "name": "General",
+                },
+            ],
+            "Framework",
+            ["General"],
+            [{"id": "10000"}, {"id": "20000"}],
+            ["Could not find components 'Framework' in project"],
+        ),
+        (
+            [
+                {
+                    "id": "10000",
+                    "name": "JBI::",
+                },
+                {
+                    "id": "20000",
+                    "name": "General",
+                },
+            ],
+            None,
+            [],
+            [{"id": "10000"}],
+            [],
         ),
         # Without components in config
         (
@@ -629,7 +661,7 @@ def test_change_to_unknown_resolution_with_resolution_map(
             "Toolbar",
             [],
             [{"id": "37"}],
-            [],
+            ["Could not find components 'JBI::Toolbar' in project"],
         ),
         # Without components in project
         (
@@ -637,7 +669,7 @@ def test_change_to_unknown_resolution_with_resolution_map(
             "Toolbar",
             [],
             [],
-            ["Could not find components {'Toolbar'} in project"],
+            ["Could not find components 'JBI::Toolbar, Toolbar' in project"],
         ),
         # With more than one in config
         (
@@ -654,7 +686,7 @@ def test_change_to_unknown_resolution_with_resolution_map(
             None,
             ["Search", "Remote Settings"],
             [{"id": "10000"}, {"id": "42"}],
-            [],
+            ["Could not find components 'JBI::' in project"],
         ),
     ],
 )
@@ -711,7 +743,8 @@ def test_maybe_update_components_failing(
     action_params_factory,
 ):
     mocked_jira.get_project_components.return_value = [
-        {"id": 1, "name": context_update_example.bug.component}
+        {"id": 1, "name": context_update_example.bug.component},
+        {"id": 2, "name": context_update_example.bug.product_component},
     ]
     mocked_jira.update_issue_field.side_effect = requests.exceptions.HTTPError(
         "Field 'components' cannot be set", response=mock.MagicMock(status_code=400)

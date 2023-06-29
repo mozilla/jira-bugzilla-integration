@@ -191,6 +191,14 @@ class BugzillaBug(BaseModel):
     assigned_to: Optional[str]
     comment: Optional[BugzillaWebhookComment]
 
+    @property
+    def product_component(self) -> str:
+        """Return the component prefixed with the product
+        as show in the Bugzilla UI (eg. ``Core::General``).
+        """
+        result = self.product + "::" if self.product else ""
+        return result + self.component if self.component else result
+
     def is_assigned(self) -> bool:
         """Return `true` if the bug is assigned to a user."""
         return self.assigned_to != "nobody@mozilla.org"
