@@ -7,7 +7,7 @@ import responses
 from requests.exceptions import ConnectionError
 
 from jbi.environment import get_settings
-from jbi.models import Actions
+from jbi.models import Actions, JiraComponents
 from jbi.services import jira
 
 pytestmark = pytest.mark.no_mocked_jira
@@ -126,7 +126,10 @@ def test_all_projects_components_exist(
         json=project_components,
     )
     action = action_factory(
-        parameters={"jira_project_key": "ABC", "jira_components": jira_components}
+        parameters={
+            "jira_project_key": "ABC",
+            "jira_components": JiraComponents(set_custom_components=jira_components),
+        }
     )
     actions = Actions(__root__=[action])
     result = jira._all_projects_components_exist(actions)

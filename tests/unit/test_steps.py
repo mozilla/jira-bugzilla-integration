@@ -7,7 +7,7 @@ import requests
 from jbi import steps
 from jbi.environment import get_settings
 from jbi.errors import IncompleteStepError
-from jbi.models import ActionContext
+from jbi.models import ActionContext, JiraComponents
 from jbi.runner import Executor
 from jbi.services.jira import JiraCreateError
 from tests.conftest import action_params_factory
@@ -602,7 +602,31 @@ def test_change_to_unknown_resolution_with_resolution_map(
 @pytest.mark.parametrize(
     "project_components,bug_component,config_components,expected_jira_components,expected_logs",
     [
+        # Default, only from bug.
         (
+            # Jira project components
+            [
+                {
+                    "id": "10000",
+                    "name": "Component 1",
+                },
+                {
+                    "id": "42",
+                    "name": "Toolbar",
+                },
+            ],
+            # Bug component
+            "Toolbar",
+            # Config
+            JiraComponents(),
+            # Expected issue components
+            [{"id": "42"}],
+            # Expected logs
+            [],
+        ),
+        # Only from config.
+        (
+            # Jira project components
             [
                 {
                     "id": "10000",
@@ -613,28 +637,41 @@ def test_change_to_unknown_resolution_with_resolution_map(
                     "name": "Remote Settings",
                 },
             ],
+            # Bug component
             "Toolbar",
-            ["Remote Settings"],
+            # Config
+            JiraComponents(
+                use_bug_component=False, set_custom_components=["Remote Settings"]
+            ),
+            # Expected issue components
             [{"id": "42"}],
-            ["Could not find components 'JBI::Toolbar, Toolbar' in project"],
+            # Expected logs
+            [],
         ),
+        # Using bug product.
         (
+            # Jira project components
             [
                 {
                     "id": "10000",
-                    "name": "JBI::Framework",
+                    "name": "JBI",
                 },
                 {
                     "id": "20000",
-                    "name": "General",
+                    "name": "Framework",
                 },
             ],
+            # Bug component
             "Framework",
-            ["General"],
+            JiraComponents(use_bug_product=True),
+            # Expected issue components
             [{"id": "10000"}, {"id": "20000"}],
-            ["Could not find components 'Framework' in project"],
+            # Expected logs
+            [],
         ),
+        # Using bug prefixed component.
         (
+            # Jira project components
             [
                 {
                     "id": "10000",
@@ -645,34 +682,49 @@ def test_change_to_unknown_resolution_with_resolution_map(
                     "name": "General",
                 },
             ],
+            # Bug component
             None,
-            [],
+            # Config
+            JiraComponents(use_bug_component_with_product_prefix=True),
+            # Expected issue components
             [{"id": "10000"}],
+            # Expected logs
             [],
         ),
-        # Without components in config
+        # Using bug prefixed component.
         (
+            # Jira project components
             [
                 {
-                    "id": "37",
-                    "name": "Toolbar",
+                    "id": "10000",
+                    "name": "JBI::General",
                 },
             ],
-            "Toolbar",
-            [],
-            [{"id": "37"}],
-            ["Could not find components 'JBI::Toolbar' in project"],
+            # Bug component
+            "General",
+            # Config
+            JiraComponents(use_bug_component_with_product_prefix=True),
+            # Expected issue components
+            [{"id": "10000"}],
+            # Expected logs
+            ["Could not find components 'General' in project"],
         ),
         # Without components in project
         (
+            # Jira project component
             [],
+            # Bug component
             "Toolbar",
+            # Config
+            JiraComponents(),
+            # Expected issue components
             [],
-            [],
-            ["Could not find components 'JBI::Toolbar, Toolbar' in project"],
+            # Expected logs
+            ["Could not find components 'Toolbar' in project"],
         ),
         # With more than one in config
         (
+            # Jira project component
             [
                 {
                     "id": "10000",
@@ -683,10 +735,14 @@ def test_change_to_unknown_resolution_with_resolution_map(
                     "name": "Remote Settings",
                 },
             ],
+            # Bug component
             None,
-            ["Search", "Remote Settings"],
+            # Config
+            JiraComponents(set_custom_components=["Search", "Remote Settings"]),
+            # Expected issue components
             [{"id": "10000"}, {"id": "42"}],
-            ["Could not find components 'JBI::' in project"],
+            # Expected logs
+            [],
         ),
     ],
 )

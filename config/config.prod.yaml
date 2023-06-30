@@ -234,7 +234,8 @@
   parameters:
     jira_project_key: SE
     jira_components:
-      - "remote-settings"
+      set_custom_components:
+        - "remote-settings"
     steps:
       new:
         - create_issue
@@ -306,7 +307,8 @@
   parameters:
     jira_project_key: DENG
     jira_components:
-      - "Data Platform Infrastructure"
+      set_custom_components:
+        - "Data Platform Infrastructure"
     steps:
       new:
         - create_issue
@@ -347,7 +349,8 @@
   parameters:
     jira_project_key: DENG
     jira_components:
-      - "Data Quality"
+      set_custom_components:
+        - "Data Quality"
     steps:
       new:
         - create_issue

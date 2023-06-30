@@ -231,10 +231,15 @@ def maybe_update_components(context: ActionContext, parameters: ActionParams):
     """
     Update the Jira issue components
     """
-    candidate_components = set(parameters.jira_components)
-    if context.bug.component:
+    candidate_components = set(parameters.jira_components.set_custom_components)
+    if context.bug.component and parameters.jira_components.use_bug_component:
         candidate_components.add(context.bug.component)
-    if context.bug.product_component:
+    if context.bug.product and parameters.jira_components.use_bug_product:
+        candidate_components.add(context.bug.product)
+    if (
+        context.bug.product_component
+        and parameters.jira_components.use_bug_component_with_product_prefix
+    ):
         candidate_components.add(context.bug.product_component)
     client = jira.get_client()
 

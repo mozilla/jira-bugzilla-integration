@@ -49,8 +49,20 @@ Parameters are used by `step` functions to control what Bugzilla data is synced 
     - If defined, the specified steps are executed. The group of steps listed under `new` are executed when a Bugzilla event occurs on a ticket that is unknown to Jira. The steps under `existing`, when the Bugzilla ticket is already linked to a Jira issue. The steps under `comment` when a comment is posted on a linked Bugzilla ticket.
     If one of these groups is not specified, the default steps will be used.
 - `jira_components` (optional)
-   - list [str]
-   - If defined, the created issues will be assigned the specified components.
+   - object
+   - Controls how Jira components are set on issues in the `maybe_update_components` step.
+     - `use_bug_component` (optional)
+        - bool
+        - Set bug's component as issue component, eg. ``General`` (default `true`)
+     - `use_bug_product` (optional)
+        - bool
+        - Set bug's product as issue component, eg. ``Core`` (default `false`)
+     - `use_bug_component_with_product_prefix` (optional)
+       - bool
+       - Set bug's full component as issue component, eg. ``Core::General`` (default `false`)
+     - `set_custom_components` (optional)
+        - list[str]
+        - If defined, the issues will be assigned the specified components (default `[]`)
 - `labels_brackets` (optional)
     - enum ["yes", "no", "both"]
     - Controls whether issue labels should have brackets or not in the `sync_whiteboard_labels` step (default: "no")
