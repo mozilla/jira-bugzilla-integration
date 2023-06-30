@@ -8,8 +8,28 @@ import responses
 from jbi import Operation
 from jbi.environment import get_settings
 from jbi.errors import IgnoreInvalidRequestError
-from jbi.models import ActionContext, Actions, BugzillaWebhookRequest
+from jbi.models import ActionContext, BugzillaWebhookRequest
 from jbi.runner import Executor, execute_action
+
+
+@pytest.fixture
+def webhook_comment_example(
+    webhook_user_factory,
+    bug_factory,
+    webhook_event_factory,
+    webhook_factory,
+    comment_factory,
+) -> BugzillaWebhookRequest:
+    user = webhook_user_factory(login="mathieu@mozilla.org")
+    comment = comment_factory(number=2, body="hello")
+    bug = bug_factory(
+        see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+        comment=comment,
+    )
+    event = webhook_event_factory(target="comment", user=user)
+    webhook_payload = webhook_factory(bug=bug, event=event)
+
+    return webhook_payload
 
 
 def test_bugzilla_object_is_always_fetched(

@@ -4,7 +4,7 @@ from unittest import mock
 import pytest
 import requests
 
-from jbi import steps
+from jbi import Operation, steps
 from jbi.environment import get_settings
 from jbi.errors import IncompleteStepError
 from jbi.models import ActionContext, JiraComponents
@@ -31,6 +31,45 @@ ALL_STEPS = {
         "create_comment",
     ],
 }
+
+
+@pytest.fixture
+def context_update_example(
+    action_context_factory, bug_factory, jira_context_factory
+) -> ActionContext:
+    bug = bug_factory(see_also=["https://mozilla.atlassian.net/browse/JBI-234"])
+    context = action_context_factory(
+        operation=Operation.UPDATE,
+        bug=bug,
+        jira=jira_context_factory(issue=bug.extract_from_see_also()),
+    )
+    return context
+
+
+@pytest.fixture
+def context_update_resolution_example(
+    bug_factory,
+    webhook_event_factory,
+    webhook_event_change_factory,
+    action_context_factory,
+    jira_context_factory,
+) -> ActionContext:
+    bug = bug_factory(see_also=["https://mozilla.atlassian.net/browse/JBI-234"])
+    event = webhook_event_factory(
+        action="modify",
+        changes=[
+            webhook_event_change_factory(
+                field="resolution", removed="OPEN", added="FIXED"
+            ),
+        ],
+    )
+    context = action_context_factory(
+        operation=Operation.UPDATE,
+        bug=bug,
+        event=event,
+        jira=jira_context_factory(issue=bug.extract_from_see_also()),
+    )
+    return context
 
 
 def test_created_public(
@@ -162,15 +201,38 @@ def test_modified_public(
 
 
 def test_comment_for_modified_assignee_and_status(
-    context_update_status_assignee: ActionContext, mocked_jira, action_params_factory
+    mocked_jira,
+    action_params_factory,
+    webhook_event_factory,
+    action_context_factory,
+    bug_factory,
+    jira_context_factory,
 ):
-    callable_object = Executor(
-        action_params_factory(
-            jira_project_key=context_update_status_assignee.jira.project
-        )
+    bug = bug_factory(see_also=["https://mozilla.atlassian.net/browse/JBI-234"])
+    changes = [
+        {
+            "field": "status",
+            "removed": "OPEN",
+            "added": "FIXED",
+        },
+        {
+            "field": "assignee",
+            "removed": "nobody@mozilla.org",
+            "added": "mathieu@mozilla.com",
+        },
+    ]
+    event = webhook_event_factory(routing_key="bug.modify", changes=changes)
+    context = action_context_factory(
+        operation=Operation.UPDATE,
+        bug=bug,
+        event=event,
+        jira=jira_context_factory(issue=bug.extract_from_see_also()),
     )
 
-    callable_object(context=context_update_status_assignee)
+    callable_object = Executor(
+        action_params_factory(jira_project_key=context.jira.project)
+    )
+    callable_object(context=context)
 
     mocked_jira.issue_add_comment.assert_any_call(
         issue_key="JBI-234",

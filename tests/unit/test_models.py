@@ -3,7 +3,6 @@ import pytest
 
 from jbi.errors import ActionNotFoundError
 from jbi.models import ActionParams, Actions, ActionSteps
-from tests.fixtures.factories import bug_factory
 
 
 @pytest.mark.parametrize("value", [123456, [123456], [12345, 67890], "tbd"])
@@ -132,13 +131,20 @@ def test_lookup_action_not_found(whiteboard, actions_factory, bug_factory):
     assert str(exc_info.value) == "devtest"
 
 
-def test_payload_empty_changes_list(webhook_change_status_assignee):
-    webhook_change_status_assignee.event.changes = None
-    assert webhook_change_status_assignee.event.changed_fields() == []
+def test_payload_empty_changes_list(webhook_event_factory):
+    event = webhook_event_factory(routing_key="bug.modify", changes=None)
+    assert event.changed_fields() == []
 
 
-def test_payload_changes_list(webhook_change_status_assignee):
-    assert webhook_change_status_assignee.event.changed_fields() == [
+def test_payload_changes_list(webhook_event_change_factory, webhook_event_factory):
+    changes = [
+        webhook_event_change_factory(field="status", removed="OPEN", added="FIXED"),
+        webhook_event_change_factory(
+            field="assignee", removed="nobody@mozilla.org", added="mathieu@mozilla.com"
+        ),
+    ]
+    event = webhook_event_factory(routing_key="bug.modify", changes=changes)
+    assert event.changed_fields() == [
         "status",
         "assignee",
     ]

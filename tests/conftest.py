@@ -108,46 +108,6 @@ def context_create_example(action_context_factory) -> ActionContext:
 
 
 @pytest.fixture
-def context_update_example(
-    action_context_factory, bug_factory, jira_context_factory
-) -> ActionContext:
-    bug = bug_factory(see_also=["https://mozilla.atlassian.net/browse/JBI-234"])
-    context = action_context_factory(
-        operation=Operation.UPDATE,
-        bug=bug,
-        jira=jira_context_factory(issue=bug.extract_from_see_also()),
-    )
-    return context
-
-
-@pytest.fixture
-def context_update_status_assignee(
-    webhook_event_factory, action_context_factory, bug_factory, jira_context_factory
-) -> ActionContext:
-    bug = bug_factory(see_also=["https://mozilla.atlassian.net/browse/JBI-234"])
-    changes = [
-        {
-            "field": "status",
-            "removed": "OPEN",
-            "added": "FIXED",
-        },
-        {
-            "field": "assignee",
-            "removed": "nobody@mozilla.org",
-            "added": "mathieu@mozilla.com",
-        },
-    ]
-    event = webhook_event_factory(routing_key="bug.modify", changes=changes)
-    context = action_context_factory(
-        operation=Operation.UPDATE,
-        bug=bug,
-        event=event,
-        jira=jira_context_factory(issue=bug.extract_from_see_also()),
-    )
-    return context
-
-
-@pytest.fixture
 def context_comment_example(
     webhook_user_factory,
     bug_factory,
@@ -172,80 +132,9 @@ def context_comment_example(
 
 
 @pytest.fixture
-def context_update_resolution_example(
-    bug_factory,
-    webhook_event_factory,
-    webhook_event_change_factory,
-    action_context_factory,
-    jira_context_factory,
-) -> ActionContext:
-    bug = bug_factory(see_also=["https://mozilla.atlassian.net/browse/JBI-234"])
-    event = webhook_event_factory(
-        action="modify",
-        changes=[
-            webhook_event_change_factory(
-                field="resolution", removed="OPEN", added="FIXED"
-            ),
-        ],
-    )
-    context = action_context_factory(
-        operation=Operation.UPDATE,
-        bug=bug,
-        event=event,
-        jira=jira_context_factory(issue=bug.extract_from_see_also()),
-    )
-    return context
-
-
-@pytest.fixture
 def webhook_create_example(webhook_factory) -> BugzillaWebhookRequest:
     webhook_payload = webhook_factory()
 
-    return webhook_payload
-
-
-@pytest.fixture
-def webhook_comment_example(
-    webhook_user_factory, bug_factory, webhook_event_factory, webhook_factory
-) -> BugzillaWebhookRequest:
-    user = webhook_user_factory(login="mathieu@mozilla.org")
-    comment = BugzillaWebhookComment.parse_obj({"number": 2, "body": "hello"})
-    bug = bug_factory(
-        see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
-        comment=comment,
-    )
-    event = webhook_event_factory(target="comment", user=user)
-    webhook_payload = webhook_factory(bug=bug, event=event)
-
-    return webhook_payload
-
-
-@pytest.fixture
-def webhook_private_comment_example(
-    webhook_user_factory, webhook_event_factory, bug_factory, webhook_factory
-) -> BugzillaWebhookRequest:
-    user = webhook_user_factory(login="mathieu@mozilla.org")
-    event = webhook_event_factory(target="comment", user=user)
-    bug = bug_factory(
-        comment={"id": 344, "number": 2, "is_private": True},
-        see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
-    )
-    webhook_payload = webhook_factory(bug=bug, event=event)
-    return webhook_payload
-
-
-@pytest.fixture
-def webhook_change_status_assignee(
-    webhook_event_change_factory, webhook_event_factory, webhook_factory
-):
-    changes = [
-        webhook_event_change_factory(field="status", removed="OPEN", added="FIXED"),
-        webhook_event_change_factory(
-            field="assignee", removed="nobody@mozilla.org", added="mathieu@mozilla.com"
-        ),
-    ]
-    event = webhook_event_factory(routing_key="bug.modify", changes=changes)
-    webhook_payload = webhook_factory(event=event)
     return webhook_payload
 
 
