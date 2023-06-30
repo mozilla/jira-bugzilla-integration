@@ -87,13 +87,10 @@ def test_product_component(product, component, expected):
 @pytest.mark.parametrize(
     "whiteboard",
     [
+        "[DevTest]",
         "[DevTest-]",
-        "[-DevTest-]",
-        "[-DevTest]",
         "[DevTest-test]",
-        "[test-DevTest]",
-        "[foo-DevTest-bar]",
-        "[foo-bar-DevTest-foo-bar]",
+        "[DevTest-test-foo]",
         "[example][DevTest]",
         "[DevTest][example]",
         "[example][DevTest][example]",
@@ -110,6 +107,11 @@ def test_lookup_action_found(whiteboard, actions_example):
     "whiteboard",
     [
         "DevTest",
+        "[-DevTest-]",
+        "[-DevTest]",
+        "[test-DevTest]",
+        "[foo-DevTest-bar]",
+        "[foo-bar-DevTest-foo-bar]",
         "foo DevTest",
         "DevTest bar",
         "foo DevTest bar",
