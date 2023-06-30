@@ -197,7 +197,7 @@ def _validate_permissions(all_projects_perms):
 
 def _all_projects_components_exist(actions: Actions):
     components_by_project = {
-        action.parameters.jira_project_key: action.parameters.jira_components
+        action.parameters.jira_project_key: action.parameters.jira_components.set_custom_components
         for action in actions
     }
     success = True

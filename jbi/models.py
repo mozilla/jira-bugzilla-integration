@@ -42,12 +42,21 @@ class ActionSteps(BaseModel):
     ]
 
 
+class JiraComponents(BaseModel):
+    """Controls how Jira components are set on issues in the `maybe_update_components` step."""
+
+    use_bug_component: bool = True
+    use_bug_product: bool = False
+    use_bug_component_with_product_prefix: bool = False
+    set_custom_components: list[str] = []
+
+
 class ActionParams(BaseModel):
     """Params passed to Action step functions"""
 
     jira_project_key: str
     steps: ActionSteps = ActionSteps()
-    jira_components: list[str] = []
+    jira_components: JiraComponents = JiraComponents()
     labels_brackets: str = Field("no", enum=["yes", "no", "both"])
     status_map: dict[str, str] = {}
     resolution_map: dict[str, str] = {}
@@ -190,6 +199,14 @@ class BugzillaBug(BaseModel):
     creator: Optional[str]
     assigned_to: Optional[str]
     comment: Optional[BugzillaWebhookComment]
+
+    @property
+    def product_component(self) -> str:
+        """Return the component prefixed with the product
+        as show in the Bugzilla UI (eg. ``Core::General``).
+        """
+        result = self.product + "::" if self.product else ""
+        return result + self.component if self.component else result
 
     def is_assigned(self) -> bool:
         """Return `true` if the bug is assigned to a user."""

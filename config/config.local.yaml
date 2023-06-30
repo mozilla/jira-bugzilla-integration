@@ -6,4 +6,5 @@
   parameters:
     jira_project_key: DevTest
     jira_components:
-      - "Main"
+      set_custom_components:
+        - "Main"

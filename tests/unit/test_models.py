@@ -71,6 +71,20 @@ def test_extract_see_also(see_also, expected):
 
 
 @pytest.mark.parametrize(
+    "product,component,expected",
+    [
+        (None, None, ""),
+        (None, "General", "General"),
+        ("Product", None, "Product::"),
+        ("Product", "General", "Product::General"),
+    ],
+)
+def test_product_component(product, component, expected):
+    bug = bug_factory(product=product, component=component)
+    assert bug.product_component == expected
+
+
+@pytest.mark.parametrize(
     "whiteboard",
     [
         "[DevTest]",
