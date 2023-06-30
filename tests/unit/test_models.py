@@ -96,9 +96,9 @@ def test_product_component(product, component, expected, bug_factory):
         "[example][DevTest][example]",
     ],
 )
-def test_lookup_action_found(whiteboard, actions_example, bug_factory):
+def test_lookup_action_found(whiteboard, actions_factory, bug_factory):
     bug = bug_factory(id=1234, whiteboard=whiteboard)
-    action = bug.lookup_action(actions_example)
+    action = bug.lookup_action(actions_factory())
     assert action.whiteboard_tag == "devtest"
     assert "test config" in action.description
 
@@ -125,10 +125,10 @@ def test_lookup_action_found(whiteboard, actions_example, bug_factory):
         "[foo] devtest [bar]",
     ],
 )
-def test_lookup_action_not_found(whiteboard, actions_example, bug_factory):
+def test_lookup_action_not_found(whiteboard, actions_factory, bug_factory):
     bug = bug_factory(id=1234, whiteboard=whiteboard)
     with pytest.raises(ActionNotFoundError) as exc_info:
-        bug.lookup_action(actions_example)
+        bug.lookup_action(actions_factory())
     assert str(exc_info.value) == "devtest"
 
 

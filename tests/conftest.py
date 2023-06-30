@@ -12,13 +12,7 @@ from jbi import Operation
 from jbi.app import app
 from jbi.configuration import get_actions
 from jbi.environment import Settings
-from jbi.models import (
-    Action,
-    ActionContext,
-    Actions,
-    BugzillaWebhookComment,
-    BugzillaWebhookRequest,
-)
+from jbi.models import ActionContext, BugzillaWebhookComment, BugzillaWebhookRequest
 from jbi.services import bugzilla, jira
 from tests.fixtures.factories import *
 
@@ -253,16 +247,6 @@ def webhook_change_status_assignee(
     event = webhook_event_factory(routing_key="bug.modify", changes=changes)
     webhook_payload = webhook_factory(event=event)
     return webhook_payload
-
-
-@pytest.fixture
-def action_example(action_factory) -> Action:
-    return action_factory()
-
-
-@pytest.fixture
-def actions_example(action_example) -> Actions:
-    return Actions.parse_obj([action_example])
 
 
 @pytest.fixture(autouse=True)
