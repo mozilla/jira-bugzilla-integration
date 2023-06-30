@@ -10,8 +10,6 @@ from jbi.errors import IncompleteStepError
 from jbi.models import ActionContext, JiraComponents
 from jbi.runner import Executor
 from jbi.services.jira import JiraCreateError
-from tests.conftest import action_params_factory
-from tests.fixtures.factories import comment_factory, webhook_event_change_factory
 
 ALL_STEPS = {
     "new": [
@@ -40,6 +38,7 @@ def test_created_public(
     mocked_jira,
     mocked_bugzilla,
     action_params_factory,
+    comment_factory,
 ):
     mocked_jira.create_issue.return_value = {"key": "k"}
     mocked_bugzilla.get_bug.return_value = context_create_example.bug
@@ -71,6 +70,7 @@ def test_created_with_custom_issue_type_and_fallback(
     mocked_jira,
     mocked_bugzilla,
     action_params_factory,
+    comment_factory,
 ):
     context_create_example.bug.type = "enhancement"
     mocked_jira.create_issue.return_value = {"key": "k"}
@@ -106,6 +106,7 @@ def test_created_with_custom_issue_type(
     mocked_jira,
     mocked_bugzilla,
     action_params_factory,
+    comment_factory,
 ):
     context_create_example.bug.type = "task"
     mocked_jira.create_issue.return_value = {"key": "k"}
@@ -137,7 +138,10 @@ def test_created_with_custom_issue_type(
 
 
 def test_modified_public(
-    context_update_example: ActionContext, mocked_jira, action_params_factory
+    context_update_example: ActionContext,
+    mocked_jira,
+    action_params_factory,
+    webhook_event_change_factory,
 ):
     context_update_example.event.changes = [
         webhook_event_change_factory(field="summary", removed="", added="JBI Test")
@@ -214,6 +218,7 @@ def test_create_with_no_assignee(
     mocked_jira,
     mocked_bugzilla,
     action_params_factory,
+    comment_factory,
 ):
     mocked_bugzilla.get_bug.return_value = context_create_example.bug
     mocked_bugzilla.get_comments.return_value = [
@@ -246,6 +251,7 @@ def test_create_with_assignee(
     mocked_jira,
     mocked_bugzilla,
     action_params_factory,
+    comment_factory,
 ):
     context_create_example.bug.assigned_to = "dtownsend@mozilla.com"
     # Make sure the bug fetched the second time in `create_and_link_issue()` also has the assignee.
@@ -282,7 +288,10 @@ def test_create_with_assignee(
 
 
 def test_clear_assignee(
-    context_update_example: ActionContext, mocked_jira, action_params_factory
+    context_update_example: ActionContext,
+    mocked_jira,
+    action_params_factory,
+    webhook_event_change_factory,
 ):
     context_update_example.event.action = "modify"
     context_update_example.event.changes = [
@@ -304,7 +313,10 @@ def test_clear_assignee(
 
 
 def test_set_assignee(
-    context_update_example: ActionContext, mocked_jira, action_params_factory
+    context_update_example: ActionContext,
+    mocked_jira,
+    action_params_factory,
+    webhook_event_change_factory,
 ):
     context_update_example.bug.assigned_to = "dtownsend@mozilla.com"
     context_update_example.event.action = "modify"
@@ -360,6 +372,7 @@ def test_set_assignee_failing_update(
     mocked_jira,
     capturelogs,
     action_params_factory,
+    webhook_event_change_factory,
 ):
     mocked_jira.user_find_by_user_string.return_value = []
     context_update_example.jira.issue = "key"
@@ -389,6 +402,7 @@ def test_create_with_unknown_status(
     mocked_jira,
     mocked_bugzilla,
     action_params_factory,
+    comment_factory,
 ):
     context_create_example.bug.status = "NEW"
     context_create_example.bug.resolution = ""
@@ -428,6 +442,7 @@ def test_create_with_known_status(
     mocked_jira,
     mocked_bugzilla,
     action_params_factory,
+    comment_factory,
 ):
     context_create_example.bug.status = "ASSIGNED"
     context_create_example.bug.resolution = ""
@@ -494,7 +509,10 @@ def test_change_to_unknown_status(
 
 
 def test_change_to_known_status(
-    context_update_example: ActionContext, mocked_jira, action_params_factory
+    context_update_example: ActionContext,
+    mocked_jira,
+    action_params_factory,
+    webhook_event_change_factory,
 ):
     context_update_example.bug.status = "ASSIGNED"
     context_update_example.bug.resolution = ""
@@ -521,7 +539,10 @@ def test_change_to_known_status(
 
 
 def test_change_to_known_resolution(
-    context_update_example: ActionContext, mocked_jira, action_params_factory
+    context_update_example: ActionContext,
+    mocked_jira,
+    action_params_factory,
+    webhook_event_change_factory,
 ):
     context_update_example.bug.status = "RESOLVED"
     context_update_example.bug.resolution = "FIXED"
@@ -872,7 +893,10 @@ def test_sync_whiteboard_labels_with_brackets(
 
 
 def test_sync_whiteboard_labels_update(
-    context_update_example: ActionContext, mocked_jira, action_params_factory
+    context_update_example: ActionContext,
+    mocked_jira,
+    action_params_factory,
+    webhook_event_change_factory,
 ):
     context_update_example.event.changes = [
         webhook_event_change_factory(

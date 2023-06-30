@@ -59,7 +59,7 @@ def test_powered_by_jbi_filtered(exclude_middleware, anon_client):
     assert "DevTest" not in html
 
 
-def test_webhooks_details(anon_client, mocked_bugzilla):
+def test_webhooks_details(anon_client, mocked_bugzilla, bugzilla_webhook_factory):
     mocked_bugzilla.list_webhooks.return_value = [
         bugzilla_webhook_factory(),
         bugzilla_webhook_factory(errors=42, enabled=False),
@@ -198,7 +198,9 @@ def test_read_heartbeat_jira_services_fails(anon_client, mocked_jira):
     }
 
 
-def test_read_heartbeat_bugzilla_webhooks_fails(anon_client, mocked_bugzilla):
+def test_read_heartbeat_bugzilla_webhooks_fails(
+    anon_client, mocked_bugzilla, bugzilla_webhook_factory
+):
     mocked_bugzilla.logged_in.return_value = True
     mocked_bugzilla.list_webhooks.return_value = [
         bugzilla_webhook_factory(enabled=False)
@@ -213,7 +215,9 @@ def test_read_heartbeat_bugzilla_webhooks_fails(anon_client, mocked_bugzilla):
     }
 
 
-def test_heartbeat_bugzilla_reports_webhooks_errors(anon_client, mocked_bugzilla):
+def test_heartbeat_bugzilla_reports_webhooks_errors(
+    anon_client, mocked_bugzilla, bugzilla_webhook_factory
+):
     mocked_bugzilla.logged_in.return_value = True
     mocked_bugzilla.list_webhooks.return_value = [
         bugzilla_webhook_factory(id=1, errors=0, product="Remote Settings"),
@@ -244,7 +248,9 @@ def test_read_heartbeat_bugzilla_services_fails(anon_client, mocked_bugzilla):
     }
 
 
-def test_read_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
+def test_read_heartbeat_success(
+    anon_client, mocked_jira, mocked_bugzilla, bugzilla_webhook_factory
+):
     """/__heartbeat__ returns 200 when checks succeed."""
     mocked_bugzilla.logged_in.return_value = True
     mocked_bugzilla.list_webhooks.return_value = [bugzilla_webhook_factory()]
@@ -340,7 +346,9 @@ def test_jira_heartbeat_unknown_issue_types(anon_client, mocked_jira):
     assert not resp.json()["jira"]["all_projects_issue_types_exist"]
 
 
-def test_head_heartbeat_success(anon_client, mocked_jira, mocked_bugzilla):
+def test_head_heartbeat_success(
+    anon_client, mocked_jira, mocked_bugzilla, bugzilla_webhook_factory
+):
     """/__heartbeat__ support head requests"""
     mocked_bugzilla.logged_in.return_value = True
     mocked_bugzilla.list_webhooks.return_value = [bugzilla_webhook_factory()]

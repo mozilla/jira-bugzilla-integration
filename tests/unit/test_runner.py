@@ -10,16 +10,13 @@ from jbi.environment import get_settings
 from jbi.errors import IgnoreInvalidRequestError
 from jbi.models import ActionContext, Actions, BugzillaWebhookRequest
 from jbi.runner import Executor, execute_action
-from tests.fixtures import factories
 
 
 def test_bugzilla_object_is_always_fetched(
-    mocked_bugzilla,
-    webhook_create_example,
-    actions_example: Actions,
+    mocked_bugzilla, webhook_create_example, actions_example: Actions, bug_factory
 ):
     # See https://github.com/mozilla/jira-bugzilla-integration/issues/292
-    fetched_bug = factories.bug_factory(
+    fetched_bug = bug_factory(
         id=webhook_create_example.bug.id,
         see_also=[f"{get_settings().jira_base_url}browse/JBI-234"],
     )
@@ -37,8 +34,9 @@ def test_request_is_ignored_because_private(
     webhook_create_example: BugzillaWebhookRequest,
     actions_example: Actions,
     mocked_bugzilla,
+    bug_factory,
 ):
-    bug = factories.bug_factory(id=webhook_create_example.bug.id, is_private=True)
+    bug = bug_factory(id=webhook_create_example.bug.id, is_private=True)
     webhook_create_example.bug = bug
     mocked_bugzilla.get_bug.return_value = bug
 
@@ -352,20 +350,22 @@ def test_default_returns_callable_with_data(
 
 
 def test_counter_is_incremented_when_workflows_was_aborted(
-    mocked_bugzilla, mocked_jira
+    mocked_bugzilla,
+    mocked_jira,
+    action_context_factory,
+    action_factory,
+    action_params_factory,
 ):
-    context_create_example: ActionContext = factories.action_context_factory(
+    context_create_example: ActionContext = action_context_factory(
         operation=Operation.CREATE,
-        action=factories.action_factory(whiteboard_tag="fnx"),
+        action=action_factory(whiteboard_tag="fnx"),
     )
     mocked_bugzilla.get_bug.return_value = context_create_example.bug
     mocked_jira.create_or_update_issue_remote_links.side_effect = requests.HTTPError(
         "Unauthorized"
     )
     callable_object = Executor(
-        factories.action_params_factory(
-            jira_project_key=context_create_example.jira.project
-        )
+        action_params_factory(jira_project_key=context_create_example.jira.project)
     )
 
     with mock.patch("jbi.runner.statsd") as mocked:
@@ -375,15 +375,21 @@ def test_counter_is_incremented_when_workflows_was_aborted(
     mocked.incr.assert_called_with("jbi.action.fnx.aborted.count")
 
 
-def test_counter_is_incremented_when_workflows_was_incomplete(mocked_bugzilla):
-    context_create_example: ActionContext = factories.action_context_factory(
+def test_counter_is_incremented_when_workflows_was_incomplete(
+    mocked_bugzilla,
+    action_context_factory,
+    action_factory,
+    bug_factory,
+    action_params_factory,
+):
+    context_create_example: ActionContext = action_context_factory(
         operation=Operation.CREATE,
-        action=factories.action_factory(whiteboard_tag="fnx"),
-        bug=factories.bug_factory(resolution="WONTFIX"),
+        action=action_factory(whiteboard_tag="fnx"),
+        bug=bug_factory(resolution="WONTFIX"),
     )
     mocked_bugzilla.get_bug.return_value = context_create_example.bug
     callable_object = Executor(
-        factories.action_params_factory(
+        action_params_factory(
             jira_project_key=context_create_example.jira.project,
             steps={
                 "new": [
