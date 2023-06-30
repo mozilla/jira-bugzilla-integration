@@ -38,6 +38,18 @@ def action_factory(action_params_factory):
 
 
 @pytest.fixture
+def actions_factory(action_factory):
+    def _actions_factory(**overrides):
+        actions = {
+            "__root__": [action_factory()],
+            **overrides,
+        }
+        return models.Actions.parse_obj(actions)
+
+    return _actions_factory
+
+
+@pytest.fixture
 def bug_factory():
     def _bug_factory(**overrides):
         bug = {
@@ -199,15 +211,16 @@ def bugzilla_webhook_factory():
 
 
 __all__ = [
-    "action_params_factory",
-    "action_factory",
-    "bug_factory",
-    "webhook_user_factory",
-    "webhook_event_factory",
-    "webhook_event_change_factory",
-    "webhook_factory",
-    "comment_factory",
     "action_context_factory",
-    "jira_context_factory",
+    "action_factory",
+    "action_params_factory",
+    "actions_factory",
+    "bug_factory",
     "bugzilla_webhook_factory",
+    "comment_factory",
+    "jira_context_factory",
+    "webhook_event_change_factory",
+    "webhook_event_factory",
+    "webhook_factory",
+    "webhook_user_factory",
 ]
