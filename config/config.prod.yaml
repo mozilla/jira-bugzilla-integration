@@ -130,6 +130,9 @@
   description: Performance Team
   parameters:
     jira_project_key: FXP
+    jira_components:
+      use_bug_component: false
+      use_bug_component_with_product_prefix: true
     steps:
       new:
         - create_issue
