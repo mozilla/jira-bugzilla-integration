@@ -5,7 +5,22 @@ import responses
 from responses import matchers
 
 from jbi.environment import get_settings
+from jbi.models import BugzillaWebhookRequest
 from jbi.services.bugzilla import BugzillaClientError, get_client
+
+
+@pytest.fixture
+def webhook_private_comment_example(
+    webhook_user_factory, webhook_event_factory, bug_factory, webhook_factory
+) -> BugzillaWebhookRequest:
+    user = webhook_user_factory(login="mathieu@mozilla.org")
+    event = webhook_event_factory(target="comment", user=user)
+    bug = bug_factory(
+        comment={"id": 344, "number": 2, "is_private": True},
+        see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+    )
+    webhook_payload = webhook_factory(bug=bug, event=event)
+    return webhook_payload
 
 
 @pytest.mark.no_mocked_bugzilla

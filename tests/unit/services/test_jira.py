@@ -65,7 +65,7 @@ def test_jira_calls_log_http_errors(mocked_responses, context_create_example, ca
 
 
 def test_jira_retries_failing_connections_in_health_check(
-    mocked_responses, actions_example
+    mocked_responses, actions_factory
 ):
     url = f"{get_settings().jira_base_url}rest/api/2/serverInfo?doHealthCheck=True"
 
@@ -78,7 +78,7 @@ def test_jira_retries_failing_connections_in_health_check(
     )
 
     with pytest.raises(ConnectionError):
-        jira.check_health(actions_example)
+        jira.check_health(actions_factory())
 
     assert len(mocked_responses.calls) == 4
 
