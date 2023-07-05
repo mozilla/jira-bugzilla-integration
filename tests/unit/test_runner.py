@@ -8,18 +8,35 @@ import responses
 from jbi import Operation
 from jbi.environment import get_settings
 from jbi.errors import IgnoreInvalidRequestError
-from jbi.models import ActionContext, Actions, BugzillaWebhookRequest
+from jbi.models import ActionContext, BugzillaWebhookRequest
 from jbi.runner import Executor, execute_action
-from tests.fixtures import factories
+
+
+@pytest.fixture
+def webhook_comment_example(
+    webhook_user_factory,
+    bug_factory,
+    webhook_event_factory,
+    webhook_factory,
+    comment_factory,
+) -> BugzillaWebhookRequest:
+    user = webhook_user_factory(login="mathieu@mozilla.org")
+    comment = comment_factory(number=2, body="hello")
+    bug = bug_factory(
+        see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+        comment=comment,
+    )
+    event = webhook_event_factory(target="comment", user=user)
+    webhook_payload = webhook_factory(bug=bug, event=event)
+
+    return webhook_payload
 
 
 def test_bugzilla_object_is_always_fetched(
-    mocked_bugzilla,
-    webhook_create_example,
-    actions_example: Actions,
+    mocked_bugzilla, webhook_create_example, actions_factory, bug_factory
 ):
     # See https://github.com/mozilla/jira-bugzilla-integration/issues/292
-    fetched_bug = factories.bug_factory(
+    fetched_bug = bug_factory(
         id=webhook_create_example.bug.id,
         see_also=[f"{get_settings().jira_base_url}browse/JBI-234"],
     )
@@ -27,7 +44,7 @@ def test_bugzilla_object_is_always_fetched(
 
     execute_action(
         request=webhook_create_example,
-        actions=actions_example,
+        actions=actions_factory(),
     )
 
     mocked_bugzilla.get_bug.assert_called_once_with(webhook_create_example.bug.id)
@@ -35,17 +52,18 @@ def test_bugzilla_object_is_always_fetched(
 
 def test_request_is_ignored_because_private(
     webhook_create_example: BugzillaWebhookRequest,
-    actions_example: Actions,
+    actions_factory,
     mocked_bugzilla,
+    bug_factory,
 ):
-    bug = factories.bug_factory(id=webhook_create_example.bug.id, is_private=True)
+    bug = bug_factory(id=webhook_create_example.bug.id, is_private=True)
     webhook_create_example.bug = bug
     mocked_bugzilla.get_bug.return_value = bug
 
     with pytest.raises(IgnoreInvalidRequestError) as exc_info:
         execute_action(
             request=webhook_create_example,
-            actions=actions_example,
+            actions=actions_factory(),
         )
 
     assert str(exc_info.value) == "private bugs are not supported"
@@ -53,7 +71,7 @@ def test_request_is_ignored_because_private(
 
 def test_added_comment_without_linked_issue_is_ignored(
     webhook_comment_example: BugzillaWebhookRequest,
-    actions_example: Actions,
+    actions_factory,
     mocked_bugzilla,
 ):
     webhook_comment_example.bug.see_also = []
@@ -62,14 +80,14 @@ def test_added_comment_without_linked_issue_is_ignored(
     with pytest.raises(IgnoreInvalidRequestError) as exc_info:
         execute_action(
             request=webhook_comment_example,
-            actions=actions_example,
+            actions=actions_factory(),
         )
     assert str(exc_info.value) == "ignore event target 'comment'"
 
 
 def test_request_is_ignored_because_no_action(
     webhook_create_example: BugzillaWebhookRequest,
-    actions_example: Actions,
+    actions_factory,
     mocked_bugzilla,
 ):
     assert webhook_create_example.bug
@@ -79,7 +97,7 @@ def test_request_is_ignored_because_no_action(
     with pytest.raises(IgnoreInvalidRequestError) as exc_info:
         execute_action(
             request=webhook_create_example,
-            actions=actions_example,
+            actions=actions_factory(),
         )
     assert str(exc_info.value) == "no bug whiteboard matching action tags: devtest"
 
@@ -87,7 +105,7 @@ def test_request_is_ignored_because_no_action(
 def test_execution_logging_for_successful_requests(
     capturelogs,
     webhook_create_example: BugzillaWebhookRequest,
-    actions_example: Actions,
+    actions_factory,
     mocked_bugzilla,
 ):
     mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
@@ -95,7 +113,7 @@ def test_execution_logging_for_successful_requests(
     with capturelogs.for_logger("jbi.runner").at_level(logging.DEBUG):
         execute_action(
             request=webhook_create_example,
-            actions=actions_example,
+            actions=actions_factory(),
         )
 
     assert {
@@ -108,7 +126,7 @@ def test_execution_logging_for_successful_requests(
 def test_execution_logging_for_ignored_requests(
     capturelogs,
     webhook_create_example: BugzillaWebhookRequest,
-    actions_example: Actions,
+    actions_factory,
     mocked_bugzilla,
 ):
     assert webhook_create_example.bug
@@ -119,7 +137,7 @@ def test_execution_logging_for_ignored_requests(
         with pytest.raises(IgnoreInvalidRequestError):
             execute_action(
                 request=webhook_create_example,
-                actions=actions_example,
+                actions=actions_factory(),
             )
 
     assert capturelogs.messages == [
@@ -131,7 +149,7 @@ def test_execution_logging_for_ignored_requests(
 def test_action_is_logged_as_success_if_returns_true(
     capturelogs,
     webhook_create_example: BugzillaWebhookRequest,
-    actions_example: Actions,
+    actions_factory,
     mocked_bugzilla,
 ):
     mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
@@ -140,7 +158,7 @@ def test_action_is_logged_as_success_if_returns_true(
         with capturelogs.for_logger("jbi.runner").at_level(logging.DEBUG):
             execute_action(
                 request=webhook_create_example,
-                actions=actions_example,
+                actions=actions_factory(),
             )
 
     captured_log_msgs = [(r.getMessage(), r.operation) for r in capturelogs.records]
@@ -160,7 +178,7 @@ def test_action_is_logged_as_success_if_returns_true(
 def test_action_is_logged_as_ignore_if_returns_false(
     capturelogs,
     webhook_create_example: BugzillaWebhookRequest,
-    actions_example: Actions,
+    actions_factory,
     mocked_bugzilla,
 ):
     mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
@@ -169,7 +187,7 @@ def test_action_is_logged_as_ignore_if_returns_false(
         with capturelogs.for_logger("jbi.runner").at_level(logging.DEBUG):
             execute_action(
                 request=webhook_create_example,
-                actions=actions_example,
+                actions=actions_factory(),
             )
 
     captured_log_msgs = [(r.getMessage(), r.operation) for r in capturelogs.records]
@@ -186,7 +204,7 @@ def test_action_is_logged_as_ignore_if_returns_false(
 
 def test_counter_is_incremented_on_ignored_requests(
     webhook_create_example: BugzillaWebhookRequest,
-    actions_example: Actions,
+    actions_factory,
     mocked_bugzilla,
 ):
     assert webhook_create_example.bug
@@ -197,14 +215,14 @@ def test_counter_is_incremented_on_ignored_requests(
         with pytest.raises(IgnoreInvalidRequestError):
             execute_action(
                 request=webhook_create_example,
-                actions=actions_example,
+                actions=actions_factory(),
             )
     mocked.incr.assert_called_with("jbi.bugzilla.ignored.count")
 
 
 def test_counter_is_incremented_on_processed_requests(
     webhook_create_example: BugzillaWebhookRequest,
-    actions_example: Actions,
+    actions_factory,
     mocked_bugzilla,
 ):
     mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
@@ -212,14 +230,14 @@ def test_counter_is_incremented_on_processed_requests(
     with mock.patch("jbi.runner.statsd") as mocked:
         execute_action(
             request=webhook_create_example,
-            actions=actions_example,
+            actions=actions_factory(),
         )
     mocked.incr.assert_called_with("jbi.bugzilla.processed.count")
 
 
 def test_runner_ignores_if_jira_issue_is_not_readable(
     webhook_comment_example: BugzillaWebhookRequest,
-    actions_example: Actions,
+    actions_factory,
     mocked_bugzilla,
     mocked_jira,
     capturelogs,
@@ -231,7 +249,7 @@ def test_runner_ignores_if_jira_issue_is_not_readable(
         with pytest.raises(IgnoreInvalidRequestError) as exc_info:
             execute_action(
                 request=webhook_comment_example,
-                actions=actions_example,
+                actions=actions_factory(),
             )
 
     assert str(exc_info.value) == "ignore unreadable issue JBI-234"
@@ -243,7 +261,7 @@ def test_runner_ignores_if_jira_issue_is_not_readable(
 
 def test_runner_ignores_request_if_jira_is_linked_but_without_whiteboard(
     webhook_comment_example: BugzillaWebhookRequest,
-    actions_example: Actions,
+    actions_factory,
     mocked_bugzilla,
 ):
     mocked_bugzilla.get_bug.return_value = webhook_comment_example.bug
@@ -254,7 +272,7 @@ def test_runner_ignores_request_if_jira_is_linked_but_without_whiteboard(
     with pytest.raises(IgnoreInvalidRequestError) as exc_info:
         execute_action(
             request=webhook_comment_example,
-            actions=actions_example,
+            actions=actions_factory(),
         )
 
     assert str(exc_info.value) == "no bug whiteboard matching action tags: devtest"
@@ -352,20 +370,22 @@ def test_default_returns_callable_with_data(
 
 
 def test_counter_is_incremented_when_workflows_was_aborted(
-    mocked_bugzilla, mocked_jira
+    mocked_bugzilla,
+    mocked_jira,
+    action_context_factory,
+    action_factory,
+    action_params_factory,
 ):
-    context_create_example: ActionContext = factories.action_context_factory(
+    context_create_example: ActionContext = action_context_factory(
         operation=Operation.CREATE,
-        action=factories.action_factory(whiteboard_tag="fnx"),
+        action=action_factory(whiteboard_tag="fnx"),
     )
     mocked_bugzilla.get_bug.return_value = context_create_example.bug
     mocked_jira.create_or_update_issue_remote_links.side_effect = requests.HTTPError(
         "Unauthorized"
     )
     callable_object = Executor(
-        factories.action_params_factory(
-            jira_project_key=context_create_example.jira.project
-        )
+        action_params_factory(jira_project_key=context_create_example.jira.project)
     )
 
     with mock.patch("jbi.runner.statsd") as mocked:
@@ -375,15 +395,21 @@ def test_counter_is_incremented_when_workflows_was_aborted(
     mocked.incr.assert_called_with("jbi.action.fnx.aborted.count")
 
 
-def test_counter_is_incremented_when_workflows_was_incomplete(mocked_bugzilla):
-    context_create_example: ActionContext = factories.action_context_factory(
+def test_counter_is_incremented_when_workflows_was_incomplete(
+    mocked_bugzilla,
+    action_context_factory,
+    action_factory,
+    bug_factory,
+    action_params_factory,
+):
+    context_create_example: ActionContext = action_context_factory(
         operation=Operation.CREATE,
-        action=factories.action_factory(whiteboard_tag="fnx"),
-        bug=factories.bug_factory(resolution="WONTFIX"),
+        action=action_factory(whiteboard_tag="fnx"),
+        bug=bug_factory(resolution="WONTFIX"),
     )
     mocked_bugzilla.get_bug.return_value = context_create_example.bug
     callable_object = Executor(
-        factories.action_params_factory(
+        action_params_factory(
             jira_project_key=context_create_example.jira.project,
             steps={
                 "new": [
