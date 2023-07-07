@@ -23,6 +23,12 @@ def test_no_actions_fails():
     assert "ensure this value has at least 1 items" in str(exc_info.value)
 
 
+def test_default_invalid_step():
+    with pytest.raises(pydantic.ValidationError):
+        # BOOM is not a function in jbi.steps, so it will raise
+        ActionSteps(new=["BOOM"])
+
+
 def test_duplicated_whiteboard_tag_fails(action_factory):
     with pytest.raises(ValueError) as exc_info:
         Actions.parse_obj(

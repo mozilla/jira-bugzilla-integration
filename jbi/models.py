@@ -22,6 +22,13 @@ logger = logging.getLogger(__name__)
 JIRA_HOSTNAMES = ("jira", "atlassian")
 
 
+@functools.lru_cache
+def steps_module_has_function(function_name):
+    from jbi import steps
+
+    return hasattr(steps, function_name)
+
+
 class ActionSteps(BaseModel):
     """Step functions to run for each type of Bugzilla webhook payload"""
 
@@ -40,6 +47,13 @@ class ActionSteps(BaseModel):
     comment: list[str] = [
         "create_comment",
     ]
+
+    @validator("*")
+    def validate_steps(cls, function_names):
+        for function_name in function_names:
+            if not steps_module_has_function(function_name):
+                raise ValueError(f"{function_name} is not a valid step function")
+        return function_names
 
 
 class JiraComponents(BaseModel):
