@@ -15,14 +15,14 @@ from jbi.models import Actions, BugzillaWebhookRequest
 from jbi.runner import IgnoreInvalidRequestError, execute_action
 from jbi.services import bugzilla, jira
 
-_settings = Annotated[Settings, Depends(get_settings)]
-_actions = Annotated[Actions, Depends(get_actions)]
-_version = Annotated[dict, Depends(get_version)]
+SettingsDep = Annotated[Settings, Depends(get_settings)]
+ActionsDep = Annotated[Actions, Depends(get_actions)]
+VersionDep = Annotated[dict, Depends(get_version)]
 router = APIRouter()
 
 
 @router.get("/", include_in_schema=False)
-def root(request: Request, settings: _settings):
+def root(request: Request, settings: SettingsDep):
     """Expose key configuration"""
     return {
         "title": request.app.title,
@@ -38,7 +38,7 @@ def root(request: Request, settings: _settings):
 
 @router.get("/__heartbeat__")
 @router.head("/__heartbeat__")
-def heartbeat(response: Response, actions: _actions):
+def heartbeat(response: Response, actions: ActionsDep):
     """Return status of backing services, as required by Dockerflow."""
     health_map = {
         "bugzilla": bugzilla.check_health(),
@@ -60,7 +60,7 @@ def lbheartbeat():
 
 
 @router.get("/__version__")
-def version(version_json: _version):
+def version(version_json: VersionDep):
     """Return version.json, as required by Dockerflow."""
     return version_json
 
@@ -68,7 +68,7 @@ def version(version_json: _version):
 @router.post("/bugzilla_webhook")
 def bugzilla_webhook(
     request: Request,
-    actions: _actions,
+    actions: ActionsDep,
     webhook_request: BugzillaWebhookRequest = Body(..., embed=False),
 ):
     """API endpoint that Bugzilla Webhook Events request"""
@@ -82,7 +82,7 @@ def bugzilla_webhook(
 
 @router.get("/whiteboard_tags/")
 def get_whiteboard_tags(
-    actions: _actions,
+    actions: ActionsDep,
     whiteboard_tag: Optional[str] = None,
 ):
     """API for viewing whiteboard_tags and associated data"""
@@ -111,7 +111,7 @@ templates = Jinja2Templates(directory=SRC_DIR / "templates")
 @router.get("/powered_by_jbi/", response_class=HTMLResponse)
 def powered_by_jbi(
     request: Request,
-    actions: _actions,
+    actions: ActionsDep,
     enabled: Optional[bool] = None,
 ):
     """API for `Powered By` endpoint"""
