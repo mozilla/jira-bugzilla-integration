@@ -87,25 +87,10 @@ def maybe_delete_duplicate(context: ActionContext, parameters: ActionParams):
 def update_issue_summary(context: ActionContext, parameters: ActionParams):
     """Update the Jira issue's summary if the linked bug is modified."""
 
-    bug = context.bug
-    issue_key = context.jira.issue
-
     if "summary" not in context.event.changed_fields():
         return context
 
-    logger.debug(
-        "Update summary of Jira issue %s for Bug %s",
-        issue_key,
-        bug.id,
-        extra=context.dict(),
-    )
-    truncated_summary = (bug.summary or "")[: jira.JIRA_DESCRIPTION_CHAR_LIMIT]
-    fields: dict[str, str] = {
-        "summary": truncated_summary,
-    }
-    jira_response_update = jira.get_service().client.update_issue_field(
-        key=issue_key, fields=fields
-    )
+    jira_response_update = jira.get_service().update_issue_summary(context)
     context = context.append_responses(jira_response_update)
     return context
 

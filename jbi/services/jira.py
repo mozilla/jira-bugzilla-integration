@@ -422,6 +422,24 @@ class JiraService:
             jira_status,
         )
 
+    def update_issue_summary(self, context: ActionContext):
+        """Update's an issue's summary with the description of an incoming bug"""
+
+        bug = context.bug
+        issue_key = context.jira.issue
+        logger.debug(
+            "Update summary of Jira issue %s for Bug %s",
+            issue_key,
+            bug.id,
+            extra=context.dict(),
+        )
+        truncated_summary = (bug.summary or "")[:JIRA_DESCRIPTION_CHAR_LIMIT]
+        fields: dict[str, str] = {
+            "summary": truncated_summary,
+        }
+        jira_response = self.client.update_issue_field(key=issue_key, fields=fields)
+        return jira_response
+
     def update_issue_resolution(self, context: ActionContext, jira_resolution: str):
         """Update the resolution of the Jira issue."""
         issue_key = context.jira.issue
