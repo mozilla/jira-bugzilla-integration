@@ -87,11 +87,11 @@ def mocked_bugzilla(request):
 def mocked_jira(request):
     if "no_mocked_jira" in request.keywords:
         yield None
-        jira.get_client.cache_clear()
+        jira.get_service.cache_clear()
     else:
         with mock.patch("jbi.services.jira.JiraClient") as mocked_jira:
             yield mocked_jira()
-            jira.get_client.cache_clear()
+            jira.get_service.cache_clear()
 
 
 @pytest.fixture

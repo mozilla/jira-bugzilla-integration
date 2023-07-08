@@ -178,7 +178,9 @@ def execute_action(
 
         else:
             # Check that issue exists (and is readable)
-            if not jira.get_issue(action_context, action_context.jira.issue):
+            if not jira.get_service().get_issue(
+                action_context, action_context.jira.issue
+            ):
                 raise IgnoreInvalidRequestError(
                     f"ignore unreadable issue {action_context.jira.issue}"
                 )

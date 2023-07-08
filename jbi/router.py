@@ -19,6 +19,7 @@ SettingsDep = Annotated[Settings, Depends(get_settings)]
 ActionsDep = Annotated[Actions, Depends(get_actions)]
 VersionDep = Annotated[dict, Depends(get_version)]
 BugzillaServiceDep = Annotated[bugzilla.BugzillaService, Depends(bugzilla.get_service)]
+JiraServiceDep = Annotated[jira.JiraService, Depends(jira.get_service)]
 router = APIRouter()
 
 
@@ -40,12 +41,15 @@ def root(request: Request, settings: SettingsDep):
 @router.get("/__heartbeat__")
 @router.head("/__heartbeat__")
 def heartbeat(
-    response: Response, actions: ActionsDep, bugzilla_service: BugzillaServiceDep
+    response: Response,
+    actions: ActionsDep,
+    bugzilla_service: BugzillaServiceDep,
+    jira_service: JiraServiceDep,
 ):
     """Return status of backing services, as required by Dockerflow."""
     health_map = {
         "bugzilla": bugzilla_service.check_health(),
-        "jira": jira.check_health(actions),
+        "jira": jira_service.check_health(actions),
     }
     health_checks: list = []
     for health in health_map.values():
@@ -101,9 +105,9 @@ def get_bugzilla_webhooks(bugzilla_service: BugzillaServiceDep):
 
 
 @router.get("/jira_projects/")
-def get_jira_projects():
+def get_jira_projects(jira_service: JiraServiceDep):
     """API for viewing projects that are currently accessible by API"""
-    visible_projects: list[dict] = jira.fetch_visible_projects()
+    visible_projects: list[dict] = jira_service.fetch_visible_projects()
     return [project["key"] for project in visible_projects]
 
 
