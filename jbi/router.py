@@ -18,6 +18,7 @@ from jbi.services import bugzilla, jira
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 ActionsDep = Annotated[Actions, Depends(get_actions)]
 VersionDep = Annotated[dict, Depends(get_version)]
+BugzillaServiceDep = Annotated[bugzilla.BugzillaService, Depends(bugzilla.get_service)]
 router = APIRouter()
 
 
@@ -38,10 +39,12 @@ def root(request: Request, settings: SettingsDep):
 
 @router.get("/__heartbeat__")
 @router.head("/__heartbeat__")
-def heartbeat(response: Response, actions: ActionsDep):
+def heartbeat(
+    response: Response, actions: ActionsDep, bugzilla_service: BugzillaServiceDep
+):
     """Return status of backing services, as required by Dockerflow."""
     health_map = {
-        "bugzilla": bugzilla.check_health(),
+        "bugzilla": bugzilla_service.check_health(),
         "jira": jira.check_health(actions),
     }
     health_checks: list = []
@@ -92,9 +95,9 @@ def get_whiteboard_tags(
 
 
 @router.get("/bugzilla_webhooks/")
-def get_bugzilla_webhooks():
+def get_bugzilla_webhooks(bugzilla_service: BugzillaServiceDep):
     """API for viewing webhooks details"""
-    return bugzilla.get_client().list_webhooks()
+    return bugzilla_service.client.list_webhooks()
 
 
 @router.get("/jira_projects/")

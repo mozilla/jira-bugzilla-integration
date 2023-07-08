@@ -40,7 +40,7 @@ def create_issue(context: ActionContext, parameters: ActionParams):
 
     # In the payload of a bug creation, the `comment` field is `null`.
     # We fetch the list of comments to use the first one as the Jira issue description.
-    comment_list = bugzilla.get_client().get_comments(bug.id)
+    comment_list = bugzilla.get_service().client.get_comments(bug.id)
     description = comment_list[0].text if comment_list else ""
 
     jira_create_response = jira.create_jira_issue(context, description, issue_type)
@@ -55,7 +55,7 @@ def create_issue(context: ActionContext, parameters: ActionParams):
 
 def add_link_to_jira(context: ActionContext, parameters: ActionParams):
     """Add the URL to the Jira issue in the `see_also` field on the Bugzilla ticket"""
-    bugzilla_response = bugzilla.add_link_to_jira(context)
+    bugzilla_response = bugzilla.get_service().add_link_to_jira(context)
     context = context.append_responses(bugzilla_response)
     return context
 
@@ -73,7 +73,7 @@ def maybe_delete_duplicate(context: ActionContext, parameters: ActionParams):
     re-retrieve it to ensure we have the latest data, and delete any duplicate
     if two Jira issues were created for the same Bugzilla ticket.
     """
-    latest_bug = bugzilla.get_client().get_bug(context.bug.id)
+    latest_bug = bugzilla.get_service().client.get_bug(context.bug.id)
     jira_response_delete = jira.delete_jira_issue_if_duplicate(context, latest_bug)
     if jira_response_delete:
         context = context.append_responses(jira_response_delete)

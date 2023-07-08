@@ -141,7 +141,7 @@ def execute_action(
             extra=runner_context.dict(),
         )
         try:
-            bug = bugzilla.get_client().get_bug(
+            bug = bugzilla.get_service().client.get_bug(
                 bug.id
             )  # refresh bug data; this removes webhook specific info--but avoids duplications
             bug.comment = webhook_comment  # inject webhook data back into bug
