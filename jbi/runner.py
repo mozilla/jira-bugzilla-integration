@@ -1,6 +1,7 @@
 """
 Execute actions from Webhook requests
 """
+import inspect
 import itertools
 import logging
 from typing import Optional
@@ -57,9 +58,20 @@ def groups2operation(steps: ActionSteps):
 class Executor:
     """Callable class that runs step functions for an action."""
 
-    def __init__(self, parameters: ActionParams):
+    def __init__(
+        self, parameters: ActionParams, bugzilla_service=None, jira_service=None
+    ):
         self.parameters = parameters
+        if not bugzilla_service:
+            self.bugzilla_service = bugzilla.get_service()
+        if not jira_service:
+            self.jira_service = jira.get_service()
         self.steps = self._initialize_steps(parameters.steps)
+        self.step_func_params = {
+            "parameters": self.parameters,
+            "bugzilla_service": self.bugzilla_service,
+            "jira_service": self.jira_service,
+        }
 
     def _initialize_steps(self, steps: ActionSteps):
         steps_by_operation = groups2operation(steps)
@@ -69,6 +81,22 @@ class Executor:
         }
         return steps_callables
 
+    def build_step_kwargs(self, func) -> dict:
+        """Builds a dictionary of keyword arguments (kwargs) to be passed to the given `step` function.
+
+        Args:
+            func: The step function for which the kwargs are being built.
+
+        Returns:
+            A dictionary containing the kwargs that match the parameters of the function.
+        """
+        function_params = inspect.signature(func).parameters
+        return {
+            key: value
+            for key, value in self.step_func_params.items()
+            if key in function_params.keys()
+        }
+
     def __call__(self, context: ActionContext) -> ActionResult:
         """Called from `runner` when the action is used."""
         has_produced_request = False
@@ -76,7 +104,8 @@ class Executor:
         for step in self.steps[context.operation]:
             context = context.update(current_step=step.__name__)
             try:
-                context = step(context=context, parameters=self.parameters)
+                step_kwargs = self.build_step_kwargs(step)
+                context = step(context=context, **step_kwargs)
             except IncompleteStepError as exc:
                 # Step did not execute all its operations.
                 context = exc.context
