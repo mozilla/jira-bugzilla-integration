@@ -8,7 +8,7 @@ import concurrent.futures
 import json
 import logging
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Iterable, Optional
 
 import requests
 from atlassian import Jira
@@ -453,6 +453,69 @@ class JiraService:
         return self.client.update_issue_field(
             key=issue_key,
             fields={"resolution": jira_resolution},
+        )
+
+    def update_issue_components(
+        self,
+        issue_key: str,
+        project: str,
+        components: Iterable[str],
+    ) -> tuple[Optional[dict], set]:
+        """Attempt to add components to the specified issue
+
+        Args:
+            issue_key: key of the issues to add the components to
+            project: the project key
+            components: Component names to add to the issue
+
+        Returns:
+            The Jira response (if any), and any components that weren't added
+            to the issue because they weren't available on the project
+        """
+        missing_components = set(components)
+        jira_components = []
+
+        all_project_components = self.client.get_project_components(project)
+        for comp in all_project_components:
+            if comp["name"] in missing_components:
+                jira_components.append({"id": comp["id"]})
+                missing_components.remove(comp["name"])
+
+        if not jira_components:
+            return None, missing_components
+
+        logger.info(
+            "attempting to add components '%s' to issue '%s'",
+            ",".join(components),
+            issue_key,
+        )
+        resp = self.client.update_issue_field(
+            key=issue_key, fields={"components": jira_components}
+        )
+        return resp, missing_components
+
+    def update_issue_labels(
+        self, issue_key: str, add: Iterable[str], remove: Optional[Iterable[str]]
+    ):
+        """Update the labels for a specified issue
+
+        Args:
+            issue_key: key of the issues to modify the labels on
+            add: labels to add
+            remove (Optional): labels to remove
+
+        Returns:
+            The response from Jira
+        """
+        if not remove:
+            remove = []
+
+        updated_labels = [{"add": label} for label in add] + [
+            {"remove": label} for label in remove
+        ]
+        return self.client.update_issue(
+            issue_key=issue_key,
+            update={"update": {"labels": updated_labels}},
         )
 
 

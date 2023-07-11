@@ -21,7 +21,6 @@ from jbi.models import (
     ActionParams,
     Actions,
     ActionSteps,
-    BugzillaWebhookComment,
     BugzillaWebhookRequest,
     JiraContext,
     RunnerContext,
@@ -154,7 +153,6 @@ def execute_action(
     The value returned by the action call is returned.
     """
     bug, event = request.bug, request.event
-    webhook_comment: Optional[BugzillaWebhookComment] = bug.comment
     runner_context = RunnerContext(
         rid=request.rid,
         bug=bug,
@@ -170,10 +168,7 @@ def execute_action(
             extra=runner_context.dict(),
         )
         try:
-            bug = bugzilla.get_service().client.get_bug(
-                bug.id
-            )  # refresh bug data; this removes webhook specific info--but avoids duplications
-            bug.comment = webhook_comment  # inject webhook data back into bug
+            bug = bugzilla.get_service().refresh_bug_data(bug)
         except Exception as err:
             logger.exception("Failed to get bug: %s", err, extra=runner_context.dict())
             raise IgnoreInvalidRequestError(

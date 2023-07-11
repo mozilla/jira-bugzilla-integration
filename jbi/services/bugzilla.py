@@ -180,6 +180,26 @@ class BugzillaService:
         )
         return self.client.update_bug(bug.id, see_also={"add": [jira_url]})
 
+    def get_description(self, bug_id: int):
+        """Fetch a bug's description
+
+        A Bug's description does not appear in the payload of a bug. Instead, it is "comment 0"
+        """
+
+        comment_list = self.client.get_comments(bug_id)
+        comment_body = comment_list[0].text if comment_list else ""
+        return str(comment_body)
+
+    def refresh_bug_data(self, bug: BugzillaBug):
+        """Re-fetch a bug to ensure we have the most up-to-date data"""
+
+        updated_bug = self.client.get_bug(bug.id)
+        # When bugs come in as webhook payloads, they have a "comment"
+        # attribute, but this field isn't available when we get a bug by ID.
+        # So, we make sure to add the comment back if it was present on the bug.
+        updated_bug.comment = bug.comment
+        return updated_bug
+
 
 @lru_cache(maxsize=1)
 def get_service():

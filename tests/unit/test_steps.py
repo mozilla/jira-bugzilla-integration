@@ -845,6 +845,7 @@ def test_maybe_update_components(
 ):
     mocked_jira.get_project_components.return_value = project_components
     context_create_example.bug.component = bug_component
+    context_create_example.jira.issue = context_create_example.jira.project + "-123"
 
     callable_object = Executor(
         action_params_factory(
@@ -916,6 +917,7 @@ def test_maybe_update_components_failing(
 def test_sync_whiteboard_labels(
     context_create_example: ActionContext, mocked_jira, action_params_factory
 ):
+    context_create_example.jira.issue = context_create_example.jira.project + "-123"
     callable_object = Executor(
         action_params_factory(
             jira_project_key=context_create_example.jira.project,
@@ -940,6 +942,7 @@ def test_sync_whiteboard_labels(
 def test_sync_whiteboard_labels_with_brackets(
     context_create_example: ActionContext, mocked_jira, action_params_factory
 ):
+    context_create_example.jira.issue = context_create_example.jira.project + "-123"
     callable_object = Executor(
         action_params_factory(
             jira_project_key=context_create_example.jira.project,
@@ -969,6 +972,8 @@ def test_sync_whiteboard_labels_update(
     action_params_factory,
     webhook_event_change_factory,
 ):
+    context_update_example.jira.issue = context_update_example.jira.project + "-123"
+
     context_update_example.event.changes = [
         webhook_event_change_factory(
             field="whiteboard",

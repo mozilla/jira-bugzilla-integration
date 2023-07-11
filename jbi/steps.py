@@ -47,11 +47,8 @@ def create_issue(
     """Create the Jira issue with the first comment as the description."""
     bug = context.bug
     issue_type = parameters.issue_type_map.get(bug.type or "", "Task")
-
     # In the payload of a bug creation, the `comment` field is `null`.
-    # We fetch the list of comments to use the first one as the Jira issue description.
-    comment_list = bugzilla_service.client.get_comments(bug.id)
-    description = comment_list[0].text if comment_list else ""
+    description = bugzilla_service.get_description(bug.id)
 
     jira_create_response = jira_service.create_jira_issue(
         context, description, issue_type
@@ -90,7 +87,7 @@ def maybe_delete_duplicate(
     re-retrieve it to ensure we have the latest data, and delete any duplicate
     if two Jira issues were created for the same Bugzilla ticket.
     """
-    latest_bug = bugzilla_service.client.get_bug(context.bug.id)
+    latest_bug = bugzilla_service.refresh_bug_data(context.bug)
     jira_response_delete = jira_service.delete_jira_issue_if_duplicate(
         context, latest_bug
     )
@@ -249,35 +246,23 @@ def maybe_update_components(
     ):
         candidate_components.add(context.bug.product_component)
 
-    # Fetch all projects components, and match their id by name.
-    all_project_components = jira_service.client.get_project_components(
-        context.jira.project
-    )
-    jira_components = []
-    for comp in all_project_components:
-        if comp["name"] in candidate_components:
-            jira_components.append({"id": comp["id"]})
-            candidate_components.remove(comp["name"])
-
-    # Warn if some specified components are unknown
-    if candidate_components:
-        logger.warning(
-            "Could not find components %r in project",
-            ", ".join(sorted(candidate_components)),
-            extra=context.dict(),
-        )
-
-    if not jira_components:
-        raise IncompleteStepError(context)
+    if not candidate_components:
+        # no components to update
+        return context
 
     # Although we previously introspected the project components, we
     # still have to catch any potential 400 error response here, because
     # the `components` field may not be on the create / update issue.
+
+    if not context.jira.issue:
+        raise ValueError("Jira issue unset in Action Context")
+
     try:
-        resp = jira_service.client.update_issue_field(
-            key=context.jira.issue, fields={"components": jira_components}
+        resp, missing_components = jira_service.update_issue_components(
+            issue_key=context.jira.issue,
+            project=parameters.jira_project_key,
+            components=candidate_components,
         )
-        context.append_responses(resp)
     except requests_exceptions.HTTPError as exc:
         if exc.response.status_code != 400:
             raise
@@ -291,6 +276,15 @@ def maybe_update_components(
         context.append_responses(exc.response)
         raise IncompleteStepError(context) from exc
 
+    if missing_components:
+        logger.warning(
+            "Could not find components '%s' in project",
+            ",".join(sorted(missing_components)),
+            extra=context.dict(),
+        )
+        raise IncompleteStepError(context)
+
+    context.append_responses(resp)
     return context
 
 
@@ -312,15 +306,18 @@ def _whiteboard_as_labels(labels_brackets: str, whiteboard: Optional[str]) -> li
     return ["bugzilla"] + labels
 
 
-def _build_labels_update(labels_brackets, added, removed=None):
-    after = _whiteboard_as_labels(labels_brackets, added)
+def _build_labels_update(
+    labels_brackets, added, removed=None
+) -> tuple[list[str], list[str]]:
     # We don't bother detecting if label was already there.
-    updates = [{"add": label} for label in after]
+    additions = _whiteboard_as_labels(labels_brackets, added)
+    removals = []
     if removed:
         before = _whiteboard_as_labels(labels_brackets, removed)
-        deleted = sorted(set(before).difference(set(after)))  # sorted for unit testing
-        updates.extend([{"remove": label} for label in deleted])
-    return updates
+        removals = sorted(
+            set(before).difference(set(additions))
+        )  # sorted for unit testing
+    return additions, removals
 
 
 def sync_whiteboard_labels(
@@ -333,7 +330,7 @@ def sync_whiteboard_labels(
     if context.event.changes:
         changes_by_field = {change.field: change for change in context.event.changes}
         if change := changes_by_field.get("whiteboard"):
-            updates = _build_labels_update(
+            additions, removals = _build_labels_update(
                 added=change.added,
                 removed=change.removed,
                 labels_brackets=parameters.labels_brackets,
@@ -343,13 +340,16 @@ def sync_whiteboard_labels(
             return context
     else:
         # On creation, just add them all.
-        updates = _build_labels_update(
+        additions, removals = _build_labels_update(
             added=context.bug.whiteboard, labels_brackets=parameters.labels_brackets
         )
 
+    if not context.jira.issue:
+        raise ValueError("Jira issue unset in Action Context")
+
     try:
-        resp = jira_service.client.update_issue(
-            issue_key=context.jira.issue, update={"update": {"labels": updates}}
+        resp = jira_service.update_issue_labels(
+            issue_key=context.jira.issue, add=additions, remove=removals
         )
     except requests_exceptions.HTTPError as exc:
         if exc.response.status_code != 400:
