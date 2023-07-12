@@ -200,6 +200,11 @@ class BugzillaService:
         updated_bug.comment = bug.comment
         return updated_bug
 
+    def list_webhooks(self):
+        """List the currently configured webhooks, including their status."""
+
+        return self.client.list_webhooks()
+
 
 @lru_cache(maxsize=1)
 def get_service():
