@@ -4,20 +4,30 @@ Collection of reusable action steps.
 Each step takes an `ActionContext` and a list of arbitrary parameters.
 """
 
+# This import is needed (as of Pyhon 3.11) to enable type checking with modules
+# imported under `TYPE_CHECKING`
+# https://docs.python.org/3/whatsnew/3.7.html#pep-563-postponed-evaluation-of-annotations
+# https://docs.python.org/3/whatsnew/3.11.html#pep-563-may-not-be-the-future
+from __future__ import annotations
+
 import logging
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from requests import exceptions as requests_exceptions
 
 from jbi import Operation
 from jbi.errors import IncompleteStepError
-from jbi.models import ActionContext, ActionParams
-from jbi.services import bugzilla, jira
+
+# https://docs.python.org/3.11/library/typing.html#typing.TYPE_CHECKING
+if TYPE_CHECKING:
+    from jbi.models import ActionContext, ActionParams
+    from jbi.services.bugzilla import BugzillaService
+    from jbi.services.jira import JiraService
 
 logger = logging.getLogger(__name__)
 
 
-def create_comment(context: ActionContext, parameters: ActionParams):
+def create_comment(context: ActionContext, *, jira_service: JiraService):
     """Create a Jira comment using `context.bug.comment`"""
     bug = context.bug
 
@@ -28,22 +38,27 @@ def create_comment(context: ActionContext, parameters: ActionParams):
         )
         return context
 
-    jira_response = jira.add_jira_comment(context)
+    jira_response = jira_service.add_jira_comment(context)
     context = context.append_responses(jira_response)
     return context
 
 
-def create_issue(context: ActionContext, parameters: ActionParams):
+def create_issue(
+    context: ActionContext,
+    *,
+    parameters: ActionParams,
+    jira_service: JiraService,
+    bugzilla_service: BugzillaService,
+):
     """Create the Jira issue with the first comment as the description."""
     bug = context.bug
     issue_type = parameters.issue_type_map.get(bug.type or "", "Task")
-
     # In the payload of a bug creation, the `comment` field is `null`.
-    # We fetch the list of comments to use the first one as the Jira issue description.
-    comment_list = bugzilla.get_client().get_comments(bug.id)
-    description = comment_list[0].text if comment_list else ""
+    description = bugzilla_service.get_description(bug.id)
 
-    jira_create_response = jira.create_jira_issue(context, description, issue_type)
+    jira_create_response = jira_service.create_jira_issue(
+        context, description, issue_type
+    )
     issue_key = jira_create_response.get("key")
 
     context = context.update(
@@ -53,68 +68,60 @@ def create_issue(context: ActionContext, parameters: ActionParams):
     return context
 
 
-def add_link_to_jira(context: ActionContext, parameters: ActionParams):
+def add_link_to_jira(context: ActionContext, *, bugzilla_service: BugzillaService):
     """Add the URL to the Jira issue in the `see_also` field on the Bugzilla ticket"""
-    bugzilla_response = bugzilla.add_link_to_jira(context)
+    bugzilla_response = bugzilla_service.add_link_to_jira(context)
     context = context.append_responses(bugzilla_response)
     return context
 
 
-def add_link_to_bugzilla(context: ActionContext, parameters: ActionParams):
+def add_link_to_bugzilla(context: ActionContext, *, jira_service: JiraService):
     """Add the URL of the Bugzilla ticket to the links of the Jira issue"""
-    jira_response = jira.add_link_to_bugzilla(context)
+    jira_response = jira_service.add_link_to_bugzilla(context)
     context = context.append_responses(jira_response)
     return context
 
 
-def maybe_delete_duplicate(context: ActionContext, parameters: ActionParams):
+def maybe_delete_duplicate(
+    context: ActionContext,
+    *,
+    bugzilla_service: BugzillaService,
+    jira_service: JiraService,
+):
     """
     In the time taken to create the Jira issue the bug may have been updated so
     re-retrieve it to ensure we have the latest data, and delete any duplicate
     if two Jira issues were created for the same Bugzilla ticket.
     """
-    latest_bug = bugzilla.get_client().get_bug(context.bug.id)
-    jira_response_delete = jira.delete_jira_issue_if_duplicate(context, latest_bug)
+    latest_bug = bugzilla_service.refresh_bug_data(context.bug)
+    jira_response_delete = jira_service.delete_jira_issue_if_duplicate(
+        context, latest_bug
+    )
     if jira_response_delete:
         context = context.append_responses(jira_response_delete)
     return context
 
 
-def update_issue_summary(context: ActionContext, parameters: ActionParams):
+def update_issue_summary(context: ActionContext, *, jira_service: JiraService):
     """Update the Jira issue's summary if the linked bug is modified."""
-
-    bug = context.bug
-    issue_key = context.jira.issue
 
     if "summary" not in context.event.changed_fields():
         return context
 
-    logger.debug(
-        "Update summary of Jira issue %s for Bug %s",
-        issue_key,
-        bug.id,
-        extra=context.dict(),
-    )
-    truncated_summary = (bug.summary or "")[: jira.JIRA_DESCRIPTION_CHAR_LIMIT]
-    fields: dict[str, str] = {
-        "summary": truncated_summary,
-    }
-    jira_response_update = jira.get_client().update_issue_field(
-        key=issue_key, fields=fields
-    )
+    jira_response_update = jira_service.update_issue_summary(context)
     context = context.append_responses(jira_response_update)
     return context
 
 
-def add_jira_comments_for_changes(context: ActionContext, parameters: ActionParams):
+def add_jira_comments_for_changes(context: ActionContext, *, jira_service: JiraService):
     """Add a Jira comment for each field (assignee, status, resolution) change on
     the Bugzilla ticket."""
-    comments_responses = jira.add_jira_comments_for_changes(context)
+    comments_responses = jira_service.add_jira_comments_for_changes(context)
     context.append_responses(comments_responses)
     return context
 
 
-def maybe_assign_jira_user(context: ActionContext, parameters: ActionParams):
+def maybe_assign_jira_user(context: ActionContext, *, jira_service: JiraService):
     """Assign the user on the Jira issue, based on the Bugzilla assignee email.
 
     It will attempt to assign the Jira issue the same person as the bug is assigned to. This relies on
@@ -130,7 +137,7 @@ def maybe_assign_jira_user(context: ActionContext, parameters: ActionParams):
             return context
 
         try:
-            resp = jira.assign_jira_user(context, bug.assigned_to)  # type: ignore
+            resp = jira_service.assign_jira_user(context, bug.assigned_to)  # type: ignore
             context.append_responses(resp)
             return context
         except ValueError as exc:
@@ -142,14 +149,14 @@ def maybe_assign_jira_user(context: ActionContext, parameters: ActionParams):
             return context
 
         if not bug.is_assigned():
-            resp = jira.clear_assignee(context)
+            resp = jira_service.clear_assignee(context)
         else:
             try:
-                resp = jira.assign_jira_user(context, bug.assigned_to)  # type: ignore
+                resp = jira_service.assign_jira_user(context, bug.assigned_to)  # type: ignore
             except ValueError as exc:
                 logger.debug(str(exc), extra=context.dict())
                 # If that failed then just fall back to clearing the assignee.
-                resp = jira.clear_assignee(context)
+                resp = jira_service.clear_assignee(context)
         context.append_responses(resp)
         return context
 
@@ -158,8 +165,7 @@ def maybe_assign_jira_user(context: ActionContext, parameters: ActionParams):
 
 
 def maybe_update_issue_resolution(
-    context: ActionContext,
-    parameters: ActionParams,
+    context: ActionContext, *, parameters: ActionParams, jira_service: JiraService
 ):
     """
     Update the Jira issue status
@@ -180,20 +186,22 @@ def maybe_update_issue_resolution(
         raise IncompleteStepError(context)
 
     if context.operation == Operation.CREATE:
-        resp = jira.update_issue_resolution(context, jira_resolution)
+        resp = jira_service.update_issue_resolution(context, jira_resolution)
         context.append_responses(resp)
         return context
 
     if context.operation == Operation.UPDATE:
         if "resolution" in context.event.changed_fields():
-            resp = jira.update_issue_resolution(context, jira_resolution)
+            resp = jira_service.update_issue_resolution(context, jira_resolution)
             context.append_responses(resp)
             return context
 
     return context
 
 
-def maybe_update_issue_status(context: ActionContext, parameters: ActionParams):
+def maybe_update_issue_status(
+    context: ActionContext, *, parameters: ActionParams, jira_service: JiraService
+):
     """
     Update the Jira issue resolution
     https://support.atlassian.com/jira-cloud-administration/docs/what-are-issue-statuses-priorities-and-resolutions/
@@ -212,7 +220,7 @@ def maybe_update_issue_status(context: ActionContext, parameters: ActionParams):
         raise IncompleteStepError(context)
 
     if context.operation == Operation.CREATE:
-        resp = jira.update_issue_status(context, jira_status)
+        resp = jira_service.update_issue_status(context, jira_status)
         context.append_responses(resp)
         return context
 
@@ -220,14 +228,16 @@ def maybe_update_issue_status(context: ActionContext, parameters: ActionParams):
         changed_fields = context.event.changed_fields()
 
         if "status" in changed_fields or "resolution" in changed_fields:
-            resp = jira.update_issue_status(context, jira_status)
+            resp = jira_service.update_issue_status(context, jira_status)
             context.append_responses(resp)
             return context
 
     return context
 
 
-def maybe_update_components(context: ActionContext, parameters: ActionParams):
+def maybe_update_components(
+    context: ActionContext, *, parameters: ActionParams, jira_service: JiraService
+):
     """
     Update the Jira issue components
     """
@@ -241,35 +251,24 @@ def maybe_update_components(context: ActionContext, parameters: ActionParams):
         and parameters.jira_components.use_bug_component_with_product_prefix
     ):
         candidate_components.add(context.bug.product_component)
-    client = jira.get_client()
 
-    # Fetch all projects components, and match their id by name.
-    all_project_components = client.get_project_components(context.jira.project)
-    jira_components = []
-    for comp in all_project_components:
-        if comp["name"] in candidate_components:
-            jira_components.append({"id": comp["id"]})
-            candidate_components.remove(comp["name"])
-
-    # Warn if some specified components are unknown
-    if candidate_components:
-        logger.warning(
-            "Could not find components %r in project",
-            ", ".join(sorted(candidate_components)),
-            extra=context.dict(),
-        )
-
-    if not jira_components:
-        raise IncompleteStepError(context)
+    if not candidate_components:
+        # no components to update
+        return context
 
     # Although we previously introspected the project components, we
     # still have to catch any potential 400 error response here, because
     # the `components` field may not be on the create / update issue.
+
+    if not context.jira.issue:
+        raise ValueError("Jira issue unset in Action Context")
+
     try:
-        resp = client.update_issue_field(
-            key=context.jira.issue, fields={"components": jira_components}
+        resp, missing_components = jira_service.update_issue_components(
+            issue_key=context.jira.issue,
+            project=parameters.jira_project_key,
+            components=candidate_components,
         )
-        context.append_responses(resp)
     except requests_exceptions.HTTPError as exc:
         if exc.response.status_code != 400:
             raise
@@ -283,6 +282,15 @@ def maybe_update_components(context: ActionContext, parameters: ActionParams):
         context.append_responses(exc.response)
         raise IncompleteStepError(context) from exc
 
+    if missing_components:
+        logger.warning(
+            "Could not find components '%s' in project",
+            ",".join(sorted(missing_components)),
+            extra=context.dict(),
+        )
+        raise IncompleteStepError(context)
+
+    context.append_responses(resp)
     return context
 
 
@@ -304,18 +312,23 @@ def _whiteboard_as_labels(labels_brackets: str, whiteboard: Optional[str]) -> li
     return ["bugzilla"] + labels
 
 
-def _build_labels_update(labels_brackets, added, removed=None):
-    after = _whiteboard_as_labels(labels_brackets, added)
+def _build_labels_update(
+    labels_brackets, added, removed=None
+) -> tuple[list[str], list[str]]:
     # We don't bother detecting if label was already there.
-    updates = [{"add": label} for label in after]
+    additions = _whiteboard_as_labels(labels_brackets, added)
+    removals = []
     if removed:
         before = _whiteboard_as_labels(labels_brackets, removed)
-        deleted = sorted(set(before).difference(set(after)))  # sorted for unit testing
-        updates.extend([{"remove": label} for label in deleted])
-    return updates
+        removals = sorted(
+            set(before).difference(set(additions))
+        )  # sorted for unit testing
+    return additions, removals
 
 
-def sync_whiteboard_labels(context: ActionContext, parameters: ActionParams):
+def sync_whiteboard_labels(
+    context: ActionContext, *, parameters: ActionParams, jira_service: JiraService
+):
     """
     Set whiteboard tags as labels on the Jira issue.
     """
@@ -323,7 +336,7 @@ def sync_whiteboard_labels(context: ActionContext, parameters: ActionParams):
     if context.event.changes:
         changes_by_field = {change.field: change for change in context.event.changes}
         if change := changes_by_field.get("whiteboard"):
-            updates = _build_labels_update(
+            additions, removals = _build_labels_update(
                 added=change.added,
                 removed=change.removed,
                 labels_brackets=parameters.labels_brackets,
@@ -333,13 +346,16 @@ def sync_whiteboard_labels(context: ActionContext, parameters: ActionParams):
             return context
     else:
         # On creation, just add them all.
-        updates = _build_labels_update(
+        additions, removals = _build_labels_update(
             added=context.bug.whiteboard, labels_brackets=parameters.labels_brackets
         )
 
+    if not context.jira.issue:
+        raise ValueError("Jira issue unset in Action Context")
+
     try:
-        resp = jira.get_client().update_issue(
-            issue_key=context.jira.issue, update={"update": {"labels": updates}}
+        resp = jira_service.update_issue_labels(
+            issue_key=context.jira.issue, add=additions, remove=removals
         )
     except requests_exceptions.HTTPError as exc:
         if exc.response.status_code != 400:

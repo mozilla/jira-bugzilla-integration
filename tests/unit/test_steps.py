@@ -9,7 +9,7 @@ from jbi.environment import get_settings
 from jbi.errors import IncompleteStepError
 from jbi.models import ActionContext, JiraComponents
 from jbi.runner import Executor
-from jbi.services.jira import JiraCreateError
+from jbi.services.jira import JiraCreateError, JiraService
 
 ALL_STEPS = {
     "new": [
@@ -412,7 +412,6 @@ def test_set_assignee_failing_create(
     context_create_example: ActionContext,
     mocked_jira,
     capturelogs,
-    action_params_factory,
 ):
     mocked_jira.update_issue_field.side_effect = requests.exceptions.HTTPError(
         "unknown user", response=mock.MagicMock(status_code=400)
@@ -423,7 +422,7 @@ def test_set_assignee_failing_create(
     with pytest.raises(IncompleteStepError):
         with capturelogs.for_logger("jbi.steps").at_level(logging.DEBUG):
             steps.maybe_assign_jira_user(
-                context=context_create_example, parameters=action_params_factory()
+                context=context_create_example, jira_service=JiraService(mocked_jira)
             )
 
     assert capturelogs.messages == ["User postmaster@localhost not found"]
@@ -433,7 +432,6 @@ def test_set_assignee_failing_update(
     context_update_example: ActionContext,
     mocked_jira,
     capturelogs,
-    action_params_factory,
     webhook_event_change_factory,
 ):
     mocked_jira.user_find_by_user_string.return_value = []
@@ -448,7 +446,7 @@ def test_set_assignee_failing_update(
     context_update_example.current_step = "maybe_assign_jira_user"
     with capturelogs.for_logger("jbi.steps").at_level(logging.DEBUG):
         steps.maybe_assign_jira_user(
-            context=context_update_example, parameters=action_params_factory()
+            context=context_update_example, jira_service=JiraService(mocked_jira)
         )
 
     assert capturelogs.messages == ["User postmaster@localhost not found"]
@@ -560,7 +558,11 @@ def test_change_to_unknown_status(
                     "FIXED": "Closed",
                 },
             )
-            steps.maybe_update_issue_status(context_update_example, action_params)
+            steps.maybe_update_issue_status(
+                context_update_example,
+                parameters=action_params,
+                jira_service=JiraService(mocked_jira),
+            )
 
         mocked_jira.update_issue_field.assert_not_called()
 
@@ -672,7 +674,8 @@ def test_change_to_unknown_resolution_with_resolution_map(
         with capturelogs.for_logger("jbi.steps").at_level(logging.DEBUG):
             steps.maybe_update_issue_resolution(
                 context_update_resolution_example,
-                action_params,
+                parameters=action_params,
+                jira_service=JiraService(mocked_jira),
             )
 
     mocked_jira.update_issue_field.assert_not_called()
@@ -842,6 +845,7 @@ def test_maybe_update_components(
 ):
     mocked_jira.get_project_components.return_value = project_components
     context_create_example.bug.component = bug_component
+    context_create_example.jira.issue = context_create_example.jira.project + "-123"
 
     callable_object = Executor(
         action_params_factory(
@@ -872,7 +876,11 @@ def test_maybe_update_components_raises_incompletesteperror_on_mismatch(
     mocked_jira.get_project_components.return_value = [{"name": "Backend"}]
     context_update_example.bug.component = "Frontend"
     with pytest.raises(IncompleteStepError):
-        steps.maybe_update_components(context_update_example, action_params)
+        steps.maybe_update_components(
+            context_update_example,
+            parameters=action_params,
+            jira_service=JiraService(mocked_jira),
+        )
 
 
 def test_maybe_update_components_failing(
@@ -896,7 +904,9 @@ def test_maybe_update_components_failing(
     with pytest.raises(IncompleteStepError):
         with capturelogs.for_logger("jbi.steps").at_level(logging.DEBUG):
             steps.maybe_update_components(
-                context=context_update_example, parameters=action_params
+                context=context_update_example,
+                parameters=action_params,
+                jira_service=JiraService(mocked_jira),
             )
 
     assert capturelogs.messages == [
@@ -907,6 +917,7 @@ def test_maybe_update_components_failing(
 def test_sync_whiteboard_labels(
     context_create_example: ActionContext, mocked_jira, action_params_factory
 ):
+    context_create_example.jira.issue = context_create_example.jira.project + "-123"
     callable_object = Executor(
         action_params_factory(
             jira_project_key=context_create_example.jira.project,
@@ -931,6 +942,7 @@ def test_sync_whiteboard_labels(
 def test_sync_whiteboard_labels_with_brackets(
     context_create_example: ActionContext, mocked_jira, action_params_factory
 ):
+    context_create_example.jira.issue = context_create_example.jira.project + "-123"
     callable_object = Executor(
         action_params_factory(
             jira_project_key=context_create_example.jira.project,
@@ -960,6 +972,8 @@ def test_sync_whiteboard_labels_update(
     action_params_factory,
     webhook_event_change_factory,
 ):
+    context_update_example.jira.issue = context_update_example.jira.project + "-123"
+
     context_update_example.event.changes = [
         webhook_event_change_factory(
             field="whiteboard",
@@ -1007,7 +1021,9 @@ def test_sync_whiteboard_labels_failing(
     with pytest.raises(IncompleteStepError):
         with capturelogs.for_logger("jbi.steps").at_level(logging.DEBUG):
             steps.sync_whiteboard_labels(
-                context=context_update_example, parameters=action_params
+                context=context_update_example,
+                parameters=action_params,
+                jira_service=JiraService(mocked_jira),
             )
 
     assert capturelogs.messages == [

@@ -26,8 +26,10 @@ def test_jira_create_issue_is_instrumented(
         },
     )
 
-    jira.create_jira_issue(context_create_example, "Description", issue_type="Task")
-    jira_client = jira.get_client()
+    jira.get_service().create_jira_issue(
+        context_create_example, "Description", issue_type="Task"
+    )
+    jira_client = jira.get_service().client
 
     jira_client.create_issue({})
 
@@ -49,7 +51,7 @@ def test_jira_calls_log_http_errors(mocked_responses, context_create_example, ca
 
     with caplog.at_level(logging.ERROR):
         with pytest.raises(requests.HTTPError):
-            jira.get_client().get_project_components(
+            jira.get_service().client.get_project_components(
                 context_create_example.jira.project
             )
 
@@ -78,7 +80,7 @@ def test_jira_retries_failing_connections_in_health_check(
     )
 
     with pytest.raises(ConnectionError):
-        jira.check_health(actions_factory())
+        jira.get_service().check_health(actions_factory())
 
     assert len(mocked_responses.calls) == 4
 
@@ -93,7 +95,7 @@ def test_jira_does_not_retry_4XX(mocked_responses, context_create_example):
     )
 
     with pytest.raises(requests.HTTPError):
-        jira.create_jira_issue(
+        jira.get_service().create_jira_issue(
             context=context_create_example, description="", issue_type="Task"
         )
 
@@ -132,7 +134,7 @@ def test_all_projects_components_exist(
         }
     )
     actions = Actions(__root__=[action])
-    result = jira._all_projects_components_exist(actions)
+    result = jira.get_service()._all_projects_components_exist(actions)
     assert result is expected_result
 
 
@@ -151,5 +153,5 @@ def test_all_projects_components_exist_no_components_param(
         url,
         json=[],
     )
-    result = jira._all_projects_components_exist(actions)
+    result = jira.get_service()._all_projects_components_exist(actions)
     assert result is True
