@@ -3,6 +3,11 @@ Collection of reusable action steps.
 
 Each step takes an `ActionContext` and a list of arbitrary parameters.
 """
+
+# This import is needed (as of Pyhon 3.11) to enable type checking with modules
+# imported under `TYPE_CHECKING`
+# https://docs.python.org/3/whatsnew/3.7.html#pep-563-postponed-evaluation-of-annotations
+# https://docs.python.org/3/whatsnew/3.11.html#pep-563-may-not-be-the-future
 from __future__ import annotations
 
 import logging
@@ -13,6 +18,7 @@ from requests import exceptions as requests_exceptions
 from jbi import Operation
 from jbi.errors import IncompleteStepError
 
+# https://docs.python.org/3.11/library/typing.html#typing.TYPE_CHECKING
 if TYPE_CHECKING:
     from jbi.models import ActionContext, ActionParams
     from jbi.services.bugzilla import BugzillaService
