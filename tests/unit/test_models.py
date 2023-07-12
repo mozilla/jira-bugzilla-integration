@@ -24,9 +24,13 @@ def test_no_actions_fails():
 
 
 def test_default_invalid_step():
-    with pytest.raises(pydantic.ValidationError):
-        # BOOM is not a function in jbi.steps, so it will raise
-        ActionSteps(new=["BOOM"])
+    with pytest.raises(pydantic.ValidationError) as exc:
+        ActionSteps(new=["BOOM", "POW"], comment=["BAM"])
+    error_message = str(exc.value)
+
+    assert "BOOM" in error_message
+    assert "POW" in error_message
+    assert "BAM" in error_message
 
 
 def test_duplicated_whiteboard_tag_fails(action_factory):
