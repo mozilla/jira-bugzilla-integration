@@ -76,22 +76,22 @@ def actions():
 def mocked_bugzilla(request):
     if "no_mocked_bugzilla" in request.keywords:
         yield None
-        bugzilla.get_client.cache_clear()
+        bugzilla.get_service.cache_clear()
     else:
         with mock.patch("jbi.services.bugzilla.BugzillaClient") as mocked_bz:
             yield mocked_bz()
-            bugzilla.get_client.cache_clear()
+            bugzilla.get_service.cache_clear()
 
 
 @pytest.fixture(autouse=True)
 def mocked_jira(request):
     if "no_mocked_jira" in request.keywords:
         yield None
-        jira.get_client.cache_clear()
+        jira.get_service.cache_clear()
     else:
         with mock.patch("jbi.services.jira.JiraClient") as mocked_jira:
             yield mocked_jira()
-            jira.get_client.cache_clear()
+            jira.get_service.cache_clear()
 
 
 @pytest.fixture

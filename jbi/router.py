@@ -15,14 +15,16 @@ from jbi.models import Actions, BugzillaWebhookRequest
 from jbi.runner import IgnoreInvalidRequestError, execute_action
 from jbi.services import bugzilla, jira
 
-_settings = Annotated[Settings, Depends(get_settings)]
-_actions = Annotated[Actions, Depends(get_actions)]
-_version = Annotated[dict, Depends(get_version)]
+SettingsDep = Annotated[Settings, Depends(get_settings)]
+ActionsDep = Annotated[Actions, Depends(get_actions)]
+VersionDep = Annotated[dict, Depends(get_version)]
+BugzillaServiceDep = Annotated[bugzilla.BugzillaService, Depends(bugzilla.get_service)]
+JiraServiceDep = Annotated[jira.JiraService, Depends(jira.get_service)]
 router = APIRouter()
 
 
 @router.get("/", include_in_schema=False)
-def root(request: Request, settings: _settings):
+def root(request: Request, settings: SettingsDep):
     """Expose key configuration"""
     return {
         "title": request.app.title,
@@ -38,11 +40,16 @@ def root(request: Request, settings: _settings):
 
 @router.get("/__heartbeat__")
 @router.head("/__heartbeat__")
-def heartbeat(response: Response, actions: _actions):
+def heartbeat(
+    response: Response,
+    actions: ActionsDep,
+    bugzilla_service: BugzillaServiceDep,
+    jira_service: JiraServiceDep,
+):
     """Return status of backing services, as required by Dockerflow."""
     health_map = {
-        "bugzilla": bugzilla.check_health(),
-        "jira": jira.check_health(actions),
+        "bugzilla": bugzilla_service.check_health(),
+        "jira": jira_service.check_health(actions),
     }
     health_checks: list = []
     for health in health_map.values():
@@ -60,7 +67,7 @@ def lbheartbeat():
 
 
 @router.get("/__version__")
-def version(version_json: _version):
+def version(version_json: VersionDep):
     """Return version.json, as required by Dockerflow."""
     return version_json
 
@@ -68,7 +75,7 @@ def version(version_json: _version):
 @router.post("/bugzilla_webhook")
 def bugzilla_webhook(
     request: Request,
-    actions: _actions,
+    actions: ActionsDep,
     webhook_request: BugzillaWebhookRequest = Body(..., embed=False),
 ):
     """API endpoint that Bugzilla Webhook Events request"""
@@ -82,7 +89,7 @@ def bugzilla_webhook(
 
 @router.get("/whiteboard_tags/")
 def get_whiteboard_tags(
-    actions: _actions,
+    actions: ActionsDep,
     whiteboard_tag: Optional[str] = None,
 ):
     """API for viewing whiteboard_tags and associated data"""
@@ -92,15 +99,15 @@ def get_whiteboard_tags(
 
 
 @router.get("/bugzilla_webhooks/")
-def get_bugzilla_webhooks():
+def get_bugzilla_webhooks(bugzilla_service: BugzillaServiceDep):
     """API for viewing webhooks details"""
-    return bugzilla.get_client().list_webhooks()
+    return bugzilla_service.client.list_webhooks()
 
 
 @router.get("/jira_projects/")
-def get_jira_projects():
+def get_jira_projects(jira_service: JiraServiceDep):
     """API for viewing projects that are currently accessible by API"""
-    visible_projects: list[dict] = jira.fetch_visible_projects()
+    visible_projects: list[dict] = jira_service.fetch_visible_projects()
     return [project["key"] for project in visible_projects]
 
 
@@ -111,7 +118,7 @@ templates = Jinja2Templates(directory=SRC_DIR / "templates")
 @router.get("/powered_by_jbi/", response_class=HTMLResponse)
 def powered_by_jbi(
     request: Request,
-    actions: _actions,
+    actions: ActionsDep,
     enabled: Optional[bool] = None,
 ):
     """API for `Powered By` endpoint"""

@@ -1,6 +1,7 @@
 """
 Execute actions from Webhook requests
 """
+import inspect
 import itertools
 import logging
 from typing import Optional
@@ -20,7 +21,6 @@ from jbi.models import (
     ActionParams,
     Actions,
     ActionSteps,
-    BugzillaWebhookComment,
     BugzillaWebhookRequest,
     JiraContext,
     RunnerContext,
@@ -57,9 +57,20 @@ def groups2operation(steps: ActionSteps):
 class Executor:
     """Callable class that runs step functions for an action."""
 
-    def __init__(self, parameters: ActionParams):
+    def __init__(
+        self, parameters: ActionParams, bugzilla_service=None, jira_service=None
+    ):
         self.parameters = parameters
+        if not bugzilla_service:
+            self.bugzilla_service = bugzilla.get_service()
+        if not jira_service:
+            self.jira_service = jira.get_service()
         self.steps = self._initialize_steps(parameters.steps)
+        self.step_func_params = {
+            "parameters": self.parameters,
+            "bugzilla_service": self.bugzilla_service,
+            "jira_service": self.jira_service,
+        }
 
     def _initialize_steps(self, steps: ActionSteps):
         steps_by_operation = groups2operation(steps)
@@ -69,6 +80,22 @@ class Executor:
         }
         return steps_callables
 
+    def build_step_kwargs(self, func) -> dict:
+        """Builds a dictionary of keyword arguments (kwargs) to be passed to the given `step` function.
+
+        Args:
+            func: The step function for which the kwargs are being built.
+
+        Returns:
+            A dictionary containing the kwargs that match the parameters of the function.
+        """
+        function_params = inspect.signature(func).parameters
+        return {
+            key: value
+            for key, value in self.step_func_params.items()
+            if key in function_params.keys()
+        }
+
     def __call__(self, context: ActionContext) -> ActionResult:
         """Called from `runner` when the action is used."""
         has_produced_request = False
@@ -76,7 +103,8 @@ class Executor:
         for step in self.steps[context.operation]:
             context = context.update(current_step=step.__name__)
             try:
-                context = step(context=context, parameters=self.parameters)
+                step_kwargs = self.build_step_kwargs(step)
+                context = step(context=context, **step_kwargs)
             except IncompleteStepError as exc:
                 # Step did not execute all its operations.
                 context = exc.context
@@ -125,7 +153,6 @@ def execute_action(
     The value returned by the action call is returned.
     """
     bug, event = request.bug, request.event
-    webhook_comment: Optional[BugzillaWebhookComment] = bug.comment
     runner_context = RunnerContext(
         rid=request.rid,
         bug=bug,
@@ -141,10 +168,7 @@ def execute_action(
             extra=runner_context.dict(),
         )
         try:
-            bug = bugzilla.get_client().get_bug(
-                bug.id
-            )  # refresh bug data; this removes webhook specific info--but avoids duplications
-            bug.comment = webhook_comment  # inject webhook data back into bug
+            bug = bugzilla.get_service().refresh_bug_data(bug)
         except Exception as err:
             logger.exception("Failed to get bug: %s", err, extra=runner_context.dict())
             raise IgnoreInvalidRequestError(
@@ -178,7 +202,9 @@ def execute_action(
 
         else:
             # Check that issue exists (and is readable)
-            if not jira.get_issue(action_context, action_context.jira.issue):
+            if not jira.get_service().get_issue(
+                action_context, action_context.jira.issue
+            ):
                 raise IgnoreInvalidRequestError(
                     f"ignore unreadable issue {action_context.jira.issue}"
                 )
