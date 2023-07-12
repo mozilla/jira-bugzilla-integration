@@ -42,7 +42,9 @@ class ActionSteps(BaseModel):
     ]
 
     @validator("*")
-    def validate_steps(cls, function_names):
+    def validate_steps(cls, function_names):  # pylint: disable=no-self-argument
+        """Validate that all configure step functions exist in the steps module"""
+
         invalid_functions = [
             func_name for func_name in function_names if not hasattr(steps, func_name)
         ]
