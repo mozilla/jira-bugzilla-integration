@@ -1103,30 +1103,24 @@ email = ["email-validator (>=1.0.3)"]
 
 [[package]]
 name = "pydantic-yaml"
-version = "0.11.2"
+version = "1.0.0"
 description = "Adds some YAML functionality to the excellent `pydantic` library."
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "pydantic_yaml-0.11.2-py3-none-any.whl", hash = "sha256:0f70235472861985eaca3fe6c71d86329556c296052ac522c5ebc7322e0749f3"},
-    {file = "pydantic_yaml-0.11.2.tar.gz", hash = "sha256:19c8f3c9a97041b0a3d8fc06ca5143ff71c0846c45b39fde719cfbc98be7a00c"},
+    {file = "pydantic_yaml-1.0.0-py3-none-any.whl", hash = "sha256:fb552c199aa2e0af54d2445775fea11206b614043f58b5828e24c1a709404aa1"},
+    {file = "pydantic_yaml-1.0.0.tar.gz", hash = "sha256:c0feba7d6ccea461d4bc00406164b1ce51d4412e4cd5af7d80953c09b0a4f617"},
 ]
 
 [package.dependencies]
-deprecated = ">=1.2.5,<1.3.0"
 importlib-metadata = "*"
-pydantic = ">=1.8,<2"
-pyyaml = {version = "*", optional = true, markers = "extra == \"pyyaml\""}
-"ruamel.yaml" = {version = ">=0.15,<0.18", optional = true, markers = "extra == \"ruamel\""}
-types-Deprecated = "*"
-types-PyYAML = {version = "*", optional = true, markers = "extra == \"pyyaml\""}
+pydantic = ">=1.8"
+"ruamel.yaml" = ">=0.16.0,<0.18.0"
+typing-extensions = ">=4.5.0"
 
 [package.extras]
-dev = ["black (==23.3.0)", "flake8", "mypy (==1.0.0)", "pre-commit (==2.21.0)", "pytest (==7.2.2)", "setuptools (>=61.0.0)", "setuptools-scm[toml] (>=6.2)"]
+dev = ["black (==23.3.0)", "mypy (==1.4.1)", "pre-commit (==2.21.0)", "pytest (==7.4.0)", "ruff (==0.0.275)", "setuptools (>=61.0.0)", "setuptools-scm[toml] (>=6.2)"]
 docs = ["mkdocs", "mkdocs-material", "mkdocstrings[python]", "pygments", "pymdown-extensions"]
-pyyaml = ["pyyaml", "types-PyYAML"]
-ruamel = ["ruamel.yaml (>=0.15,<0.18)"]
-semver = ["semver (>=2.13.0,<4)"]
 
 [[package]]
 name = "pygments"
@@ -1582,17 +1576,6 @@ files = [
 ]
 
 [[package]]
-name = "types-deprecated"
-version = "1.2.9.1"
-description = "Typing stubs for Deprecated"
-optional = false
-python-versions = "*"
-files = [
-    {file = "types-Deprecated-1.2.9.1.tar.gz", hash = "sha256:71d99b62849c1be5dae6b1e3b516db012d073a99e16d6f7d63e753aa4df3a6dd"},
-    {file = "types_Deprecated-1.2.9.1-py3-none-any.whl", hash = "sha256:744b278f86ea5e19f01bf7584f3fdba2995cd26483c5fea6620279655cbfc181"},
-]
-
-[[package]]
 name = "types-pyyaml"
 version = "6.0.12.8"
 description = "Typing stubs for PyYAML"
@@ -1972,4 +1955,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10 <3.12"
-content-hash = "c83bb79f1cd11ec4cd81aab588e2c88d6729cb0a12a08bcd8a0dc1b5620af451"
+content-hash = "9a105c6d3124a62cc9aa9021f759d3d1ca3aa5e96decfc56121f4d3d3c0d8ab0"
