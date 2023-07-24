@@ -101,7 +101,7 @@ def get_whiteboard_tags(
 @router.get("/bugzilla_webhooks/")
 def get_bugzilla_webhooks(bugzilla_service: BugzillaServiceDep):
     """API for viewing webhooks details"""
-    return bugzilla_service.client.list_webhooks()
+    return bugzilla_service.list_webhooks()
 
 
 @router.get("/jira_projects/")

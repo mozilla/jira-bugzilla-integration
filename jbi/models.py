@@ -14,7 +14,7 @@ from urllib.parse import ParseResult, urlparse
 from pydantic import BaseModel, Extra, Field, validator
 from pydantic_yaml import YamlModel
 
-from jbi import Operation
+from jbi import Operation, steps
 from jbi.errors import ActionNotFoundError
 
 logger = logging.getLogger(__name__)
@@ -40,6 +40,19 @@ class ActionSteps(BaseModel):
     comment: list[str] = [
         "create_comment",
     ]
+
+    @validator("*")
+    def validate_steps(cls, function_names):  # pylint: disable=no-self-argument
+        """Validate that all configure step functions exist in the steps module"""
+
+        invalid_functions = [
+            func_name for func_name in function_names if not hasattr(steps, func_name)
+        ]
+        if invalid_functions:
+            raise ValueError(
+                f"The following functions are not available in the `steps` module: {', '.join(invalid_functions)}"
+            )
+        return function_names
 
 
 class JiraComponents(BaseModel):

@@ -23,6 +23,16 @@ def test_no_actions_fails():
     assert "ensure this value has at least 1 items" in str(exc_info.value)
 
 
+def test_default_invalid_step():
+    with pytest.raises(pydantic.ValidationError) as exc:
+        ActionSteps(new=["BOOM", "POW"], comment=["BAM"])
+    error_message = str(exc.value)
+
+    assert "BOOM" in error_message
+    assert "POW" in error_message
+    assert "BAM" in error_message
+
+
 def test_duplicated_whiteboard_tag_fails(action_factory):
     with pytest.raises(ValueError) as exc_info:
         Actions.parse_obj(

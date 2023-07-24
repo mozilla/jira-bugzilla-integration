@@ -283,11 +283,6 @@ def test_default_invalid_init():
         Executor()
 
 
-def test_default_invalid_step(action_params_factory):
-    with pytest.raises(AttributeError):
-        Executor(action_params_factory(steps={"new": ["unknown_step"]}))
-
-
 def test_unspecified_groups_come_from_default_steps(action_params_factory):
     action = Executor(action_params_factory(steps={"comment": ["create_comment"]}))
 
