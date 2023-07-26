@@ -341,7 +341,9 @@ class JiraService:
         """Rollback the Jira issue creation if there is already a linked Jira issue
         on the Bugzilla ticket"""
         issue_key = context.jira.issue
-        jira_key_in_bugzilla = latest_bug.extract_from_see_also()
+        jira_key_in_bugzilla = latest_bug.extract_from_see_also(
+            project_key=context.jira.project
+        )
         _duplicate_creation_event = (
             jira_key_in_bugzilla is not None and issue_key != jira_key_in_bugzilla
         )

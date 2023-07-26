@@ -72,11 +72,23 @@ def test_override_step_configuration_for_single_action_type():
         (["http://mozilla.jira.com/ticket/123"], "123"),
         (["http://atlassian.com/ticket/123"], "123"),
         (["http://mozilla.jira.com/123", "http://mozilla.jira.com/456"], "123"),
+        (
+            ["http://mozilla.jira.com/FOO-123", "http://mozilla.jira.com/BAR-456"],
+            "FOO-123",
+        ),
+        (
+            ["http://mozilla.jira.com/FOO-123", "http://mozilla.jira.com/JBI456"],
+            "FOO-123",
+        ),
+        (
+            ["http://mozilla.jira.com/FOO-123", "http://mozilla.jira.com/JBI-456"],
+            "JBI-456",
+        ),
     ],
 )
 def test_extract_see_also(see_also, expected, bug_factory):
     bug = bug_factory(see_also=see_also)
-    assert bug.extract_from_see_also() == expected
+    assert bug.extract_from_see_also("JBI") == expected
 
 
 @pytest.mark.parametrize(

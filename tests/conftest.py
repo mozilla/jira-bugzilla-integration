@@ -126,7 +126,7 @@ def context_comment_example(
         operation=Operation.COMMENT,
         bug=bug,
         event=event,
-        jira=jira_context_factory(issue=bug.extract_from_see_also()),
+        jira=jira_context_factory(issue=bug.extract_from_see_also(project_key="JBI")),
     )
     return context
 
