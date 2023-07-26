@@ -27,8 +27,8 @@ def get_actions() -> Actions:
 def get_actions_from_file(jbi_config_file: str) -> Actions:
     """Convert and validate YAML configuration to `Action` objects"""
     try:
-        with open(jbi_config_file) as f:
-            content = f.read()
+        with open(jbi_config_file, encoding="utf8") as file:
+            content = file.read()
             actions: Actions = parse_yaml_raw_as(Actions, content)
         return actions
     except ValidationError as exception:
