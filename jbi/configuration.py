@@ -5,6 +5,7 @@ import logging
 from functools import lru_cache
 
 from pydantic import ValidationError
+from pydantic_yaml import parse_yaml_raw_as
 
 from jbi import environment
 from jbi.models import Actions
@@ -26,7 +27,9 @@ def get_actions() -> Actions:
 def get_actions_from_file(jbi_config_file: str) -> Actions:
     """Convert and validate YAML configuration to `Action` objects"""
     try:
-        actions: Actions = Actions.parse_file(jbi_config_file)
+        with open(jbi_config_file) as f:
+            content = f.read()
+            actions: Actions = parse_yaml_raw_as(Actions, content)
         return actions
     except ValidationError as exception:
         logger.exception(exception)

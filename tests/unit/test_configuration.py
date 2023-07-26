@@ -24,7 +24,7 @@ def test_actual_jbi_files():
 
 def test_filename_uses_env():
     configuration.get_actions.cache_clear()
-    with mock.patch("jbi.configuration.Actions.parse_file") as mocked:
+    with mock.patch("jbi.configuration.get_actions_from_file") as mocked:
         configuration.get_actions()
     mocked.assert_called_with("config/config.local.yaml")
 

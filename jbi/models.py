@@ -12,7 +12,6 @@ from typing import DefaultDict, Literal, Mapping, Optional, TypedDict
 from urllib.parse import ParseResult, urlparse
 
 from pydantic import BaseModel, Extra, Field, validator
-from pydantic_yaml import YamlModel
 
 from jbi import Operation, steps
 from jbi.errors import ActionNotFoundError
@@ -76,7 +75,7 @@ class ActionParams(BaseModel):
     issue_type_map: dict[str, str] = {"task": "Task", "defect": "Bug"}
 
 
-class Action(YamlModel):
+class Action(BaseModel):
     """
     Action is the inner model for each action in the configuration file"""
 
@@ -92,7 +91,7 @@ class Action(YamlModel):
         return self.parameters.jira_project_key
 
 
-class Actions(YamlModel):
+class Actions(BaseModel):
     """
     Actions is the container model for the list of actions in the configuration file
     """
