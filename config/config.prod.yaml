@@ -215,13 +215,6 @@
       UNCONFIRMED: To Do
       NEW: To Do
 
-- whiteboard_tag: prodtest
-  bugzilla_user_id: 644672
-  description: Prod testing whiteboard tag (JBI Bin Project)
-  parameters:
-    jira_project_key: JB
-    labels_brackets: both
-
 - whiteboard_tag: proton
   bugzilla_user_id: tbd
   description: Proton whiteboard tag for Firefox Frontend
