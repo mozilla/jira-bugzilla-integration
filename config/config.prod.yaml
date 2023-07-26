@@ -158,7 +158,6 @@
         - sync_whiteboard_labels
       comment:
         - create_comment
-    labels_brackets: both
     status_map:
       UNCONFIRMED: Backlog
       NEW: Backlog
