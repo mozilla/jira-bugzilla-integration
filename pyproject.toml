@@ -33,7 +33,7 @@ pytest = "^7.4.0"
 yamllint = "^1.32.0"
 pytest-dotenv = "^0.5.2"
 types-requests = "^2.31.0"
-responses = "^0.23.1"
+responses = "^0.23.2"
 httpx = "^0.24.1"
 
 [build-system]
