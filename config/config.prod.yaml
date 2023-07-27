@@ -158,7 +158,6 @@
         - sync_whiteboard_labels
       comment:
         - create_comment
-    labels_brackets: both
     status_map:
       UNCONFIRMED: Backlog
       NEW: Backlog
@@ -214,13 +213,6 @@
     status_map:
       UNCONFIRMED: To Do
       NEW: To Do
-
-- whiteboard_tag: prodtest
-  bugzilla_user_id: 644672
-  description: Prod testing whiteboard tag (JBI Bin Project)
-  parameters:
-    jira_project_key: JB
-    labels_brackets: both
 
 - whiteboard_tag: proton
   bugzilla_user_id: tbd
@@ -295,7 +287,6 @@
         - sync_whiteboard_labels
       comment:
         - create_comment
-    labels_brackets: both
     status_map:
       UNCONFIRMED: To Do
       NEW: To Do

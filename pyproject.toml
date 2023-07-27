@@ -27,7 +27,7 @@ coverage = {extras = ["toml"], version = "^7.2"}
 mypy = "^1.4"
 detect-secrets = "^1.4.0"
 bandit = "^1.7.5"
-pylint = "^2.17.4"
+pylint = "^2.17.5"
 pylint-pytest = "^1.1.2"
 pytest = "^7.4.0"
 yamllint = "^1.32.0"
