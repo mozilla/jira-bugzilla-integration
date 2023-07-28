@@ -256,7 +256,7 @@ def execute_action(
         statsd.incr("jbi.bugzilla.processed.count")
         return details
     except IgnoreInvalidRequestError as exception:
-        logger.debug(
+        logger.info(
             "Ignore incoming request: %s",
             exception,
             extra=runner_context.update(operation=Operation.IGNORE).dict(),
