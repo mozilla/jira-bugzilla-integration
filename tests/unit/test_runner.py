@@ -13,23 +13,14 @@ from jbi.runner import Executor, execute_action
 
 
 @pytest.fixture
-def webhook_comment_example(
-    webhook_user_factory,
-    bug_factory,
-    webhook_event_factory,
-    webhook_factory,
-    comment_factory,
-) -> BugzillaWebhookRequest:
-    user = webhook_user_factory(login="mathieu@mozilla.org")
-    comment = comment_factory(number=2, body="hello")
-    bug = bug_factory(
-        see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
-        comment=comment,
+def webhook_comment_example(webhook_factory) -> BugzillaWebhookRequest:
+    return webhook_factory(
+        bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+        bug__comment__number=2,
+        bug__comment__body="hello",
+        event__target="comment",
+        event__user__login="mathieu@mozilla.org",
     )
-    event = webhook_event_factory(target="comment", user=user)
-    webhook_payload = webhook_factory(bug=bug, event=event)
-
-    return webhook_payload
 
 
 def test_bugzilla_object_is_always_fetched(

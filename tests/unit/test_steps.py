@@ -34,42 +34,29 @@ ALL_STEPS = {
 
 
 @pytest.fixture
-def context_update_example(
-    action_context_factory, bug_factory, jira_context_factory
-) -> ActionContext:
-    bug = bug_factory(see_also=["https://mozilla.atlassian.net/browse/JBI-234"])
-    context = action_context_factory(
+def context_update_example(action_context_factory) -> ActionContext:
+    return action_context_factory(
         operation=Operation.UPDATE,
-        bug=bug,
-        jira=jira_context_factory(issue=bug.extract_from_see_also()),
+        bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+        jira__issue="JBI-234",
     )
-    return context
 
 
 @pytest.fixture
 def context_update_resolution_example(
-    bug_factory,
-    webhook_event_factory,
-    webhook_event_change_factory,
-    action_context_factory,
-    jira_context_factory,
+    webhook_event_change_factory, action_context_factory
 ) -> ActionContext:
-    bug = bug_factory(see_also=["https://mozilla.atlassian.net/browse/JBI-234"])
-    event = webhook_event_factory(
-        action="modify",
-        changes=[
+    return action_context_factory(
+        operation=Operation.UPDATE,
+        bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+        event__action="modify",
+        event__changes=[
             webhook_event_change_factory(
                 field="resolution", removed="OPEN", added="FIXED"
-            ),
+            )
         ],
+        jira__issue="JBI-234",
     )
-    context = action_context_factory(
-        operation=Operation.UPDATE,
-        bug=bug,
-        event=event,
-        jira=jira_context_factory(issue=bug.extract_from_see_also()),
-    )
-    return context
 
 
 def test_created_public(
