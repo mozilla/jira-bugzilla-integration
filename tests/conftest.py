@@ -13,7 +13,7 @@ from jbi import Operation
 from jbi.app import app
 from jbi.configuration import get_actions
 from jbi.environment import Settings
-from jbi.models import ActionContext, BugzillaWebhookComment, BugzillaWebhookRequest
+from jbi.models import ActionContext, BugzillaWebhookRequest
 from jbi.services import bugzilla, jira
 from tests.fixtures.factories import *
 
@@ -115,42 +115,24 @@ def mocked_responses():
         yield rsps
 
 
+register(ActionContextFactory, "context_create_example", operation=Operation.CREATE)
+
+
 @pytest.fixture
-def context_create_example(action_context_factory) -> ActionContext:
+def context_comment_example(action_context_factory) -> ActionContext:
     return action_context_factory(
-        operation=Operation.CREATE,
-    )
-
-
-@pytest.fixture
-def context_comment_example(
-    webhook_user_factory,
-    bug_factory,
-    webhook_event_factory,
-    action_context_factory,
-    jira_context_factory,
-) -> ActionContext:
-    user = webhook_user_factory(login="mathieu@mozilla.org")
-    comment = BugzillaWebhookComment.parse_obj({"number": 2, "body": "hello"})
-    bug = bug_factory(
-        see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
-        comment=comment,
-    )
-    event = webhook_event_factory(target="comment", user=user)
-    context = action_context_factory(
         operation=Operation.COMMENT,
-        bug=bug,
-        event=event,
-        jira=jira_context_factory(issue=bug.extract_from_see_also()),
+        bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+        bug__with_comment=True,
+        bug__comment__number=2,
+        bug__comment__body="hello",
+        event__target="comment",
+        event__user__login="mathieu@mozilla.org",
+        jira__issue="JBI-234",
     )
-    return context
 
 
-@pytest.fixture
-def webhook_create_example(webhook_factory) -> BugzillaWebhookRequest:
-    webhook_payload = webhook_factory()
-
-    return webhook_payload
+register(WebhookFactory, "webhook_create_example")
 
 
 @pytest.fixture(autouse=True)
