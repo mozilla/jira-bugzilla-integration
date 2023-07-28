@@ -7,6 +7,7 @@ from unittest import mock
 import pytest
 import responses
 from fastapi.testclient import TestClient
+from pytest_factoryboy import register
 
 from jbi import Operation
 from jbi.app import app
@@ -52,6 +53,20 @@ def capturelogs(request):
 def mocked_statsd():
     with mock.patch("jbi.services.common.statsd") as _mocked_statsd:
         yield _mocked_statsd
+
+
+register(ActionContextFactory)
+register(ActionFactory)
+register(ActionsFactory)
+register(ActionParamsFactory)
+register(BugFactory)
+register(BugzillaWebhookFactory)
+register(CommentFactory)
+register(JiraContextFactory)
+register(WebhookFactory)
+register(WebhookEventChangeFactory)
+register(WebhookEventFactory)
+register(WebhookUserFactory)
 
 
 @pytest.fixture
