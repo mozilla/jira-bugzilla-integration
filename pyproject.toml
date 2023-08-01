@@ -14,7 +14,7 @@ atlassian-python-api = "^3.39.0"
 dockerflow = "2022.8.0"
 Jinja2 = "^3.1.2"
 pydantic-yaml = {extras = ["pyyaml","ruamel"], version = "^1.1.1"}
-sentry-sdk = {extras = ["fastapi"], version = "^1.28.1"}
+sentry-sdk = {extras = ["fastapi"], version = "^1.29.0"}
 backoff = "^2.2.1"
 statsd = "^4.0.1"
 requests = "^2.31.0"
