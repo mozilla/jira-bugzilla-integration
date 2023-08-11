@@ -10,7 +10,7 @@ python = ">=3.10 <3.12"
 fastapi = "^0.101.0"
 pydantic = {version = "^1.10.12", extras = ["dotenv", "email"]}
 uvicorn = {extras = ["standard"], version = "^0.23.2"}
-atlassian-python-api = "^3.39.0"
+atlassian-python-api = "^3.40.0"
 dockerflow = "2022.8.0"
 Jinja2 = "^3.1.2"
 pydantic-yaml = {extras = ["pyyaml","ruamel"], version = "^1.1.1"}
