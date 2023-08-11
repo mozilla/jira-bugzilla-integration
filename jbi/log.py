@@ -81,4 +81,4 @@ def format_request_summary_fields(
         time=datetime.fromtimestamp(current_time).isoformat(),
         status_code=status_code,
         rid=request.state.rid,
-    ).dict()
+    ).model_dump()
