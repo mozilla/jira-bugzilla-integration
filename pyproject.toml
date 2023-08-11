@@ -7,7 +7,7 @@ license = "MPL"
 
 [tool.poetry.dependencies]
 python = ">=3.10 <3.12"
-fastapi = "^0.100.1"
+fastapi = "^0.101.0"
 pydantic = {version = "^1.10.12", extras = ["dotenv", "email"]}
 uvicorn = {extras = ["standard"], version = "^0.23.2"}
 atlassian-python-api = "^3.39.0"
