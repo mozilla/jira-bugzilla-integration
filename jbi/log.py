@@ -6,6 +6,7 @@ import logging.config
 import sys
 import time
 from datetime import datetime
+from typing import Optional
 
 from fastapi import Request
 from pydantic import BaseModel
@@ -56,6 +57,7 @@ class RequestSummary(BaseModel):
     agent: str
     path: str
     method: str
+    lang: Optional[str]
     querystring: str
     errno: int
     t: int

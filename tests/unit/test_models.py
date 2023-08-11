@@ -19,8 +19,10 @@ def test_invalid_bugzilla_user_ids(action_factory, value):
 
 def test_no_actions_fails():
     with pytest.raises(ValueError) as exc_info:
-        Actions.parse_obj([])
-    assert "ensure this value has at least 1 items" in str(exc_info.value)
+        Actions(root=[])
+    assert "List should have at least 1 item after validation, not 0" in str(
+        exc_info.value
+    )
 
 
 def test_default_invalid_step():

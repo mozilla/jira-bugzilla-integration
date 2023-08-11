@@ -10,7 +10,7 @@ class ActionParamsFactory(factory.Factory):
         model = models.ActionParams
 
     jira_project_key = "JBI"
-    jira_components = []
+    jira_components = {}
     labels_brackets = "no"
     status_map = {}
     resolution_map = {}
@@ -31,11 +31,7 @@ class ActionsFactory(factory.Factory):
     class Meta:
         model = models.Actions
 
-    actions = factory.List([factory.SubFactory(ActionFactory)])
-
-    @classmethod
-    def _create(cls, model_class, *args, **kwargs):
-        return model_class(__root__=kwargs["actions"])
+    root = factory.List([factory.SubFactory(ActionFactory)])
 
 
 class BugzillaWebhookCommentFactory(factory.Factory):
