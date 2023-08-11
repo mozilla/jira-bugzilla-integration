@@ -202,11 +202,21 @@ def execute_action(
 
         else:
             # Check that issue exists (and is readable)
-            if not jira.get_service().get_issue(
+            jira_issue = jira.get_service().get_issue(
                 action_context, action_context.jira.issue
-            ):
+            )
+            if not jira_issue:
                 raise IgnoreInvalidRequestError(
                     f"ignore unreadable issue {action_context.jira.issue}"
+                )
+
+            # Make sure that associated project in configuration matches the
+            # project of the linked Jira issue (see #635)
+            if (
+                project_key := jira_issue["fields"]["project"]["key"]
+            ) != action_context.jira.project:
+                raise IgnoreInvalidRequestError(
+                    f"ignore linked project {project_key!r} (!={action_context.jira.project!r})"
                 )
 
             if event.target == "bug":
@@ -246,7 +256,7 @@ def execute_action(
         statsd.incr("jbi.bugzilla.processed.count")
         return details
     except IgnoreInvalidRequestError as exception:
-        logger.debug(
+        logger.info(
             "Ignore incoming request: %s",
             exception,
             extra=runner_context.update(operation=Operation.IGNORE).dict(),
