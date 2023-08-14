@@ -132,7 +132,7 @@ def test_bugzilla_get_bug_comment(mocked_responses, webhook_private_comment_exam
     mocked_responses.add(
         responses.GET,
         bug_url,
-        json={"bugs": [webhook_private_comment_example.bug.dict()]},
+        json={"bugs": [webhook_private_comment_example.bug.model_dump()]},
     )
     mocked_responses.add(
         responses.GET,
@@ -185,7 +185,7 @@ def test_bugzilla_missing_private_comment(
     mocked_responses.add(
         responses.GET,
         bug_url,
-        json={"bugs": [webhook_private_comment_example.bug.dict()]},
+        json={"bugs": [webhook_private_comment_example.bug.model_dump()]},
     )
     mocked_responses.add(
         responses.GET,

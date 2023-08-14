@@ -6,6 +6,7 @@ import logging.config
 import sys
 import time
 from datetime import datetime
+from typing import Optional
 
 from fastapi import Request
 from pydantic import BaseModel
@@ -56,6 +57,7 @@ class RequestSummary(BaseModel):
     agent: str
     path: str
     method: str
+    lang: Optional[str]
     querystring: str
     errno: int
     t: int
@@ -81,4 +83,4 @@ def format_request_summary_fields(
         time=datetime.fromtimestamp(current_time).isoformat(),
         status_code=status_code,
         rid=request.state.rid,
-    ).dict()
+    ).model_dump()

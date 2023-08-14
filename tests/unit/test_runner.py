@@ -366,9 +366,8 @@ def test_default_returns_callable_with_data(
     mocked_bugzilla,
     action_params_factory,
 ):
-    sentinel = mock.sentinel
     mocked_jira.create_issue.return_value = {"key": "k"}
-    mocked_jira.create_or_update_issue_remote_links.return_value = sentinel
+    mocked_jira.create_or_update_issue_remote_links.return_value = {"foo": "bar"}
     mocked_bugzilla.get_bug.return_value = context_create_example.bug
     mocked_bugzilla.get_comments.return_value = []
     callable_object = Executor(
@@ -379,7 +378,7 @@ def test_default_returns_callable_with_data(
 
     assert handled
     assert details["responses"][0] == {"key": "k"}
-    assert details["responses"][1] == sentinel
+    assert details["responses"][1] == {"foo": "bar"}
 
 
 def test_counter_is_incremented_when_workflows_was_aborted(

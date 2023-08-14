@@ -32,7 +32,7 @@ def traces_sampler(sampling_context: dict[str, Any]) -> float:
 
 
 sentry_sdk.init(
-    dsn=settings.sentry_dsn,
+    dsn=str(settings.sentry_dsn) if settings.sentry_dsn else None,
     traces_sampler=traces_sampler,
 )
 

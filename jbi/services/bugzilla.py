@@ -176,7 +176,7 @@ class BugzillaService:
             "Link %r on Bug %s",
             jira_url,
             bug.id,
-            extra=context.update(operation=Operation.LINK).dict(),
+            extra=context.update(operation=Operation.LINK).model_dump(),
         )
         return self.client.update_bug(bug.id, see_also={"add": [jira_url]})
 

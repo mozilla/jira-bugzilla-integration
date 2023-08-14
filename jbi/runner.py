@@ -47,7 +47,7 @@ def groups2operation(steps: ActionSteps):
     try:
         by_operation = {
             GROUP_TO_OPERATION[entry]: steps_list
-            for entry, steps_list in steps.dict().items()
+            for entry, steps_list in steps.model_dump().items()
         }
     except KeyError as err:
         raise ValueError(f"Unsupported entry in `steps`: {err}") from err
@@ -129,7 +129,7 @@ class Executor:
                     response,
                     extra={
                         "response": response,
-                        **context.dict(),
+                        **context.model_dump(),
                     },
                 )
 
@@ -165,12 +165,14 @@ def execute_action(
 
         logger.debug(
             "Handling incoming request",
-            extra=runner_context.dict(),
+            extra=runner_context.model_dump(),
         )
         try:
             bug = bugzilla.get_service().refresh_bug_data(bug)
         except Exception as err:
-            logger.exception("Failed to get bug: %s", err, extra=runner_context.dict())
+            logger.exception(
+                "Failed to get bug: %s", err, extra=runner_context.model_dump()
+            )
             raise IgnoreInvalidRequestError(
                 "bug not accessible or bugzilla down"
             ) from err
@@ -195,7 +197,7 @@ def execute_action(
             event=event,
             operation=Operation.IGNORE,
             jira=JiraContext(project=action.jira_project_key, issue=linked_issue_key),
-            extra={k: str(v) for k, v in action.parameters.dict().items()},
+            extra={k: str(v) for k, v in action.parameters.model_dump().items()},
         )
 
         if action_context.jira.issue is None:
@@ -242,7 +244,7 @@ def execute_action(
             "Execute action '%s' for Bug %s",
             action.whiteboard_tag,
             bug.id,
-            extra=runner_context.update(operation=Operation.EXECUTE).dict(),
+            extra=runner_context.update(operation=Operation.EXECUTE).model_dump(),
         )
         executor = Executor(parameters=action.parameters)
         handled, details = executor(context=action_context)
@@ -253,7 +255,7 @@ def execute_action(
             bug.id,
             extra=runner_context.update(
                 operation=Operation.SUCCESS if handled else Operation.IGNORE
-            ).dict(),
+            ).model_dump(),
         )
         statsd.incr("jbi.bugzilla.processed.count")
         return details
@@ -261,7 +263,7 @@ def execute_action(
         logger.info(
             "Ignore incoming request: %s",
             exception,
-            extra=runner_context.update(operation=Operation.IGNORE).dict(),
+            extra=runner_context.update(operation=Operation.IGNORE).model_dump(),
         )
         statsd.incr("jbi.bugzilla.ignored.count")
         raise

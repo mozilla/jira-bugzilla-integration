@@ -133,7 +133,7 @@ def test_all_projects_components_exist(
             "jira_components": JiraComponents(set_custom_components=jira_components),
         }
     )
-    actions = Actions(__root__=[action])
+    actions = Actions(root=[action])
     result = jira.get_service()._all_projects_components_exist(actions)
     assert result is expected_result
 
@@ -146,7 +146,7 @@ def test_all_projects_components_exist_no_components_param(
             "jira_project_key": "ABC",
         }
     )
-    actions = Actions(__root__=[action])
+    actions = Actions(root=[action])
     url = f"{get_settings().jira_base_url}rest/api/2/project/ABC/components"
     mocked_responses.add(
         responses.GET,

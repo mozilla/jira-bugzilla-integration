@@ -7,7 +7,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
-from pydantic import AnyUrl, BaseSettings
+from pydantic import AnyUrl
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Environment(str, Enum):
@@ -50,14 +51,10 @@ class Settings(BaseSettings):
     log_format: str = "json"  # set to "text" for human-readable logs
 
     # Sentry
-    sentry_dsn: Optional[SentryDsn]
+    sentry_dsn: Optional[SentryDsn] = None
     sentry_traces_sample_rate: float = 1.0
 
-    class Config:
-        """Pydantic configuration"""
-
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
 
 @lru_cache(maxsize=1)

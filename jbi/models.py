@@ -8,10 +8,11 @@ import re
 import warnings
 from collections import defaultdict
 from copy import copy
-from typing import DefaultDict, Literal, Mapping, Optional, TypedDict
+from typing import DefaultDict, Literal, Mapping, Optional
 from urllib.parse import ParseResult, urlparse
 
-from pydantic import BaseModel, Extra, Field, validator
+from pydantic import BaseModel, ConfigDict, Extra, Field, RootModel, field_validator
+from typing_extensions import TypedDict
 
 from jbi import Operation, steps
 from jbi.errors import ActionNotFoundError
@@ -40,8 +41,9 @@ class ActionSteps(BaseModel):
         "create_comment",
     ]
 
-    @validator("*")
-    def validate_steps(cls, function_names):  # pylint: disable=no-self-argument
+    @field_validator("*")
+    @classmethod
+    def validate_steps(cls, function_names: list[str]):
         """Validate that all configure step functions exist in the steps module"""
 
         invalid_functions = [
@@ -69,7 +71,7 @@ class ActionParams(BaseModel):
     jira_project_key: str
     steps: ActionSteps = ActionSteps()
     jira_components: JiraComponents = JiraComponents()
-    labels_brackets: str = Field("no", enum=["yes", "no", "both"])
+    labels_brackets: Literal["yes", "no", "both"] = "no"
     status_map: dict[str, str] = {}
     resolution_map: dict[str, str] = {}
     issue_type_map: dict[str, str] = {"task": "Task", "defect": "Bug"}
@@ -91,23 +93,24 @@ class Action(BaseModel):
         return self.parameters.jira_project_key
 
 
-class Actions(BaseModel):
+class Actions(RootModel):
     """
     Actions is the container model for the list of actions in the configuration file
     """
 
-    __root__: list[Action] = Field(..., min_items=1)
+    root: list[Action] = Field(..., min_length=1)
 
     @functools.cached_property
     def by_tag(self) -> Mapping[str, Action]:
         """Build mapping of actions by lookup tag."""
-        return {action.whiteboard_tag: action for action in self.__root__}
+        # pylint: disable-next=not-an-iterable
+        return {action.whiteboard_tag: action for action in self.root}
 
     def __iter__(self):
-        return iter(self.__root__)
+        return iter(self.root)  # pylint: disable=not-an-iterable
 
     def __len__(self):
-        return len(self.__root__)
+        return len(self.root)
 
     def __getitem__(self, item):
         return self.by_tag[item]
@@ -119,12 +122,12 @@ class Actions(BaseModel):
     @functools.cached_property
     def configured_jira_projects_keys(self) -> set[str]:
         """Return the list of Jira project keys from all configured actions"""
-        return {action.jira_project_key for action in self.__root__}
+        # pylint: disable-next=not-an-iterable
+        return {action.jira_project_key for action in self.root}
 
-    @validator("__root__")
-    def validate_actions(  # pylint: disable=no-self-argument
-        cls, actions: list[Action]
-    ):
+    @field_validator("root")
+    @classmethod
+    def validate_actions(cls, actions: list[Action]):
         """
         Inspect the list of actions:
          - Validate that lookup tags are uniques
@@ -143,10 +146,7 @@ class Actions(BaseModel):
 
         return actions
 
-    class Config:
-        """Pydantic configuration"""
-
-        keep_untouched = (functools.cached_property,)
+    model_config = ConfigDict(ignored_types=(functools.cached_property,))
 
 
 class BugzillaWebhookUser(BaseModel):
@@ -169,48 +169,49 @@ class BugzillaWebhookEvent(BaseModel):
     """Bugzilla Event Object"""
 
     action: str
-    time: Optional[datetime.datetime]
-    user: Optional[BugzillaWebhookUser]
-    changes: Optional[list[BugzillaWebhookEventChange]]
-    target: Optional[str]
-    routing_key: Optional[str]
+    time: Optional[datetime.datetime] = None
+    user: Optional[BugzillaWebhookUser] = None
+    changes: Optional[list[BugzillaWebhookEventChange]] = None
+    target: Optional[str] = None
+    routing_key: Optional[str] = None
 
     def changed_fields(self) -> list[str]:
         """Returns the names of changed fields in a bug"""
+        # pylint: disable-next=not-an-iterable
         return [c.field for c in self.changes] if self.changes else []
 
 
 class BugzillaWebhookComment(BaseModel):
     """Bugzilla Comment Object"""
 
-    body: Optional[str]
-    id: Optional[int]
-    number: Optional[int]
-    is_private: Optional[bool]
-    creation_time: Optional[datetime.datetime]
+    body: Optional[str] = None
+    id: Optional[int] = None
+    number: Optional[int] = None
+    is_private: Optional[bool] = None
+    creation_time: Optional[datetime.datetime] = None
 
 
 class BugzillaBug(BaseModel):
     """Bugzilla Bug Object"""
 
     id: int
-    is_private: Optional[bool]
-    type: Optional[str]
-    product: Optional[str]
-    component: Optional[str]
-    whiteboard: Optional[str]
-    keywords: Optional[list]
-    flags: Optional[list]
-    groups: Optional[list]
-    status: Optional[str]
-    resolution: Optional[str]
-    see_also: Optional[list]
-    summary: Optional[str]
-    severity: Optional[str]
-    priority: Optional[str]
-    creator: Optional[str]
-    assigned_to: Optional[str]
-    comment: Optional[BugzillaWebhookComment]
+    is_private: Optional[bool] = None
+    type: Optional[str] = None
+    product: Optional[str] = None
+    component: Optional[str] = None
+    whiteboard: Optional[str] = None
+    keywords: Optional[list] = None
+    flags: Optional[list] = None
+    groups: Optional[list] = None
+    status: Optional[str] = None
+    resolution: Optional[str] = None
+    see_also: Optional[list] = None
+    summary: Optional[str] = None
+    severity: Optional[str] = None
+    priority: Optional[str] = None
+    creator: Optional[str] = None
+    assigned_to: Optional[str] = None
+    comment: Optional[BugzillaWebhookComment] = None
 
     @property
     def product_component(self) -> str:
@@ -297,8 +298,8 @@ class BugzillaComment(BaseModel):
 class BugzillaApiResponse(BaseModel):
     """Bugzilla Response Object"""
 
-    faults: Optional[list]
-    bugs: Optional[list[BugzillaBug]]
+    faults: Optional[list] = None
+    bugs: Optional[list[BugzillaBug]] = None
 
 
 class BugzillaWebhook(BaseModel):
@@ -326,7 +327,7 @@ class BugzillaWebhook(BaseModel):
 class BugzillaWebhooksResponse(BaseModel):
     """Bugzilla Webhooks List Response Object"""
 
-    webhooks: Optional[list[BugzillaWebhook]]
+    webhooks: Optional[list[BugzillaWebhook]] = None
 
 
 class Context(BaseModel):
@@ -341,8 +342,8 @@ class JiraContext(Context):
     """Logging context about Jira"""
 
     project: str
-    issue: Optional[str]
-    labels: Optional[list[str]]
+    issue: Optional[str] = None
+    labels: Optional[list[str]] = None
 
 
 BugId = TypedDict("BugId", {"id": Optional[int]})
@@ -354,7 +355,7 @@ class RunnerContext(Context, extra=Extra.forbid):
     rid: str
     operation: Operation
     event: BugzillaWebhookEvent
-    action: Optional[Action]
+    action: Optional[Action] = None
     bug: BugId | BugzillaBug
 
 
@@ -364,7 +365,7 @@ class ActionContext(Context, extra=Extra.forbid):
     action: Action
     rid: str
     operation: Operation
-    current_step: Optional[str]
+    current_step: Optional[str] = None
     event: BugzillaWebhookEvent
     jira: JiraContext
     bug: BugzillaBug

@@ -34,7 +34,7 @@ def create_comment(context: ActionContext, *, jira_service: JiraService):
     if bug.comment is None:
         logger.debug(
             "No matching comment found in payload",
-            extra=context.dict(),
+            extra=context.model_dump(),
         )
         return context
 
@@ -141,7 +141,7 @@ def maybe_assign_jira_user(context: ActionContext, *, jira_service: JiraService)
             context.append_responses(resp)
             return context
         except ValueError as exc:
-            logger.debug(str(exc), extra=context.dict())
+            logger.debug(str(exc), extra=context.model_dump())
             raise IncompleteStepError(context) from exc
 
     if context.operation == Operation.UPDATE:
@@ -154,7 +154,7 @@ def maybe_assign_jira_user(context: ActionContext, *, jira_service: JiraService)
             try:
                 resp = jira_service.assign_jira_user(context, bug.assigned_to)  # type: ignore
             except ValueError as exc:
-                logger.debug(str(exc), extra=context.dict())
+                logger.debug(str(exc), extra=context.model_dump())
                 # If that failed then just fall back to clearing the assignee.
                 resp = jira_service.clear_assignee(context)
         context.append_responses(resp)
@@ -181,7 +181,7 @@ def maybe_update_issue_resolution(
             bz_resolution,
             extra=context.update(
                 operation=Operation.IGNORE,
-            ).dict(),
+            ).model_dump(),
         )
         raise IncompleteStepError(context)
 
@@ -215,7 +215,7 @@ def maybe_update_issue_status(
             bz_status,
             extra=context.update(
                 operation=Operation.IGNORE,
-            ).dict(),
+            ).model_dump(),
         )
         raise IncompleteStepError(context)
 
@@ -277,7 +277,7 @@ def maybe_update_components(
         logger.error(
             f"Could not set components on issue {context.jira.issue}: %s",
             str(exc),
-            extra=context.dict(),
+            extra=context.model_dump(),
         )
         context.append_responses(exc.response)
         raise IncompleteStepError(context) from exc
@@ -286,7 +286,7 @@ def maybe_update_components(
         logger.warning(
             "Could not find components '%s' in project",
             ",".join(sorted(missing_components)),
-            extra=context.dict(),
+            extra=context.model_dump(),
         )
         raise IncompleteStepError(context)
 
@@ -365,7 +365,7 @@ def sync_whiteboard_labels(
         logger.error(
             f"Could not set labels on issue {context.jira.issue}: %s",
             str(exc),
-            extra=context.dict(),
+            extra=context.model_dump(),
         )
         context.append_responses(exc.response)
         raise IncompleteStepError(context) from exc

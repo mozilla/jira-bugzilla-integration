@@ -142,7 +142,7 @@ def test_webhook_is_422_if_bug_information_missing(webhook_create_example):
             "/bugzilla_webhook", data=webhook_create_example.json()
         )
         assert response.status_code == 422
-        assert response.json()["detail"][0]["msg"] == "none is not an allowed value"
+        assert response.json()["detail"][0]["loc"] == ["body", "bug"]
 
 
 def test_read_version(anon_client):

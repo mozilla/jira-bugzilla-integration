@@ -241,7 +241,10 @@ class JiraService:
             if exc.response.status_code != 404:
                 raise
             logger.error(
-                "Could not read issue %s: %s", issue_key, exc, extra=context.dict()
+                "Could not read issue %s: %s",
+                issue_key,
+                exc,
+                extra=context.model_dump(),
             )
             return None
 
@@ -253,7 +256,7 @@ class JiraService:
         logger.debug(
             "Create new Jira issue for Bug %s",
             bug.id,
-            extra=context.dict(),
+            extra=context.model_dump(),
         )
         fields: dict[str, Any] = {
             "summary": bug.summary,
@@ -296,7 +299,7 @@ class JiraService:
         logger.debug(
             "User comment added to Jira issue %s",
             issue_key,
-            extra=context.dict(),
+            extra=context.model_dump(),
         )
         return jira_response
 
@@ -326,7 +329,7 @@ class JiraService:
                 "Create comment #%s on Jira issue %s",
                 i + 1,
                 issue_key,
-                extra=context.update(operation=Operation.COMMENT).dict(),
+                extra=context.update(operation=Operation.COMMENT).model_dump(),
             )
             jira_response = self.client.issue_add_comment(
                 issue_key=issue_key, comment=json.dumps(comment, indent=4)
@@ -354,7 +357,7 @@ class JiraService:
             "Delete duplicated Jira issue %s from Bug %s",
             issue_key,
             context.bug.id,
-            extra=context.update(operation=Operation.DELETE).dict(),
+            extra=context.update(operation=Operation.DELETE).model_dump(),
         )
         jira_response_delete = self.client.delete_issue(issue_id_or_key=issue_key)
         return jira_response_delete
@@ -368,7 +371,7 @@ class JiraService:
             "Link %r on Jira issue %s",
             bugzilla_url,
             issue_key,
-            extra=context.update(operation=Operation.LINK).dict(),
+            extra=context.update(operation=Operation.LINK).model_dump(),
         )
         icon_url = f"{settings.bugzilla_base_url}/favicon.ico"
         return self.client.create_or_update_issue_remote_links(
@@ -382,12 +385,12 @@ class JiraService:
     def clear_assignee(self, context: ActionContext):
         """Clear the assignee of the specified Jira issue."""
         issue_key = context.jira.issue
-        logger.debug("Clearing assignee", extra=context.dict())
+        logger.debug("Clearing assignee", extra=context.model_dump())
         return self.client.update_issue_field(key=issue_key, fields={"assignee": None})
 
     def find_jira_user(self, context: ActionContext, email: str):
         """Lookup Jira users, raise an error if not exactly one found."""
-        logger.debug("Find Jira user with email %s", email, extra=context.dict())
+        logger.debug("Find Jira user with email %s", email, extra=context.model_dump())
         users = self.client.user_find_by_user_string(query=email)
         if len(users) != 1:
             raise ValueError(f"User {email} not found")
@@ -421,7 +424,7 @@ class JiraService:
         logger.debug(
             "Updating Jira status to %s",
             jira_status,
-            extra=context.dict(),
+            extra=context.model_dump(),
         )
         return self.client.set_issue_status(
             issue_key,
@@ -437,7 +440,7 @@ class JiraService:
             "Update summary of Jira issue %s for Bug %s",
             issue_key,
             bug.id,
-            extra=context.dict(),
+            extra=context.model_dump(),
         )
         truncated_summary = (bug.summary or "")[:JIRA_DESCRIPTION_CHAR_LIMIT]
         fields: dict[str, str] = {
@@ -454,7 +457,7 @@ class JiraService:
         logger.debug(
             "Updating Jira resolution to %s",
             jira_resolution,
-            extra=context.dict(),
+            extra=context.model_dump(),
         )
         return self.client.update_issue_field(
             key=issue_key,
