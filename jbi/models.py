@@ -224,11 +224,12 @@ class BugzillaBug(BaseModel):
         """Return `true` if the bug is assigned to a user."""
         return self.assigned_to != "nobody@mozilla.org"
 
-    def extract_from_see_also(self):
+    def extract_from_see_also(self, project_key):
         """Extract Jira Issue Key from see_also if jira url present"""
         if not self.see_also or len(self.see_also) == 0:
             return None
 
+        candidates = []
         for url in self.see_also:  # pylint: disable=not-an-iterable
             try:
                 parsed_url: ParseResult = urlparse(url=url)
@@ -249,9 +250,13 @@ class BugzillaBug(BaseModel):
             if any(part in JIRA_HOSTNAMES for part in host_parts):
                 parsed_jira_key = parsed_url.path.rstrip("/").split("/")[-1]
                 if parsed_jira_key:  # URL ending with /
-                    return parsed_jira_key
+                    # Issue keys are like `{project_key}-{number}`
+                    if parsed_jira_key.startswith(f"{project_key}-"):
+                        return parsed_jira_key
+                    # If not obvious, then keep this link as candidate.
+                    candidates.append(parsed_jira_key)
 
-        return None
+        return candidates[0] if candidates else None
 
     def lookup_action(self, actions: Actions) -> Action:
         """

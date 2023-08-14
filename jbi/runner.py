@@ -184,7 +184,9 @@ def execute_action(
             ) from err
         runner_context = runner_context.update(action=action)
 
-        linked_issue_key: Optional[str] = bug.extract_from_see_also()
+        linked_issue_key: Optional[str] = bug.extract_from_see_also(
+            project_key=action.jira_project_key
+        )
 
         action_context = ActionContext(
             action=action,
