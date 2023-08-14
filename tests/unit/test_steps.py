@@ -179,7 +179,9 @@ def test_modified_public(
 
     callable_object(context=context_update_example)
 
-    assert context_update_example.bug.extract_from_see_also(), "see_also is not empty"
+    assert context_update_example.bug.extract_from_see_also(
+        project_key=context_update_example.jira.project
+    ), "see_also is not empty"
 
     mocked_jira.update_issue_field.assert_called_once_with(
         key="JBI-234",
@@ -213,7 +215,7 @@ def test_comment_for_modified_assignee_and_status(
         operation=Operation.UPDATE,
         bug=bug,
         event=event,
-        jira=jira_context_factory(issue=bug.extract_from_see_also()),
+        jira=jira_context_factory(issue=bug.extract_from_see_also(project_key="JBI")),
     )
 
     callable_object = Executor(

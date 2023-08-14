@@ -283,7 +283,9 @@ def test_runner_ignores_request_if_jira_is_linked_but_without_whiteboard(
     mocked_bugzilla.get_bug.return_value = webhook_comment_example.bug
     webhook_comment_example.bug.whiteboard = "[not-matching-local-config]"
 
-    assert webhook_comment_example.bug.extract_from_see_also() is not None
+    assert (
+        webhook_comment_example.bug.extract_from_see_also(project_key="foo") is not None
+    )
 
     with pytest.raises(IgnoreInvalidRequestError) as exc_info:
         execute_action(
