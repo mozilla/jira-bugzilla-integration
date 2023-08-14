@@ -13,27 +13,18 @@ from jbi.runner import Executor, execute_action
 
 
 @pytest.fixture
-def webhook_comment_example(
-    webhook_user_factory,
-    bug_factory,
-    webhook_event_factory,
-    webhook_factory,
-    comment_factory,
-) -> BugzillaWebhookRequest:
-    user = webhook_user_factory(login="mathieu@mozilla.org")
-    comment = comment_factory(number=2, body="hello")
-    bug = bug_factory(
-        see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
-        comment=comment,
+def webhook_comment_example(webhook_factory) -> BugzillaWebhookRequest:
+    return webhook_factory(
+        bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+        bug__comment__number=2,
+        bug__comment__body="hello",
+        event__target="comment",
+        event__user__login="mathieu@mozilla.org",
     )
-    event = webhook_event_factory(target="comment", user=user)
-    webhook_payload = webhook_factory(bug=bug, event=event)
-
-    return webhook_payload
 
 
 def test_bugzilla_object_is_always_fetched(
-    mocked_bugzilla, webhook_create_example, actions_factory, bug_factory
+    mocked_jira, mocked_bugzilla, webhook_create_example, actions_factory, bug_factory
 ):
     # See https://github.com/mozilla/jira-bugzilla-integration/issues/292
     fetched_bug = bug_factory(
@@ -41,6 +32,7 @@ def test_bugzilla_object_is_always_fetched(
         see_also=[f"{get_settings().jira_base_url}browse/JBI-234"],
     )
     mocked_bugzilla.get_bug.return_value = fetched_bug
+    mocked_jira.get_issue.return_value = {"fields": {"project": {"key": "JBI"}}}
 
     execute_action(
         request=webhook_create_example,
@@ -48,6 +40,30 @@ def test_bugzilla_object_is_always_fetched(
     )
 
     mocked_bugzilla.get_bug.assert_called_once_with(webhook_create_example.bug.id)
+
+
+def test_request_is_ignored_because_project_mismatch(
+    webhook_create_example: BugzillaWebhookRequest,
+    actions_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    bug_factory,
+):
+    bug = bug_factory(
+        id=webhook_create_example.bug.id,
+        see_also=[f"{get_settings().jira_base_url}browse/JBI-234"],
+    )
+    webhook_create_example.bug = bug
+    mocked_bugzilla.get_bug.return_value = bug
+    mocked_jira.get_issue.return_value = {"fields": {"project": {"key": "FXDROID"}}}
+
+    with pytest.raises(IgnoreInvalidRequestError) as exc_info:
+        execute_action(
+            request=webhook_create_example,
+            actions=actions_factory(),
+        )
+
+    assert str(exc_info.value) == "ignore linked project 'FXDROID' (!='JBI')"
 
 
 def test_request_is_ignored_because_private(

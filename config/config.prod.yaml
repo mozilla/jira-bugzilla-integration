@@ -158,7 +158,6 @@
         - sync_whiteboard_labels
       comment:
         - create_comment
-    labels_brackets: both
     status_map:
       UNCONFIRMED: Backlog
       NEW: Backlog
@@ -215,12 +214,44 @@
       UNCONFIRMED: To Do
       NEW: To Do
 
-- whiteboard_tag: prodtest
-  bugzilla_user_id: 644672
-  description: Prod testing whiteboard tag (JBI Bin Project)
+- whiteboard_tag: pcf
+  bugzilla_user_id: 396948
+  description: PerfCompare
   parameters:
-    jira_project_key: JB
-    labels_brackets: both
+    jira_project_key: PCF
+    steps:
+      new:
+        - create_issue
+        - maybe_delete_duplicate
+        - add_link_to_bugzilla
+        - add_link_to_jira
+        - maybe_assign_jira_user
+        - maybe_update_issue_resolution
+        - maybe_update_issue_status
+        - sync_whiteboard_labels
+      existing:
+        - update_issue_summary
+        - maybe_assign_jira_user
+        - maybe_update_issue_resolution
+        - maybe_update_issue_status
+        - sync_whiteboard_labels
+      comment:
+        - create_comment
+    status_map:
+      UNCONFIRMED: Backlog
+      NEW: Backlog
+      ASSIGNED: In Progress
+      REOPENED: In Progress
+      RESOLVED: Done
+      VERIFIED: Done
+      FIXED: Done
+      INVALID: Done
+      WONTFIX: Done
+      INACTIVE: Done
+      DUPLICATE: Done
+      WORKSFORME: Done
+      INCOMPLETE: Done
+      MOVED: Done
 
 - whiteboard_tag: proton
   bugzilla_user_id: tbd
@@ -295,7 +326,6 @@
         - sync_whiteboard_labels
       comment:
         - create_comment
-    labels_brackets: both
     status_map:
       UNCONFIRMED: To Do
       NEW: To Do
