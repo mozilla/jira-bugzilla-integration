@@ -18,7 +18,7 @@ sentry-sdk = {extras = ["fastapi"], version = "^1.29.2"}
 backoff = "^2.2.1"
 statsd = "^4.0.1"
 requests = "^2.31.0"
-pydantic-settings = "^2.0.2"
+pydantic-settings = "^2.0.3"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^3.3.3"
