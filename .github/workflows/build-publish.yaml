@@ -19,12 +19,15 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v3
-
+        with:
+          fetch-depth: 0  # Fetch everything (tags)
+      - name: Set tag version
+        run: echo "JBI_TAG=$(git describe --tags --abbrev=4)" >> $GITHUB_ENV
       - name: Build `version.json` file
         run: |
           printf '{\n    "commit": "%s",\n    "version": "%s",\n    "source": "%s",\n    "build": "%s"\n}\n' \
             "$GITHUB_SHA" \
-            "$GITHUB_REF" \
+            "$JBI_TAG" \
             "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
             "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" > ./version.json
 
