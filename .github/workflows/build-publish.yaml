@@ -19,10 +19,10 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v3
-
+      - name: Set tag version
+        run: echo "JBI_TAG=$(git describe --tags --abbrev=4)" >> $GITHUB_ENV
       - name: Build `version.json` file
         run: |
-          JBI_TAG=$(git describe --tags --abbrev=4)
           printf '{\n    "commit": "%s",\n    "version": "%s",\n    "source": "%s",\n    "build": "%s"\n}\n' \
             "$GITHUB_SHA" \
             "$JBI_TAG" \
