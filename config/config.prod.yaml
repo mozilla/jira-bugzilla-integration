@@ -218,7 +218,7 @@
       INVALID: Closed
       INCOMPLETE: Closed
       WORKSFORME: Closed
-      REOPENED: In Progress  
+      REOPENED: In Progress
 
 - whiteboard_tag: mv3
   bugzilla_user_id: tbd
