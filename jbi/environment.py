@@ -19,10 +19,6 @@ class Environment(StrEnum):
     PROD = "prod"
 
 
-class SentryDsn(AnyUrl):
-    """Url type to validate Sentry DSN"""
-
-
 class Settings(BaseSettings):
     """The Settings object extracts environment variables for convenience."""
 
@@ -47,7 +43,7 @@ class Settings(BaseSettings):
     log_format: str = "json"  # set to "text" for human-readable logs
 
     # Sentry
-    sentry_dsn: Optional[SentryDsn] = None
+    sentry_dsn: Optional[AnyUrl] = None
     sentry_traces_sample_rate: float = 1.0
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
