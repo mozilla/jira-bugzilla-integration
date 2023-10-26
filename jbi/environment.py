@@ -2,7 +2,7 @@
 Module dedicated to interacting with the environment (variables, version.json)
 """
 import json
-from enum import Enum
+from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
@@ -11,16 +11,12 @@ from pydantic import AnyUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class Environment(str, Enum):
+class Environment(StrEnum):
     """Production environment choices"""
 
     LOCAL = "local"
     NONPROD = "nonprod"
     PROD = "prod"
-
-    def __str__(self):
-        # Force enum string representation to be the value instead 'Environment.NAME'
-        return str(self._value_)  # # pylint: disable=no-member
 
 
 class SentryDsn(AnyUrl):
