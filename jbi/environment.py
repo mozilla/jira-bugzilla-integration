@@ -2,7 +2,7 @@
 Module dedicated to interacting with the environment (variables, version.json)
 """
 import json
-from enum import StrEnum
+from enum import StrEnum, auto
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
@@ -14,9 +14,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Environment(StrEnum):
     """Production environment choices"""
 
-    LOCAL = "local"
-    NONPROD = "nonprod"
-    PROD = "prod"
+    LOCAL = auto()
+    NONPROD = auto()
+    PROD = auto()
 
 
 class Settings(BaseSettings):
