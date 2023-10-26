@@ -2,7 +2,9 @@
 Module dedicated to interacting with the environment (variables, version.json)
 """
 import json
-from enum import StrEnum, auto
+
+# https://github.com/python/mypy/issues/12841
+from enum import StrEnum, auto  # type: ignore
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
@@ -27,7 +29,8 @@ class Settings(BaseSettings):
     app_reload: bool = False
     app_debug: bool = False
     max_retries: int = 3
-    env: Environment = Environment.NONPROD
+    # https://github.com/python/mypy/issues/12841
+    env: Environment = Environment.NONPROD  # type: ignore
 
     # Jira
     jira_base_url: str = "https://mozit-test.atlassian.net/"
