@@ -2,7 +2,9 @@
 Module dedicated to interacting with the environment (variables, version.json)
 """
 import json
-from enum import Enum
+
+# https://github.com/python/mypy/issues/12841
+from enum import StrEnum, auto  # type: ignore
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
@@ -11,20 +13,12 @@ from pydantic import AnyUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class Environment(str, Enum):
+class Environment(StrEnum):
     """Production environment choices"""
 
-    LOCAL = "local"
-    NONPROD = "nonprod"
-    PROD = "prod"
-
-    def __str__(self):
-        # Force enum string representation to be the value instead 'Environment.NAME'
-        return str(self._value_)  # # pylint: disable=no-member
-
-
-class SentryDsn(AnyUrl):
-    """Url type to validate Sentry DSN"""
+    LOCAL = auto()
+    NONPROD = auto()
+    PROD = auto()
 
 
 class Settings(BaseSettings):
@@ -35,7 +29,8 @@ class Settings(BaseSettings):
     app_reload: bool = False
     app_debug: bool = False
     max_retries: int = 3
-    env: Environment = Environment.NONPROD
+    # https://github.com/python/mypy/issues/12841
+    env: Environment = Environment.NONPROD  # type: ignore
 
     # Jira
     jira_base_url: str = "https://mozit-test.atlassian.net/"
@@ -51,7 +46,7 @@ class Settings(BaseSettings):
     log_format: str = "json"  # set to "text" for human-readable logs
 
     # Sentry
-    sentry_dsn: Optional[SentryDsn] = None
+    sentry_dsn: Optional[AnyUrl] = None
     sentry_traces_sample_rate: float = 1.0
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
