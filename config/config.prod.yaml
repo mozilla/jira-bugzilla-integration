@@ -194,7 +194,7 @@
   parameters:
     jira_project_key: AE
     labels_brackets: both
-    
+
 - whiteboard_tag: hnt
   bugzilla_user_id: 462407
   description: Homepage New Tab Engineering
