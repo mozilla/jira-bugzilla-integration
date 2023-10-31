@@ -299,6 +299,15 @@
       WORKSFORME: Done
       INCOMPLETE: Done
       MOVED: Done
+    resolution_map:
+      FIXED: Done
+      INVALID: Invalid
+      WONTFIX: "Won't Do"
+      INACTIVE: Inactive
+      DUPLICATE: Duplicate
+      WORKSFORME: "Cannot Reproduce"
+      INCOMPLETE: Incomplete
+      MOVED: Moved
 
 - whiteboard_tag: proton
   bugzilla_user_id: tbd
