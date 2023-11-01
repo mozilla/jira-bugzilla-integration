@@ -14,7 +14,7 @@ atlassian-python-api = "^3.41.3"
 dockerflow = "2022.8.0"
 Jinja2 = "^3.1.2"
 pydantic-yaml = {extras = ["pyyaml","ruamel"], version = "^1.2.0"}
-sentry-sdk = {extras = ["fastapi"], version = "^1.33.0"}
+sentry-sdk = {extras = ["fastapi"], version = "^1.33.1"}
 backoff = "^2.2.1"
 statsd = "^4.0.1"
 requests = "^2.31.0"
@@ -22,15 +22,15 @@ pydantic-settings = "^2.0.3"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^3.5.0"
-black = "^23.10.0"
+black = "^23.10.1"
 isort = "^5.12.0"
 coverage = {extras = ["toml"], version = "^7.3"}
 mypy = "^1.6"
 detect-secrets = "^1.4.0"
 bandit = "^1.7.5"
 pylint = "^2.17.6"
-pylint-pytest = "^1.1.2"
-pytest = "^7.4.2"
+pylint-pytest = "^1.1.3"
+pytest = "^7.4.3"
 yamllint = "^1.32.0"
 pytest-dotenv = "^0.5.2"
 types-requests = "^2.31.0"
