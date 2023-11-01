@@ -50,8 +50,7 @@ the one with the green logo.  From the `Roles` drop down select `Bots`.  Click `
 in step 1.
 3. Add an entry for your whiteboard tag (eg. `famous-product`) in the [actions configuration files](config/). 
 See [actions documentation](docs/actions.md).
-4. Open a pull-request with your action configuration changes.  If permissions allow add the label `configuration` to 
-the PR.  Indicate in the PR if the Jira Automation Bot has already been added to the Jira project.
+4. Open a pull-request with your action configuration changes.  Indicate in the PR if the Jira Automation Bot has already been added to the Jira project.
 5. Once the PR is merged and a release is created, create a bug in bugzilla and add your whiteboard tag to the bug. Note
 that the tag must be enclosed in square brackets (eg. `[famous-project]`).  
 6. If a Jira item already exists add it to the `See Also` section of the bug to begin syncing.  If a Jira item does not 
