@@ -188,6 +188,13 @@
     jira_project_key: DISCO
     labels_brackets: both
 
+- whiteboard_tag: ads-eng
+  bugzilla_user_id: 675297
+  description: Ads Engineering whiteboard tag
+  parameters:
+    jira_project_key: AE
+    labels_brackets: both
+
 - whiteboard_tag: hnt
   bugzilla_user_id: 462407
   description: Homepage New Tab Engineering
