@@ -43,10 +43,10 @@ graph TD
 
 ### How to onboard a new project?
 
-1. If you are the admin of the Jira project add the Jira Automation Bot.  Go to Jira project and open 
+1. If you are an admin of the Jira project add the Jira Automation Bot.  Go to Jira project and open 
 `Project Settings` then `People`.  Select `Add People` and search for `Jira Automation`.  If two are listed select 
 the one with the green logo.  From the `Roles` drop down select `Bots`.  Click `Add 1 person`.
-2. If you are not the admin of the Jira project contact the admin to determine how best to request the changes described 
+2. If you are not an admin of the Jira project contact the admin to determine how best to request the changes described 
 in step 1.
 3. Add an entry for your whiteboard tag (eg. `famous-product`) in the [actions configuration files](config/). 
 See [actions documentation](docs/actions.md).
