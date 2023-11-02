@@ -43,9 +43,19 @@ graph TD
 
 ### How to onboard a new project?
 
-1. Add an entry for your whiteboard tag (eg. `famous-product`) in the [actions configuration files](config/). See [actions documentation](docs/actions.md))
-2. Open a pull-request with your action configuration changes
-3. Open a ticket to request the appropriate permissions to be given to the bot account (`Jira Automation`) on the Jira project ([example ticket](https://mozilla-hub.atlassian.net/servicedesk/customer/portal/4/SDD-12038))
+1. If you are an admin of the Jira project add the Jira Automation Bot.  Go to Jira project and open 
+`Project Settings` then `People`.  Select `Add People` and search for `Jira Automation`.  If two are listed select 
+the one with the green logo.  From the `Roles` drop down select `Bots`.  Click `Add 1 person`.
+2. If you are not an admin of the Jira project contact the admin to determine how best to request the changes described 
+in step 1.
+3. Add an entry for your whiteboard tag (eg. `famous-product`) in the [actions configuration files](config/). 
+See [actions documentation](docs/actions.md).
+4. Open a pull-request with your action configuration changes.  Indicate in the PR if the Jira Automation Bot has already been added to the Jira project.
+5. Once the PR is merged and a release is created, create a bug in bugzilla and add your whiteboard tag to the bug. Note
+that the tag must be enclosed in square brackets (eg. `[famous-project]`).  
+6. If a Jira item already exists add it to the `See Also` section of the bug to begin syncing.  If a Jira item does not 
+already exist one will be created.
+7. Verify that the tag is listed in the Labels for the Jira item (eg. `[famous-project]`)
 
 # Development
 
