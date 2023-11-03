@@ -63,7 +63,7 @@ graph TD
         "EDIT_ISSUES"
      ```
 
-   - If you are not an admin of the Jira project contact the admin to determine how best to request the changes described above
+   - If you are not an admin of the Jira project, contact the admin or reach out to `#jira-support` in Slack to determine how best to request the changes described above
 
 1. Once your configuration is merged and a JBI release is deployed, create a bug in Bugzilla and add your whiteboard tag to the bug. Note that the tag must be enclosed in square brackets (eg. `[famous-project]`). You should see an issue appear in Jira
    - If you want to start syncing a bug to a Jira issue that already exists, add the issue's link to the `See Also` section of the Bugzilla bug before you add the whiteboard tag
