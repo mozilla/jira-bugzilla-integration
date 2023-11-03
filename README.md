@@ -54,7 +54,7 @@ graph TD
      - go to your Jira project and open `Project Settings`, then `People`.
      - Select `Add People` and search for `Jira Automation`. If two are listed select the one with the green logo
      - From the `Roles` drop down select `Bots`. Click `Add 1 person`.
-     - Add these permission for the bot
+     - Add these permissions for the bot
 
      ```
         "ADD_COMMENTS",
@@ -65,8 +65,8 @@ graph TD
 
    - If you are not an admin of the Jira project contact the admin to determine how best to request the changes described above
 
-1. Once your configuration is merged and a release is created, create a bug in Bugzilla and add your whiteboard tag to the bug. Note that the tag must be enclosed in square brackets (eg. `[famous-project]`). You should see an issue appear in Jira
-   - If you want to start syncing a bug to a Jira issue that already exists, add the issue's link to the `See Also` section of the bug before you add the whiteboard tag
+1. Once your configuration is merged and a JBI release is deployed, create a bug in Bugzilla and add your whiteboard tag to the bug. Note that the tag must be enclosed in square brackets (eg. `[famous-project]`). You should see an issue appear in Jira
+   - If you want to start syncing a bug to a Jira issue that already exists, add the issue's link to the `See Also` section of the Bugzilla bug before you add the whiteboard tag
 
 1. Verify that the action you took on the bug was property reflected on the Jira issue (e.g. the description was updated or a comment was added)
 
