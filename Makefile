@@ -33,8 +33,10 @@ clean:
 	find . -name "__pycache__" | xargs rm -rf
 	rm -rf .mypy_cache .pytest_cache .coverage .venv
 
+$(VENV)/bin/python:
+	python3 -m venv $(VENV)
 
-install: $(INSTALL_STAMP)
+install: $(VENV)/bin/python $(INSTALL_STAMP)
 $(INSTALL_STAMP): poetry.lock
 	@if [ -z $(shell command -v poetry 2> /dev/null) ]; then echo "Poetry could not be found. See https://python-poetry.org/docs/"; exit 2; fi
 	POETRY_VIRTUALENVS_IN_PROJECT=1 poetry install --with dev --no-root
