@@ -19,8 +19,6 @@ jobs:
           key: poetry-${{ steps.setup-python.outputs.python-version}}-${{ hashFiles('poetry.lock') }}
       - name: Install dependencies
         run: make install
-      - name: Install dependencies
-        run: make install
       - run: bin/lint.sh
   run_test:
     runs-on: ubuntu-latest
