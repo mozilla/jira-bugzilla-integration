@@ -43,19 +43,32 @@ graph TD
 
 ### How to onboard a new project?
 
-1. If you are an admin of the Jira project add the Jira Automation Bot.  Go to Jira project and open 
-`Project Settings` then `People`.  Select `Add People` and search for `Jira Automation`.  If two are listed select 
-the one with the green logo.  From the `Roles` drop down select `Bots`.  Click `Add 1 person`.
-2. If you are not an admin of the Jira project contact the admin to determine how best to request the changes described 
-in step 1.
-3. Add an entry for your whiteboard tag (eg. `famous-product`) in the [actions configuration files](config/). 
-See [actions documentation](docs/actions.md).
-4. Open a pull-request with your action configuration changes.  Indicate in the PR if the Jira Automation Bot has already been added to the Jira project.
-5. Once the PR is merged and a release is created, create a bug in bugzilla and add your whiteboard tag to the bug. Note
-that the tag must be enclosed in square brackets (eg. `[famous-project]`).  
-6. If a Jira item already exists add it to the `See Also` section of the bug to begin syncing.  If a Jira item does not 
-already exist one will be created.
-7. Verify that the tag is listed in the Labels for the Jira item (eg. `[famous-project]`)
+1. Submit configuration for your project
+   - If you're comfortable opening your own pull request, add an entry for your whiteboard tag (eg. `famous-product`) in the [actions configuration files](config/).
+     See [actions documentation](docs/actions.md)
+   - If not, submit an issue [here](https://github.com/mozilla/jira-bugzilla-integration/issues/new?assignees=&labels=configuration&projects=&template=new-config.yaml&title=Sync+%3CBugzilla+Product%3E+with+%3CJira+Project%3E), and we'll set up your configuration
+1. Grant permissions to the Jira Automation Bot
+
+   - If you are an admin of the Jira project
+
+     - go to your Jira project and open `Project Settings`, then `People`.
+     - Select `Add People` and search for `Jira Automation`. If two are listed select the one with the green logo
+     - From the `Roles` drop down select `Bots`. Click `Add 1 person`.
+     - Add these permissions for the bot
+
+     ```
+        "ADD_COMMENTS",
+        "CREATE_ISSUES",
+        "DELETE_ISSUES",
+        "EDIT_ISSUES"
+     ```
+
+   - If you are not an admin of the Jira project, contact the admin or reach out to `#jira-support` in Slack to determine how best to request the changes described above
+
+1. Once your configuration is merged and a JBI release is deployed, create a bug in Bugzilla and add your whiteboard tag to the bug. Note that the tag must be enclosed in square brackets (eg. `[famous-project]`). You should see an issue appear in Jira
+   - If you want to start syncing a bug to a Jira issue that already exists, add the issue's link to the `See Also` section of the Bugzilla bug before you add the whiteboard tag
+
+1. Verify that the action you took on the bug was property reflected on the Jira issue (e.g. the description was updated or a comment was added)
 
 # Development
 
