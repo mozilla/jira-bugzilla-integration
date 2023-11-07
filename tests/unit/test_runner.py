@@ -440,3 +440,15 @@ def test_counter_is_incremented_when_workflows_was_incomplete(
         callable_object(context=context_create_example)
 
     mocked.incr.assert_called_with("jbi.action.fnx.incomplete.count")
+
+
+def test_step_function_counter_incremented(
+    action_params_factory, action_context_factory
+):
+    context = action_context_factory(operation=Operation.CREATE)
+    executor = Executor(action_params_factory(steps={"new": ["create_issue"]}))
+    with mock.patch("jbi.runner.statsd") as mocked:
+        executor(context=context)
+    mocked.incr.assert_called_with("jbi.steps.create_issue.count")
+
+
