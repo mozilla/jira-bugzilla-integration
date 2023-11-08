@@ -105,6 +105,7 @@ class Executor:
             try:
                 step_kwargs = self.build_step_kwargs(step)
                 context = step(context=context, **step_kwargs)
+                statsd.incr(f"jbi.steps.{step.__name__}.count")
             except IncompleteStepError as exc:
                 # Step did not execute all its operations.
                 context = exc.context
@@ -248,7 +249,7 @@ def execute_action(
         )
         executor = Executor(parameters=action.parameters)
         handled, details = executor(context=action_context)
-
+        statsd.incr(f"jbi.operation.{action_context.operation.lower()}.count")
         logger.info(
             "Action %r executed successfully for Bug %s",
             action.whiteboard_tag,
