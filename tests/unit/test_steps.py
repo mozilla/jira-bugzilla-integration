@@ -6,7 +6,6 @@ import requests
 
 from jbi import Operation, steps
 from jbi.environment import get_settings
-from jbi.errors import IncompleteStepError
 from jbi.models import ActionContext, JiraComponents
 from jbi.runner import Executor
 from jbi.services.jira import JiraCreateError, JiraService
@@ -408,11 +407,11 @@ def test_set_assignee_failing_create(
     context_create_example.jira.issue = "key"
     context_create_example.bug.assigned_to = "postmaster@localhost"
 
-    with pytest.raises(IncompleteStepError):
-        with capturelogs.for_logger("jbi.steps").at_level(logging.DEBUG):
-            steps.maybe_assign_jira_user(
-                context=context_create_example, jira_service=JiraService(mocked_jira)
-            )
+    with capturelogs.for_logger("jbi.steps").at_level(logging.DEBUG):
+        result, _ = steps.maybe_assign_jira_user(
+            context=context_create_example, jira_service=JiraService(mocked_jira)
+        )
+        assert result == steps.StepStatus.INCOMPLETE
 
     assert capturelogs.messages == ["User postmaster@localhost not found"]
 
@@ -538,23 +537,23 @@ def test_change_to_unknown_status(
     context_update_example.event.action = "modify"
     context_update_example.event.routing_key = "bug.modify:status"
 
-    with pytest.raises(IncompleteStepError):
-        with capturelogs.for_logger("jbi.steps").at_level(logging.DEBUG):
-            action_params = action_params_factory(
-                jira_project_key=context_update_example.jira.project,
-                status_map={
-                    "ASSIGNED": "In Progress",
-                    "FIXED": "Closed",
-                },
-            )
-            steps.maybe_update_issue_status(
-                context_update_example,
-                parameters=action_params,
-                jira_service=JiraService(mocked_jira),
-            )
+    with capturelogs.for_logger("jbi.steps").at_level(logging.DEBUG):
+        action_params = action_params_factory(
+            jira_project_key=context_update_example.jira.project,
+            status_map={
+                "ASSIGNED": "In Progress",
+                "FIXED": "Closed",
+            },
+        )
+        result, _ = steps.maybe_update_issue_status(
+            context_update_example,
+            parameters=action_params,
+            jira_service=JiraService(mocked_jira),
+        )
 
         mocked_jira.update_issue_field.assert_not_called()
 
+        assert result == steps.StepStatus.INCOMPLETE
         assert capturelogs.messages == ["Bug status 'NEW' was not in the status map."]
         mocked_jira.create_issue.assert_not_called()
         mocked_jira.user_find_by_user_string.assert_not_called()
@@ -659,16 +658,16 @@ def test_change_to_unknown_resolution_with_resolution_map(
             "DUPLICATE": "Duplicate",
         },
     )
-    with pytest.raises(IncompleteStepError):
-        with capturelogs.for_logger("jbi.steps").at_level(logging.DEBUG):
-            steps.maybe_update_issue_resolution(
-                context_update_resolution_example,
-                parameters=action_params,
-                jira_service=JiraService(mocked_jira),
-            )
+
+    with capturelogs.for_logger("jbi.steps").at_level(logging.DEBUG):
+        result, _ = steps.maybe_update_issue_resolution(
+            context_update_resolution_example,
+            parameters=action_params,
+            jira_service=JiraService(mocked_jira),
+        )
 
     mocked_jira.update_issue_field.assert_not_called()
-
+    assert result == steps.StepStatus.INCOMPLETE
     assert capturelogs.messages == [
         "Bug resolution 'WONTFIX' was not in the resolution map."
     ]
@@ -864,12 +863,12 @@ def test_maybe_update_components_raises_incompletesteperror_on_mismatch(
     )
     mocked_jira.get_project_components.return_value = [{"name": "Backend"}]
     context_update_example.bug.component = "Frontend"
-    with pytest.raises(IncompleteStepError):
-        steps.maybe_update_components(
-            context_update_example,
-            parameters=action_params,
-            jira_service=JiraService(mocked_jira),
-        )
+    result, _context = steps.maybe_update_components(
+        context_update_example,
+        parameters=action_params,
+        jira_service=JiraService(mocked_jira),
+    )
+    assert result == steps.StepStatus.INCOMPLETE
 
 
 def test_maybe_update_components_failing(
@@ -890,13 +889,14 @@ def test_maybe_update_components_failing(
     action_params = action_params_factory(
         jira_project_key=context_update_example.jira.project,
     )
-    with pytest.raises(IncompleteStepError):
-        with capturelogs.for_logger("jbi.steps").at_level(logging.DEBUG):
-            steps.maybe_update_components(
-                context=context_update_example,
-                parameters=action_params,
-                jira_service=JiraService(mocked_jira),
-            )
+
+    with capturelogs.for_logger("jbi.steps").at_level(logging.DEBUG):
+        result, _context = steps.maybe_update_components(
+            context=context_update_example,
+            parameters=action_params,
+            jira_service=JiraService(mocked_jira),
+        )
+        assert result == steps.StepStatus.INCOMPLETE
 
     assert capturelogs.messages == [
         "Could not set components on issue JBI-234: Field 'components' cannot be set"
@@ -1007,13 +1007,14 @@ def test_sync_whiteboard_labels_failing(
     action_params = action_params_factory(
         jira_project_key=context_update_example.jira.project,
     )
-    with pytest.raises(IncompleteStepError):
-        with capturelogs.for_logger("jbi.steps").at_level(logging.DEBUG):
-            steps.sync_whiteboard_labels(
-                context=context_update_example,
-                parameters=action_params,
-                jira_service=JiraService(mocked_jira),
-            )
+
+    with capturelogs.for_logger("jbi.steps").at_level(logging.DEBUG):
+        result, context = steps.sync_whiteboard_labels(
+            context=context_update_example,
+            parameters=action_params,
+            jira_service=JiraService(mocked_jira),
+        )
+    assert result == steps.StepStatus.INCOMPLETE
 
     assert capturelogs.messages == [
         "Could not set labels on issue JBI-234: some message"

@@ -11,12 +11,19 @@ Each step takes an `ActionContext` and a list of arbitrary parameters.
 from __future__ import annotations
 
 import logging
+from enum import StrEnum, auto
 from typing import TYPE_CHECKING, Optional
 
 from requests import exceptions as requests_exceptions
 
 from jbi import Operation
-from jbi.errors import IncompleteStepError
+
+
+class StepStatus(StrEnum):
+    SUCCESS = auto()
+    INCOMPLETE = auto()
+    NOOP = auto()
+
 
 # https://docs.python.org/3.11/library/typing.html#typing.TYPE_CHECKING
 if TYPE_CHECKING:
@@ -24,10 +31,12 @@ if TYPE_CHECKING:
     from jbi.services.bugzilla import BugzillaService
     from jbi.services.jira import JiraService
 
+    StepResult = tuple[StepStatus, ActionContext]
+
 logger = logging.getLogger(__name__)
 
 
-def create_comment(context: ActionContext, *, jira_service: JiraService):
+def create_comment(context: ActionContext, *, jira_service: JiraService) -> StepResult:
     """Create a Jira comment using `context.bug.comment`"""
     bug = context.bug
 
@@ -36,11 +45,11 @@ def create_comment(context: ActionContext, *, jira_service: JiraService):
             "No matching comment found in payload",
             extra=context.model_dump(),
         )
-        return context
+        return (StepStatus.NOOP, context)
 
     jira_response = jira_service.add_jira_comment(context)
     context = context.append_responses(jira_response)
-    return context
+    return (StepStatus.SUCCESS, context)
 
 
 def create_issue(
@@ -49,7 +58,7 @@ def create_issue(
     parameters: ActionParams,
     jira_service: JiraService,
     bugzilla_service: BugzillaService,
-):
+) -> StepResult:
     """Create the Jira issue with the first comment as the description."""
     bug = context.bug
     issue_type = parameters.issue_type_map.get(bug.type or "", "Task")
@@ -65,21 +74,25 @@ def create_issue(
         jira=context.jira.update(issue=issue_key),
     )
     context = context.append_responses(jira_create_response)
-    return context
+    return (StepStatus.SUCCESS, context)
 
 
-def add_link_to_jira(context: ActionContext, *, bugzilla_service: BugzillaService):
+def add_link_to_jira(
+    context: ActionContext, *, bugzilla_service: BugzillaService
+) -> StepResult:
     """Add the URL to the Jira issue in the `see_also` field on the Bugzilla ticket"""
     bugzilla_response = bugzilla_service.add_link_to_jira(context)
     context = context.append_responses(bugzilla_response)
-    return context
+    return (StepStatus.SUCCESS, context)
 
 
-def add_link_to_bugzilla(context: ActionContext, *, jira_service: JiraService):
+def add_link_to_bugzilla(
+    context: ActionContext, *, jira_service: JiraService
+) -> StepResult:
     """Add the URL of the Bugzilla ticket to the links of the Jira issue"""
     jira_response = jira_service.add_link_to_bugzilla(context)
     context = context.append_responses(jira_response)
-    return context
+    return (StepStatus.SUCCESS, context)
 
 
 def maybe_delete_duplicate(
@@ -87,7 +100,7 @@ def maybe_delete_duplicate(
     *,
     bugzilla_service: BugzillaService,
     jira_service: JiraService,
-):
+) -> StepResult:
     """
     In the time taken to create the Jira issue the bug may have been updated so
     re-retrieve it to ensure we have the latest data, and delete any duplicate
@@ -99,29 +112,36 @@ def maybe_delete_duplicate(
     )
     if jira_response_delete:
         context = context.append_responses(jira_response_delete)
-    return context
+        return (StepStatus.SUCCESS, context)
+    return (StepStatus.NOOP, context)
 
 
-def update_issue_summary(context: ActionContext, *, jira_service: JiraService):
+def update_issue_summary(
+    context: ActionContext, *, jira_service: JiraService
+) -> StepResult:
     """Update the Jira issue's summary if the linked bug is modified."""
 
     if "summary" not in context.event.changed_fields():
-        return context
+        return (StepStatus.NOOP, context)
 
     jira_response_update = jira_service.update_issue_summary(context)
     context = context.append_responses(jira_response_update)
-    return context
+    return (StepStatus.SUCCESS, context)
 
 
-def add_jira_comments_for_changes(context: ActionContext, *, jira_service: JiraService):
+def add_jira_comments_for_changes(
+    context: ActionContext, *, jira_service: JiraService
+) -> StepResult:
     """Add a Jira comment for each field (assignee, status, resolution) change on
     the Bugzilla ticket."""
     comments_responses = jira_service.add_jira_comments_for_changes(context)
     context.append_responses(comments_responses)
-    return context
+    return (StepStatus.SUCCESS, context)
 
 
-def maybe_assign_jira_user(context: ActionContext, *, jira_service: JiraService):
+def maybe_assign_jira_user(
+    context: ActionContext, *, jira_service: JiraService
+) -> StepResult:
     """Assign the user on the Jira issue, based on the Bugzilla assignee email.
 
     It will attempt to assign the Jira issue the same person as the bug is assigned to. This relies on
@@ -134,19 +154,19 @@ def maybe_assign_jira_user(context: ActionContext, *, jira_service: JiraService)
 
     if context.operation == Operation.CREATE:
         if not bug.is_assigned():
-            return context
+            return (StepStatus.NOOP, context)
 
         try:
             resp = jira_service.assign_jira_user(context, bug.assigned_to)  # type: ignore
             context.append_responses(resp)
-            return context
+            return (StepStatus.SUCCESS, context)
         except ValueError as exc:
             logger.debug(str(exc), extra=context.model_dump())
-            raise IncompleteStepError(context) from exc
+            return (StepStatus.INCOMPLETE, context)
 
     if context.operation == Operation.UPDATE:
         if "assigned_to" not in event.changed_fields():
-            return context
+            return (StepStatus.SUCCESS, context)
 
         if not bug.is_assigned():
             resp = jira_service.clear_assignee(context)
@@ -158,15 +178,14 @@ def maybe_assign_jira_user(context: ActionContext, *, jira_service: JiraService)
                 # If that failed then just fall back to clearing the assignee.
                 resp = jira_service.clear_assignee(context)
         context.append_responses(resp)
-        return context
+        return (StepStatus.SUCCESS, context)
 
-    # This happens when exceptions are raised an ignored.
-    return context
+    return (StepStatus.NOOP, context)
 
 
 def maybe_update_issue_resolution(
     context: ActionContext, *, parameters: ActionParams, jira_service: JiraService
-):
+) -> StepResult:
     """
     Update the Jira issue status
     https://support.atlassian.com/jira-cloud-administration/docs/what-are-issue-statuses-priorities-and-resolutions/
@@ -183,25 +202,25 @@ def maybe_update_issue_resolution(
                 operation=Operation.IGNORE,
             ).model_dump(),
         )
-        raise IncompleteStepError(context)
+        return (StepStatus.INCOMPLETE, context)
 
     if context.operation == Operation.CREATE:
         resp = jira_service.update_issue_resolution(context, jira_resolution)
         context.append_responses(resp)
-        return context
+        return (StepStatus.SUCCESS, context)
 
     if context.operation == Operation.UPDATE:
         if "resolution" in context.event.changed_fields():
             resp = jira_service.update_issue_resolution(context, jira_resolution)
             context.append_responses(resp)
-            return context
+            return (StepStatus.SUCCESS, context)
 
-    return context
+    return (StepStatus.NOOP, context)
 
 
 def maybe_update_issue_status(
     context: ActionContext, *, parameters: ActionParams, jira_service: JiraService
-):
+) -> StepResult:
     """
     Update the Jira issue resolution
     https://support.atlassian.com/jira-cloud-administration/docs/what-are-issue-statuses-priorities-and-resolutions/
@@ -217,12 +236,12 @@ def maybe_update_issue_status(
                 operation=Operation.IGNORE,
             ).model_dump(),
         )
-        raise IncompleteStepError(context)
+        return (StepStatus.INCOMPLETE, context)
 
     if context.operation == Operation.CREATE:
         resp = jira_service.update_issue_status(context, jira_status)
         context.append_responses(resp)
-        return context
+        return (StepStatus.SUCCESS, context)
 
     if context.operation == Operation.UPDATE:
         changed_fields = context.event.changed_fields()
@@ -230,14 +249,14 @@ def maybe_update_issue_status(
         if "status" in changed_fields or "resolution" in changed_fields:
             resp = jira_service.update_issue_status(context, jira_status)
             context.append_responses(resp)
-            return context
+            return (StepStatus.SUCCESS, context)
 
-    return context
+    return (StepStatus.NOOP, context)
 
 
 def maybe_update_components(
     context: ActionContext, *, parameters: ActionParams, jira_service: JiraService
-):
+) -> StepResult:
     """
     Update the Jira issue components
     """
@@ -254,7 +273,7 @@ def maybe_update_components(
 
     if not candidate_components:
         # no components to update
-        return context
+        return (StepStatus.NOOP, context)
 
     # Although we previously introspected the project components, we
     # still have to catch any potential 400 error response here, because
@@ -280,7 +299,7 @@ def maybe_update_components(
             extra=context.model_dump(),
         )
         context.append_responses(exc.response)
-        raise IncompleteStepError(context) from exc
+        return (StepStatus.INCOMPLETE, context)
 
     if missing_components:
         logger.warning(
@@ -288,10 +307,10 @@ def maybe_update_components(
             ",".join(sorted(missing_components)),
             extra=context.model_dump(),
         )
-        raise IncompleteStepError(context)
+        return (StepStatus.INCOMPLETE, context)
 
     context.append_responses(resp)
-    return context
+    return (StepStatus.SUCCESS, context)
 
 
 def _whiteboard_as_labels(labels_brackets: str, whiteboard: Optional[str]) -> list[str]:
@@ -328,7 +347,7 @@ def _build_labels_update(
 
 def sync_whiteboard_labels(
     context: ActionContext, *, parameters: ActionParams, jira_service: JiraService
-):
+) -> StepResult:
     """
     Set whiteboard tags as labels on the Jira issue.
     """
@@ -342,8 +361,7 @@ def sync_whiteboard_labels(
                 labels_brackets=parameters.labels_brackets,
             )
         else:
-            # Whiteboard field not changed, ignore.
-            return context
+            return (StepStatus.NOOP, context)
     else:
         # On creation, just add them all.
         additions, removals = _build_labels_update(
@@ -368,7 +386,7 @@ def sync_whiteboard_labels(
             extra=context.model_dump(),
         )
         context.append_responses(exc.response)
-        raise IncompleteStepError(context) from exc
+        return (StepStatus.INCOMPLETE, context)
 
     context.append_responses(resp)
-    return context
+    return (StepStatus.SUCCESS, context)
