@@ -11,7 +11,7 @@ Each step takes an `ActionContext` and a list of arbitrary parameters.
 from __future__ import annotations
 
 import logging
-from enum import StrEnum, auto
+from enum import Enum, auto
 from typing import TYPE_CHECKING, Optional
 
 from requests import exceptions as requests_exceptions
@@ -19,7 +19,14 @@ from requests import exceptions as requests_exceptions
 from jbi import Operation
 
 
-class StepStatus(StrEnum):
+class StepStatus(Enum):
+    """
+    Options for the result of executing a step function:
+        SUCCESS: The step succeeded at doing meaningful work
+        INCOMPLETE: The step did not execute successfully, but it's an error we anticipated
+        NOOP: The step executed successfully, but didn't have any meaningful work to do
+    """
+
     SUCCESS = auto()
     INCOMPLETE = auto()
     NOOP = auto()
