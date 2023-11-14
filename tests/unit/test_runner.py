@@ -442,7 +442,7 @@ def test_counter_is_incremented_when_workflows_was_incomplete(
     mocked.incr.assert_called_with("jbi.action.fnx.incomplete.count")
 
 
-def test_step_function_counter_incremented(
+def test_step_function_counter_incremented_for_success(
     action_params_factory, action_context_factory
 ):
     context = action_context_factory(operation=Operation.CREATE)
@@ -450,6 +450,20 @@ def test_step_function_counter_incremented(
     with mock.patch("jbi.runner.statsd") as mocked:
         executor(context=context)
     mocked.incr.assert_called_with("jbi.steps.create_issue.count")
+
+
+def test_step_function_counter_not_incremented_for_noop(
+    action_params_factory, action_context_factory
+):
+    context = action_context_factory(operation=Operation.UPDATE, jira__issue="JBI-234")
+    assert not context.event.changed_fields()
+    executor = Executor(
+        action_params_factory(steps={"existing": ["update_issue_summary"]})
+    )
+    # update_issue_summary without a changed summary will result in a NOOP
+    with mock.patch("jbi.runner.statsd") as mocked:
+        executor(context=context)
+    mocked.incr.assert_not_called()
 
 
 def test_counter_is_incremented_for_create(
