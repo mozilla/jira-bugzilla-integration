@@ -238,7 +238,7 @@ class JiraService:
         try:
             return self.client.get_issue(issue_key)
         except requests_exceptions.HTTPError as exc:
-            if exc.response.status_code != 404:
+            if getattr(exc.response, "status_code", None) != 404:
                 raise
             logger.error(
                 "Could not read issue %s: %s",
