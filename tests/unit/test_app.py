@@ -72,7 +72,7 @@ def test_errors_are_reported_to_sentry(
         with patch("jbi.router.execute_action", side_effect=ValueError):
             with pytest.raises(ValueError):
                 anon_client.post(
-                    "/bugzilla_webhook", data=webhook_create_example.json()
+                    "/bugzilla_webhook", data=webhook_create_example.model_dump_json()
                 )
 
     assert mocked.called, "Sentry captured the exception"
@@ -92,7 +92,7 @@ def test_request_id_is_passed_down_to_logger_contexts(
         with TestClient(app) as anon_client:
             anon_client.post(
                 "/bugzilla_webhook",
-                data=webhook_create_example.json(),
+                data=webhook_create_example.model_dump_json(),
                 headers={
                     "X-Request-Id": "foo-bar",
                 },

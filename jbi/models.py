@@ -11,7 +11,14 @@ from copy import copy
 from typing import DefaultDict, Literal, Mapping, Optional
 from urllib.parse import ParseResult, urlparse
 
-from pydantic import BaseModel, ConfigDict, Extra, Field, RootModel, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    RootModel,
+    TypeAdapter,
+    field_validator,
+)
 from typing_extensions import TypedDict
 
 from jbi import Operation, steps
@@ -295,6 +302,9 @@ class BugzillaComment(BaseModel):
     creator: str
 
 
+BugzillaComments = TypeAdapter(list[BugzillaComment])
+
+
 class BugzillaApiResponse(BaseModel):
     """Bugzilla Response Object"""
 
@@ -335,7 +345,7 @@ class Context(BaseModel):
 
     def update(self, **kwargs):
         """Return a copy with updated fields."""
-        return self.copy(update=kwargs)
+        return self.model_copy(update=kwargs, deep=True)
 
 
 class JiraContext(Context):
@@ -349,7 +359,7 @@ class JiraContext(Context):
 BugId = TypedDict("BugId", {"id": Optional[int]})
 
 
-class RunnerContext(Context, extra=Extra.forbid):
+class RunnerContext(Context, extra="forbid"):
     """Logging context from runner"""
 
     rid: str
@@ -359,7 +369,7 @@ class RunnerContext(Context, extra=Extra.forbid):
     bug: BugId | BugzillaBug
 
 
-class ActionContext(Context, extra=Extra.forbid):
+class ActionContext(Context, extra="forbid"):
     """Logging context from actions"""
 
     action: Action
