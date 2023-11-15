@@ -296,7 +296,7 @@ def maybe_update_components(
             components=candidate_components,
         )
     except requests_exceptions.HTTPError as exc:
-        if exc.response.status_code != 400:
+        if getattr(exc.response, "status_code", None) != 400:
             raise
         # If `components` is not a valid field on create/update screens,
         # then warn developers and ignore the error.
@@ -383,7 +383,7 @@ def sync_whiteboard_labels(
             issue_key=context.jira.issue, add=additions, remove=removals
         )
     except requests_exceptions.HTTPError as exc:
-        if exc.response.status_code != 400:
+        if getattr(exc.response, "status_code", None) != 400:
             raise
         # If `labels` is not a valid field in this project, then warn developers
         # and ignore the error.
