@@ -6,7 +6,6 @@ import logging
 from functools import lru_cache
 
 import requests
-from pydantic import parse_obj_as
 from statsd.defaults.env import statsd
 
 from jbi import Operation, environment
@@ -15,6 +14,7 @@ from jbi.models import (
     BugzillaApiResponse,
     BugzillaBug,
     BugzillaComment,
+    BugzillaComments,
     BugzillaWebhooksResponse,
 )
 
@@ -73,7 +73,7 @@ class BugzillaClient:
         # https://bugzilla.readthedocs.io/en/latest/api/core/v1/bug.html#rest-single-bug
         url = f"{self.base_url}/rest/bug/{bugid}"
         bug_info = self._call("GET", url)
-        parsed = BugzillaApiResponse.parse_obj(bug_info)
+        parsed = BugzillaApiResponse.model_validate(bug_info)
         if not parsed.bugs:
             raise BugzillaClientError(
                 f"Unexpected response content from 'GET {url}' (no 'bugs' field)"
@@ -85,7 +85,7 @@ class BugzillaClient:
             matching_comments = [c for c in comment_list if c.id == bug.comment.id]
             # If no matching entry is found, set `bug.comment` to `None`.
             found = matching_comments[0] if matching_comments else None
-            bug = bug.copy(update={"comment": found})
+            bug = bug.model_copy(update={"comment": found}, deep=True)
         return bug
 
     @instrumented_method
@@ -99,7 +99,7 @@ class BugzillaClient:
             raise BugzillaClientError(
                 f"Unexpected response content from 'GET {url}' (no 'bugs' field)"
             )
-        return parse_obj_as(list[BugzillaComment], comments)
+        return BugzillaComments.validate_python(comments)
 
     @instrumented_method
     def update_bug(self, bugid, **fields) -> BugzillaBug:
@@ -107,7 +107,7 @@ class BugzillaClient:
         # https://bugzilla.readthedocs.io/en/latest/api/core/v1/bug.html#rest-update-bug
         url = f"{self.base_url}/rest/bug/{bugid}"
         updated_info = self._call("PUT", url, json=fields)
-        parsed = BugzillaApiResponse.parse_obj(updated_info)
+        parsed = BugzillaApiResponse.model_validate(updated_info)
         if not parsed.bugs:
             raise BugzillaClientError(
                 f"Unexpected response content from 'PUT {url}' (no 'bugs' field)"
@@ -119,7 +119,7 @@ class BugzillaClient:
         """List the currently configured webhooks, including their status."""
         url = f"{self.base_url}/rest/webhooks/list"
         webhooks_info = self._call("GET", url)
-        parsed = BugzillaWebhooksResponse.parse_obj(webhooks_info)
+        parsed = BugzillaWebhooksResponse.model_validate(webhooks_info)
         if parsed.webhooks is None:
             raise BugzillaClientError(
                 f"Unexpected response content from 'GET {url}' (no 'webhooks' field)"
