@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any, Iterable, Optional
 import requests
 from atlassian import Jira
 from atlassian import errors as atlassian_errors
+from atlassian.rest_client import log as atlassian_logger
 from requests import exceptions as requests_exceptions
 
 from jbi import Operation, environment
@@ -81,7 +82,7 @@ class JiraClient(Jira):
         except requests.HTTPError as exc:
             request = exc.request
             response = exc.response
-            logger.error(
+            atlassian_logger.error(
                 "HTTP: %s %s -> %s %s",
                 request.method,
                 request.path_url,
