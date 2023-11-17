@@ -463,14 +463,22 @@ class JiraService:
         assert issue_key  # Until we have more fine-grained typing of contexts
 
         logger.debug(
-            "Updating Jira resolution to %s",
+            "Updating resolution of Jira issue %s to %s",
+            issue_key,
             jira_resolution,
             extra=context.model_dump(),
         )
-        return self.client.update_issue_field(
+        response = self.client.update_issue_field(
             key=issue_key,
             fields={"resolution": jira_resolution},
         )
+        logger.debug(
+            "Updated resolution of Jira issue %s to %s",
+            issue_key,
+            jira_resolution,
+            extra={"response": response, **context.model_dump()},
+        )
+        return response
 
     def update_issue_components(
         self,

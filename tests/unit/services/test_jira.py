@@ -214,3 +214,52 @@ def test_get_issue_raises_other_error(
     assert record.message == "Getting issue JBI-234"
 
 
+def test_update_issue_resolution(mocked_responses, action_context_factory, capturelogs):
+    context = action_context_factory(jira__issue="JBI-234")
+    url = f"{get_settings().jira_base_url}rest/api/2/issue/JBI-234"
+    mocked_responses.add(
+        responses.PUT,
+        url,
+        match=[
+            responses.matchers.json_params_matcher({"fields": {"resolution": "DONEZO"}})
+        ],
+    )
+
+    with capturelogs.for_logger("jbi.services.jira").at_level(logging.DEBUG):
+        jira.get_service().update_issue_resolution(
+            context=context, jira_resolution="DONEZO"
+        )
+
+    for record in capturelogs.records:
+        assert record.rid == context.rid
+        assert record.levelno == logging.DEBUG
+
+    before, after = capturelogs.messages
+    assert before == "Updating resolution of Jira issue JBI-234 to DONEZO"
+    assert after == "Updated resolution of Jira issue JBI-234 to DONEZO"
+
+
+def test_update_issue_resolution_raises(
+    mocked_responses, action_context_factory, capturelogs
+):
+    context = action_context_factory(jira__issue="JBI-234")
+    url = f"{get_settings().jira_base_url}rest/api/2/issue/JBI-234"
+    mocked_responses.add(
+        responses.PUT,
+        url,
+        status=401,
+        match=[
+            responses.matchers.json_params_matcher({"fields": {"resolution": "DONEZO"}})
+        ],
+    )
+
+    with capturelogs.for_logger("jbi.services.jira").at_level(logging.DEBUG):
+        with pytest.raises(requests.HTTPError):
+            jira.get_service().update_issue_resolution(
+                context=context, jira_resolution="DONEZO"
+            )
+
+    [record] = capturelogs.records
+    assert record.rid == context.rid
+    assert record.levelno == logging.DEBUG
+    assert record.message == "Updating resolution of Jira issue JBI-234 to DONEZO"
