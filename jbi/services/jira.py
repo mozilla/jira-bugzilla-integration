@@ -261,33 +261,38 @@ class JiraService:
     ):
         """Create a Jira issue with basic fields in the project and return its key."""
         bug = context.bug
-        logger.debug(
-            "Create new Jira issue for Bug %s",
-            bug.id,
-            extra=context.model_dump(),
-        )
         fields: dict[str, Any] = {
             "summary": bug.summary,
             "issuetype": {"name": issue_type},
             "description": description[:JIRA_DESCRIPTION_CHAR_LIMIT],
             "project": {"key": context.jira.project},
         }
-
-        jira_response_create = self.client.create_issue(fields=fields)
+        logger.debug(
+            "Creating new Jira issue for Bug %s",
+            bug.id,
+            extra={"fields": fields, **context.model_dump()},
+        )
+        try:
+            response = self.client.create_issue(fields=fields)
+        except requests.HTTPError as exc:
+            logger.exception(
+                "Failed to create issue for Bug %s",
+                bug.id,
+                extra={"response": exc.response.json(), **context.model_dump()},
+            )
+            message = ", ".join(str(exc).split("\n"))
+            raise JiraCreateError(message) from exc
 
         # Jira response can be of the form: List or Dictionary
-        if isinstance(jira_response_create, list):
-            # if a list is returned, get the first item
-            jira_response_create = jira_response_create[0]
-
-        if isinstance(jira_response_create, dict):
-            # if a dict is returned or the first item in a list, confirm there are no errors
-            errs = ",".join(jira_response_create.get("errors", []))
-            msgs = ",".join(jira_response_create.get("errorMessages", []))
-            if errs or msgs:
-                raise JiraCreateError(errs + msgs)
-
-        return jira_response_create
+        # if a list is returned, get the first item
+        issue_data = response[0] if isinstance(response, list) else response
+        logger.debug(
+            "Jira issue %s created for Bug %s",
+            issue_data["key"],
+            bug.id,
+            extra={"response": response, **context.model_dump()},
+        )
+        return issue_data
 
     def add_jira_comment(self, context: ActionContext):
         """Publish a comment on the specified Jira issue"""
