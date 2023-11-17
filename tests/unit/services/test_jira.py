@@ -155,3 +155,62 @@ def test_all_projects_components_exist_no_components_param(
     )
     result = jira.get_service()._all_projects_components_exist(actions)
     assert result is True
+
+
+def test_get_issue(mocked_responses, action_context_factory, capturelogs):
+    context = action_context_factory()
+    url = f"{get_settings().jira_base_url}rest/api/2/issue/JBI-234"
+    mock_response_data = {"key": "JBI-234", "fields": {"project": {"key": "JBI"}}}
+    mocked_responses.add(responses.GET, url, json=mock_response_data)
+
+    with capturelogs.for_logger("jbi.services.jira").at_level(logging.DEBUG):
+        response = jira.get_service().get_issue(context=context, issue_key="JBI-234")
+
+    assert response == mock_response_data
+    for record in capturelogs.records:
+        assert record.rid == context.rid
+        assert record.action["whiteboard_tag"] == context.action.whiteboard_tag
+
+    before, after = capturelogs.messages
+    assert before == "Getting issue JBI-234"
+    assert after == "Received issue JBI-234"
+
+
+def test_get_issue_handles_404(mocked_responses, action_context_factory, capturelogs):
+    context = action_context_factory()
+    url = f"{get_settings().jira_base_url}rest/api/2/issue/JBI-234"
+    mocked_responses.add(responses.GET, url, status=404)
+
+    with capturelogs.for_logger("jbi.services.jira").at_level(logging.DEBUG):
+        return_val = jira.get_service().get_issue(context=context, issue_key="JBI-234")
+
+    assert return_val is None
+
+    for record in capturelogs.records:
+        assert record.rid == context.rid
+
+    before, after = capturelogs.records
+    assert before.levelno == logging.DEBUG
+    assert before.message == "Getting issue JBI-234"
+
+    assert after.levelno == logging.ERROR
+    assert after.message.startswith("Could not read issue JBI-234")
+
+
+def test_get_issue_raises_other_error(
+    mocked_responses, action_context_factory, capturelogs
+):
+    context = action_context_factory()
+    url = f"{get_settings().jira_base_url}rest/api/2/issue/JBI-234"
+    mocked_responses.add(responses.GET, url, status=401)
+
+    with capturelogs.for_logger("jbi.services.jira").at_level(logging.DEBUG):
+        with pytest.raises(requests.HTTPError):
+            jira.get_service().get_issue(context=context, issue_key="JBI-234")
+
+    [record] = capturelogs.records
+    assert record.rid == context.rid
+    assert record.levelno == logging.DEBUG
+    assert record.message == "Getting issue JBI-234"
+
+

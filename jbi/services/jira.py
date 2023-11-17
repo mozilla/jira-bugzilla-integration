@@ -236,8 +236,15 @@ class JiraService:
 
     def get_issue(self, context: ActionContext, issue_key):
         """Return the Jira issue fields or `None` if not found."""
+        logger.debug("Getting issue %s", issue_key, extra=context.model_dump())
         try:
-            return self.client.get_issue(issue_key)
+            response = self.client.get_issue(issue_key)
+            logger.debug(
+                "Received issue %s",
+                issue_key,
+                extra={"response": response, **context.model_dump()},
+            )
+            return response
         except requests_exceptions.HTTPError as exc:
             if getattr(exc.response, "status_code", None) != 404:
                 raise
