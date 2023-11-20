@@ -275,13 +275,24 @@ class JiraService:
         try:
             response = self.client.create_issue(fields=fields)
         except requests.HTTPError as exc:
-            logger.exception(
-                "Failed to create issue for Bug %s",
-                bug.id,
-                extra={"response": exc.response.json(), **context.model_dump()},
-            )
-            message = ", ".join(str(exc).split("\n"))
-            raise JiraCreateError(message) from exc
+            assert exc.response is not None
+            try:
+                response_json = exc.response.json()
+                logger.exception(
+                    "Failed to create issue for Bug %s",
+                    bug.id,
+                    extra={"response": response_json, **context.model_dump()},
+                )
+                message = ", ".join(str(exc).split("\n"))
+                raise JiraCreateError(message) from exc
+            except json.JSONDecodeError:
+                # If the response is not JSON, use the response text
+                logger.exception(
+                    "Failed to create issue for Bug %s",
+                    bug.id,
+                    extra={"response": exc.response.text, **context.model_dump()},
+                )
+                raise JiraCreateError(str(exc)) from exc
 
         # Jira response can be of the form: List or Dictionary
         # if a list is returned, get the first item
