@@ -83,7 +83,7 @@ warn_return_any = true
 plugins = "pydantic.mypy"
 
 [[tool.mypy.overrides]]
-module = ["ruamel", "bugzilla", "atlassian", "statsd.defaults.env"]
+module = ["ruamel", "bugzilla", "atlassian", "atlassian.rest_client", "statsd.defaults.env"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
