@@ -370,7 +370,8 @@ def test_create_jira_issue_returns_errors(
             jira.get_service().create_jira_issue(
                 context=context, description="description", issue_type="Task"
             )
-        assert str(exc.value) == "You done goofed, You messed up this time"
+
+    assert str(exc.value) == "Failed to create issue for Bug 654321"
 
     before, after = capturelogs.records
     assert before.message == f"Creating new Jira issue for Bug {context.bug.id}"
