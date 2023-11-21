@@ -305,7 +305,7 @@ def test_create_jira_issue(mocked_responses, action_context_factory, capturelogs
     assert after.response == mocked_response_data
 
 
-def test_create_jira_issue_returns_list(
+def test_create_jira_issue_when_list_is_returned(
     mocked_responses, action_context_factory, capturelogs
 ):
     context = action_context_factory(jira__project_key="JBI")
