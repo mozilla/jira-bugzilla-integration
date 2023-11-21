@@ -196,7 +196,7 @@ def test_get_issue_handles_404(mocked_responses, action_context_factory, capture
     assert after.message.startswith("Could not read issue JBI-234")
 
 
-def test_get_issue_raises_other_error(
+def test_get_issue_reraises_other_erroring_status_codes(
     mocked_responses, action_context_factory, capturelogs
 ):
     context = action_context_factory()
