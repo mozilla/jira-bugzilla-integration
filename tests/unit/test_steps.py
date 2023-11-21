@@ -250,9 +250,7 @@ def test_added_comment(
 def test_jira_returns_an_error(
     context_create_example: ActionContext, mocked_jira, action_params_factory
 ):
-    mocked_jira.create_issue.return_value = [
-        {"errors": ["Boom"]},
-    ]
+    mocked_jira.create_issue.side_effect = [JiraCreateError("Boom")]
     callable_object = Executor(
         action_params_factory(jira_project_key=context_create_example.jira.project)
     )

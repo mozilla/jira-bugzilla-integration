@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any, Iterable, Optional
 import requests
 from atlassian import Jira
 from atlassian import errors as atlassian_errors
+from atlassian.rest_client import log as atlassian_logger
 from requests import exceptions as requests_exceptions
 
 from jbi import Operation, environment
@@ -81,7 +82,7 @@ class JiraClient(Jira):
         except requests.HTTPError as exc:
             request = exc.request
             response = exc.response
-            logger.error(
+            atlassian_logger.error(
                 "HTTP: %s %s -> %s %s",
                 request.method,
                 request.path_url,
@@ -235,8 +236,15 @@ class JiraService:
 
     def get_issue(self, context: ActionContext, issue_key):
         """Return the Jira issue fields or `None` if not found."""
+        logger.debug("Getting issue %s", issue_key, extra=context.model_dump())
         try:
-            return self.client.get_issue(issue_key)
+            response = self.client.get_issue(issue_key)
+            logger.debug(
+                "Received issue %s",
+                issue_key,
+                extra={"response": response, **context.model_dump()},
+            )
+            return response
         except requests_exceptions.HTTPError as exc:
             if getattr(exc.response, "status_code", None) != 404:
                 raise
@@ -253,33 +261,43 @@ class JiraService:
     ):
         """Create a Jira issue with basic fields in the project and return its key."""
         bug = context.bug
-        logger.debug(
-            "Create new Jira issue for Bug %s",
-            bug.id,
-            extra=context.model_dump(),
-        )
         fields: dict[str, Any] = {
             "summary": bug.summary,
             "issuetype": {"name": issue_type},
             "description": description[:JIRA_DESCRIPTION_CHAR_LIMIT],
             "project": {"key": context.jira.project},
         }
+        logger.debug(
+            "Creating new Jira issue for Bug %s",
+            bug.id,
+            extra={"fields": fields, **context.model_dump()},
+        )
+        try:
+            response = self.client.create_issue(fields=fields)
+        except requests.HTTPError as exc:
+            assert exc.response is not None
+            try:
+                response = exc.response.json()
+            except json.JSONDecodeError:
+                response = exc.response.text
 
-        jira_response_create = self.client.create_issue(fields=fields)
+            logger.exception(
+                "Failed to create issue for Bug %s",
+                bug.id,
+                extra={"response": response, **context.model_dump()},
+            )
+            raise JiraCreateError(f"Failed to create issue for Bug {bug.id}") from exc
 
         # Jira response can be of the form: List or Dictionary
-        if isinstance(jira_response_create, list):
-            # if a list is returned, get the first item
-            jira_response_create = jira_response_create[0]
-
-        if isinstance(jira_response_create, dict):
-            # if a dict is returned or the first item in a list, confirm there are no errors
-            errs = ",".join(jira_response_create.get("errors", []))
-            msgs = ",".join(jira_response_create.get("errorMessages", []))
-            if errs or msgs:
-                raise JiraCreateError(errs + msgs)
-
-        return jira_response_create
+        # if a list is returned, get the first item
+        issue_data = response[0] if isinstance(response, list) else response
+        logger.debug(
+            "Jira issue %s created for Bug %s",
+            issue_data["key"],
+            bug.id,
+            extra={"response": response, **context.model_dump()},
+        )
+        return issue_data
 
     def add_jira_comment(self, context: ActionContext):
         """Publish a comment on the specified Jira issue"""
@@ -455,14 +473,22 @@ class JiraService:
         assert issue_key  # Until we have more fine-grained typing of contexts
 
         logger.debug(
-            "Updating Jira resolution to %s",
+            "Updating resolution of Jira issue %s to %s",
+            issue_key,
             jira_resolution,
             extra=context.model_dump(),
         )
-        return self.client.update_issue_field(
+        response = self.client.update_issue_field(
             key=issue_key,
             fields={"resolution": jira_resolution},
         )
+        logger.debug(
+            "Updated resolution of Jira issue %s to %s",
+            issue_key,
+            jira_resolution,
+            extra={"response": response, **context.model_dump()},
+        )
+        return response
 
     def update_issue_components(
         self,
