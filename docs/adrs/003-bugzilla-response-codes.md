@@ -1,4 +1,4 @@
-# Bugzilla isables webhooks after too many errors
+# Bugzilla disables webhooks after too many errors
 
 - Status: proposed
 - Date: 2023-27-11
