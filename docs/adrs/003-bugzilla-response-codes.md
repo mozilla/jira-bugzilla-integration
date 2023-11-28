@@ -18,7 +18,7 @@ We don't want the entire sync process to stop because of this. We have identifie
 - How intuitive the solution is to the users that depend on the data (will picking the easiest option solve their needs?)
 
 ## Considered Options
-For all of these options, we will be returning a succesful response to bugzilla's webhook calls. I propose a 202 status code to identify that we're accepting the request immediately and are processing it asynchronously.
+For all of these options, we will be returning a successful response to bugzilla's webhook calls. I propose a 202 status code to identify that we're accepting the request immediately and are processing it asynchronously.
 
 ### Option 1: Log the failure and move on
 JBI will log that we couldn't process a specific payload, along with relevant ID's (bug id, jira ticket id, comment id, etc) so further investigation can be done if needed.
