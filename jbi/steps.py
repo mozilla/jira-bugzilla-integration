@@ -291,8 +291,7 @@ def maybe_update_components(
 
     try:
         resp, missing_components = jira_service.update_issue_components(
-            issue_key=context.jira.issue,
-            project=parameters.jira_project_key,
+            context=context,
             components=candidate_components,
         )
     except requests_exceptions.HTTPError as exc:
@@ -380,7 +379,7 @@ def sync_whiteboard_labels(
 
     try:
         resp = jira_service.update_issue_labels(
-            issue_key=context.jira.issue, add=additions, remove=removals
+            context=context, add=additions, remove=removals
         )
     except requests_exceptions.HTTPError as exc:
         if getattr(exc.response, "status_code", None) != 400:

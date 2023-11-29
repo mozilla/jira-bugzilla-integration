@@ -492,15 +492,14 @@ class JiraService:
 
     def update_issue_components(
         self,
-        issue_key: str,
-        project: str,
+        context: ActionContext,
         components: Iterable[str],
     ) -> tuple[Optional[dict], set]:
         """Attempt to add components to the specified issue
 
         Args:
-            issue_key: key of the issues to add the components to
-            project: the project key
+            context: the action context, used to provide the key of the issue to add
+                the components to and the project that the issue is in
             components: Component names to add to the issue
 
         Returns:
@@ -510,7 +509,9 @@ class JiraService:
         missing_components = set(components)
         jira_components = []
 
-        all_project_components = self.client.get_project_components(project)
+        all_project_components = self.client.get_project_components(
+            context.jira.project
+        )
         for comp in all_project_components:
             if comp["name"] in missing_components:
                 jira_components.append({"id": comp["id"]})
@@ -522,20 +523,23 @@ class JiraService:
         logger.info(
             "attempting to add components '%s' to issue '%s'",
             ",".join(components),
-            issue_key,
+            context.jira.issue,
         )
         resp = self.client.update_issue_field(
-            key=issue_key, fields={"components": jira_components}
+            key=context.jira.issue, fields={"components": jira_components}
         )
         return resp, missing_components
 
     def update_issue_labels(
-        self, issue_key: str, add: Iterable[str], remove: Optional[Iterable[str]]
+        self,
+        context: ActionContext,
+        add: Iterable[str],
+        remove: Optional[Iterable[str]],
     ):
         """Update the labels for a specified issue
 
         Args:
-            issue_key: key of the issues to modify the labels on
+            context: action context object that provides issue key
             add: labels to add
             remove (Optional): labels to remove
 
@@ -549,7 +553,7 @@ class JiraService:
             {"remove": label} for label in remove
         ]
         return self.client.update_issue(
-            issue_key=issue_key,
+            issue_key=context.jira.issue,
             update={"update": {"labels": updated_labels}},
         )
 
