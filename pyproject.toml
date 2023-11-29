@@ -38,6 +38,7 @@ responses = "^0.24.1"
 httpx = "^0.25.2"
 factory-boy = "^3.3.0"
 pytest-factoryboy = "^2.6.0"
+pytest-mock = "^3.12.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
