@@ -257,7 +257,8 @@ class JiraService:
         """Return the Jira issue fields or `None` if not found."""
         logger.debug("Getting issue %s", issue_key, extra=context.model_dump())
         try:
-            response = self.client.get_issue(issue_key)
+            with self.client.rid(context.rid):
+                response = self.client.get_issue(issue_key)
             logger.debug(
                 "Received issue %s",
                 issue_key,
@@ -292,7 +293,8 @@ class JiraService:
             extra={"fields": fields, **context.model_dump()},
         )
         try:
-            response = self.client.create_issue(fields=fields)
+            with self.client.rid(context.rid):
+                response = self.client.create_issue(fields=fields)
         except requests.HTTPError as exc:
             assert exc.response is not None
             try:
@@ -329,10 +331,11 @@ class JiraService:
         formatted_comment = (
             f"*({commenter})* commented: \n{{quote}}{comment.body}{{quote}}"
         )
-        jira_response = self.client.issue_add_comment(
-            issue_key=issue_key,
-            comment=formatted_comment,
-        )
+        with self.client.rid(context.rid):
+            jira_response = self.client.issue_add_comment(
+                issue_key=issue_key,
+                comment=formatted_comment,
+            )
         logger.debug(
             "User comment added to Jira issue %s",
             issue_key,
@@ -368,9 +371,10 @@ class JiraService:
                 issue_key,
                 extra=context.update(operation=Operation.COMMENT).model_dump(),
             )
-            jira_response = self.client.issue_add_comment(
-                issue_key=issue_key, comment=json.dumps(comment, indent=4)
-            )
+            with self.client.rid(context.rid):
+                jira_response = self.client.issue_add_comment(
+                    issue_key=issue_key, comment=json.dumps(comment, indent=4)
+                )
             jira_response_comments.append(jira_response)
 
         return jira_response_comments
@@ -396,7 +400,8 @@ class JiraService:
             context.bug.id,
             extra=context.update(operation=Operation.DELETE).model_dump(),
         )
-        jira_response_delete = self.client.delete_issue(issue_id_or_key=issue_key)
+        with self.client.rid(context.rid):
+            jira_response_delete = self.client.delete_issue(issue_id_or_key=issue_key)
         return jira_response_delete
 
     def add_link_to_bugzilla(self, context: ActionContext):
@@ -411,24 +416,29 @@ class JiraService:
             extra=context.update(operation=Operation.LINK).model_dump(),
         )
         icon_url = f"{settings.bugzilla_base_url}/favicon.ico"
-        return self.client.create_or_update_issue_remote_links(
-            issue_key=issue_key,
-            link_url=bugzilla_url,
-            title=bugzilla_url,
-            icon_url=icon_url,
-            icon_title=icon_url,
-        )
+        with self.client.rid(context.rid):
+            return self.client.create_or_update_issue_remote_links(
+                issue_key=issue_key,
+                link_url=bugzilla_url,
+                title=bugzilla_url,
+                icon_url=icon_url,
+                icon_title=icon_url,
+            )
 
     def clear_assignee(self, context: ActionContext):
         """Clear the assignee of the specified Jira issue."""
         issue_key = context.jira.issue
         logger.debug("Clearing assignee", extra=context.model_dump())
-        return self.client.update_issue_field(key=issue_key, fields={"assignee": None})
+        with self.client.rid(context.rid):
+            return self.client.update_issue_field(
+                key=issue_key, fields={"assignee": None}
+            )
 
     def find_jira_user(self, context: ActionContext, email: str):
         """Lookup Jira users, raise an error if not exactly one found."""
         logger.debug("Find Jira user with email %s", email, extra=context.model_dump())
-        users = self.client.user_find_by_user_string(query=email)
+        with self.client.rid(context.rid):
+            users = self.client.user_find_by_user_string(query=email)
         if len(users) != 1:
             raise ValueError(f"User {email} not found")
         return users[0]
@@ -444,10 +454,11 @@ class JiraService:
             # There doesn't appear to be an easy way to verify that
             # this user can be assigned to this issue, so just try
             # and do it.
-            return self.client.update_issue_field(
-                key=issue_key,
-                fields={"assignee": {"accountId": jira_user_id}},
-            )
+            with self.client.rid(context.rid):
+                return self.client.update_issue_field(
+                    key=issue_key,
+                    fields={"assignee": {"accountId": jira_user_id}},
+                )
         except (requests_exceptions.HTTPError, IOError) as exc:
             raise ValueError(
                 f"Could not assign {jira_user_id} to issue {issue_key}"
@@ -463,10 +474,11 @@ class JiraService:
             jira_status,
             extra=context.model_dump(),
         )
-        return self.client.set_issue_status(
-            issue_key,
-            jira_status,
-        )
+        with self.client.rid(context.rid):
+            return self.client.set_issue_status(
+                issue_key,
+                jira_status,
+            )
 
     def update_issue_summary(self, context: ActionContext):
         """Update's an issue's summary with the description of an incoming bug"""
@@ -483,7 +495,8 @@ class JiraService:
         fields: dict[str, str] = {
             "summary": truncated_summary,
         }
-        jira_response = self.client.update_issue_field(key=issue_key, fields=fields)
+        with self.client.rid(context.rid):
+            jira_response = self.client.update_issue_field(key=issue_key, fields=fields)
         return jira_response
 
     def update_issue_resolution(self, context: ActionContext, jira_resolution: str):
@@ -497,10 +510,11 @@ class JiraService:
             jira_resolution,
             extra=context.model_dump(),
         )
-        response = self.client.update_issue_field(
-            key=issue_key,
-            fields={"resolution": jira_resolution},
-        )
+        with self.client.rid(context.rid):
+            response = self.client.update_issue_field(
+                key=issue_key,
+                fields={"resolution": jira_resolution},
+            )
         logger.debug(
             "Updated resolution of Jira issue %s to %s",
             issue_key,
@@ -528,9 +542,10 @@ class JiraService:
         missing_components = set(components)
         jira_components = []
 
-        all_project_components = self.client.get_project_components(
-            context.jira.project
-        )
+        with self.client.rid(context.rid):
+            all_project_components = self.client.get_project_components(
+                context.jira.project
+            )
         for comp in all_project_components:
             if comp["name"] in missing_components:
                 jira_components.append({"id": comp["id"]})
@@ -544,9 +559,10 @@ class JiraService:
             ",".join(components),
             context.jira.issue,
         )
-        resp = self.client.update_issue_field(
-            key=context.jira.issue, fields={"components": jira_components}
-        )
+        with self.client.rid(context.rid):
+            resp = self.client.update_issue_field(
+                key=context.jira.issue, fields={"components": jira_components}
+            )
         return resp, missing_components
 
     def update_issue_labels(
@@ -571,10 +587,11 @@ class JiraService:
         updated_labels = [{"add": label} for label in add] + [
             {"remove": label} for label in remove
         ]
-        return self.client.update_issue(
-            issue_key=context.jira.issue,
-            update={"update": {"labels": updated_labels}},
-        )
+        with self.client.rid(context.rid):
+            return self.client.update_issue(
+                issue_key=context.jira.issue,
+                update={"update": {"labels": updated_labels}},
+            )
 
 
 @lru_cache(maxsize=1)

@@ -156,6 +156,37 @@ def test_all_projects_components_exist_no_components_param(
     assert result is True
 
 
+def test_with_rid_provides_rid(
+    mocker, action_context_factory, capturelogs, mocked_responses
+):
+    context = action_context_factory()
+    url = f"{get_settings().jira_base_url}rest/api/2/issue/JBI-234"
+    mocked_responses.add(responses.GET, url, status=401)
+    rid_spy = mocker.spy(jira.JiraClient, "rid")
+
+    with capturelogs.at_level(logging.ERROR):
+        with pytest.raises(requests.HTTPError):
+            response = jira.get_service().get_issue(
+                context=context, issue_key="JBI-234"
+            )
+
+    rid_spy.assert_called_once()
+    assert capturelogs.records[0].rid
+
+
+def test_with_rid_not_used(mocker, actions_factory, capturelogs, mocked_responses):
+    actions = actions_factory()
+    url = f"{get_settings().jira_base_url}rest/api/2/serverInfo?doHealthCheck=True"
+    mocked_responses.add(responses.GET, url, status=401)
+    rid_spy = mocker.spy(jira.JiraClient, "rid")
+
+    with capturelogs.at_level(logging.ERROR):
+        with pytest.raises(requests.HTTPError):
+            response = jira.get_service().check_health(actions=actions)
+    rid_spy.assert_not_called()
+    assert not hasattr(capturelogs.records[0], "rid")
+
+
 def test_get_issue(mocked_responses, action_context_factory, capturelogs):
     context = action_context_factory()
     url = f"{get_settings().jira_base_url}rest/api/2/issue/JBI-234"
