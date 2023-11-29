@@ -3,7 +3,6 @@
 ServiceHealth: Return type that service health checks should use
 InstrumentedClient: wraps service clients so that we can track their usage
 """
-import logging
 from functools import wraps
 from typing import Sequence, Type
 
@@ -13,8 +12,6 @@ from statsd.defaults.env import statsd
 from jbi import environment
 
 settings = environment.get_settings()
-
-logger = logging.getLogger(__name__)
 
 
 ServiceHealth = dict[str, bool]
