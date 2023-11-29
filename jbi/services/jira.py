@@ -8,6 +8,7 @@ with that REST client
 from __future__ import annotations
 
 import concurrent.futures
+import contextlib
 import json
 import logging
 from functools import lru_cache
@@ -71,6 +72,19 @@ class JiraClient(Jira):
     in our instrumentation decorator.
     """
 
+    def __init__(self, *args, **kwargs):
+        self._rid = None
+        super().__init__(*args, **kwargs)
+
+    @contextlib.contextmanager
+    def rid(self, rid):
+        """Temporarily set rid to access during logging"""
+        self._rid = rid
+        try:
+            yield
+        finally:
+            self._rid = None
+
     def raise_for_status(self, *args, **kwargs):
         """Catch and log HTTP errors responses of the Jira self.client.
 
@@ -82,13 +96,18 @@ class JiraClient(Jira):
         except requests.HTTPError as exc:
             request = exc.request
             response = exc.response
+
+            extra_data = {"body": response.text}
+            if self._rid:
+                extra_data["rid"] = self._rid
+
             atlassian_logger.error(
                 "HTTP: %s %s -> %s %s",
                 request.method,
                 request.path_url,
                 response.status_code,
                 response.reason,
-                extra={"body": response.text},
+                extra=extra_data,
             )
             raise
 
