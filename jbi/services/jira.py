@@ -77,8 +77,9 @@ class JiraClient(Jira):
         super().__init__(*args, **kwargs)
 
     @contextlib.contextmanager
-    def rid(self, rid):
-        """Temporarily set rid to access during logging"""
+    def rid(self, rid: str):
+        """Temporarily set request id to access during logging"""
+
         self._rid = rid
         try:
             yield
