@@ -152,7 +152,6 @@ def execute_action(
     """
     bug, event = request.bug, request.event
     runner_context = RunnerContext(
-        rid=request.rid,
         bug=bug,
         event=event,
         operation=Operation.HANDLE,
@@ -190,7 +189,6 @@ def execute_action(
 
         action_context = ActionContext(
             action=action,
-            rid=request.rid,
             bug=bug,
             event=event,
             operation=Operation.IGNORE,

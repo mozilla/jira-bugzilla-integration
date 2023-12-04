@@ -79,7 +79,6 @@ def bugzilla_webhook(
     webhook_request: BugzillaWebhookRequest = Body(..., embed=False),
 ):
     """API endpoint that Bugzilla Webhook Events request"""
-    webhook_request.rid = request.state.rid
     try:
         result = execute_action(webhook_request, actions)
         return result

@@ -167,7 +167,6 @@ def test_get_issue(mocked_responses, action_context_factory, capturelogs):
 
     assert response == mock_response_data
     for record in capturelogs.records:
-        assert record.rid == context.rid
         assert record.action["whiteboard_tag"] == context.action.whiteboard_tag
 
     before, after = capturelogs.messages
@@ -184,9 +183,6 @@ def test_get_issue_handles_404(mocked_responses, action_context_factory, capture
         return_val = jira.get_service().get_issue(context=context, issue_key="JBI-234")
 
     assert return_val is None
-
-    for record in capturelogs.records:
-        assert record.rid == context.rid
 
     before, after = capturelogs.records
     assert before.levelno == logging.DEBUG
@@ -208,7 +204,6 @@ def test_get_issue_reraises_other_erroring_status_codes(
             jira.get_service().get_issue(context=context, issue_key="JBI-234")
 
     [record] = capturelogs.records
-    assert record.rid == context.rid
     assert record.levelno == logging.DEBUG
     assert record.message == "Getting issue JBI-234"
 
@@ -228,10 +223,6 @@ def test_update_issue_resolution(mocked_responses, action_context_factory, captu
         jira.get_service().update_issue_resolution(
             context=context, jira_resolution="DONEZO"
         )
-
-    for record in capturelogs.records:
-        assert record.rid == context.rid
-        assert record.levelno == logging.DEBUG
 
     before, after = capturelogs.messages
     assert before == "Updating resolution of Jira issue JBI-234 to DONEZO"
@@ -258,10 +249,8 @@ def test_update_issue_resolution_raises(
                 context=context, jira_resolution="DONEZO"
             )
 
-    [record] = capturelogs.records
-    assert record.rid == context.rid
-    assert record.levelno == logging.DEBUG
-    assert record.message == "Updating resolution of Jira issue JBI-234 to DONEZO"
+    [message] = capturelogs.messages
+    assert message == "Updating resolution of Jira issue JBI-234 to DONEZO"
 
 
 def test_create_jira_issue(mocked_responses, action_context_factory, capturelogs):
@@ -292,10 +281,6 @@ def test_create_jira_issue(mocked_responses, action_context_factory, capturelogs
         )
 
     assert response == mocked_response_data
-
-    for record in capturelogs.records:
-        assert record.rid == context.rid
-        assert record.levelno == logging.DEBUG
 
     before, after = capturelogs.records
     assert before.message == f"Creating new Jira issue for Bug {context.bug.id}"
@@ -339,12 +324,10 @@ def test_create_jira_issue_when_list_is_returned(
     before, after = capturelogs.records
     assert before.message == f"Creating new Jira issue for Bug {context.bug.id}"
     assert before.levelno == logging.DEBUG
-    assert before.rid == context.rid
     assert before.fields == issue_fields
 
     assert after.message == f"Jira issue JBI-234 created for Bug {context.bug.id}"
     assert after.levelno == logging.DEBUG
-    assert after.rid == context.rid
     assert after.response == [mocked_issue_data]
 
 
@@ -375,11 +358,9 @@ def test_create_jira_issue_returns_errors(
 
     before, after = capturelogs.records
     assert before.message == f"Creating new Jira issue for Bug {context.bug.id}"
-    assert before.rid == context.rid
     assert before.levelno == logging.DEBUG
     assert before.fields == issue_fields
 
     assert after.message == f"Failed to create issue for Bug {context.bug.id}"
-    assert after.rid == context.rid
     assert after.levelno == logging.ERROR
     assert after.response == fake_error_data

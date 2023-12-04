@@ -139,7 +139,6 @@ class ActionContextFactory(factory.Factory):
         model = models.ActionContext
 
     action = factory.SubFactory(ActionFactory)
-    rid = factory.LazyFunction(lambda: token_hex(16))
     operation = Operation.IGNORE
     bug = factory.SubFactory(BugFactory)
     event = factory.SubFactory(WebhookEventFactory)

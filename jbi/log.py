@@ -63,7 +63,6 @@ class RequestSummary(BaseModel):
     t: int
     time: str
     status_code: int
-    rid: str
 
 
 def format_request_summary_fields(
@@ -82,5 +81,4 @@ def format_request_summary_fields(
         t=int((current_time - request_time) * 1000.0),
         time=datetime.fromtimestamp(current_time).isoformat(),
         status_code=status_code,
-        rid=request.state.rid,
     ).model_dump()

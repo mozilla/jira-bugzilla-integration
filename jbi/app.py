@@ -50,16 +50,6 @@ app.mount("/static", StaticFiles(directory=SRC_DIR / "static"), name="static")
 
 
 @app.middleware("http")
-async def request_id(
-    request: Request, call_next: Callable[[Request], Awaitable[Response]]
-) -> Response:
-    """Read the request id from headers. This is set by NGinx."""
-    request.state.rid = request.headers.get("X-Request-Id", token_hex(16))
-    response = await call_next(request)
-    return response
-
-
-@app.middleware("http")
 async def request_summary(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]
 ) -> Response:
