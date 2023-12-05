@@ -142,7 +142,10 @@ class BugzillaService:
         all_webhooks_enabled = False
         if logged_in:
             jbi_webhooks = self.client.list_webhooks()
-            all_webhooks_enabled = len(jbi_webhooks) > 0
+            if len(jbi_webhooks) == 0:
+                logger.info("No webhooks enabled")
+            else:
+                all_webhooks_enabled = True
             for webhook in jbi_webhooks:
                 # Report errors in each webhook
                 statsd.gauge(
