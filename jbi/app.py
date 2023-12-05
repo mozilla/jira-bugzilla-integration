@@ -8,6 +8,7 @@ from secrets import token_hex
 from typing import Any, Awaitable, Callable
 
 import sentry_sdk
+from asgi_correlation_id import CorrelationIdMiddleware
 from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
 
@@ -69,3 +70,11 @@ async def request_summary(
         )
         summary_logger.info(exc, extra=log_fields)
         raise
+
+
+app.add_middleware(
+    CorrelationIdMiddleware,
+    header_name="X-Request-Id",
+    generator=lambda: token_hex(16),
+    validator=None,
+)
