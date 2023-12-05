@@ -13,13 +13,15 @@ from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
 
 from jbi.environment import get_settings, get_version
-from jbi.log import format_request_summary_fields
+from jbi.log import CONFIG, format_request_summary_fields
 from jbi.router import router
 
 SRC_DIR = Path(__file__).parent
 
 settings = get_settings()
 version_info = get_version()
+
+logging.config.dictConfig(CONFIG)
 
 
 def traces_sampler(sampling_context: dict[str, Any]) -> float:

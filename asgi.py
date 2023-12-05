@@ -13,7 +13,7 @@ if __name__ == "__main__":
             host=settings.host,
             port=settings.port,
             reload=settings.app_reload,
-            log_config=LOGGING_CONFIG,
+            log_config=None,
         )
     )
     server.run()
