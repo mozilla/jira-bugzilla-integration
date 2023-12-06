@@ -108,7 +108,7 @@ def test_webhook_is_200_if_action_succeeds(
 
     with TestClient(app) as anon_client:
         response = anon_client.post(
-            "/bugzilla_webhook", data=webhook_create_example.json()
+            "/bugzilla_webhook", data=webhook_create_example.model_dump_json()
         )
         assert response
         assert response.status_code == 200
@@ -124,7 +124,7 @@ def test_webhook_is_200_if_action_raises_IgnoreInvalidRequestError(
 
     with TestClient(app) as anon_client:
         response = anon_client.post(
-            "/bugzilla_webhook", data=webhook_create_example.json()
+            "/bugzilla_webhook", data=webhook_create_example.model_dump_json()
         )
         assert response
         assert response.status_code == 200

@@ -1,2 +1,5 @@
 configuration:
 - config/*
+
+documentation:
+- '**/*.md'

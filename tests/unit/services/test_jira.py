@@ -90,15 +90,14 @@ def test_jira_does_not_retry_4XX(mocked_responses, context_create_example):
     mocked_responses.add(
         responses.POST,
         url,
-        json={},
+        json={"errorMessages": ["You done goofed"]},
         status=400,
     )
 
-    with pytest.raises(requests.HTTPError):
+    with pytest.raises(jira.JiraCreateError):
         jira.get_service().create_jira_issue(
             context=context_create_example, description="", issue_type="Task"
         )
-
     assert len(mocked_responses.calls) == 1
 
 
@@ -155,3 +154,232 @@ def test_all_projects_components_exist_no_components_param(
     )
     result = jira.get_service()._all_projects_components_exist(actions)
     assert result is True
+
+
+def test_get_issue(mocked_responses, action_context_factory, capturelogs):
+    context = action_context_factory()
+    url = f"{get_settings().jira_base_url}rest/api/2/issue/JBI-234"
+    mock_response_data = {"key": "JBI-234", "fields": {"project": {"key": "JBI"}}}
+    mocked_responses.add(responses.GET, url, json=mock_response_data)
+
+    with capturelogs.for_logger("jbi.services.jira").at_level(logging.DEBUG):
+        response = jira.get_service().get_issue(context=context, issue_key="JBI-234")
+
+    assert response == mock_response_data
+    for record in capturelogs.records:
+        assert record.rid == context.rid
+        assert record.action["whiteboard_tag"] == context.action.whiteboard_tag
+
+    before, after = capturelogs.messages
+    assert before == "Getting issue JBI-234"
+    assert after == "Received issue JBI-234"
+
+
+def test_get_issue_handles_404(mocked_responses, action_context_factory, capturelogs):
+    context = action_context_factory()
+    url = f"{get_settings().jira_base_url}rest/api/2/issue/JBI-234"
+    mocked_responses.add(responses.GET, url, status=404)
+
+    with capturelogs.for_logger("jbi.services.jira").at_level(logging.DEBUG):
+        return_val = jira.get_service().get_issue(context=context, issue_key="JBI-234")
+
+    assert return_val is None
+
+    for record in capturelogs.records:
+        assert record.rid == context.rid
+
+    before, after = capturelogs.records
+    assert before.levelno == logging.DEBUG
+    assert before.message == "Getting issue JBI-234"
+
+    assert after.levelno == logging.ERROR
+    assert after.message.startswith("Could not read issue JBI-234")
+
+
+def test_get_issue_reraises_other_erroring_status_codes(
+    mocked_responses, action_context_factory, capturelogs
+):
+    context = action_context_factory()
+    url = f"{get_settings().jira_base_url}rest/api/2/issue/JBI-234"
+    mocked_responses.add(responses.GET, url, status=401)
+
+    with capturelogs.for_logger("jbi.services.jira").at_level(logging.DEBUG):
+        with pytest.raises(requests.HTTPError):
+            jira.get_service().get_issue(context=context, issue_key="JBI-234")
+
+    [record] = capturelogs.records
+    assert record.rid == context.rid
+    assert record.levelno == logging.DEBUG
+    assert record.message == "Getting issue JBI-234"
+
+
+def test_update_issue_resolution(mocked_responses, action_context_factory, capturelogs):
+    context = action_context_factory(jira__issue="JBI-234")
+    url = f"{get_settings().jira_base_url}rest/api/2/issue/JBI-234"
+    mocked_responses.add(
+        responses.PUT,
+        url,
+        match=[
+            responses.matchers.json_params_matcher({"fields": {"resolution": "DONEZO"}})
+        ],
+    )
+
+    with capturelogs.for_logger("jbi.services.jira").at_level(logging.DEBUG):
+        jira.get_service().update_issue_resolution(
+            context=context, jira_resolution="DONEZO"
+        )
+
+    for record in capturelogs.records:
+        assert record.rid == context.rid
+        assert record.levelno == logging.DEBUG
+
+    before, after = capturelogs.messages
+    assert before == "Updating resolution of Jira issue JBI-234 to DONEZO"
+    assert after == "Updated resolution of Jira issue JBI-234 to DONEZO"
+
+
+def test_update_issue_resolution_raises(
+    mocked_responses, action_context_factory, capturelogs
+):
+    context = action_context_factory(jira__issue="JBI-234")
+    url = f"{get_settings().jira_base_url}rest/api/2/issue/JBI-234"
+    mocked_responses.add(
+        responses.PUT,
+        url,
+        status=401,
+        match=[
+            responses.matchers.json_params_matcher({"fields": {"resolution": "DONEZO"}})
+        ],
+    )
+
+    with capturelogs.for_logger("jbi.services.jira").at_level(logging.DEBUG):
+        with pytest.raises(requests.HTTPError):
+            jira.get_service().update_issue_resolution(
+                context=context, jira_resolution="DONEZO"
+            )
+
+    [record] = capturelogs.records
+    assert record.rid == context.rid
+    assert record.levelno == logging.DEBUG
+    assert record.message == "Updating resolution of Jira issue JBI-234 to DONEZO"
+
+
+def test_create_jira_issue(mocked_responses, action_context_factory, capturelogs):
+    context = action_context_factory(jira__project_key="JBI")
+    url = f"{get_settings().jira_base_url}rest/api/2/issue"
+    mocked_response_data = {"key": "JBI-234"}
+    issue_fields = {
+        "summary": context.bug.summary,
+        "issuetype": {"name": "Task"},
+        "description": "description",
+        "project": {"key": "JBI"},
+    }
+    mocked_responses.add(
+        responses.POST,
+        url,
+        status=201,
+        match=[
+            responses.matchers.json_params_matcher(
+                {"fields": issue_fields},
+            )
+        ],
+        json=mocked_response_data,
+    )
+
+    with capturelogs.for_logger("jbi.services.jira").at_level(logging.DEBUG):
+        response = jira.get_service().create_jira_issue(
+            context=context, description="description", issue_type="Task"
+        )
+
+    assert response == mocked_response_data
+
+    for record in capturelogs.records:
+        assert record.rid == context.rid
+        assert record.levelno == logging.DEBUG
+
+    before, after = capturelogs.records
+    assert before.message == f"Creating new Jira issue for Bug {context.bug.id}"
+    assert before.fields == issue_fields
+
+    assert after.message == f"Jira issue JBI-234 created for Bug {context.bug.id}"
+    assert after.response == mocked_response_data
+
+
+def test_create_jira_issue_when_list_is_returned(
+    mocked_responses, action_context_factory, capturelogs
+):
+    context = action_context_factory(jira__project_key="JBI")
+    url = f"{get_settings().jira_base_url}rest/api/2/issue"
+    mocked_issue_data = {"key": "JBI-234"}
+    issue_fields = {
+        "summary": context.bug.summary,
+        "issuetype": {"name": "Task"},
+        "description": "description",
+        "project": {"key": "JBI"},
+    }
+    mocked_responses.add(
+        responses.POST,
+        url,
+        status=201,
+        match=[
+            responses.matchers.json_params_matcher(
+                {"fields": issue_fields},
+            )
+        ],
+        json=[mocked_issue_data],
+    )
+
+    with capturelogs.for_logger("jbi.services.jira").at_level(logging.DEBUG):
+        issue_data = jira.get_service().create_jira_issue(
+            context=context, description="description", issue_type="Task"
+        )
+
+    assert issue_data == mocked_issue_data
+
+    before, after = capturelogs.records
+    assert before.message == f"Creating new Jira issue for Bug {context.bug.id}"
+    assert before.levelno == logging.DEBUG
+    assert before.rid == context.rid
+    assert before.fields == issue_fields
+
+    assert after.message == f"Jira issue JBI-234 created for Bug {context.bug.id}"
+    assert after.levelno == logging.DEBUG
+    assert after.rid == context.rid
+    assert after.response == [mocked_issue_data]
+
+
+def test_create_jira_issue_returns_errors(
+    mocked_responses, action_context_factory, capturelogs
+):
+    context = action_context_factory(jira__project_key="JBI")
+    url = f"{get_settings().jira_base_url}rest/api/2/issue"
+    fake_error_data = {
+        "errorMessages": ["You done goofed"],
+        "errors": ["You messed up this time"],
+    }
+    issue_fields = {
+        "summary": context.bug.summary,
+        "issuetype": {"name": "Task"},
+        "description": "description",
+        "project": {"key": "JBI"},
+    }
+    mocked_responses.add(responses.POST, url, status=400, json=fake_error_data)
+
+    with capturelogs.for_logger("jbi.services.jira").at_level(logging.DEBUG):
+        with pytest.raises(jira.JiraCreateError) as exc:
+            jira.get_service().create_jira_issue(
+                context=context, description="description", issue_type="Task"
+            )
+
+    assert str(exc.value) == "Failed to create issue for Bug 654321"
+
+    before, after = capturelogs.records
+    assert before.message == f"Creating new Jira issue for Bug {context.bug.id}"
+    assert before.rid == context.rid
+    assert before.levelno == logging.DEBUG
+    assert before.fields == issue_fields
+
+    assert after.message == f"Failed to create issue for Bug {context.bug.id}"
+    assert after.rid == context.rid
+    assert after.levelno == logging.ERROR
+    assert after.response == fake_error_data

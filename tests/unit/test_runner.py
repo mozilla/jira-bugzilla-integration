@@ -440,3 +440,77 @@ def test_counter_is_incremented_when_workflows_was_incomplete(
         callable_object(context=context_create_example)
 
     mocked.incr.assert_called_with("jbi.action.fnx.incomplete.count")
+
+
+def test_step_function_counter_incremented_for_success(
+    action_params_factory, action_context_factory
+):
+    context = action_context_factory(operation=Operation.CREATE)
+    executor = Executor(action_params_factory(steps={"new": ["create_issue"]}))
+    with mock.patch("jbi.runner.statsd") as mocked:
+        executor(context=context)
+    mocked.incr.assert_called_with("jbi.steps.create_issue.count")
+
+
+def test_step_function_counter_not_incremented_for_noop(
+    action_params_factory, action_context_factory
+):
+    context = action_context_factory(operation=Operation.UPDATE, jira__issue="JBI-234")
+    assert not context.event.changed_fields()
+    executor = Executor(
+        action_params_factory(steps={"existing": ["update_issue_summary"]})
+    )
+    # update_issue_summary without a changed summary will result in a NOOP
+    with mock.patch("jbi.runner.statsd") as mocked:
+        executor(context=context)
+    mocked.incr.assert_not_called()
+
+
+def test_counter_is_incremented_for_create(
+    webhook_factory, actions_factory, mocked_bugzilla, bug_factory
+):
+    webhook_payload = webhook_factory(
+        event__target="bug",
+        bug__see_also=[],
+    )
+    mocked_bugzilla.get_bug.return_value = webhook_payload.bug
+    with mock.patch("jbi.runner.statsd") as mocked:
+        result = execute_action(
+            request=webhook_factory(),
+            actions=actions_factory(),
+        )
+    mocked.incr.assert_any_call("jbi.operation.create.count")
+
+
+def test_counter_is_incremented_for_update(
+    actions_factory, webhook_factory, mocked_bugzilla, mocked_jira
+):
+    webhook_payload = webhook_factory(
+        event__target="bug",
+        bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+    )
+    mocked_bugzilla.get_bug.return_value = webhook_payload.bug
+    mocked_jira.get_issue.return_value = {"fields": {"project": {"key": "JBI"}}}
+    with mock.patch("jbi.runner.statsd") as mocked:
+        result = execute_action(
+            request=webhook_payload,
+            actions=actions_factory(),
+        )
+    mocked.incr.assert_any_call("jbi.operation.update.count")
+
+
+def test_counter_is_incremented_for_comment(
+    actions_factory, webhook_factory, mocked_bugzilla, mocked_jira
+):
+    webhook_payload = webhook_factory(
+        event__target="comment",
+        bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+    )
+    mocked_bugzilla.get_bug.return_value = webhook_payload.bug
+    mocked_jira.get_issue.return_value = {"fields": {"project": {"key": "JBI"}}}
+    with mock.patch("jbi.runner.statsd") as mocked:
+        result = execute_action(
+            request=webhook_payload,
+            actions=actions_factory(),
+        )
+    mocked.incr.assert_any_call("jbi.operation.comment.count")

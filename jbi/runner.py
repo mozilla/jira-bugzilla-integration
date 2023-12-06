@@ -11,11 +11,7 @@ from statsd.defaults.env import statsd
 from jbi import ActionResult, Operation
 from jbi import steps as steps_module
 from jbi.environment import get_settings
-from jbi.errors import (
-    ActionNotFoundError,
-    IgnoreInvalidRequestError,
-    IncompleteStepError,
-)
+from jbi.errors import ActionNotFoundError, IgnoreInvalidRequestError
 from jbi.models import (
     ActionContext,
     ActionParams,
@@ -26,6 +22,7 @@ from jbi.models import (
     RunnerContext,
 )
 from jbi.services import bugzilla, jira
+from jbi.steps import StepStatus
 
 logger = logging.getLogger(__name__)
 
@@ -102,15 +99,16 @@ class Executor:
 
         for step in self.steps[context.operation]:
             context = context.update(current_step=step.__name__)
+            step_kwargs = self.build_step_kwargs(step)
             try:
-                step_kwargs = self.build_step_kwargs(step)
-                context = step(context=context, **step_kwargs)
-            except IncompleteStepError as exc:
-                # Step did not execute all its operations.
-                context = exc.context
-                statsd.incr(
-                    f"jbi.action.{context.action.whiteboard_tag}.incomplete.count"
-                )
+                result, context = step(context=context, **step_kwargs)
+                if result == StepStatus.SUCCESS:
+                    statsd.incr(f"jbi.steps.{step.__name__}.count")
+                elif result == StepStatus.INCOMPLETE:
+                    # Step did not execute all its operations.
+                    statsd.incr(
+                        f"jbi.action.{context.action.whiteboard_tag}.incomplete.count"
+                    )
             except Exception:
                 if has_produced_request:
                     # Count the number of workflows that produced at least one request,
@@ -248,7 +246,7 @@ def execute_action(
         )
         executor = Executor(parameters=action.parameters)
         handled, details = executor(context=action_context)
-
+        statsd.incr(f"jbi.operation.{action_context.operation.lower()}.count")
         logger.info(
             "Action %r executed successfully for Bug %s",
             action.whiteboard_tag,
