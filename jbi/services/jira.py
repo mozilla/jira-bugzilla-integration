@@ -7,6 +7,7 @@ with that REST client
 # https://docs.python.org/3/whatsnew/3.11.html#pep-563-may-not-be-the-future
 from __future__ import annotations
 
+import concurrent
 import json
 import logging
 from functools import lru_cache
@@ -184,24 +185,49 @@ class JiraService:
         return True
 
     def _all_projects_components_exist(self, actions: Actions):
-        components_by_project = {
-            action.parameters.jira_project_key: action.parameters.jira_components.set_custom_components
-            for action in actions
-        }
-        success = True
-        for project, specified_components in components_by_project.items():
-            all_project_components = self.client.get_project_components(project)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+            futures = {
+                executor.submit(self._check_project_components, action): action
+                for action in actions
+                if action.parameters.jira_components.set_custom_components
+            }
+
+            success = True
+            for future in concurrent.futures.as_completed(futures):
+                action = futures[future]
+                try:
+                    success == (success and future.result())
+                except Exception:
+                    logger.exception(
+                        "Error processing action %s", action.whiteboard_tag
+                    )
+                    success = False
+
+        return success
+
+    def _check_project_components(self, action):
+        try:
+            project_key = action.parameters.jira_project_key
+            specified_components = set(
+                action.parameters.jira_components.set_custom_components
+            )
+
+            all_project_components = self.client.get_project_components(project_key)
             all_components_names = set(comp["name"] for comp in all_project_components)
-            unknown = set(specified_components) - all_components_names
+            unknown = specified_components - all_components_names
+
             if unknown:
                 logger.error(
                     "Jira project %s does not have components %s",
-                    project,
+                    project_key,
                     unknown,
                 )
-                success = False
+                return False
+        except requests.HTTPError:
+            logger.exception("Error checking project components for %s", project_key)
+            return False
 
-        return success
+        return True
 
     def _all_project_issue_types_exist(self, actions: Actions):
         projects = self.client.projects(included_archived=None, expand="issueTypes")

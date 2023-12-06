@@ -114,18 +114,19 @@ def test_jira_does_not_retry_4XX(mocked_responses, context_create_example):
     ],
 )
 def test_all_projects_components_exist(
-    action_factory,
     jira_components,
     project_components,
     expected_result,
     mocked_responses,
+    action_factory,
 ):
     url = f"{get_settings().jira_base_url}rest/api/2/project/ABC/components"
-    mocked_responses.add(
-        responses.GET,
-        url,
-        json=project_components,
-    )
+    if jira_components:
+        mocked_responses.add(
+            responses.GET,
+            url,
+            json=project_components,
+        )
     action = action_factory(
         parameters={
             "jira_project_key": "ABC",
@@ -146,12 +147,6 @@ def test_all_projects_components_exist_no_components_param(
         }
     )
     actions = Actions(root=[action])
-    url = f"{get_settings().jira_base_url}rest/api/2/project/ABC/components"
-    mocked_responses.add(
-        responses.GET,
-        url,
-        json=[],
-    )
     result = jira.get_service()._all_projects_components_exist(actions)
     assert result is True
 
