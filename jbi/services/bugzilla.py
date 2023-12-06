@@ -68,7 +68,10 @@ class BugzillaClient:
     def logged_in(self) -> bool:
         """Verify the API key validity."""
         # https://bugzilla.readthedocs.io/en/latest/api/core/v1/user.html#who-am-i
-        resp = self._call("GET", f"{self.base_url}/rest/whoami")
+        try:
+            resp = self._call("GET", f"{self.base_url}/rest/whoami")
+        except (requests.HTTPError, BugzillaClientError):
+            return False
         return "id" in resp
 
     @instrumented_method
