@@ -53,8 +53,12 @@ class BugzillaClient:
         # https://bmo.readthedocs.io/en/latest/api/core/v1/general.html?highlight=x-bugzilla-api-key#authentication
         headers = kwargs.setdefault("headers", {})
         headers.setdefault("x-bugzilla-api-key", self.api_key)
-        resp = self._client.request(verb, url, *args, **kwargs)
-        resp.raise_for_status()
+        try:
+            resp = self._client.request(verb, url, *args, **kwargs)
+            resp.raise_for_status()
+        except requests.HTTPError:
+            logger.exception("%s %s", verb, url)
+            raise
         parsed = resp.json()
         if parsed.get("error"):
             raise BugzillaClientError(parsed["message"])
