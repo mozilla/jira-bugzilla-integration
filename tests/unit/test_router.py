@@ -171,7 +171,7 @@ def test_read_heartbeat_all_services_fail(anon_client, mocked_jira, mocked_bugzi
             "up": False,
             "all_projects_are_visible": False,
             "all_projects_have_permissions": False,
-            "all_projects_components_exist": False,
+            "all_project_custom_components_exist": False,
             "all_projects_issue_types_exist": False,
         },
         "bugzilla": {
@@ -192,7 +192,7 @@ def test_read_heartbeat_jira_services_fails(anon_client, mocked_jira):
         "up": False,
         "all_projects_are_visible": False,
         "all_projects_have_permissions": False,
-        "all_projects_components_exist": False,
+        "all_project_custom_components_exist": False,
         "all_projects_issue_types_exist": False,
     }
 
@@ -254,16 +254,20 @@ def test_read_heartbeat_success(
     mocked_bugzilla.logged_in.return_value = True
     mocked_bugzilla.list_webhooks.return_value = [bugzilla_webhook_factory()]
     mocked_jira.get_server_info.return_value = {}
-    mocked_jira.projects.return_value = [{"key": "DevTest"}]
+    mocked_jira.projects.return_value = [
+        {
+            "key": "DevTest",
+            "issueTypes": [
+                {"name": "Task"},
+                {"name": "Bug"},
+            ],
+        }
+    ]
     mocked_jira.get_project_components.return_value = [{"name": "Main"}]
-    mocked_jira.get_permissions.return_value = {
-        "permissions": {
-            "ADD_COMMENTS": {"havePermission": True},
-            "CREATE_ISSUES": {"havePermission": True},
-            "EDIT_ISSUES": {"havePermission": True},
-            "DELETE_ISSUES": {"havePermission": True},
-        },
-    }
+    mocked_jira.permitted_projects.return_value = [{"id": "12345", "key": "DevTest"}]
+
+    mocked_jira.get_project_components.return_value = [{"name": "Main"}]
+    mocked_jira.permitted_projects.return_value = [{"id": "12345", "key": "DevTest"}]
     mocked_jira.get_project.return_value = {
         "issueTypes": [
             {"name": "Task"},
@@ -279,7 +283,7 @@ def test_read_heartbeat_success(
             "up": True,
             "all_projects_are_visible": True,
             "all_projects_have_permissions": True,
-            "all_projects_components_exist": True,
+            "all_project_custom_components_exist": True,
             "all_projects_issue_types_exist": True,
         },
         "bugzilla": {
@@ -326,7 +330,7 @@ def test_jira_heartbeat_unknown_components(anon_client, mocked_jira):
 
     assert resp.status_code == 503
     assert resp.json()["jira"]["up"]
-    assert not resp.json()["jira"]["all_projects_components_exist"]
+    assert not resp.json()["jira"]["all_project_custom_components_exist"]
 
 
 def test_jira_heartbeat_unknown_issue_types(anon_client, mocked_jira):
@@ -352,22 +356,17 @@ def test_head_heartbeat_success(
     mocked_bugzilla.logged_in.return_value = True
     mocked_bugzilla.list_webhooks.return_value = [bugzilla_webhook_factory()]
     mocked_jira.get_server_info.return_value = {}
-    mocked_jira.projects.return_value = [{"key": "DevTest"}]
+    mocked_jira.projects.return_value = [
+        {
+            "key": "DevTest",
+            "issueTypes": [
+                {"name": "Task"},
+                {"name": "Bug"},
+            ],
+        }
+    ]
     mocked_jira.get_project_components.return_value = [{"name": "Main"}]
-    mocked_jira.get_permissions.return_value = {
-        "permissions": {
-            "ADD_COMMENTS": {"havePermission": True},
-            "CREATE_ISSUES": {"havePermission": True},
-            "EDIT_ISSUES": {"havePermission": True},
-            "DELETE_ISSUES": {"havePermission": True},
-        },
-    }
-    mocked_jira.get_project.return_value = {
-        "issueTypes": [
-            {"name": "Task"},
-            {"name": "Bug"},
-        ]
-    }
+    mocked_jira.permitted_projects.return_value = [{"id": "12345", "key": "DevTest"}]
 
     resp = anon_client.head("/__heartbeat__")
 

@@ -53,8 +53,12 @@ class BugzillaClient:
         # https://bmo.readthedocs.io/en/latest/api/core/v1/general.html?highlight=x-bugzilla-api-key#authentication
         headers = kwargs.setdefault("headers", {})
         headers.setdefault("x-bugzilla-api-key", self.api_key)
-        resp = self._client.request(verb, url, *args, **kwargs)
-        resp.raise_for_status()
+        try:
+            resp = self._client.request(verb, url, *args, **kwargs)
+            resp.raise_for_status()
+        except requests.HTTPError:
+            logger.exception("%s %s", verb, url)
+            raise
         parsed = resp.json()
         if parsed.get("error"):
             raise BugzillaClientError(parsed["message"])
@@ -136,36 +140,45 @@ class BugzillaService:
     def check_health(self) -> ServiceHealth:
         """Check health for Bugzilla Service"""
         logged_in = self.client.logged_in()
-
-        # Check that all JBI webhooks are enabled in Bugzilla,
-        # and report disabled ones.
         all_webhooks_enabled = False
         if logged_in:
-            jbi_webhooks = self.client.list_webhooks()
-            all_webhooks_enabled = len(jbi_webhooks) > 0
-            for webhook in jbi_webhooks:
-                # Report errors in each webhook
-                statsd.gauge(
-                    f"jbi.bugzilla.webhooks.{webhook.slug}.errors", webhook.errors
-                )
-                # Warn developers when there are errors
-                if webhook.errors > 0:
-                    logger.warning(
-                        "Webhook %s has %s error(s)", webhook.name, webhook.errors
-                    )
-                if not webhook.enabled:
-                    all_webhooks_enabled = False
-                    logger.error(
-                        "Webhook %s is disabled (%s errors)",
-                        webhook.name,
-                        webhook.errors,
-                    )
+            all_webhooks_enabled = self._all_webhooks_enabled()
 
         health: ServiceHealth = {
             "up": logged_in,
             "all_webhooks_enabled": all_webhooks_enabled,
         }
         return health
+
+    def _all_webhooks_enabled(self):
+        # Check that all JBI webhooks are enabled in Bugzilla,
+        # and report disabled ones.
+
+        try:
+            jbi_webhooks = self.client.list_webhooks()
+        except (BugzillaClientError, requests.HTTPError):
+            return False
+
+        if len(jbi_webhooks) == 0:
+            logger.info("No webhooks enabled")
+            return True
+
+        for webhook in jbi_webhooks:
+            # Report errors in each webhook
+            statsd.gauge(f"jbi.bugzilla.webhooks.{webhook.slug}.errors", webhook.errors)
+            # Warn developers when there are errors
+            if webhook.errors > 0:
+                logger.warning(
+                    "Webhook %s has %s error(s)", webhook.name, webhook.errors
+                )
+            if not webhook.enabled:
+                logger.error(
+                    "Webhook %s is disabled (%s errors)",
+                    webhook.name,
+                    webhook.errors,
+                )
+                return False
+        return True
 
     def add_link_to_jira(self, context: ActionContext):
         """Add link to Jira in Bugzilla ticket"""
