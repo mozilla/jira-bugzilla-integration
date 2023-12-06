@@ -256,14 +256,7 @@ def test_read_heartbeat_success(
     mocked_jira.get_server_info.return_value = {}
     mocked_jira.projects.return_value = [{"key": "DevTest"}]
     mocked_jira.get_project_components.return_value = [{"name": "Main"}]
-    mocked_jira.get_permissions.return_value = {
-        "permissions": {
-            "ADD_COMMENTS": {"havePermission": True},
-            "CREATE_ISSUES": {"havePermission": True},
-            "EDIT_ISSUES": {"havePermission": True},
-            "DELETE_ISSUES": {"havePermission": True},
-        },
-    }
+    mocked_jira.permitted_projects.return_value = [{"id": "12345", "key": "DevTest"}]
     mocked_jira.get_project.return_value = {
         "issueTypes": [
             {"name": "Task"},
@@ -354,14 +347,7 @@ def test_head_heartbeat_success(
     mocked_jira.get_server_info.return_value = {}
     mocked_jira.projects.return_value = [{"key": "DevTest"}]
     mocked_jira.get_project_components.return_value = [{"name": "Main"}]
-    mocked_jira.get_permissions.return_value = {
-        "permissions": {
-            "ADD_COMMENTS": {"havePermission": True},
-            "CREATE_ISSUES": {"havePermission": True},
-            "EDIT_ISSUES": {"havePermission": True},
-            "DELETE_ISSUES": {"havePermission": True},
-        },
-    }
+    mocked_jira.permitted_projects.return_value = [{"id": "12345", "key": "DevTest"}]
     mocked_jira.get_project.return_value = {
         "issueTypes": [
             {"name": "Task"},

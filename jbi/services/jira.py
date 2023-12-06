@@ -7,7 +7,6 @@ with that REST client
 # https://docs.python.org/3/whatsnew/3.11.html#pep-563-may-not-be-the-future
 from __future__ import annotations
 
-import concurrent.futures
 import json
 import logging
 from functools import lru_cache
@@ -93,7 +92,6 @@ class JiraClient(Jira):
             raise
 
     get_server_info = instrumented_method(Jira.get_server_info)
-    get_permissions = instrumented_method(Jira.get_permissions)
     get_project_components = instrumented_method(Jira.get_project_components)
     projects = instrumented_method(Jira.projects)
     update_issue = instrumented_method(Jira.update_issue)
@@ -102,6 +100,19 @@ class JiraClient(Jira):
     issue_add_comment = instrumented_method(Jira.issue_add_comment)
     create_issue = instrumented_method(Jira.create_issue)
     get_project = instrumented_method(Jira.get_project)
+
+    @instrumented_method
+    def permitted_projects(self, permissions: Iterable):
+        """Fetches projects that the user has the required permissions for
+
+        https://developer.atlassian.com/cloud/jira/platform/rest/v2/api-group-permissions/#api-rest-api-2-permissions-project-post
+        """
+
+        response = self.post(
+            "/rest/api/2/permissions/project",
+            json={"permissions": list(JIRA_REQUIRED_PERMISSIONS)},
+        )
+        return response["projects"]
 
 
 class JiraService:
@@ -124,7 +135,8 @@ class JiraService:
         health: ServiceHealth = {
             "up": is_up,
             "all_projects_are_visible": is_up and self._all_projects_visible(actions),
-            "all_projects_have_permissions": self._all_projects_permissions(actions),
+            "all_projects_have_permissions": is_up
+            and self._all_projects_permissions(actions),
             "all_projects_components_exist": is_up
             and self._all_projects_components_exist(actions),
             "all_projects_issue_types_exist": is_up
@@ -149,58 +161,27 @@ class JiraService:
             )
         return not missing_projects
 
-    def _all_projects_permissions(self, actions: Actions):
+    def _all_projects_permissions(self, actions: Actions) -> bool:
         """Fetches and validates that required permissions exist for the configured projects"""
-        all_projects_perms = self._fetch_project_permissions(actions)
-        return self._validate_permissions(all_projects_perms)
-
-    def _fetch_project_permissions(self, actions: Actions):
-        """Fetches permissions for the configured projects"""
-
-        all_projects_perms = {}
-        # Query permissions for all configured projects in parallel threads.
-        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-            futures_to_projects = {
-                executor.submit(
-                    self.client.get_permissions,
-                    project_key=project_key,
-                    permissions=",".join(JIRA_REQUIRED_PERMISSIONS),
-                ): project_key
-                for project_key in actions.configured_jira_projects_keys
-            }
-            # Obtain futures' results unordered.
-            for future in concurrent.futures.as_completed(futures_to_projects):
-                project_key = futures_to_projects[future]
-                response = future.result()
-                all_projects_perms[project_key] = response["permissions"]
-        return all_projects_perms
-
-    def _validate_permissions(self, all_projects_perms):
-        """Validates permissions for the configured projects"""
-        misconfigured = []
-        for project_key, obtained_perms in all_projects_perms.items():
-            missing_required_perms = JIRA_REQUIRED_PERMISSIONS - set(
-                obtained_perms.keys()
+        try:
+            projects = self.client.permitted_projects(JIRA_REQUIRED_PERMISSIONS)
+        except requests.HTTPError:
+            logger.exception(
+                "Encountered error when trying to fetch permitted projects"
             )
-            not_given = set(
-                entry["key"]
-                for entry in obtained_perms.values()
-                if not entry["havePermission"]
+            return False
+
+        projects_with_required_perms = {project["key"] for project in projects}
+        missing_perms = (
+            actions.configured_jira_projects_keys - projects_with_required_perms
+        )
+        if missing_perms:
+            logger.warning(
+                "Missing permissions for projects %s", ", ".join(missing_perms)
             )
-            if missing_permissions := missing_required_perms.union(not_given):
-                misconfigured.append((project_key, missing_permissions))
-        for project_key, missing in misconfigured:
-            logger.error(
-                "Configured credentials don't have permissions %s on Jira project %s",
-                ",".join(missing),
-                project_key,
-                extra={
-                    "jira": {
-                        "project": project_key,
-                    }
-                },
-            )
-        return not misconfigured
+            return False
+
+        return True
 
     def _all_projects_components_exist(self, actions: Actions):
         components_by_project = {
