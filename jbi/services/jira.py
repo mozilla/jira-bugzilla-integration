@@ -133,7 +133,14 @@ class JiraService:
         return health
 
     def _all_projects_visible(self, actions: Actions) -> bool:
-        visible_projects = {project["key"] for project in self.fetch_visible_projects()}
+        try:
+            visible_projects = {
+                project["key"] for project in self.fetch_visible_projects()
+            }
+        except requests.HTTPError:
+            logger.exception("Error fetching visible Jira projects")
+            return False
+
         missing_projects = actions.configured_jira_projects_keys - visible_projects
         if missing_projects:
             logger.error(
