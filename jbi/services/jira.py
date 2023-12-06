@@ -194,37 +194,37 @@ class JiraService:
 
             success = True
             for future in concurrent.futures.as_completed(futures):
-                action = futures[future]
-                try:
-                    success = success and future.result()
-                except Exception:
-                    logger.exception(
-                        "Error processing action %s", action.whiteboard_tag
-                    )
-                    success = False
-
+                success = success and future.result()
         return success
 
     def _check_project_components(self, action):
+        project_key = action.parameters.jira_project_key
+        specified_components = set(
+            action.parameters.jira_components.set_custom_components
+        )
+
         try:
-            project_key = action.parameters.jira_project_key
-            specified_components = set(
-                action.parameters.jira_components.set_custom_components
-            )
-
             all_project_components = self.client.get_project_components(project_key)
-            all_components_names = set(comp["name"] for comp in all_project_components)
-            unknown = specified_components - all_components_names
-
-            if unknown:
-                logger.error(
-                    "Jira project %s does not have components %s",
-                    project_key,
-                    unknown,
-                )
-                return False
         except requests.HTTPError:
             logger.exception("Error checking project components for %s", project_key)
+            return False
+
+        try:
+            all_components_names = set(comp["name"] for comp in all_project_components)
+        except KeyError:
+            logger.exception(
+                "Unexpected get_project_components response for %s",
+                action.whiteboard_tag,
+            )
+            return False
+
+        unknown = specified_components - all_components_names
+        if unknown:
+            logger.error(
+                "Jira project %s does not have components %s",
+                project_key,
+                unknown,
+            )
             return False
 
         return True
