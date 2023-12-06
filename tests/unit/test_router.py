@@ -254,7 +254,18 @@ def test_read_heartbeat_success(
     mocked_bugzilla.logged_in.return_value = True
     mocked_bugzilla.list_webhooks.return_value = [bugzilla_webhook_factory()]
     mocked_jira.get_server_info.return_value = {}
-    mocked_jira.projects.return_value = [{"key": "DevTest"}]
+    mocked_jira.projects.return_value = [
+        {
+            "key": "DevTest",
+            "issueTypes": [
+                {"name": "Task"},
+                {"name": "Bug"},
+            ],
+        }
+    ]
+    mocked_jira.get_project_components.return_value = [{"name": "Main"}]
+    mocked_jira.permitted_projects.return_value = [{"id": "12345", "key": "DevTest"}]
+
     mocked_jira.get_project_components.return_value = [{"name": "Main"}]
     mocked_jira.permitted_projects.return_value = [{"id": "12345", "key": "DevTest"}]
     mocked_jira.get_project.return_value = {
@@ -345,15 +356,17 @@ def test_head_heartbeat_success(
     mocked_bugzilla.logged_in.return_value = True
     mocked_bugzilla.list_webhooks.return_value = [bugzilla_webhook_factory()]
     mocked_jira.get_server_info.return_value = {}
-    mocked_jira.projects.return_value = [{"key": "DevTest"}]
+    mocked_jira.projects.return_value = [
+        {
+            "key": "DevTest",
+            "issueTypes": [
+                {"name": "Task"},
+                {"name": "Bug"},
+            ],
+        }
+    ]
     mocked_jira.get_project_components.return_value = [{"name": "Main"}]
     mocked_jira.permitted_projects.return_value = [{"id": "12345", "key": "DevTest"}]
-    mocked_jira.get_project.return_value = {
-        "issueTypes": [
-            {"name": "Task"},
-            {"name": "Bug"},
-        ]
-    }
 
     resp = anon_client.head("/__heartbeat__")
 

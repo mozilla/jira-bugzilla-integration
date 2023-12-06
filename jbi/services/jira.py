@@ -204,23 +204,28 @@ class JiraService:
         return success
 
     def _all_project_issue_types_exist(self, actions: Actions):
+        projects = self.client.projects(included_archived=None, expand="issueTypes")
         issue_types_by_project = {
-            action.parameters.jira_project_key: set(
-                action.parameters.issue_type_map.values()
-            )
-            for action in actions
+            project["key"]: {issue_type["name"] for issue_type in project["issueTypes"]}
+            for project in projects
         }
-        success = True
-        for project, specified_issue_types in issue_types_by_project.items():
-            response = self.client.get_project(project)
-            all_issue_types_names = set(it["name"] for it in response["issueTypes"])
-            unknown = set(specified_issue_types) - all_issue_types_names
-            if unknown:
-                logger.error(
-                    "Jira project %s does not have issue type %s", project, unknown
-                )
-                success = False
-        return success
+        missing_issue_types_by_project = {}
+        for action in actions:
+            action_issue_types = set(action.parameters.issue_type_map.values())
+            project_issue_types = issue_types_by_project.get(
+                action.jira_project_key, set()
+            )
+            if missing_issue_types := action_issue_types - project_issue_types:
+                missing_issue_types_by_project[
+                    action.jira_project_key
+                ] = missing_issue_types
+        if missing_issue_types_by_project:
+            logger.warning(
+                "Jira projects with missing issue types",
+                extra=missing_issue_types_by_project,
+            )
+            return False
+        return True
 
     def get_issue(self, context: ActionContext, issue_key):
         """Return the Jira issue fields or `None` if not found."""
