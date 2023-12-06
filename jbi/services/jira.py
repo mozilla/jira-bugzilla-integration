@@ -138,8 +138,8 @@ class JiraService:
             "all_projects_are_visible": is_up and self._all_projects_visible(actions),
             "all_projects_have_permissions": is_up
             and self._all_projects_permissions(actions),
-            "all_projects_components_exist": is_up
-            and self._all_projects_components_exist(actions),
+            "all_project_custom_components_exist": is_up
+            and self._all_project_custom_components_exist(actions),
             "all_projects_issue_types_exist": is_up
             and self._all_project_issue_types_exist(actions),
         }
@@ -184,7 +184,7 @@ class JiraService:
 
         return True
 
-    def _all_projects_components_exist(self, actions: Actions):
+    def _all_project_custom_components_exist(self, actions: Actions):
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
             futures = {
                 executor.submit(self._check_project_components, action): action
@@ -196,7 +196,7 @@ class JiraService:
             for future in concurrent.futures.as_completed(futures):
                 action = futures[future]
                 try:
-                    success == (success and future.result())
+                    success = success and future.result()
                 except Exception:
                     logger.exception(
                         "Error processing action %s", action.whiteboard_tag

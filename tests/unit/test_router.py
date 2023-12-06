@@ -171,7 +171,7 @@ def test_read_heartbeat_all_services_fail(anon_client, mocked_jira, mocked_bugzi
             "up": False,
             "all_projects_are_visible": False,
             "all_projects_have_permissions": False,
-            "all_projects_components_exist": False,
+            "all_project_custom_components_exist": False,
             "all_projects_issue_types_exist": False,
         },
         "bugzilla": {
@@ -192,7 +192,7 @@ def test_read_heartbeat_jira_services_fails(anon_client, mocked_jira):
         "up": False,
         "all_projects_are_visible": False,
         "all_projects_have_permissions": False,
-        "all_projects_components_exist": False,
+        "all_project_custom_components_exist": False,
         "all_projects_issue_types_exist": False,
     }
 
@@ -283,7 +283,7 @@ def test_read_heartbeat_success(
             "up": True,
             "all_projects_are_visible": True,
             "all_projects_have_permissions": True,
-            "all_projects_components_exist": True,
+            "all_project_custom_components_exist": True,
             "all_projects_issue_types_exist": True,
         },
         "bugzilla": {
@@ -330,7 +330,7 @@ def test_jira_heartbeat_unknown_components(anon_client, mocked_jira):
 
     assert resp.status_code == 503
     assert resp.json()["jira"]["up"]
-    assert not resp.json()["jira"]["all_projects_components_exist"]
+    assert not resp.json()["jira"]["all_project_custom_components_exist"]
 
 
 def test_jira_heartbeat_unknown_issue_types(anon_client, mocked_jira):

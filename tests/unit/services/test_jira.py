@@ -113,7 +113,7 @@ def test_jira_does_not_retry_4XX(mocked_responses, context_create_example):
         (["Foo"], [], False),
     ],
 )
-def test_all_projects_components_exist(
+def test_all_project_custom_components_exist(
     jira_components,
     project_components,
     expected_result,
@@ -134,11 +134,11 @@ def test_all_projects_components_exist(
         }
     )
     actions = Actions(root=[action])
-    result = jira.get_service()._all_projects_components_exist(actions)
+    result = jira.get_service()._all_project_custom_components_exist(actions)
     assert result is expected_result
 
 
-def test_all_projects_components_exist_no_components_param(
+def test_all_project_custom_components_exist_no_components_param(
     action_factory, mocked_responses
 ):
     action = action_factory(
@@ -147,7 +147,7 @@ def test_all_projects_components_exist_no_components_param(
         }
     )
     actions = Actions(root=[action])
-    result = jira.get_service()._all_projects_components_exist(actions)
+    result = jira.get_service()._all_project_custom_components_exist(actions)
     assert result is True
 
 
