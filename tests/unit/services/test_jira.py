@@ -79,9 +79,8 @@ def test_jira_retries_failing_connections_in_health_check(
         body=ConnectionError(),
     )
 
-    with pytest.raises(ConnectionError):
-        jira.get_service().check_health(actions_factory())
-
+    healthcheck = jira.get_service().check_health(actions_factory())
+    assert healthcheck["up"] is False
     assert len(mocked_responses.calls) == 4
 
 
