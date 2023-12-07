@@ -130,9 +130,11 @@ class JiraService:
 
     def check_health(self, actions: Actions) -> ServiceHealth:
         """Check health for Jira Service"""
+        try:
+            is_up = self.client.get_server_info(True) is not None
+        except requests.RequestException:
+            is_up = False
 
-        server_info = self.client.get_server_info(True)
-        is_up = server_info is not None
         health: ServiceHealth = {
             "up": is_up,
             "all_projects_are_visible": is_up and self._all_projects_visible(actions),
