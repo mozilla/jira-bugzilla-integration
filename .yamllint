@@ -1,20 +1,6 @@
 ---
-
 extends: default
-
-ignore: |
-  jbi/
-  tests/
-  bin/
-  .github/
-  docker-compose.yaml
-  .pre-commit-config.yaml
-
 
 rules:
   key-duplicates: enable
 
-
-yaml-files:
-  - 'config/*.yaml'
-  - '.yamllint'
