@@ -2,7 +2,7 @@ from unittest import mock
 
 import pytest
 
-from jbi import configuration, environment
+from jbi import configuration
 
 
 def test_mock_jbi_files():

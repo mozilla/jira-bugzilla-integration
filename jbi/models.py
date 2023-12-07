@@ -110,11 +110,11 @@ class Actions(RootModel):
     @functools.cached_property
     def by_tag(self) -> Mapping[str, Action]:
         """Build mapping of actions by lookup tag."""
-        # pylint: disable-next=not-an-iterable
+
         return {action.whiteboard_tag: action for action in self.root}
 
     def __iter__(self):
-        return iter(self.root)  # pylint: disable=not-an-iterable
+        return iter(self.root)
 
     def __len__(self):
         return len(self.root)
@@ -129,7 +129,7 @@ class Actions(RootModel):
     @functools.cached_property
     def configured_jira_projects_keys(self) -> set[str]:
         """Return the list of Jira project keys from all configured actions"""
-        # pylint: disable-next=not-an-iterable
+
         return {action.jira_project_key for action in self.root}
 
     @field_validator("root")
@@ -184,7 +184,7 @@ class BugzillaWebhookEvent(BaseModel):
 
     def changed_fields(self) -> list[str]:
         """Returns the names of changed fields in a bug"""
-        # pylint: disable-next=not-an-iterable
+
         return [c.field for c in self.changes] if self.changes else []
 
 
@@ -238,7 +238,7 @@ class BugzillaBug(BaseModel):
             return None
 
         candidates = []
-        for url in self.see_also:  # pylint: disable=not-an-iterable
+        for url in self.see_also:
             try:
                 parsed_url: ParseResult = urlparse(url=url)
                 host_parts = parsed_url.hostname.split(".")

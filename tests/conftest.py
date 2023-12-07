@@ -9,13 +9,13 @@ import responses
 from fastapi.testclient import TestClient
 from pytest_factoryboy import register
 
+import tests.fixtures.factories as factories
 from jbi import Operation
 from jbi.app import app
 from jbi.configuration import get_actions
 from jbi.environment import Settings
-from jbi.models import ActionContext, BugzillaWebhookRequest
+from jbi.models import ActionContext
 from jbi.services import bugzilla, jira
-from tests.fixtures.factories import *
 
 
 class FilteredLogCaptureFixture(pytest.LogCaptureFixture):
@@ -55,18 +55,24 @@ def mocked_statsd():
         yield _mocked_statsd
 
 
-register(ActionContextFactory)
-register(ActionFactory)
-register(ActionsFactory)
-register(ActionParamsFactory)
-register(BugFactory)
-register(BugzillaWebhookFactory)
-register(CommentFactory)
-register(JiraContextFactory)
-register(WebhookFactory)
-register(WebhookEventChangeFactory)
-register(WebhookEventFactory)
-register(WebhookUserFactory)
+register(factories.ActionContextFactory)
+register(factories.ActionFactory)
+register(factories.ActionsFactory)
+register(factories.ActionParamsFactory)
+register(factories.BugFactory)
+register(factories.BugzillaWebhookFactory)
+register(factories.CommentFactory)
+register(factories.JiraContextFactory)
+register(factories.WebhookFactory)
+register(factories.WebhookEventChangeFactory)
+register(factories.WebhookEventFactory)
+register(factories.WebhookUserFactory)
+
+
+register(
+    factories.ActionContextFactory, "context_create_example", operation=Operation.CREATE
+)
+register(factories.WebhookFactory, "webhook_create_example")
 
 
 @pytest.fixture
@@ -115,9 +121,6 @@ def mocked_responses():
         yield rsps
 
 
-register(ActionContextFactory, "context_create_example", operation=Operation.CREATE)
-
-
 @pytest.fixture
 def context_comment_example(action_context_factory) -> ActionContext:
     return action_context_factory(
@@ -130,9 +133,6 @@ def context_comment_example(action_context_factory) -> ActionContext:
         event__user__login="mathieu@mozilla.org",
         jira__issue="JBI-234",
     )
-
-
-register(WebhookFactory, "webhook_create_example")
 
 
 @pytest.fixture(autouse=True)
