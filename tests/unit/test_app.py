@@ -37,6 +37,21 @@ def test_request_summary_defaults_user_agent_to_empty_string(caplog, anon_client
         assert summary.agent == ""
 
 
+def test_422_errors_are_logged(webhook_create_example, caplog):
+    webhook_create_example.bug = None
+
+    with TestClient(app) as anon_client:
+        with caplog.at_level(logging.INFO):
+            anon_client.post("/bugzilla_webhook", data=webhook_create_example.json())
+
+    logged = [r for r in caplog.records if r.name == "jbi.app"][0]
+    assert logged.errors[0]["loc"] == ("body", "bug")
+    assert (
+        logged.errors[0]["msg"]
+        == "Input should be a valid dictionary or object to extract fields from"
+    )
+
+
 @pytest.mark.parametrize(
     "sampling_context,expected",
     [

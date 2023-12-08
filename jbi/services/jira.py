@@ -7,7 +7,7 @@ with that REST client
 # https://docs.python.org/3/whatsnew/3.11.html#pep-563-may-not-be-the-future
 from __future__ import annotations
 
-import concurrent.futures
+import concurrent
 import json
 import logging
 from functools import lru_cache
@@ -93,7 +93,6 @@ class JiraClient(Jira):
             raise
 
     get_server_info = instrumented_method(Jira.get_server_info)
-    get_permissions = instrumented_method(Jira.get_permissions)
     get_project_components = instrumented_method(Jira.get_project_components)
     projects = instrumented_method(Jira.projects)
     update_issue = instrumented_method(Jira.update_issue)
@@ -102,6 +101,19 @@ class JiraClient(Jira):
     issue_add_comment = instrumented_method(Jira.issue_add_comment)
     create_issue = instrumented_method(Jira.create_issue)
     get_project = instrumented_method(Jira.get_project)
+
+    @instrumented_method
+    def permitted_projects(self, permissions: Iterable):
+        """Fetches projects that the user has the required permissions for
+
+        https://developer.atlassian.com/cloud/jira/platform/rest/v2/api-group-permissions/#api-rest-api-2-permissions-project-post
+        """
+
+        response = self.post(
+            "/rest/api/2/permissions/project",
+            json={"permissions": list(JIRA_REQUIRED_PERMISSIONS)},
+        )
+        return response["projects"]
 
 
 class JiraService:
@@ -118,22 +130,32 @@ class JiraService:
 
     def check_health(self, actions: Actions) -> ServiceHealth:
         """Check health for Jira Service"""
+        try:
+            is_up = self.client.get_server_info(True) is not None
+        except requests.RequestException:
+            is_up = False
 
-        server_info = self.client.get_server_info(True)
-        is_up = server_info is not None
         health: ServiceHealth = {
             "up": is_up,
             "all_projects_are_visible": is_up and self._all_projects_visible(actions),
-            "all_projects_have_permissions": self._all_projects_permissions(actions),
-            "all_projects_components_exist": is_up
-            and self._all_projects_components_exist(actions),
+            "all_projects_have_permissions": is_up
+            and self._all_projects_permissions(actions),
+            "all_project_custom_components_exist": is_up
+            and self._all_project_custom_components_exist(actions),
             "all_projects_issue_types_exist": is_up
             and self._all_project_issue_types_exist(actions),
         }
         return health
 
     def _all_projects_visible(self, actions: Actions) -> bool:
-        visible_projects = {project["key"] for project in self.fetch_visible_projects()}
+        try:
+            visible_projects = {
+                project["key"] for project in self.fetch_visible_projects()
+            }
+        except requests.HTTPError:
+            logger.exception("Error fetching visible Jira projects")
+            return False
+
         missing_projects = actions.configured_jira_projects_keys - visible_projects
         if missing_projects:
             logger.error(
@@ -142,97 +164,96 @@ class JiraService:
             )
         return not missing_projects
 
-    def _all_projects_permissions(self, actions: Actions):
+    def _all_projects_permissions(self, actions: Actions) -> bool:
         """Fetches and validates that required permissions exist for the configured projects"""
-        all_projects_perms = self._fetch_project_permissions(actions)
-        return self._validate_permissions(all_projects_perms)
+        try:
+            projects = self.client.permitted_projects(JIRA_REQUIRED_PERMISSIONS)
+        except requests.HTTPError:
+            logger.exception(
+                "Encountered error when trying to fetch permitted projects"
+            )
+            return False
 
-    def _fetch_project_permissions(self, actions: Actions):
-        """Fetches permissions for the configured projects"""
+        projects_with_required_perms = {project["key"] for project in projects}
+        missing_perms = (
+            actions.configured_jira_projects_keys - projects_with_required_perms
+        )
+        if missing_perms:
+            logger.warning(
+                "Missing permissions for projects %s", ", ".join(missing_perms)
+            )
+            return False
 
-        all_projects_perms = {}
-        # Query permissions for all configured projects in parallel threads.
+        return True
+
+    def _all_project_custom_components_exist(self, actions: Actions):
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-            futures_to_projects = {
-                executor.submit(
-                    self.client.get_permissions,
-                    project_key=project_key,
-                    permissions=",".join(JIRA_REQUIRED_PERMISSIONS),
-                ): project_key
-                for project_key in actions.configured_jira_projects_keys
+            futures = {
+                executor.submit(self._check_project_components, action): action
+                for action in actions
+                if action.parameters.jira_components.set_custom_components
             }
-            # Obtain futures' results unordered.
-            for future in concurrent.futures.as_completed(futures_to_projects):
-                project_key = futures_to_projects[future]
-                response = future.result()
-                all_projects_perms[project_key] = response["permissions"]
-        return all_projects_perms
 
-    def _validate_permissions(self, all_projects_perms):
-        """Validates permissions for the configured projects"""
-        misconfigured = []
-        for project_key, obtained_perms in all_projects_perms.items():
-            missing_required_perms = JIRA_REQUIRED_PERMISSIONS - set(
-                obtained_perms.keys()
-            )
-            not_given = set(
-                entry["key"]
-                for entry in obtained_perms.values()
-                if not entry["havePermission"]
-            )
-            if missing_permissions := missing_required_perms.union(not_given):
-                misconfigured.append((project_key, missing_permissions))
-        for project_key, missing in misconfigured:
-            logger.error(
-                "Configured credentials don't have permissions %s on Jira project %s",
-                ",".join(missing),
-                project_key,
-                extra={
-                    "jira": {
-                        "project": project_key,
-                    }
-                },
-            )
-        return not misconfigured
-
-    def _all_projects_components_exist(self, actions: Actions):
-        components_by_project = {
-            action.parameters.jira_project_key: action.parameters.jira_components.set_custom_components
-            for action in actions
-        }
-        success = True
-        for project, specified_components in components_by_project.items():
-            all_project_components = self.client.get_project_components(project)
-            all_components_names = set(comp["name"] for comp in all_project_components)
-            unknown = set(specified_components) - all_components_names
-            if unknown:
-                logger.error(
-                    "Jira project %s does not have components %s",
-                    project,
-                    unknown,
-                )
-                success = False
-
+            success = True
+            for future in concurrent.futures.as_completed(futures):
+                success = success and future.result()
         return success
+
+    def _check_project_components(self, action):
+        project_key = action.parameters.jira_project_key
+        specified_components = set(
+            action.parameters.jira_components.set_custom_components
+        )
+
+        try:
+            all_project_components = self.client.get_project_components(project_key)
+        except requests.HTTPError:
+            logger.exception("Error checking project components for %s", project_key)
+            return False
+
+        try:
+            all_components_names = set(comp["name"] for comp in all_project_components)
+        except KeyError:
+            logger.exception(
+                "Unexpected get_project_components response for %s",
+                action.whiteboard_tag,
+            )
+            return False
+
+        unknown = specified_components - all_components_names
+        if unknown:
+            logger.error(
+                "Jira project %s does not have components %s",
+                project_key,
+                unknown,
+            )
+            return False
+
+        return True
 
     def _all_project_issue_types_exist(self, actions: Actions):
+        projects = self.client.projects(included_archived=None, expand="issueTypes")
         issue_types_by_project = {
-            action.parameters.jira_project_key: set(
-                action.parameters.issue_type_map.values()
-            )
-            for action in actions
+            project["key"]: {issue_type["name"] for issue_type in project["issueTypes"]}
+            for project in projects
         }
-        success = True
-        for project, specified_issue_types in issue_types_by_project.items():
-            response = self.client.get_project(project)
-            all_issue_types_names = set(it["name"] for it in response["issueTypes"])
-            unknown = set(specified_issue_types) - all_issue_types_names
-            if unknown:
-                logger.error(
-                    "Jira project %s does not have issue type %s", project, unknown
-                )
-                success = False
-        return success
+        missing_issue_types_by_project = {}
+        for action in actions:
+            action_issue_types = set(action.parameters.issue_type_map.values())
+            project_issue_types = issue_types_by_project.get(
+                action.jira_project_key, set()
+            )
+            if missing_issue_types := action_issue_types - project_issue_types:
+                missing_issue_types_by_project[
+                    action.jira_project_key
+                ] = missing_issue_types
+        if missing_issue_types_by_project:
+            logger.warning(
+                "Jira projects with missing issue types",
+                extra=missing_issue_types_by_project,
+            )
+            return False
+        return True
 
     def get_issue(self, context: ActionContext, issue_key):
         """Return the Jira issue fields or `None` if not found."""
