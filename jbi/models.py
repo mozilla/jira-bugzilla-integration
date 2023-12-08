@@ -286,7 +286,6 @@ class BugzillaBug(BaseModel):
 class BugzillaWebhookRequest(BaseModel):
     """Bugzilla Webhook Request Object"""
 
-    rid: str = ""  # This field has a default since it's not parsed from body.
     webhook_id: int
     webhook_name: str
     event: BugzillaWebhookEvent
@@ -362,7 +361,6 @@ BugId = TypedDict("BugId", {"id": Optional[int]})
 class RunnerContext(Context, extra="forbid"):
     """Logging context from runner"""
 
-    rid: str
     operation: Operation
     event: BugzillaWebhookEvent
     action: Optional[Action] = None
@@ -373,7 +371,6 @@ class ActionContext(Context, extra="forbid"):
     """Logging context from actions"""
 
     action: Action
-    rid: str
     operation: Operation
     current_step: Optional[str] = None
     event: BugzillaWebhookEvent

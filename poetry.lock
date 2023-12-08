@@ -32,6 +32,23 @@ test = ["anyio[trio]", "coverage[toml] (>=4.5)", "hypothesis (>=4.0)", "mock (>=
 trio = ["trio (<0.22)"]
 
 [[package]]
+name = "asgi-correlation-id"
+version = "4.2.0"
+description = "Middleware correlating project logs to individual requests"
+optional = false
+python-versions = ">=3.7,<4.0"
+files = [
+    {file = "asgi_correlation_id-4.2.0-py3-none-any.whl", hash = "sha256:bd3321a4022f38179db775d27c40cb45130ac9429d569cd59b5474cb2f65fb1b"},
+    {file = "asgi_correlation_id-4.2.0.tar.gz", hash = "sha256:9d7dcfc2ed016f6e594fffd553788ac70129db7f92bb4dc268ab0b1a3284de5a"},
+]
+
+[package.dependencies]
+starlette = ">=0.18"
+
+[package.extras]
+celery = ["celery"]
+
+[[package]]
 name = "astroid"
 version = "3.0.1"
 description = "An abstract syntax tree for Python with inference support."
@@ -663,13 +680,13 @@ socks = ["socksio (==1.*)"]
 
 [[package]]
 name = "identify"
-version = "2.5.32"
+version = "2.5.33"
 description = "File identification library for Python"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "identify-2.5.32-py2.py3-none-any.whl", hash = "sha256:0b7656ef6cba81664b783352c73f8c24b39cf82f926f78f4550eda928e5e0545"},
-    {file = "identify-2.5.32.tar.gz", hash = "sha256:5d9979348ec1a21c768ae07e0a652924538e8bce67313a73cb0f681cf08ba407"},
+    {file = "identify-2.5.33-py2.py3-none-any.whl", hash = "sha256:d40ce5fcd762817627670da8a7d8d8e65f24342d14539c59488dc603bf662e34"},
+    {file = "identify-2.5.33.tar.gz", hash = "sha256:161558f9fe4559e1557e1bff323e8631f6a0e4837f7497767c1782832f16b62d"},
 ]
 
 [package.extras]
@@ -2114,4 +2131,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.12, <3.13"
-content-hash = "fc932a890624df00e575b41611ce5798be9d2a9282657f1962b1fe0a388fcdb5"
+content-hash = "e127c1b3a30b9309b2cbf82d35557edf9f14747dab6d136991637491151a1f90"

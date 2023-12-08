@@ -9,23 +9,32 @@ from jbi.environment import get_settings
 from jbi.models import BugzillaWebhookRequest
 
 
-def test_request_summary_is_logged(caplog):
+def test_request_summary_is_logged(caplog, anon_client):
     with caplog.at_level(logging.INFO):
-        with TestClient(app) as anon_client:
-            # https://fastapi.tiangolo.com/advanced/testing-events/
-            anon_client.get(
-                "/",
-                headers={
-                    "X-Request-Id": "foo-bar",
-                },
-            )
+        # https://fastapi.tiangolo.com/advanced/testing-events/
+        anon_client.get(
+            "/",
+            headers={
+                "X-Request-Id": "foo-bar",
+            },
+        )
 
-            summary = [r for r in caplog.records if r.name == "request.summary"][0]
+    summary = [r for r in caplog.records if r.name == "request.summary"][0]
 
-            assert summary.rid == "foo-bar"
-            assert summary.method == "GET"
-            assert summary.path == "/"
-            assert summary.querystring == "{}"
+    assert summary.rid == "foo-bar"
+    assert summary.method == "GET"
+    assert summary.path == "/"
+    assert summary.querystring == "{}"
+
+
+def test_request_summary_defaults_user_agent_to_empty_string(caplog, anon_client):
+    with caplog.at_level(logging.INFO):
+        del anon_client.headers["User-Agent"]
+        anon_client.get("/")
+
+        summary = [r for r in caplog.records if r.name == "request.summary"][0]
+
+        assert summary.agent == ""
 
 
 def test_422_errors_are_logged(webhook_create_example, caplog):
@@ -41,17 +50,6 @@ def test_422_errors_are_logged(webhook_create_example, caplog):
         logged.errors[0]["msg"]
         == "Input should be a valid dictionary or object to extract fields from"
     )
-
-
-def test_request_summary_defaults_user_agent_to_empty_string(caplog):
-    with caplog.at_level(logging.INFO):
-        with TestClient(app) as anon_client:
-            del anon_client.headers["User-Agent"]
-            anon_client.get("/")
-
-            summary = [r for r in caplog.records if r.name == "request.summary"][0]
-
-            assert summary.agent == ""
 
 
 @pytest.mark.parametrize(
