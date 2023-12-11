@@ -83,7 +83,7 @@ def settings():
 
 @pytest.fixture(autouse=True)
 def actions():
-    return get_actions
+    return get_actions()
 
 
 @pytest.fixture(autouse=True)
