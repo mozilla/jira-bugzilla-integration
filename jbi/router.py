@@ -9,14 +9,14 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from jbi.configuration import get_actions
+from jbi.configuration import ACTIONS
 from jbi.environment import Settings, get_settings, get_version
 from jbi.models import Actions, BugzillaWebhookRequest
 from jbi.runner import IgnoreInvalidRequestError, execute_action
 from jbi.services import bugzilla, jira
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
-ActionsDep = Annotated[Actions, Depends(get_actions)]
+ActionsDep = Annotated[Actions, Depends(lambda: ACTIONS)]
 VersionDep = Annotated[dict, Depends(get_version)]
 BugzillaServiceDep = Annotated[bugzilla.BugzillaService, Depends(bugzilla.get_service)]
 JiraServiceDep = Annotated[jira.JiraService, Depends(jira.get_service)]
