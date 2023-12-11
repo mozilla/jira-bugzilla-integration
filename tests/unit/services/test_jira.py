@@ -79,9 +79,8 @@ def test_jira_retries_failing_connections_in_health_check(
         body=ConnectionError(),
     )
 
-    with pytest.raises(ConnectionError):
-        jira.get_service().check_health(actions_factory())
-
+    healthcheck = jira.get_service().check_health(actions_factory())
+    assert healthcheck["up"] is False
     assert len(mocked_responses.calls) == 4
 
 
@@ -113,19 +112,20 @@ def test_jira_does_not_retry_4XX(mocked_responses, context_create_example):
         (["Foo"], [], False),
     ],
 )
-def test_all_projects_components_exist(
-    action_factory,
+def test_all_project_custom_components_exist(
     jira_components,
     project_components,
     expected_result,
     mocked_responses,
+    action_factory,
 ):
     url = f"{get_settings().jira_base_url}rest/api/2/project/ABC/components"
-    mocked_responses.add(
-        responses.GET,
-        url,
-        json=project_components,
-    )
+    if jira_components:
+        mocked_responses.add(
+            responses.GET,
+            url,
+            json=project_components,
+        )
     action = action_factory(
         parameters={
             "jira_project_key": "ABC",
@@ -133,11 +133,11 @@ def test_all_projects_components_exist(
         }
     )
     actions = Actions(root=[action])
-    result = jira.get_service()._all_projects_components_exist(actions)
+    result = jira.get_service()._all_project_custom_components_exist(actions)
     assert result is expected_result
 
 
-def test_all_projects_components_exist_no_components_param(
+def test_all_project_custom_components_exist_no_components_param(
     action_factory, mocked_responses
 ):
     action = action_factory(
@@ -146,13 +146,7 @@ def test_all_projects_components_exist_no_components_param(
         }
     )
     actions = Actions(root=[action])
-    url = f"{get_settings().jira_base_url}rest/api/2/project/ABC/components"
-    mocked_responses.add(
-        responses.GET,
-        url,
-        json=[],
-    )
-    result = jira.get_service()._all_projects_components_exist(actions)
+    result = jira.get_service()._all_project_custom_components_exist(actions)
     assert result is True
 
 
@@ -167,7 +161,6 @@ def test_get_issue(mocked_responses, action_context_factory, capturelogs):
 
     assert response == mock_response_data
     for record in capturelogs.records:
-        assert record.rid == context.rid
         assert record.action["whiteboard_tag"] == context.action.whiteboard_tag
 
     before, after = capturelogs.messages
@@ -184,9 +177,6 @@ def test_get_issue_handles_404(mocked_responses, action_context_factory, capture
         return_val = jira.get_service().get_issue(context=context, issue_key="JBI-234")
 
     assert return_val is None
-
-    for record in capturelogs.records:
-        assert record.rid == context.rid
 
     before, after = capturelogs.records
     assert before.levelno == logging.DEBUG
@@ -208,7 +198,6 @@ def test_get_issue_reraises_other_erroring_status_codes(
             jira.get_service().get_issue(context=context, issue_key="JBI-234")
 
     [record] = capturelogs.records
-    assert record.rid == context.rid
     assert record.levelno == logging.DEBUG
     assert record.message == "Getting issue JBI-234"
 
@@ -228,10 +217,6 @@ def test_update_issue_resolution(mocked_responses, action_context_factory, captu
         jira.get_service().update_issue_resolution(
             context=context, jira_resolution="DONEZO"
         )
-
-    for record in capturelogs.records:
-        assert record.rid == context.rid
-        assert record.levelno == logging.DEBUG
 
     before, after = capturelogs.messages
     assert before == "Updating resolution of Jira issue JBI-234 to DONEZO"
@@ -258,10 +243,8 @@ def test_update_issue_resolution_raises(
                 context=context, jira_resolution="DONEZO"
             )
 
-    [record] = capturelogs.records
-    assert record.rid == context.rid
-    assert record.levelno == logging.DEBUG
-    assert record.message == "Updating resolution of Jira issue JBI-234 to DONEZO"
+    [message] = capturelogs.messages
+    assert message == "Updating resolution of Jira issue JBI-234 to DONEZO"
 
 
 def test_create_jira_issue(mocked_responses, action_context_factory, capturelogs):
@@ -292,10 +275,6 @@ def test_create_jira_issue(mocked_responses, action_context_factory, capturelogs
         )
 
     assert response == mocked_response_data
-
-    for record in capturelogs.records:
-        assert record.rid == context.rid
-        assert record.levelno == logging.DEBUG
 
     before, after = capturelogs.records
     assert before.message == f"Creating new Jira issue for Bug {context.bug.id}"
@@ -339,12 +318,10 @@ def test_create_jira_issue_when_list_is_returned(
     before, after = capturelogs.records
     assert before.message == f"Creating new Jira issue for Bug {context.bug.id}"
     assert before.levelno == logging.DEBUG
-    assert before.rid == context.rid
     assert before.fields == issue_fields
 
     assert after.message == f"Jira issue JBI-234 created for Bug {context.bug.id}"
     assert after.levelno == logging.DEBUG
-    assert after.rid == context.rid
     assert after.response == [mocked_issue_data]
 
 
@@ -375,11 +352,9 @@ def test_create_jira_issue_returns_errors(
 
     before, after = capturelogs.records
     assert before.message == f"Creating new Jira issue for Bug {context.bug.id}"
-    assert before.rid == context.rid
     assert before.levelno == logging.DEBUG
     assert before.fields == issue_fields
 
     assert after.message == f"Failed to create issue for Bug {context.bug.id}"
-    assert after.rid == context.rid
     assert after.levelno == logging.ERROR
     assert after.response == fake_error_data

@@ -8,6 +8,7 @@ import time
 from datetime import datetime
 from typing import Optional
 
+from asgi_correlation_id import CorrelationIdFilter
 from fastapi import Request
 from pydantic import BaseModel
 
@@ -15,16 +16,41 @@ from jbi.environment import get_settings
 
 settings = get_settings()
 
+
+class RequestIdFilter(CorrelationIdFilter):
+    """Renames `correlation_id` log field to `rid`"""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def filter(self, record) -> bool:
+        result = super().filter(record)  # Apply the existing filter
+
+        # Rename the field from 'correlation_id' to 'rid'
+        if hasattr(record, "correlation_id"):
+            setattr(record, "rid", getattr(record, "correlation_id"))
+            delattr(record, "correlation_id")
+
+        return result
+
+
 CONFIG = {
     "version": 1,
     "disable_existing_loggers": False,
+    "filters": {
+        "request_id": {
+            "()": RequestIdFilter,
+            "uuid_length": 32,
+            "default_value": "-",
+        },
+    },
     "formatters": {
         "mozlog_json": {
             "()": "dockerflow.logging.JsonLogFormatter",
             "logger_name": "jbi",
         },
         "text": {
-            "format": "%(asctime)s %(levelname)-8s %(name)-15s %(message)s",
+            "format": "%(asctime)s %(levelname)-8s [%(rid)s] %(name)-15s %(message)s",
             "datefmt": "%Y-%m-%d %H:%M:%S",
         },
     },
@@ -32,6 +58,7 @@ CONFIG = {
         "console": {
             "level": settings.log_level.upper(),
             "class": "logging.StreamHandler",
+            "filters": ["request_id"],
             "formatter": "text"
             if settings.log_format.lower() == "text"
             else "mozlog_json",
@@ -63,7 +90,6 @@ class RequestSummary(BaseModel):
     t: int
     time: str
     status_code: int
-    rid: str
 
 
 def format_request_summary_fields(
@@ -82,5 +108,4 @@ def format_request_summary_fields(
         t=int((current_time - request_time) * 1000.0),
         time=datetime.fromtimestamp(current_time).isoformat(),
         status_code=status_code,
-        rid=request.state.rid,
     ).model_dump()

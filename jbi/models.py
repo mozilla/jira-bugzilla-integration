@@ -138,12 +138,20 @@ class Actions(RootModel):
         """
         Inspect the list of actions:
          - Validate that lookup tags are uniques
+         - Ensure we haven't exceeded our maximum configured project limit (see error below)
          - If the action's bugzilla_user_id is "tbd", emit a warning.
         """
         tags = [action.whiteboard_tag.lower() for action in actions]
         duplicated_tags = [t for i, t in enumerate(tags) if t in tags[:i]]
         if duplicated_tags:
             raise ValueError(f"actions have duplicated lookup tags: {duplicated_tags}")
+
+        if len(tags) > 50:
+            raise ValueError(
+                "The Jira client's `paginated_projects` method assumes we have "
+                "up to 50 projects configured. Adjust that implementation before "
+                "removing this validation check."
+            )
 
         for action in actions:
             if action.bugzilla_user_id == "tbd":
@@ -286,7 +294,6 @@ class BugzillaBug(BaseModel):
 class BugzillaWebhookRequest(BaseModel):
     """Bugzilla Webhook Request Object"""
 
-    rid: str = ""  # This field has a default since it's not parsed from body.
     webhook_id: int
     webhook_name: str
     event: BugzillaWebhookEvent
@@ -362,7 +369,6 @@ BugId = TypedDict("BugId", {"id": Optional[int]})
 class RunnerContext(Context, extra="forbid"):
     """Logging context from runner"""
 
-    rid: str
     operation: Operation
     event: BugzillaWebhookEvent
     action: Optional[Action] = None
@@ -373,7 +379,6 @@ class ActionContext(Context, extra="forbid"):
     """Logging context from actions"""
 
     action: Action
-    rid: str
     operation: Operation
     current_step: Optional[str] = None
     event: BugzillaWebhookEvent

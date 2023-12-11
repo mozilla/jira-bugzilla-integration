@@ -83,7 +83,6 @@ def settings():
 
 @pytest.fixture(autouse=True)
 def actions():
-    get_actions.cache_clear()
     return get_actions()
 
 
