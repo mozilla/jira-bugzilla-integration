@@ -106,8 +106,7 @@ def get_bugzilla_webhooks(bugzilla_service: BugzillaServiceDep):
 @router.get("/jira_projects/")
 def get_jira_projects(jira_service: JiraServiceDep):
     """API for viewing projects that are currently accessible by API"""
-    visible_projects: list[dict] = jira_service.fetch_visible_projects()
-    return [project["key"] for project in visible_projects]
+    return jira_service.fetch_visible_projects()
 
 
 SRC_DIR = Path(__file__).parent

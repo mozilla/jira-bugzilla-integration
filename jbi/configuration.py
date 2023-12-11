@@ -30,6 +30,7 @@ def get_actions_from_file(jbi_config_file: str) -> Actions:
 
 
 def get_actions(env=settings.env):
+    """Load actions from file determined by ENV name"""
     return get_actions_from_file(f"config/config.{env}.yaml")
 
 

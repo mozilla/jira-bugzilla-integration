@@ -11,7 +11,7 @@ import concurrent
 import json
 import logging
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, Iterable, Optional
+from typing import TYPE_CHECKING, Any, Collection, Iterable, Optional
 
 import requests
 from atlassian import Jira
@@ -94,7 +94,6 @@ class JiraClient(Jira):
 
     get_server_info = instrumented_method(Jira.get_server_info)
     get_project_components = instrumented_method(Jira.get_project_components)
-    projects = instrumented_method(Jira.projects)
     update_issue = instrumented_method(Jira.update_issue)
     update_issue_field = instrumented_method(Jira.update_issue_field)
     set_issue_status = instrumented_method(Jira.set_issue_status)
@@ -103,17 +102,55 @@ class JiraClient(Jira):
     get_project = instrumented_method(Jira.get_project)
 
     @instrumented_method
-    def permitted_projects(self, permissions: Iterable):
+    def paginated_projects(
+        self,
+        included_archived=None,
+        expand=None,
+        url=None,
+        keys: Optional[Collection[str]] = None,
+    ):
+        """Returns a paginated list of projects visible to the user.
+
+        https://developer.atlassian.com/cloud/jira/platform/rest/v2/api-group-projects/#api-rest-api-2-project-search-get
+
+        We've patched this method of the Jira client to accept the `keys` param.
+        """
+
+        if not self.cloud:
+            raise ValueError(
+                "``projects_from_cloud`` method is only available for Jira Cloud platform"
+            )
+
+        params = {}
+
+        if keys is not None:
+            if len(keys) > 50:
+                raise ValueError("Up to 50 project keys can be provided.")
+            params["keys"] = list(keys)
+
+        if included_archived:
+            params["includeArchived"] = included_archived
+        if expand:
+            params["expand"] = expand
+        page_url = url or self.resource_url("project/search")
+        is_url_absolute = bool(page_url.lower().startswith("http"))
+        return self.get(page_url, params=params, absolute=is_url_absolute)
+
+    @instrumented_method
+    def permitted_projects(self, permissions: Optional[Iterable] = None) -> list[dict]:
         """Fetches projects that the user has the required permissions for
 
         https://developer.atlassian.com/cloud/jira/platform/rest/v2/api-group-permissions/#api-rest-api-2-permissions-project-post
         """
+        if permissions is None:
+            permissions = []
 
         response = self.post(
             "/rest/api/2/permissions/project",
             json={"permissions": list(JIRA_REQUIRED_PERMISSIONS)},
         )
-        return response["projects"]
+        projects: list[dict] = response["projects"]
+        return projects
 
 
 class JiraService:
@@ -122,11 +159,11 @@ class JiraService:
     def __init__(self, client) -> None:
         self.client = client
 
-    def fetch_visible_projects(self) -> list[dict]:
+    def fetch_visible_projects(self) -> list[str]:
         """Return list of projects that are visible with the configured Jira credentials"""
 
-        projects: list[dict] = self.client.projects(included_archived=None)
-        return projects
+        projects = self.client.permitted_projects()
+        return [project["key"] for project in projects]
 
     def check_health(self, actions: Actions) -> ServiceHealth:
         """Check health for Jira Service"""
@@ -149,14 +186,12 @@ class JiraService:
 
     def _all_projects_visible(self, actions: Actions) -> bool:
         try:
-            visible_projects = {
-                project["key"] for project in self.fetch_visible_projects()
-            }
+            visible_projects = self.fetch_visible_projects()
         except requests.HTTPError:
             logger.exception("Error fetching visible Jira projects")
             return False
 
-        missing_projects = actions.configured_jira_projects_keys - visible_projects
+        missing_projects = actions.configured_jira_projects_keys - set(visible_projects)
         if missing_projects:
             logger.error(
                 "Jira projects %s are not visible with configured credentials",
@@ -232,7 +267,10 @@ class JiraService:
         return True
 
     def _all_project_issue_types_exist(self, actions: Actions):
-        projects = self.client.projects(included_archived=None, expand="issueTypes")
+        paginated_project_response = self.client.paginated_projects(
+            expand="issueTypes", keys=actions.configured_jira_projects_keys
+        )
+        projects = paginated_project_response["values"]
         issue_types_by_project = {
             project["key"]: {issue_type["name"] for issue_type in project["issueTypes"]}
             for project in projects

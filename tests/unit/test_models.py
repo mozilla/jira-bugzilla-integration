@@ -172,3 +172,9 @@ def test_payload_changes_list(webhook_event_change_factory, webhook_event_factor
         "status",
         "assignee",
     ]
+
+
+def test_max_configured_projects_raises_error(action_factory):
+    actions = [action_factory(whiteboard_tag=str(i)) for i in range(51)]
+    with pytest.raises(pydantic.ValidationError):
+        Actions(root=actions)
