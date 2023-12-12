@@ -462,6 +462,7 @@ def test_visible_projects(mocked_responses):
     projects = jira.get_service().fetch_visible_projects()
     assert projects == ["ABC", "DEF"]
 
+
 @pytest.mark.parametrize(
     "project_data, expected_result",
     [
