@@ -1,4 +1,3 @@
-import json
 import logging
 
 import pytest
@@ -444,3 +443,59 @@ def test_all_project_issue_types_exist(
     )
 
     assert jira.get_service()._all_project_issue_types_exist(actions) == expected_result
+
+
+def test_visible_projects(mocked_responses):
+    url = f"{get_settings().jira_base_url}rest/api/2/permissions/project"
+    mocked_responses.add(
+        responses.POST,
+        url,
+        status=200,
+        match=[
+            responses.matchers.json_params_matcher(
+                {"permissions": []},
+            )
+        ],
+        json={"projects": [{"key": "ABC"}, {"key": "DEF"}]},
+    )
+
+    projects = jira.get_service().fetch_visible_projects()
+    assert projects == ["ABC", "DEF"]
+
+@pytest.mark.parametrize(
+    "project_data, expected_result",
+    [
+        (
+            [{"key": "ABC"}, {"key": "DEF"}],
+            True,
+        ),
+        (
+            [{"key": "ABC"}],
+            False,
+        ),
+    ],
+)
+def test_all_projects_permissions(
+    mocked_responses, action_factory, project_data, expected_result
+):
+    actions = Actions(
+        root=[
+            action_factory(whiteboard_tag="abc", parameters__jira_project_key="ABC"),
+            action_factory(whiteboard_tag="def", parameters__jira_project_key="DEF"),
+        ]
+    )
+
+    url = f"{get_settings().jira_base_url}rest/api/2/permissions/project"
+    mocked_responses.add(
+        responses.POST,
+        url,
+        status=200,
+        match=[
+            responses.matchers.json_params_matcher(
+                {"permissions": list(jira.JIRA_REQUIRED_PERMISSIONS)},
+            )
+        ],
+        json={"projects": project_data},
+    )
+
+    assert jira.get_service()._all_projects_permissions(actions) == expected_result

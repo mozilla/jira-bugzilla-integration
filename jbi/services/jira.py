@@ -147,7 +147,7 @@ class JiraClient(Jira):
 
         response = self.post(
             "/rest/api/2/permissions/project",
-            json={"permissions": list(JIRA_REQUIRED_PERMISSIONS)},
+            json={"permissions": list(permissions)},
         )
         projects: list[dict] = response["projects"]
         return projects
