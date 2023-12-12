@@ -121,17 +121,17 @@ class JiraClient(Jira):
                 "``projects_from_cloud`` method is only available for Jira Cloud platform"
             )
 
-        params = {}
+        params = []
 
         if keys is not None:
             if len(keys) > 50:
                 raise ValueError("Up to 50 project keys can be provided.")
-            params["keys"] = list(keys)
+            params = [("keys", key) for key in keys]
 
         if included_archived:
-            params["includeArchived"] = included_archived
+            params.append(("includeArchived", included_archived))
         if expand:
-            params["expand"] = expand
+            params.append(("expand", expand))
         page_url = url or self.resource_url("project/search")
         is_url_absolute = bool(page_url.lower().startswith("http"))
         return self.get(page_url, params=params, absolute=is_url_absolute)
@@ -267,9 +267,14 @@ class JiraService:
         return True
 
     def _all_project_issue_types_exist(self, actions: Actions):
-        paginated_project_response = self.client.paginated_projects(
-            expand="issueTypes", keys=actions.configured_jira_projects_keys
-        )
+        try:
+            paginated_project_response = self.client.paginated_projects(
+                expand="issueTypes", keys=actions.configured_jira_projects_keys
+            )
+        except requests.RequestException:
+            logger.exception("Couldn't fetch projects")
+            return False
+
         projects = paginated_project_response["values"]
         issue_types_by_project = {
             project["key"]: {issue_type["name"] for issue_type in project["issueTypes"]}

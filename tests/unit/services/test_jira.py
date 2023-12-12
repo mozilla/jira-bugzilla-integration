@@ -358,3 +358,89 @@ def test_create_jira_issue_returns_errors(
     assert after.message == f"Failed to create issue for Bug {context.bug.id}"
     assert after.levelno == logging.ERROR
     assert after.response == fake_error_data
+
+
+def test_paginated_projects_no_keys(mocked_responses):
+    url = f"{get_settings().jira_base_url}rest/api/2/project/search"
+    mocked_response_data = {"some": "data"}
+    mocked_responses.add(
+        responses.GET,
+        url,
+        status=200,
+        match=[responses.matchers.query_string_matcher(None)],
+        json=mocked_response_data,
+    )
+    resp = jira.get_service().client.paginated_projects()
+    assert resp == mocked_response_data
+
+
+def test_paginated_projects_with_keys(mocked_responses, action_factory):
+    action_factory()
+    url = f"{get_settings().jira_base_url}rest/api/2/project/search"
+    mocked_response_data = {"some": "data"}
+    mocked_responses.add(
+        responses.GET,
+        url,
+        status=200,
+        match=[responses.matchers.query_string_matcher("keys=ABC&keys=DEF")],
+        json=mocked_response_data,
+    )
+    resp = jira.get_service().client.paginated_projects(keys=["ABC", "DEF"])
+    assert resp == mocked_response_data
+
+
+def test_paginated_projects_greater_than_50_keys(mocked_responses):
+    keys = [str(i) for i in range(51)]
+    with pytest.raises(ValueError):
+        jira.get_service().client.paginated_projects(keys=keys)
+
+
+@pytest.mark.parametrize(
+    "project_data, expected_result",
+    [
+        (
+            [
+                {"key": "ABC", "issueTypes": [{"name": "Task"}, {"name": "Bug"}]},
+                {"key": "DEF", "issueTypes": [{"name": "Task"}, {"name": "Bug"}]},
+            ],
+            True,
+        ),
+        (
+            [
+                {"key": "ABC", "issueTypes": [{"name": "Task"}]},
+                {"key": "DEF", "issueTypes": [{"name": "Task"}, {"name": "Bug"}]},
+            ],
+            False,
+        ),
+        (
+            [
+                {"key": "ABC", "issueTypes": [{"name": "Task"}, {"name": "Bug"}]},
+            ],
+            False,
+        ),
+    ],
+)
+def test_all_project_issue_types_exist(
+    mocked_responses, action_factory, project_data, expected_result
+):
+    actions = Actions(
+        root=[
+            action_factory(whiteboard_tag="abc", parameters__jira_project_key="ABC"),
+            action_factory(whiteboard_tag="def", parameters__jira_project_key="DEF"),
+        ]
+    )
+
+    url = f"{get_settings().jira_base_url}rest/api/2/project/search"
+    mocked_responses.add(
+        responses.GET,
+        url,
+        status=200,
+        match=[
+            responses.matchers.query_string_matcher(
+                "keys=ABC&keys=DEF&expand=issueTypes"
+            )
+        ],
+        json={"values": project_data},
+    )
+
+    assert jira.get_service()._all_project_issue_types_exist(actions) == expected_result
