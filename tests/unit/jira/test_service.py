@@ -6,16 +6,15 @@ import responses
 from requests.exceptions import ConnectionError
 
 from jbi import jira
-from jbi.environment import get_settings
 from jbi.models import Actions, JiraComponents
 
 pytestmark = pytest.mark.no_mocked_jira
 
 
 def test_jira_retries_failing_connections_in_health_check(
-    mocked_responses, actions_factory
+    settings, mocked_responses, actions_factory
 ):
-    url = f"{get_settings().jira_base_url}rest/api/2/serverInfo?doHealthCheck=True"
+    url = f"{settings.jira_base_url}rest/api/2/serverInfo?doHealthCheck=True"
 
     # When the request does not match any mocked URL, we also obtain
     # a `ConnectionError`, but let's mock it explicitly.
@@ -30,8 +29,8 @@ def test_jira_retries_failing_connections_in_health_check(
     assert len(mocked_responses.calls) == 4
 
 
-def test_jira_does_not_retry_4XX(mocked_responses, context_create_example):
-    url = f"{get_settings().jira_base_url}rest/api/2/issue"
+def test_jira_does_not_retry_4XX(settings, mocked_responses, context_create_example):
+    url = f"{settings.jira_base_url}rest/api/2/issue"
     mocked_responses.add(
         responses.POST,
         url,
@@ -59,13 +58,14 @@ def test_jira_does_not_retry_4XX(mocked_responses, context_create_example):
     ],
 )
 def test_all_project_custom_components_exist(
+    settings,
     jira_components,
     project_components,
     expected_result,
     mocked_responses,
     action_factory,
 ):
-    url = f"{get_settings().jira_base_url}rest/api/2/project/ABC/components"
+    url = f"{settings.jira_base_url}rest/api/2/project/ABC/components"
     if jira_components:
         mocked_responses.add(
             responses.GET,
@@ -84,7 +84,7 @@ def test_all_project_custom_components_exist(
 
 
 def test_all_project_custom_components_exist_no_components_param(
-    action_factory, mocked_responses
+    settings, action_factory, mocked_responses
 ):
     action = action_factory(
         parameters={
@@ -96,9 +96,9 @@ def test_all_project_custom_components_exist_no_components_param(
     assert result is True
 
 
-def test_get_issue(mocked_responses, action_context_factory, capturelogs):
+def test_get_issue(settings, mocked_responses, action_context_factory, capturelogs):
     context = action_context_factory()
-    url = f"{get_settings().jira_base_url}rest/api/2/issue/JBI-234"
+    url = f"{settings.jira_base_url}rest/api/2/issue/JBI-234"
     mock_response_data = {"key": "JBI-234", "fields": {"project": {"key": "JBI"}}}
     mocked_responses.add(responses.GET, url, json=mock_response_data)
 
@@ -114,9 +114,11 @@ def test_get_issue(mocked_responses, action_context_factory, capturelogs):
     assert after == "Received issue JBI-234"
 
 
-def test_get_issue_handles_404(mocked_responses, action_context_factory, capturelogs):
+def test_get_issue_handles_404(
+    settings, mocked_responses, action_context_factory, capturelogs
+):
     context = action_context_factory()
-    url = f"{get_settings().jira_base_url}rest/api/2/issue/JBI-234"
+    url = f"{settings.jira_base_url}rest/api/2/issue/JBI-234"
     mocked_responses.add(responses.GET, url, status=404)
 
     with capturelogs.for_logger("jbi.jira.service").at_level(logging.DEBUG):
@@ -133,10 +135,10 @@ def test_get_issue_handles_404(mocked_responses, action_context_factory, capture
 
 
 def test_get_issue_reraises_other_erroring_status_codes(
-    mocked_responses, action_context_factory, capturelogs
+    settings, mocked_responses, action_context_factory, capturelogs
 ):
     context = action_context_factory()
-    url = f"{get_settings().jira_base_url}rest/api/2/issue/JBI-234"
+    url = f"{settings.jira_base_url}rest/api/2/issue/JBI-234"
     mocked_responses.add(responses.GET, url, status=401)
 
     with capturelogs.for_logger("jbi.jira.service").at_level(logging.DEBUG):
@@ -148,9 +150,11 @@ def test_get_issue_reraises_other_erroring_status_codes(
     assert record.message == "Getting issue JBI-234"
 
 
-def test_update_issue_resolution(mocked_responses, action_context_factory, capturelogs):
+def test_update_issue_resolution(
+    settings, mocked_responses, action_context_factory, capturelogs
+):
     context = action_context_factory(jira__issue="JBI-234")
-    url = f"{get_settings().jira_base_url}rest/api/2/issue/JBI-234"
+    url = f"{settings.jira_base_url}rest/api/2/issue/JBI-234"
     mocked_responses.add(
         responses.PUT,
         url,
@@ -170,10 +174,10 @@ def test_update_issue_resolution(mocked_responses, action_context_factory, captu
 
 
 def test_update_issue_resolution_raises(
-    mocked_responses, action_context_factory, capturelogs
+    settings, mocked_responses, action_context_factory, capturelogs
 ):
     context = action_context_factory(jira__issue="JBI-234")
-    url = f"{get_settings().jira_base_url}rest/api/2/issue/JBI-234"
+    url = f"{settings.jira_base_url}rest/api/2/issue/JBI-234"
     mocked_responses.add(
         responses.PUT,
         url,
@@ -193,9 +197,11 @@ def test_update_issue_resolution_raises(
     assert message == "Updating resolution of Jira issue JBI-234 to DONEZO"
 
 
-def test_create_jira_issue(mocked_responses, action_context_factory, capturelogs):
+def test_create_jira_issue(
+    settings, mocked_responses, action_context_factory, capturelogs
+):
     context = action_context_factory(jira__project_key="JBI")
-    url = f"{get_settings().jira_base_url}rest/api/2/issue"
+    url = f"{settings.jira_base_url}rest/api/2/issue"
     mocked_response_data = {"key": "JBI-234"}
     issue_fields = {
         "summary": context.bug.summary,
@@ -231,10 +237,10 @@ def test_create_jira_issue(mocked_responses, action_context_factory, capturelogs
 
 
 def test_create_jira_issue_when_list_is_returned(
-    mocked_responses, action_context_factory, capturelogs
+    settings, mocked_responses, action_context_factory, capturelogs
 ):
     context = action_context_factory(jira__project_key="JBI")
-    url = f"{get_settings().jira_base_url}rest/api/2/issue"
+    url = f"{settings.jira_base_url}rest/api/2/issue"
     mocked_issue_data = {"key": "JBI-234"}
     issue_fields = {
         "summary": context.bug.summary,
@@ -272,10 +278,10 @@ def test_create_jira_issue_when_list_is_returned(
 
 
 def test_create_jira_issue_returns_errors(
-    mocked_responses, action_context_factory, capturelogs
+    settings, mocked_responses, action_context_factory, capturelogs
 ):
     context = action_context_factory(jira__project_key="JBI")
-    url = f"{get_settings().jira_base_url}rest/api/2/issue"
+    url = f"{settings.jira_base_url}rest/api/2/issue"
     fake_error_data = {
         "errorMessages": ["You done goofed"],
         "errors": ["You messed up this time"],
@@ -332,7 +338,7 @@ def test_create_jira_issue_returns_errors(
     ],
 )
 def test_all_project_issue_types_exist(
-    mocked_responses, action_factory, project_data, expected_result
+    settings, mocked_responses, action_factory, project_data, expected_result
 ):
     actions = Actions(
         root=[
@@ -341,7 +347,7 @@ def test_all_project_issue_types_exist(
         ]
     )
 
-    url = f"{get_settings().jira_base_url}rest/api/2/project/search"
+    url = f"{settings.jira_base_url}rest/api/2/project/search"
     mocked_responses.add(
         responses.GET,
         url,
@@ -357,8 +363,8 @@ def test_all_project_issue_types_exist(
     assert jira.get_service()._all_project_issue_types_exist(actions) == expected_result
 
 
-def test_visible_projects(mocked_responses):
-    url = f"{get_settings().jira_base_url}rest/api/2/permissions/project"
+def test_visible_projects(settings, mocked_responses):
+    url = f"{settings.jira_base_url}rest/api/2/permissions/project"
     mocked_responses.add(
         responses.POST,
         url,
@@ -389,7 +395,7 @@ def test_visible_projects(mocked_responses):
     ],
 )
 def test_all_projects_permissions(
-    mocked_responses, action_factory, project_data, expected_result
+    settings, mocked_responses, action_factory, project_data, expected_result
 ):
     actions = Actions(
         root=[
@@ -398,7 +404,7 @@ def test_all_projects_permissions(
         ]
     )
 
-    url = f"{get_settings().jira_base_url}rest/api/2/permissions/project"
+    url = f"{settings.jira_base_url}rest/api/2/permissions/project"
     mocked_responses.add(
         responses.POST,
         url,
