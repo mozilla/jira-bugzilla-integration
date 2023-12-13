@@ -1,5 +1,5 @@
 """Exports the bugzilla and jira services modules for convenience"""
 
-from . import bugzilla, jira
+from . import jira
 
-__all__ = ["bugzilla", "jira"]
+__all__ = ["jira"]

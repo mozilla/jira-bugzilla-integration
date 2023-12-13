@@ -1,7 +1,3 @@
-"""Contains a Bugzilla REST client and functions comprised of common operations
-with that REST client
-"""
-
 import logging
 from functools import lru_cache
 
@@ -9,12 +5,13 @@ import requests
 from statsd.defaults.env import statsd
 
 from jbi import Operation, environment
-from jbi.bugzilla.client import BugzillaClient, BugzillaClientError
 from jbi.common.instrument import ServiceHealth
 from jbi.models import (
     ActionContext,
     BugzillaBug,
 )
+
+from .client import BugzillaClient, BugzillaClientError
 
 settings = environment.get_settings()
 

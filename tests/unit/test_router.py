@@ -224,7 +224,7 @@ def test_heartbeat_bugzilla_reports_webhooks_errors(
         bugzilla_webhook_factory(id=2, errors=3, name="Search Toolbar"),
     ]
 
-    with mock.patch("jbi.services.bugzilla.statsd") as mocked:
+    with mock.patch("jbi.bugzilla.service.statsd") as mocked:
         anon_client.get("/__heartbeat__")
 
     mocked.gauge.assert_any_call(

@@ -10,12 +10,12 @@ from fastapi.testclient import TestClient
 from pytest_factoryboy import register
 
 import tests.fixtures.factories as factories
-from jbi import Operation
+from jbi import Operation, bugzilla
 from jbi.app import app
 from jbi.configuration import get_actions
 from jbi.environment import Settings
 from jbi.models import ActionContext
-from jbi.services import bugzilla, jira
+from jbi.services import jira
 
 
 class FilteredLogCaptureFixture(pytest.LogCaptureFixture):
@@ -98,7 +98,7 @@ def mocked_bugzilla(request):
         yield None
         bugzilla.get_service.cache_clear()
     else:
-        with mock.patch("jbi.services.bugzilla.BugzillaClient") as mocked_bz:
+        with mock.patch("jbi.bugzilla.service.BugzillaClient") as mocked_bz:
             yield mocked_bz()
             bugzilla.get_service.cache_clear()
 
