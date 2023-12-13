@@ -174,6 +174,17 @@ def test_payload_changes_list(webhook_event_change_factory, webhook_event_factor
     ]
 
 
+def test_payload_changes_coerces_numbers_to_strings(
+    webhook_event_change_factory, webhook_event_factory
+):
+    changes = [
+        webhook_event_change_factory(field="is_confirmed", removed="1", added=0),
+    ]
+    event = webhook_event_factory(routing_key="bug.modify", changes=changes)
+    assert event.changed_fields() == ["is_confirmed"]
+    assert event.changes[0].added == "0"
+
+
 def test_max_configured_projects_raises_error(action_factory):
     actions = [action_factory(whiteboard_tag=str(i)) for i in range(51)]
     with pytest.raises(pydantic.ValidationError):

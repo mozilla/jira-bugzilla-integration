@@ -175,6 +175,8 @@ class BugzillaWebhookUser(BaseModel):
 class BugzillaWebhookEventChange(BaseModel):
     """Bugzilla Change Object"""
 
+    model_config = ConfigDict(coerce_numbers_to_str=True)
+
     field: str
     removed: str
     added: str
