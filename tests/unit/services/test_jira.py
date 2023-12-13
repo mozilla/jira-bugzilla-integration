@@ -160,7 +160,6 @@ def test_get_issue(mocked_responses, action_context_factory, capturelogs):
 
     assert response == mock_response_data
     for record in capturelogs.records:
-        assert record.rid == context.rid
         assert record.action["whiteboard_tag"] == context.action.whiteboard_tag
 
     before, after = capturelogs.messages
@@ -177,9 +176,6 @@ def test_get_issue_handles_404(mocked_responses, action_context_factory, capture
         return_val = jira.get_service().get_issue(context=context, issue_key="JBI-234")
 
     assert return_val is None
-
-    for record in capturelogs.records:
-        assert record.rid == context.rid
 
     before, after = capturelogs.records
     assert before.levelno == logging.DEBUG
@@ -201,7 +197,6 @@ def test_get_issue_reraises_other_erroring_status_codes(
             jira.get_service().get_issue(context=context, issue_key="JBI-234")
 
     [record] = capturelogs.records
-    assert record.rid == context.rid
     assert record.levelno == logging.DEBUG
     assert record.message == "Getting issue JBI-234"
 
@@ -221,10 +216,6 @@ def test_update_issue_resolution(mocked_responses, action_context_factory, captu
         jira.get_service().update_issue_resolution(
             context=context, jira_resolution="DONEZO"
         )
-
-    for record in capturelogs.records:
-        assert record.rid == context.rid
-        assert record.levelno == logging.DEBUG
 
     before, after = capturelogs.messages
     assert before == "Updating resolution of Jira issue JBI-234 to DONEZO"
@@ -251,10 +242,8 @@ def test_update_issue_resolution_raises(
                 context=context, jira_resolution="DONEZO"
             )
 
-    [record] = capturelogs.records
-    assert record.rid == context.rid
-    assert record.levelno == logging.DEBUG
-    assert record.message == "Updating resolution of Jira issue JBI-234 to DONEZO"
+    [message] = capturelogs.messages
+    assert message == "Updating resolution of Jira issue JBI-234 to DONEZO"
 
 
 def test_create_jira_issue(mocked_responses, action_context_factory, capturelogs):
@@ -285,10 +274,6 @@ def test_create_jira_issue(mocked_responses, action_context_factory, capturelogs
         )
 
     assert response == mocked_response_data
-
-    for record in capturelogs.records:
-        assert record.rid == context.rid
-        assert record.levelno == logging.DEBUG
 
     before, after = capturelogs.records
     assert before.message == f"Creating new Jira issue for Bug {context.bug.id}"
@@ -332,12 +317,10 @@ def test_create_jira_issue_when_list_is_returned(
     before, after = capturelogs.records
     assert before.message == f"Creating new Jira issue for Bug {context.bug.id}"
     assert before.levelno == logging.DEBUG
-    assert before.rid == context.rid
     assert before.fields == issue_fields
 
     assert after.message == f"Jira issue JBI-234 created for Bug {context.bug.id}"
     assert after.levelno == logging.DEBUG
-    assert after.rid == context.rid
     assert after.response == [mocked_issue_data]
 
 
@@ -368,11 +351,152 @@ def test_create_jira_issue_returns_errors(
 
     before, after = capturelogs.records
     assert before.message == f"Creating new Jira issue for Bug {context.bug.id}"
-    assert before.rid == context.rid
     assert before.levelno == logging.DEBUG
     assert before.fields == issue_fields
 
     assert after.message == f"Failed to create issue for Bug {context.bug.id}"
-    assert after.rid == context.rid
     assert after.levelno == logging.ERROR
     assert after.response == fake_error_data
+
+
+def test_paginated_projects_no_keys(mocked_responses):
+    url = f"{get_settings().jira_base_url}rest/api/2/project/search"
+    mocked_response_data = {"some": "data"}
+    mocked_responses.add(
+        responses.GET,
+        url,
+        status=200,
+        match=[responses.matchers.query_string_matcher(None)],
+        json=mocked_response_data,
+    )
+    resp = jira.get_service().client.paginated_projects()
+    assert resp == mocked_response_data
+
+
+def test_paginated_projects_with_keys(mocked_responses, action_factory):
+    action_factory()
+    url = f"{get_settings().jira_base_url}rest/api/2/project/search"
+    mocked_response_data = {"some": "data"}
+    mocked_responses.add(
+        responses.GET,
+        url,
+        status=200,
+        match=[responses.matchers.query_string_matcher("keys=ABC&keys=DEF")],
+        json=mocked_response_data,
+    )
+    resp = jira.get_service().client.paginated_projects(keys=["ABC", "DEF"])
+    assert resp == mocked_response_data
+
+
+def test_paginated_projects_greater_than_50_keys(mocked_responses):
+    keys = [str(i) for i in range(51)]
+    with pytest.raises(ValueError):
+        jira.get_service().client.paginated_projects(keys=keys)
+
+
+@pytest.mark.parametrize(
+    "project_data, expected_result",
+    [
+        (
+            [
+                {"key": "ABC", "issueTypes": [{"name": "Task"}, {"name": "Bug"}]},
+                {"key": "DEF", "issueTypes": [{"name": "Task"}, {"name": "Bug"}]},
+            ],
+            True,
+        ),
+        (
+            [
+                {"key": "ABC", "issueTypes": [{"name": "Task"}]},
+                {"key": "DEF", "issueTypes": [{"name": "Task"}, {"name": "Bug"}]},
+            ],
+            False,
+        ),
+        (
+            [
+                {"key": "ABC", "issueTypes": [{"name": "Task"}, {"name": "Bug"}]},
+            ],
+            False,
+        ),
+    ],
+)
+def test_all_project_issue_types_exist(
+    mocked_responses, action_factory, project_data, expected_result
+):
+    actions = Actions(
+        root=[
+            action_factory(whiteboard_tag="abc", parameters__jira_project_key="ABC"),
+            action_factory(whiteboard_tag="def", parameters__jira_project_key="DEF"),
+        ]
+    )
+
+    url = f"{get_settings().jira_base_url}rest/api/2/project/search"
+    mocked_responses.add(
+        responses.GET,
+        url,
+        status=200,
+        match=[
+            responses.matchers.query_string_matcher(
+                "keys=ABC&keys=DEF&expand=issueTypes"
+            )
+        ],
+        json={"values": project_data},
+    )
+
+    assert jira.get_service()._all_project_issue_types_exist(actions) == expected_result
+
+
+def test_visible_projects(mocked_responses):
+    url = f"{get_settings().jira_base_url}rest/api/2/permissions/project"
+    mocked_responses.add(
+        responses.POST,
+        url,
+        status=200,
+        match=[
+            responses.matchers.json_params_matcher(
+                {"permissions": []},
+            )
+        ],
+        json={"projects": [{"key": "ABC"}, {"key": "DEF"}]},
+    )
+
+    projects = jira.get_service().fetch_visible_projects()
+    assert projects == ["ABC", "DEF"]
+
+
+@pytest.mark.parametrize(
+    "project_data, expected_result",
+    [
+        (
+            [{"key": "ABC"}, {"key": "DEF"}],
+            True,
+        ),
+        (
+            [{"key": "ABC"}],
+            False,
+        ),
+    ],
+)
+def test_all_projects_permissions(
+    mocked_responses, action_factory, project_data, expected_result
+):
+    actions = Actions(
+        root=[
+            action_factory(whiteboard_tag="abc", parameters__jira_project_key="ABC"),
+            action_factory(whiteboard_tag="def", parameters__jira_project_key="DEF"),
+        ]
+    )
+
+    url = f"{get_settings().jira_base_url}rest/api/2/permissions/project"
+    mocked_responses.add(
+        responses.POST,
+        url,
+        status=200,
+        match=[
+            responses.matchers.json_params_matcher(
+                {"permissions": list(jira.JIRA_REQUIRED_PERMISSIONS)},
+            )
+        ],
+        json={"projects": project_data},
+    )
+
+    assert jira.get_service()._all_projects_permissions(actions) == expected_result

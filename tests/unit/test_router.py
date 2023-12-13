@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 from unittest import mock
 
+import pytest
 from fastapi.testclient import TestClient
 
 from jbi.app import app
@@ -26,7 +27,7 @@ def test_whiteboard_tags(anon_client):
 
 
 def test_jira_projects(anon_client, mocked_jira):
-    mocked_jira.projects.return_value = [{"key": "Firefox"}, {"key": "Fenix"}]
+    mocked_jira.permitted_projects.return_value = [{"key": "Firefox"}, {"key": "Fenix"}]
 
     resp = anon_client.get("/jira_projects/")
     infos = resp.json()
@@ -247,52 +248,6 @@ def test_read_heartbeat_bugzilla_services_fails(anon_client, mocked_bugzilla):
     }
 
 
-def test_read_heartbeat_success(
-    anon_client, mocked_jira, mocked_bugzilla, bugzilla_webhook_factory
-):
-    """/__heartbeat__ returns 200 when checks succeed."""
-    mocked_bugzilla.logged_in.return_value = True
-    mocked_bugzilla.list_webhooks.return_value = [bugzilla_webhook_factory()]
-    mocked_jira.get_server_info.return_value = {}
-    mocked_jira.projects.return_value = [
-        {
-            "key": "DevTest",
-            "issueTypes": [
-                {"name": "Task"},
-                {"name": "Bug"},
-            ],
-        }
-    ]
-    mocked_jira.get_project_components.return_value = [{"name": "Main"}]
-    mocked_jira.permitted_projects.return_value = [{"id": "12345", "key": "DevTest"}]
-
-    mocked_jira.get_project_components.return_value = [{"name": "Main"}]
-    mocked_jira.permitted_projects.return_value = [{"id": "12345", "key": "DevTest"}]
-    mocked_jira.get_project.return_value = {
-        "issueTypes": [
-            {"name": "Task"},
-            {"name": "Bug"},
-        ]
-    }
-
-    resp = anon_client.get("/__heartbeat__")
-
-    assert resp.status_code == 200
-    assert resp.json() == {
-        "jira": {
-            "up": True,
-            "all_projects_are_visible": True,
-            "all_projects_have_permissions": True,
-            "all_project_custom_components_exist": True,
-            "all_projects_issue_types_exist": True,
-        },
-        "bugzilla": {
-            "up": True,
-            "all_webhooks_enabled": True,
-        },
-    }
-
-
 def test_jira_heartbeat_visible_projects(anon_client, mocked_jira):
     """/__heartbeat__ fails if configured projects don't match."""
     mocked_jira.get_server_info.return_value = {}
@@ -349,35 +304,50 @@ def test_jira_heartbeat_unknown_issue_types(anon_client, mocked_jira):
     assert not resp.json()["jira"]["all_projects_issue_types_exist"]
 
 
-def test_head_heartbeat_success(
-    anon_client, mocked_jira, mocked_bugzilla, bugzilla_webhook_factory
+@pytest.mark.parametrize("method", ["HEAD", "GET"])
+def test_read_heartbeat_success(
+    anon_client, method, mocked_jira, mocked_bugzilla, bugzilla_webhook_factory
 ):
-    """/__heartbeat__ support head requests"""
+    """/__heartbeat__ returns 200 when checks succeed."""
     mocked_bugzilla.logged_in.return_value = True
     mocked_bugzilla.list_webhooks.return_value = [bugzilla_webhook_factory()]
     mocked_jira.get_server_info.return_value = {}
-    mocked_jira.projects.return_value = [
-        {
-            "key": "DevTest",
-            "issueTypes": [
-                {"name": "Task"},
-                {"name": "Bug"},
-            ],
-        }
-    ]
+    mocked_jira.paginated_projects.return_value = {
+        "values": [
+            {
+                "key": "DevTest",
+                "issueTypes": [
+                    {"name": "Task"},
+                    {"name": "Bug"},
+                ],
+            }
+        ]
+    }
     mocked_jira.get_project_components.return_value = [{"name": "Main"}]
-    mocked_jira.permitted_projects.return_value = [{"id": "12345", "key": "DevTest"}]
+    mocked_jira.permitted_projects.return_value = [{"key": "DevTest"}]
 
-    resp = anon_client.head("/__heartbeat__")
+    resp = anon_client.request(method, "__heartbeat__")
 
     assert resp.status_code == 200
+    if method == "GET":
+        assert resp.json() == {
+            "jira": {
+                "up": True,
+                "all_projects_are_visible": True,
+                "all_projects_have_permissions": True,
+                "all_project_custom_components_exist": True,
+                "all_projects_issue_types_exist": True,
+            },
+            "bugzilla": {
+                "up": True,
+                "all_webhooks_enabled": True,
+            },
+        }
 
 
-def test_lbheartbeat(anon_client):
+@pytest.mark.parametrize("method", ["HEAD", "GET"])
+def test_lbheartbeat(anon_client, method):
     """/__lbheartbeat__ always returns 200"""
 
-    resp = anon_client.get("/__lbheartbeat__")
-    assert resp.status_code == 200
-
-    resp = anon_client.head("/__lbheartbeat__")
+    resp = anon_client.request(method, "__lbheartbeat__")
     assert resp.status_code == 200
