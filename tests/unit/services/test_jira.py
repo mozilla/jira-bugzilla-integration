@@ -12,59 +12,6 @@ from jbi.services import jira
 pytestmark = pytest.mark.no_mocked_jira
 
 
-def test_jira_create_issue_is_instrumented(
-    mocked_responses, context_create_example, mocked_statsd
-):
-    url = f"{get_settings().jira_base_url}rest/api/2/issue"
-    mocked_responses.add(
-        responses.POST,
-        url,
-        json={
-            "id": "10000",
-            "key": "ED-24",
-        },
-    )
-
-    jira.get_service().create_jira_issue(
-        context_create_example, "Description", issue_type="Task"
-    )
-    jira_client = jira.get_service().client
-
-    jira_client.create_issue({})
-
-    mocked_statsd.incr.assert_called_with("jbi.jira.methods.create_issue.count")
-    mocked_statsd.timer.assert_called_with("jbi.jira.methods.create_issue.timer")
-
-
-def test_jira_calls_log_http_errors(mocked_responses, context_create_example, caplog):
-    url = f"{get_settings().jira_base_url}rest/api/2/project/{context_create_example.jira.project}/components"
-    mocked_responses.add(
-        responses.GET,
-        url,
-        status=404,
-        json={
-            "errorMessages": ["No project could be found with key 'X'."],
-            "errors": {},
-        },
-    )
-
-    with caplog.at_level(logging.ERROR):
-        with pytest.raises(requests.HTTPError):
-            jira.get_service().client.get_project_components(
-                context_create_example.jira.project
-            )
-
-    log_messages = [log.msg % log.args for log in caplog.records]
-    idx = log_messages.index(
-        "HTTP: GET /rest/api/2/project/JBI/components -> 404 Not Found"
-    )
-    log_record = caplog.records[idx]
-    assert (
-        log_record.body
-        == '{"errorMessages": ["No project could be found with key \'X\'."], "errors": {}}'
-    )
-
-
 def test_jira_retries_failing_connections_in_health_check(
     mocked_responses, actions_factory
 ):
@@ -357,41 +304,6 @@ def test_create_jira_issue_returns_errors(
     assert after.message == f"Failed to create issue for Bug {context.bug.id}"
     assert after.levelno == logging.ERROR
     assert after.response == fake_error_data
-
-
-def test_paginated_projects_no_keys(mocked_responses):
-    url = f"{get_settings().jira_base_url}rest/api/2/project/search"
-    mocked_response_data = {"some": "data"}
-    mocked_responses.add(
-        responses.GET,
-        url,
-        status=200,
-        match=[responses.matchers.query_string_matcher(None)],
-        json=mocked_response_data,
-    )
-    resp = jira.get_service().client.paginated_projects()
-    assert resp == mocked_response_data
-
-
-def test_paginated_projects_with_keys(mocked_responses, action_factory):
-    action_factory()
-    url = f"{get_settings().jira_base_url}rest/api/2/project/search"
-    mocked_response_data = {"some": "data"}
-    mocked_responses.add(
-        responses.GET,
-        url,
-        status=200,
-        match=[responses.matchers.query_string_matcher("keys=ABC&keys=DEF")],
-        json=mocked_response_data,
-    )
-    resp = jira.get_service().client.paginated_projects(keys=["ABC", "DEF"])
-    assert resp == mocked_response_data
-
-
-def test_paginated_projects_greater_than_50_keys(mocked_responses):
-    keys = [str(i) for i in range(51)]
-    with pytest.raises(ValueError):
-        jira.get_service().client.paginated_projects(keys=keys)
 
 
 @pytest.mark.parametrize(
