@@ -1,7 +1,6 @@
 import uvicorn
 
 from jbi.environment import get_settings
-from jbi.log import CONFIG as LOGGING_CONFIG
 
 settings = get_settings()
 
