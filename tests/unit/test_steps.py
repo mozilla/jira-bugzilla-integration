@@ -6,9 +6,10 @@ import requests
 
 from jbi import Operation, steps
 from jbi.environment import get_settings
+from jbi.jira import JiraService
+from jbi.jira.client import JiraCreateError
 from jbi.models import ActionContext, JiraComponents
 from jbi.runner import Executor
-from jbi.services.jira import JiraCreateError, JiraService
 
 ALL_STEPS = {
     "new": [

@@ -8,7 +8,7 @@ from typing import Optional
 
 from statsd.defaults.env import statsd
 
-from jbi import ActionResult, Operation, bugzilla
+from jbi import ActionResult, Operation, bugzilla, jira
 from jbi import steps as steps_module
 from jbi.environment import get_settings
 from jbi.errors import ActionNotFoundError, IgnoreInvalidRequestError
@@ -21,7 +21,6 @@ from jbi.models import (
     JiraContext,
     RunnerContext,
 )
-from jbi.services import jira
 from jbi.steps import StepStatus
 
 logger = logging.getLogger(__name__)

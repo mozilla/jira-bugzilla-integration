@@ -5,9 +5,9 @@ import requests
 import responses
 from requests.exceptions import ConnectionError
 
+from jbi import jira
 from jbi.environment import get_settings
 from jbi.models import Actions, JiraComponents
-from jbi.services import jira
 
 pytestmark = pytest.mark.no_mocked_jira
 
@@ -39,7 +39,7 @@ def test_jira_does_not_retry_4XX(mocked_responses, context_create_example):
         status=400,
     )
 
-    with pytest.raises(jira.JiraCreateError):
+    with pytest.raises(jira.client.JiraCreateError):
         jira.get_service().create_jira_issue(
             context=context_create_example, description="", issue_type="Task"
         )
@@ -102,7 +102,7 @@ def test_get_issue(mocked_responses, action_context_factory, capturelogs):
     mock_response_data = {"key": "JBI-234", "fields": {"project": {"key": "JBI"}}}
     mocked_responses.add(responses.GET, url, json=mock_response_data)
 
-    with capturelogs.for_logger("jbi.services.jira").at_level(logging.DEBUG):
+    with capturelogs.for_logger("jbi.jira.service").at_level(logging.DEBUG):
         response = jira.get_service().get_issue(context=context, issue_key="JBI-234")
 
     assert response == mock_response_data
@@ -119,7 +119,7 @@ def test_get_issue_handles_404(mocked_responses, action_context_factory, capture
     url = f"{get_settings().jira_base_url}rest/api/2/issue/JBI-234"
     mocked_responses.add(responses.GET, url, status=404)
 
-    with capturelogs.for_logger("jbi.services.jira").at_level(logging.DEBUG):
+    with capturelogs.for_logger("jbi.jira.service").at_level(logging.DEBUG):
         return_val = jira.get_service().get_issue(context=context, issue_key="JBI-234")
 
     assert return_val is None
@@ -139,7 +139,7 @@ def test_get_issue_reraises_other_erroring_status_codes(
     url = f"{get_settings().jira_base_url}rest/api/2/issue/JBI-234"
     mocked_responses.add(responses.GET, url, status=401)
 
-    with capturelogs.for_logger("jbi.services.jira").at_level(logging.DEBUG):
+    with capturelogs.for_logger("jbi.jira.service").at_level(logging.DEBUG):
         with pytest.raises(requests.HTTPError):
             jira.get_service().get_issue(context=context, issue_key="JBI-234")
 
@@ -159,7 +159,7 @@ def test_update_issue_resolution(mocked_responses, action_context_factory, captu
         ],
     )
 
-    with capturelogs.for_logger("jbi.services.jira").at_level(logging.DEBUG):
+    with capturelogs.for_logger("jbi.jira.service").at_level(logging.DEBUG):
         jira.get_service().update_issue_resolution(
             context=context, jira_resolution="DONEZO"
         )
@@ -183,7 +183,7 @@ def test_update_issue_resolution_raises(
         ],
     )
 
-    with capturelogs.for_logger("jbi.services.jira").at_level(logging.DEBUG):
+    with capturelogs.for_logger("jbi.jira.service").at_level(logging.DEBUG):
         with pytest.raises(requests.HTTPError):
             jira.get_service().update_issue_resolution(
                 context=context, jira_resolution="DONEZO"
@@ -215,7 +215,7 @@ def test_create_jira_issue(mocked_responses, action_context_factory, capturelogs
         json=mocked_response_data,
     )
 
-    with capturelogs.for_logger("jbi.services.jira").at_level(logging.DEBUG):
+    with capturelogs.for_logger("jbi.jira.service").at_level(logging.DEBUG):
         response = jira.get_service().create_jira_issue(
             context=context, description="description", issue_type="Task"
         )
@@ -254,7 +254,7 @@ def test_create_jira_issue_when_list_is_returned(
         json=[mocked_issue_data],
     )
 
-    with capturelogs.for_logger("jbi.services.jira").at_level(logging.DEBUG):
+    with capturelogs.for_logger("jbi.jira.service").at_level(logging.DEBUG):
         issue_data = jira.get_service().create_jira_issue(
             context=context, description="description", issue_type="Task"
         )
@@ -288,8 +288,8 @@ def test_create_jira_issue_returns_errors(
     }
     mocked_responses.add(responses.POST, url, status=400, json=fake_error_data)
 
-    with capturelogs.for_logger("jbi.services.jira").at_level(logging.DEBUG):
-        with pytest.raises(jira.JiraCreateError) as exc:
+    with capturelogs.for_logger("jbi.jira.service").at_level(logging.DEBUG):
+        with pytest.raises(jira.client.JiraCreateError) as exc:
             jira.get_service().create_jira_issue(
                 context=context, description="description", issue_type="Task"
             )
@@ -405,7 +405,7 @@ def test_all_projects_permissions(
         status=200,
         match=[
             responses.matchers.json_params_matcher(
-                {"permissions": list(jira.JIRA_REQUIRED_PERMISSIONS)},
+                {"permissions": list(jira.service.JIRA_REQUIRED_PERMISSIONS)},
             )
         ],
         json={"projects": project_data},

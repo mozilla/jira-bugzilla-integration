@@ -1,6 +1,3 @@
-"""Contains a Jira REST client and functions comprised of common operations
-with that REST client
-"""
 # This import is needed (as of Pyhon 3.11) to enable type checking with modules
 # imported under `TYPE_CHECKING`
 # https://docs.python.org/3/whatsnew/3.7.html#pep-563-postponed-evaluation-of-annotations
@@ -18,8 +15,9 @@ from requests import exceptions as requests_exceptions
 
 from jbi import Operation, environment
 from jbi.common.instrument import ServiceHealth
-from jbi.jira.client import JiraClient, JiraCreateError
 from jbi.models import ActionContext, BugzillaBug
+
+from .client import JiraClient, JiraCreateError
 
 # https://docs.python.org/3.11/library/typing.html#typing.TYPE_CHECKING
 if TYPE_CHECKING:

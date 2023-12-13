@@ -9,12 +9,11 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from jbi import bugzilla
+from jbi import bugzilla, jira
 from jbi.configuration import ACTIONS
 from jbi.environment import Settings, get_settings, get_version
 from jbi.models import Actions, BugzillaWebhookRequest
 from jbi.runner import IgnoreInvalidRequestError, execute_action
-from jbi.services import jira
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 ActionsDep = Annotated[Actions, Depends(lambda: ACTIONS)]
