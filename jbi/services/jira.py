@@ -20,9 +20,8 @@ from atlassian.rest_client import log as atlassian_logger
 from requests import exceptions as requests_exceptions
 
 from jbi import Operation, environment
+from jbi.common.instrument import ServiceHealth, instrument
 from jbi.models import ActionContext, BugzillaBug
-
-from .common import ServiceHealth, instrument
 
 # https://docs.python.org/3.11/library/typing.html#typing.TYPE_CHECKING
 if TYPE_CHECKING:

@@ -9,6 +9,7 @@ import requests
 from statsd.defaults.env import statsd
 
 from jbi import Operation, environment
+from jbi.common.instrument import ServiceHealth, instrument
 from jbi.models import (
     ActionContext,
     BugzillaApiResponse,
@@ -17,8 +18,6 @@ from jbi.models import (
     BugzillaComments,
     BugzillaWebhooksResponse,
 )
-
-from .common import ServiceHealth, instrument
 
 settings = environment.get_settings()
 

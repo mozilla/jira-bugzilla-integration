@@ -51,7 +51,7 @@ def capturelogs(request):
 
 @pytest.fixture(autouse=True)
 def mocked_statsd():
-    with mock.patch("jbi.services.common.statsd") as _mocked_statsd:
+    with mock.patch("jbi.common.instrument.statsd") as _mocked_statsd:
         yield _mocked_statsd
 
 
