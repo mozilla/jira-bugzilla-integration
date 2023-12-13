@@ -23,14 +23,10 @@ asgi-correlation-id = "^4.2.0"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^3.5.0"
-black = "^23.11.0"
-isort = "^5.12.0"
 coverage = {extras = ["toml"], version = "^7.3"}
 mypy = "^1.7"
 detect-secrets = "^1.4.0"
 bandit = "^1.7.5"
-pylint = "^3.0.2"
-pylint-pytest = "^1.1.7"
 pytest = "^7.4.3"
 yamllint = "^1.33.0"
 pytest-dotenv = "^0.5.2"
@@ -39,11 +35,16 @@ responses = "^0.24.1"
 httpx = "^0.25.2"
 factory-boy = "^3.3.0"
 pytest-factoryboy = "^2.6.0"
+ruff = "^0.1.7"
 pytest-mock = "^3.12.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+target-version = "py312"
+extend-select = ["I"]
 
 [tool.pytest.ini_options]
 testpaths = [
@@ -57,26 +58,6 @@ markers = [
     "no_mocked_bugzilla",
     "no_mocked_jira",
 ]
-
-[tool.pylint]
-    [tool.pylint.'MESSAGES CONTROL']
-    disable = [
-        "C0301", #line-too-long
-        "R0903", #too-few-public-methods
-        "W0613", #unused-argument
-    ]
-    [tool.pylint.REPORTS]
-    output-format = 'colorized'
-    [tool.pylint.MASTER]
-    load-plugins='pylint_pytest'
-    ignore='third_party'
-    ignore-patterns = "tests/*"
-    extension-pkg-whitelist = "pydantic"
-    [tool.pylint.SIMILARITIES]
-    ignore-signatures = "yes"
-
-[tool.isort]
-profile = "black"
 
 [tool.mypy]
 python_version = "3.12"

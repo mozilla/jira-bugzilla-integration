@@ -1,5 +1,3 @@
-from unittest import mock
-
 import pytest
 import responses
 from responses import matchers

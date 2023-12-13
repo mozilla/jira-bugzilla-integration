@@ -1,5 +1,3 @@
-from secrets import token_hex
-
 import factory
 
 from jbi import Operation, models

@@ -4,83 +4,83 @@ set -e
 
 POETRY_RUN="poetry run"
 
-bandit () {
-  $POETRY_RUN bandit -lll --recursive jbi
-}
-black () {
-  $POETRY_RUN black ${check:+--check} jbi tests
-}
-detect_secrets () {
-  # Scan only files fixed into the repo, omit poetry.lock
-  FILES_TO_SCAN=`git ls-tree --full-tree -r --name-only HEAD | grep -v poetry.lock`
-  $POETRY_RUN detect-secrets-hook $FILES_TO_SCAN --baseline .secrets.baseline
-}
-isort () {
-  $POETRY_RUN isort ${check:+--check-only} .
-}
-pylint () {
-  $POETRY_RUN pylint jbi tests
-}
-mypy () {
-  $POETRY_RUN mypy jbi
-}
-yamllint () {
-  $POETRY_RUN yamllint -c .yamllint config/*.yaml
-}
+BANDIT_CMD="$POETRY_RUN bandit -lll --recursive jbi"
+
+FORMAT_CMD="$POETRY_RUN ruff format ."
+
+# Scan only files fixed into the repo, omit poetry.lock
+DETECT_SECRETS_FILES="$(git ls-tree --full-tree -r --name-only HEAD | grep -v poetry.lock)"
+DETECT_SECRETS_CMD="$POETRY_RUN detect-secrets-hook $DETECT_SECRETS_FILES --baseline .secrets.baseline"
+  
+LINT_CMD="$POETRY_RUN ruff ."
+
+MYPY_CMD="$POETRY_RUN mypy jbi"
+
+YAMLLINT_CMD="$POETRY_RUN yamllint -c .yamllint config/*.yaml"
+
 all () {
-  echo "running black"
-  black
-  echo "running isort"
-  isort
-  echo "running mypy"
-  mypy
-  echo "running pylint"
-  pylint
-  echo "running yamllint"
-  yamllint
   echo "running bandit"
-  bandit
-  echo "running detect_secrets"
-  detect_secrets
+  $BANDIT_CMD
+  echo "running format"
+  $FORMAT_CMD
+  echo "running detect-secrets"
+  $DETECT_SECRETS_CMD
+  echo "running lint"
+  $LINT_CMD
+  echo "running mypy"
+  $MYPY_CMD
+  echo "running yamllint"
+  $YAMLLINT_CMD
 }
 
 usage () {
-  echo "Usage: bin/lint.sh [OPTION]"
-  echo " run linting checks"
-  echo "Options":
+  echo "Usage: bin/lint.sh [subcommand] [--fix]"
+  echo " run linting checks, and optionally fix in place (if available)"
+  echo "Subcommand":
   echo "  bandit"
-  echo "  black [--fix]"
   echo "  detect-secrets"
-  echo "  isort [--fix]"
+  echo "  format"
+  echo "  lint"
   echo "  mypy"
-  echo "  pylint"
   echo "  yamllint"
 }
 
-subcommand='';
-check="true"
-if [ -z $1 ]; then
+if [ -z "$1" ]; then
   all
 else
   subcommand=$1; shift
   case $subcommand in
-    "black" | "isort")
-      case $1 in
-        "--fix")
-          check=""
-        ;;
-      esac
-      case $subcommand in
-        "isort") isort;;
-        "black") black;;
-      esac
-    ;;
-
-    "pylint") pylint;;
-    "yamllint") yamllint;;
-    "mypy") mypy;;
-    "bandit") bandit;;
-    "detect-secrets") detect_secrets;;
-    *) usage;;
+    "format") 
+      if [ -n "$1" ] && [ "$1" != "--fix" ]; then
+        usage
+      else
+        check_flag="--check"
+        [ "$1" = "--fix" ] && check_flag=""
+        $FORMAT_CMD ${check_flag:-}
+      fi
+      ;;
+    "lint")
+      if [ -n "$1" ] && [ "$1" != "--fix" ]; then
+        usage
+      else
+        $LINT_CMD ${1:-}
+      fi
+      ;;
+    "yamllint")
+      $YAMLLINT_CMD
+      ;;
+    "mypy")
+      $MYPY_CMD
+      ;;
+    "bandit")
+      $BANDIT_CMD
+      ;;
+    "detect-secrets")
+      $DETECT_SECRETS_CMD
+      ;;
+    *) 
+      usage
+      ;;
   esac
 fi
+
