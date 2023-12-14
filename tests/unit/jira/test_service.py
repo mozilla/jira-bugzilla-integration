@@ -18,7 +18,7 @@ def jira_service(settings):
         cloud=True,
     )
 
-    return jira.service.JiraService(client=client)
+    return jira.JiraService(client=client)
 
 
 def test_jira_retries_failing_connections_in_health_check(

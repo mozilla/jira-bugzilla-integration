@@ -1,3 +1,2 @@
-from .service import BugzillaService, get_service
-
-__all__ = ["get_service", "BugzillaService"]
+from .service import BugzillaService as BugzillaService
+from .service import get_service as get_service
