@@ -34,9 +34,9 @@ class StepStatus(Enum):
 
 # https://docs.python.org/3.11/library/typing.html#typing.TYPE_CHECKING
 if TYPE_CHECKING:
+    from jbi.bugzilla.service import BugzillaService
+    from jbi.jira import JiraService
     from jbi.models import ActionContext, ActionParams
-    from jbi.services.bugzilla import BugzillaService
-    from jbi.services.jira import JiraService
 
     StepResult = tuple[StepStatus, ActionContext]
 
