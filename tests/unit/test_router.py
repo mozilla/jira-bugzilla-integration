@@ -116,17 +116,14 @@ def test_webhook_is_200_if_action_succeeds(
 
 
 def test_webhook_is_200_if_action_raises_IgnoreInvalidRequestError(
-    webhook_create_example: BugzillaWebhookRequest,
+    webhook_factory,
     mocked_bugzilla,
 ):
-    assert webhook_create_example.bug
-    webhook_create_example.bug.whiteboard = "unmatched"
-    mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
+    webhook = webhook_factory(bug__whiteboard="unmatched")
+    mocked_bugzilla.get_bug.return_value = webhook.bug
 
     with TestClient(app) as anon_client:
-        response = anon_client.post(
-            "/bugzilla_webhook", data=webhook_create_example.model_dump_json()
-        )
+        response = anon_client.post("/bugzilla_webhook", data=webhook.model_dump_json())
         assert response
         assert response.status_code == 200
         assert (
@@ -135,13 +132,11 @@ def test_webhook_is_200_if_action_raises_IgnoreInvalidRequestError(
         )
 
 
-def test_webhook_is_422_if_bug_information_missing(webhook_create_example):
-    webhook_create_example.bug = None
+def test_webhook_is_422_if_bug_information_missing(webhook_factory):
+    webhook = webhook_factory.build(bug=None)
 
     with TestClient(app) as anon_client:
-        response = anon_client.post(
-            "/bugzilla_webhook", data=webhook_create_example.json()
-        )
+        response = anon_client.post("/bugzilla_webhook", data=webhook.model_dump_json())
         assert response.status_code == 422
         assert response.json()["detail"][0]["loc"] == ["body", "bug"]
 

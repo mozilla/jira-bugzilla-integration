@@ -5,7 +5,6 @@ import pytest
 import requests
 
 from jbi import Operation, steps
-from jbi.environment import get_settings
 from jbi.jira import JiraService
 from jbi.jira.client import JiraCreateError
 from jbi.models import ActionContext, JiraComponents
@@ -33,38 +32,13 @@ ALL_STEPS = {
 }
 
 
-@pytest.fixture
-def context_update_example(action_context_factory) -> ActionContext:
-    return action_context_factory(
-        operation=Operation.UPDATE,
-        bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
-        jira__issue="JBI-234",
-    )
-
-
-@pytest.fixture
-def context_update_resolution_example(
-    webhook_event_change_factory, action_context_factory
-) -> ActionContext:
-    return action_context_factory(
-        operation=Operation.UPDATE,
-        bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
-        event__action="modify",
-        event__changes=[
-            webhook_event_change_factory(
-                field="resolution", removed="OPEN", added="FIXED"
-            )
-        ],
-        jira__issue="JBI-234",
-    )
-
-
 def test_created_public(
     context_create_example: ActionContext,
     mocked_jira,
     mocked_bugzilla,
     action_params_factory,
     comment_factory,
+    settings,
 ):
     mocked_jira.create_issue.return_value = {"key": "k"}
     mocked_bugzilla.get_bug.return_value = context_create_example.bug
@@ -87,27 +61,29 @@ def test_created_public(
     )
 
     mocked_bugzilla.update_bug.assert_called_once_with(
-        654321, see_also={"add": [f"{get_settings().jira_base_url}browse/k"]}
+        654321, see_also={"add": [f"{settings.jira_base_url}browse/k"]}
     )
 
 
 def test_created_with_custom_issue_type_and_fallback(
-    context_create_example: ActionContext,
+    action_context_factory,
     mocked_jira,
     mocked_bugzilla,
     action_params_factory,
     comment_factory,
 ):
-    context_create_example.bug.type = "enhancement"
+    action_context = action_context_factory(
+        operation=Operation.CREATE, bug__type="enhancement"
+    )
     mocked_jira.create_issue.return_value = {"key": "k"}
-    mocked_bugzilla.get_bug.return_value = context_create_example.bug
+    mocked_bugzilla.get_bug.return_value = action_context.bug
     mocked_bugzilla.get_comments.return_value = [
         comment_factory(text="Initial comment")
     ]
 
     callable_object = Executor(
         action_params_factory(
-            jira_project_key=context_create_example.jira.project,
+            jira_project_key=action_context.jira.project,
             steps={"new": ["create_issue"]},
             issue_type_map={
                 "task": "Epic",
@@ -115,7 +91,7 @@ def test_created_with_custom_issue_type_and_fallback(
         )
     )
 
-    callable_object(context=context_create_example)
+    callable_object(context=action_context)
 
     mocked_jira.create_issue.assert_called_once_with(
         fields={
@@ -128,22 +104,24 @@ def test_created_with_custom_issue_type_and_fallback(
 
 
 def test_created_with_custom_issue_type(
-    context_create_example: ActionContext,
+    action_context_factory,
     mocked_jira,
     mocked_bugzilla,
     action_params_factory,
     comment_factory,
 ):
-    context_create_example.bug.type = "task"
+    action_context = action_context_factory(
+        operation=Operation.CREATE, bug__type="task"
+    )
     mocked_jira.create_issue.return_value = {"key": "k"}
-    mocked_bugzilla.get_bug.return_value = context_create_example.bug
+    mocked_bugzilla.get_bug.return_value = action_context.bug
     mocked_bugzilla.get_comments.return_value = [
         comment_factory(text="Initial comment")
     ]
 
     callable_object = Executor(
         action_params_factory(
-            jira_project_key=context_create_example.jira.project,
+            jira_project_key=action_context.jira.project,
             steps={"new": ["create_issue"]},
             issue_type_map={
                 "task": "Epic",
@@ -151,7 +129,7 @@ def test_created_with_custom_issue_type(
         )
     )
 
-    callable_object(context=context_create_example)
+    callable_object(context=action_context)
 
     mocked_jira.create_issue.assert_called_once_with(
         fields={
@@ -164,23 +142,28 @@ def test_created_with_custom_issue_type(
 
 
 def test_modified_public(
-    context_update_example: ActionContext,
     mocked_jira,
-    action_params_factory,
+    action_context_factory,
     webhook_event_change_factory,
+    action_params_factory,
 ):
-    context_update_example.event.changes = [
-        webhook_event_change_factory(field="summary", removed="", added="JBI Test")
-    ]
-
-    callable_object = Executor(
-        action_params_factory(jira_project_key=context_update_example.jira.project)
+    action_context = action_context_factory(
+        operation=Operation.UPDATE,
+        bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+        jira__issue="JBI-234",
+        event__changes=[
+            webhook_event_change_factory(field="summary", removed="", added="JBI Test")
+        ],
     )
 
-    callable_object(context=context_update_example)
+    callable_object = Executor(
+        action_params_factory(jira_project_key=action_context.jira.project)
+    )
 
-    assert context_update_example.bug.extract_from_see_also(
-        project_key=context_update_example.jira.project
+    callable_object(context=action_context)
+
+    assert action_context.bug.extract_from_see_also(
+        project_key=action_context.jira.project
     ), "see_also is not empty"
 
     mocked_jira.update_issue_field.assert_called_once_with(
@@ -296,15 +279,18 @@ def test_create_with_no_assignee(
 
 
 def test_create_with_assignee(
-    context_create_example: ActionContext,
+    action_context_factory,
     mocked_jira,
     mocked_bugzilla,
     action_params_factory,
     comment_factory,
 ):
-    context_create_example.bug.assigned_to = "dtownsend@mozilla.com"
+    action_context = action_context_factory(
+        operation=Operation.CREATE,
+        bug__assigned_to="dtownsend@mozilla.com",
+    )
     # Make sure the bug fetched the second time in `create_and_link_issue()` also has the assignee.
-    mocked_bugzilla.get_bug.return_value = context_create_example.bug
+    mocked_bugzilla.get_bug.return_value = action_context.bug
     mocked_jira.create_issue.return_value = {"key": "JBI-534"}
     mocked_jira.user_find_by_user_string.return_value = [{"accountId": "6254"}]
     mocked_bugzilla.get_comments.return_value = [
@@ -313,10 +299,10 @@ def test_create_with_assignee(
 
     callable_object = Executor(
         action_params_factory(
-            jira_project_key=context_create_example.jira.project, steps=ALL_STEPS
+            jira_project_key=action_context.jira.project, steps=ALL_STEPS
         )
     )
-    callable_object(context=context_create_example)
+    callable_object(context=action_context)
 
     mocked_jira.create_issue.assert_called_once_with(
         fields={
@@ -337,22 +323,27 @@ def test_create_with_assignee(
 
 
 def test_clear_assignee(
-    context_update_example: ActionContext,
+    action_context_factory,
     mocked_jira,
     action_params_factory,
     webhook_event_change_factory,
 ):
-    context_update_example.event.action = "modify"
-    context_update_example.event.changes = [
-        webhook_event_change_factory(field="assigned_to", removed="user", added="")
-    ]
+    action_context = action_context_factory(
+        operation=Operation.UPDATE,
+        bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+        jira__issue="JBI-234",
+        event__action="modify",
+        event__changes=[
+            webhook_event_change_factory(field="assigned_to", removed="user", added="")
+        ],
+    )
 
     callable_object = Executor(
         action_params_factory(
-            jira_project_key=context_update_example.jira.project, steps=ALL_STEPS
+            jira_project_key=action_context.jira.project, steps=ALL_STEPS
         )
     )
-    callable_object(context=context_update_example)
+    callable_object(context=action_context)
 
     mocked_jira.user_find_by_user_string.assert_not_called()
     mocked_jira.update_issue_field.assert_any_call(
@@ -362,27 +353,32 @@ def test_clear_assignee(
 
 
 def test_set_assignee(
-    context_update_example: ActionContext,
+    action_context_factory: ActionContext,
     mocked_jira,
     action_params_factory,
     webhook_event_change_factory,
 ):
-    context_update_example.bug.assigned_to = "dtownsend@mozilla.com"
-    context_update_example.event.action = "modify"
-    context_update_example.event.changes = [
-        webhook_event_change_factory(
-            field="assigned_to", removed="", added="dtownsend@mozilla.com"
-        )
-    ]
+    action_context = action_context_factory(
+        operation=Operation.UPDATE,
+        bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+        bug__assigned_to="dtownsend@mozilla.com",
+        jira__issue="JBI-234",
+        event__action="modify",
+        event__changes=[
+            webhook_event_change_factory(
+                field="assigned_to", removed="", added="dtownsend@mozilla.com"
+            )
+        ],
+    )
 
     mocked_jira.user_find_by_user_string.return_value = [{"accountId": "6254"}]
 
     callable_object = Executor(
         action_params_factory(
-            jira_project_key=context_update_example.jira.project, steps=ALL_STEPS
+            jira_project_key=action_context.jira.project, steps=ALL_STEPS
         )
     )
-    callable_object(context=context_update_example)
+    callable_object(context=action_context)
 
     mocked_jira.create_issue.assert_not_called()
     mocked_jira.user_find_by_user_string.assert_called_once_with(
@@ -396,19 +392,22 @@ def test_set_assignee(
 
 
 def test_set_assignee_failing_create(
-    context_create_example: ActionContext,
+    action_context_factory,
     mocked_jira,
     capturelogs,
 ):
+    action_context = action_context_factory(
+        operation=Operation.CREATE,
+        jira__issue="key",
+        bug__assigned_to="postmaster@localhost",
+    )
     mocked_jira.update_issue_field.side_effect = requests.exceptions.HTTPError(
         "unknown user", response=mock.MagicMock(status_code=400)
     )
-    context_create_example.jira.issue = "key"
-    context_create_example.bug.assigned_to = "postmaster@localhost"
 
     with capturelogs.for_logger("jbi.steps").at_level(logging.DEBUG):
         result, _ = steps.maybe_assign_jira_user(
-            context=context_create_example, jira_service=JiraService(mocked_jira)
+            context=action_context, jira_service=JiraService(mocked_jira)
         )
         assert result == steps.StepStatus.INCOMPLETE
 
@@ -416,24 +415,29 @@ def test_set_assignee_failing_create(
 
 
 def test_set_assignee_failing_update(
-    context_update_example: ActionContext,
+    action_context_factory,
     mocked_jira,
     capturelogs,
     webhook_event_change_factory,
 ):
     mocked_jira.user_find_by_user_string.return_value = []
-    context_update_example.jira.issue = "key"
-    context_update_example.bug.assigned_to = "postmaster@localhost"
-    context_update_example.event.changes = [
-        webhook_event_change_factory(
-            field="assigned_to", removed="", added="postmaster@localhost"
-        )
-    ]
+    action_context = action_context_factory(
+        operation=Operation.UPDATE,
+        current_step="maybe_assign_jira_user",
+        jira__issue="key",
+        bug__assigned_to="postmaster@localhost",
+        bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+        event__action="modify",
+        event__changes=[
+            webhook_event_change_factory(
+                field="assigned_to", removed="", added="postmaster@localhost"
+            )
+        ],
+    )
 
-    context_update_example.current_step = "maybe_assign_jira_user"
     with capturelogs.for_logger("jbi.steps").at_level(logging.DEBUG):
         steps.maybe_assign_jira_user(
-            context=context_update_example, jira_service=JiraService(mocked_jira)
+            context=action_context, jira_service=JiraService(mocked_jira)
         )
 
     assert capturelogs.messages == ["User postmaster@localhost not found"]
@@ -445,15 +449,17 @@ def test_set_assignee_failing_update(
 
 
 def test_create_with_unknown_status(
-    context_create_example: ActionContext,
+    action_context_factory,
     mocked_jira,
     mocked_bugzilla,
     action_params_factory,
     comment_factory,
 ):
-    context_create_example.bug.status = "NEW"
-    context_create_example.bug.resolution = ""
-    mocked_bugzilla.get_bug.return_value = context_create_example.bug
+    action_context = action_context_factory(
+        operation=Operation.CREATE, bug__status="NEW", bug__resolution=""
+    )
+
+    mocked_bugzilla.get_bug.return_value = action_context.bug
     mocked_bugzilla.get_comments.return_value = [
         comment_factory(text="Initial comment")
     ]
@@ -461,7 +467,7 @@ def test_create_with_unknown_status(
 
     callable_object = Executor(
         action_params_factory(
-            jira_project_key=context_create_example.jira.project,
+            jira_project_key=action_context.jira.project,
             steps=ALL_STEPS,
             status_map={
                 "ASSIGNED": "In Progress",
@@ -469,7 +475,7 @@ def test_create_with_unknown_status(
             },
         )
     )
-    callable_object(context=context_create_example)
+    callable_object(context=action_context)
 
     mocked_jira.create_issue.assert_called_once_with(
         fields={
@@ -485,16 +491,18 @@ def test_create_with_unknown_status(
 
 
 def test_create_with_known_status(
-    context_create_example: ActionContext,
+    action_context_factory,
     mocked_jira,
     mocked_bugzilla,
     action_params_factory,
     comment_factory,
 ):
-    context_create_example.bug.status = "ASSIGNED"
-    context_create_example.bug.resolution = ""
+    action_context = action_context_factory(
+        operation=Operation.CREATE, bug__status="ASSIGNED", bug__resolution=""
+    )
+
     # Make sure the bug fetched the second time in `create_and_link_issue()` also has the status.
-    mocked_bugzilla.get_bug.return_value = context_create_example.bug
+    mocked_bugzilla.get_bug.return_value = action_context.bug
     mocked_bugzilla.get_comments.return_value = [
         comment_factory(text="Initial comment")
     ]
@@ -502,7 +510,7 @@ def test_create_with_known_status(
 
     callable_object = Executor(
         action_params_factory(
-            jira_project_key=context_create_example.jira.project,
+            jira_project_key=action_context.jira.project,
             steps=ALL_STEPS,
             status_map={
                 "ASSIGNED": "In Progress",
@@ -510,7 +518,7 @@ def test_create_with_known_status(
             },
         )
     )
-    callable_object(context=context_create_example)
+    callable_object(context=action_context)
 
     mocked_jira.create_issue.assert_called_once_with(
         fields={
@@ -526,26 +534,31 @@ def test_create_with_known_status(
 
 
 def test_change_to_unknown_status(
-    context_update_example: ActionContext,
+    action_context_factory,
     mocked_jira,
     capturelogs,
     action_params_factory,
 ):
-    context_update_example.bug.status = "NEW"
-    context_update_example.bug.resolution = ""
-    context_update_example.event.action = "modify"
-    context_update_example.event.routing_key = "bug.modify:status"
+    action_context = action_context_factory(
+        operation=Operation.UPDATE,
+        bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+        jira__issue="JBI-234",
+        bug__status="NEW",
+        bug__resolution="",
+        event__action="modify",
+        event__routing_key="bug.modify:status",
+    )
 
     with capturelogs.for_logger("jbi.steps").at_level(logging.DEBUG):
         action_params = action_params_factory(
-            jira_project_key=context_update_example.jira.project,
+            jira_project_key=action_context.jira.project,
             status_map={
                 "ASSIGNED": "In Progress",
                 "FIXED": "Closed",
             },
         )
         result, _ = steps.maybe_update_issue_status(
-            context_update_example,
+            action_context,
             parameters=action_params,
             jira_service=JiraService(mocked_jira),
         )
@@ -560,21 +573,28 @@ def test_change_to_unknown_status(
 
 
 def test_change_to_known_status(
-    context_update_example: ActionContext,
+    action_context_factory,
     mocked_jira,
     action_params_factory,
     webhook_event_change_factory,
 ):
-    context_update_example.bug.status = "ASSIGNED"
-    context_update_example.bug.resolution = ""
-    context_update_example.event.action = "modify"
-    context_update_example.event.changes = [
-        webhook_event_change_factory(field="status", removed="NEW", added="ASSIGNED")
-    ]
+    action_context = action_context_factory(
+        operation=Operation.UPDATE,
+        bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+        jira__issue="JBI-234",
+        bug__status="ASSIGNED",
+        bug__resolution="",
+        event__action="modify",
+        event__changes=[
+            webhook_event_change_factory(
+                field="status", removed="NEW", added="ASSIGNED"
+            )
+        ],
+    )
 
     callable_object = Executor(
         action_params_factory(
-            jira_project_key=context_update_example.jira.project,
+            jira_project_key=action_context.jira.project,
             steps=ALL_STEPS,
             status_map={
                 "ASSIGNED": "In Progress",
@@ -582,7 +602,7 @@ def test_change_to_known_status(
             },
         )
     )
-    callable_object(context=context_update_example)
+    callable_object(context=action_context)
 
     mocked_jira.create_issue.assert_not_called()
     mocked_jira.user_find_by_user_string.assert_not_called()
@@ -590,29 +610,36 @@ def test_change_to_known_status(
 
 
 def test_change_to_known_resolution(
-    context_update_example: ActionContext,
+    action_context_factory,
     mocked_jira,
     action_params_factory,
     webhook_event_change_factory,
 ):
-    context_update_example.bug.status = "RESOLVED"
-    context_update_example.bug.resolution = "FIXED"
-    context_update_example.event.action = "modify"
-    context_update_example.event.changes = [
-        webhook_event_change_factory(field="resolution", removed="FIXED", added="OPEN")
-    ]
-
-    callable_object = Executor(
-        action_params_factory(
-            jira_project_key=context_update_example.jira.project,
-            steps=ALL_STEPS,
-            status_map={
-                "ASSIGNED": "In Progress",
-                "FIXED": "Closed",
-            },
-        )
+    action_context = action_context_factory(
+        operation=Operation.UPDATE,
+        current_step="maybe_update_issue_status",
+        bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+        jira__issue="JBI-234",
+        bug__status="RESOLVED",
+        bug__resolution="FIXED",
+        event__action="modify",
+        event__changes=[
+            webhook_event_change_factory(
+                field="resolution", removed="FIXED", added="OPEN"
+            )
+        ],
     )
-    callable_object(context=context_update_example)
+
+    params = action_params_factory(
+        jira_project_key=action_context.jira.project,
+        status_map={
+            "ASSIGNED": "In Progress",
+            "FIXED": "Closed",
+        },
+    )
+    steps.maybe_update_issue_status(
+        action_context, parameters=params, jira_service=JiraService(mocked_jira)
+    )
 
     mocked_jira.create_issue.assert_not_called()
     mocked_jira.user_find_by_user_string.assert_not_called()
@@ -620,20 +647,34 @@ def test_change_to_known_resolution(
 
 
 def test_change_to_known_resolution_with_resolution_map(
-    context_update_resolution_example: ActionContext, mocked_jira, action_params_factory
+    action_context_factory,
+    webhook_event_change_factory,
+    mocked_jira,
+    action_params_factory,
 ):
-    context_update_resolution_example.bug.resolution = "DUPLICATE"
+    action_context = action_context_factory(
+        operation=Operation.UPDATE,
+        bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+        bug__resolution="DUPLICATE",
+        event__action="modify",
+        event__changes=[
+            webhook_event_change_factory(
+                field="resolution", removed="OPEN", added="FIXED"
+            )
+        ],
+        jira__issue="JBI-234",
+    )
 
     callable_object = Executor(
         action_params_factory(
-            jira_project_key=context_update_resolution_example.jira.project,
+            jira_project_key=action_context.jira.project,
             steps=ALL_STEPS,
             resolution_map={
                 "DUPLICATE": "Duplicate",
             },
         )
     )
-    callable_object(context=context_update_resolution_example)
+    callable_object(context=action_context)
 
     mocked_jira.update_issue_field.assert_called_with(  # not once
         key="JBI-234",
@@ -644,15 +685,27 @@ def test_change_to_known_resolution_with_resolution_map(
 
 
 def test_change_to_unknown_resolution_with_resolution_map(
-    context_update_resolution_example: ActionContext,
+    action_context_factory,
+    webhook_event_change_factory,
     mocked_jira,
     capturelogs,
     action_params_factory,
 ):
-    context_update_resolution_example.bug.resolution = "WONTFIX"
+    action_context = action_context_factory(
+        operation=Operation.UPDATE,
+        bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+        bug__resolution="WONTFIX",
+        event__action="modify",
+        event__changes=[
+            webhook_event_change_factory(
+                field="resolution", removed="OPEN", added="FIXED"
+            )
+        ],
+        jira__issue="JBI-234",
+    )
 
     action_params = action_params_factory(
-        jira_project_key=context_update_resolution_example.jira.project,
+        jira_project_key=action_context.jira.project,
         resolution_map={
             "DUPLICATE": "Duplicate",
         },
@@ -660,7 +713,7 @@ def test_change_to_unknown_resolution_with_resolution_map(
 
     with capturelogs.for_logger("jbi.steps").at_level(logging.DEBUG):
         result, _ = steps.maybe_update_issue_resolution(
-            context_update_resolution_example,
+            action_context,
             parameters=action_params,
             jira_service=JiraService(mocked_jira),
         )
@@ -825,45 +878,54 @@ def test_maybe_update_components(
     config_components,
     expected_jira_components,
     expected_logs,
-    context_create_example,
+    action_context_factory,
     mocked_jira,
     capturelogs,
     action_params_factory,
 ):
     mocked_jira.get_project_components.return_value = project_components
-    context_create_example.bug.component = bug_component
-    context_create_example.jira.issue = context_create_example.jira.project + "-123"
 
-    callable_object = Executor(
-        action_params_factory(
-            jira_project_key=context_create_example.jira.project,
-            steps={"new": ["maybe_update_components"]},
-            jira_components=config_components,
-        )
+    action_context = action_context_factory(
+        current_step="maybe_update_components",
+        bug__component=bug_component,
+        jira__issue="JBI-123",
+    )
+    action_params = action_params_factory(
+        jira_project_key=action_context.jira.project,
+        jira_components=config_components,
     )
 
     with capturelogs.for_logger("jbi.steps").at_level(logging.DEBUG):
-        callable_object(context=context_create_example)
+        steps.maybe_update_components(
+            context=action_context,
+            parameters=action_params,
+            jira_service=JiraService(mocked_jira),
+        )
 
     if expected_jira_components:
         mocked_jira.update_issue_field.assert_called_with(
-            key=context_create_example.jira.issue,
+            key=action_context.jira.issue,
             fields={"components": expected_jira_components},
         )
     assert capturelogs.messages == expected_logs
 
 
 def test_maybe_update_components_raises_incompletesteperror_on_mismatch(
-    context_update_example: ActionContext, mocked_jira, action_params_factory
+    action_context_factory, mocked_jira, action_params_factory
 ):
+    action_context = action_context_factory(
+        operation=Operation.UPDATE,
+        bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+        bug__component="Frontend",
+        jira__issue="JBI-234",
+    )
     action_params = action_params_factory(
-        jira_project_key=context_update_example.jira.project,
-        steps={"new": ["sync_whiteboard_labels"]},
+        jira_project_key=action_context.jira.project,
     )
     mocked_jira.get_project_components.return_value = [{"name": "Backend"}]
-    context_update_example.bug.component = "Frontend"
+
     result, _context = steps.maybe_update_components(
-        context_update_example,
+        action_context,
         parameters=action_params,
         jira_service=JiraService(mocked_jira),
     )
@@ -871,27 +933,31 @@ def test_maybe_update_components_raises_incompletesteperror_on_mismatch(
 
 
 def test_maybe_update_components_failing(
-    context_update_example: ActionContext,
+    action_context_factory,
     mocked_jira,
     capturelogs,
     action_params_factory,
 ):
+    action_context = action_context_factory(
+        operation=Operation.UPDATE,
+        current_step="maybe_update_components",
+        bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+        bug__component="Frontend",
+        jira__issue="JBI-234",
+    )
     mocked_jira.get_project_components.return_value = [
-        {"id": 1, "name": context_update_example.bug.component},
-        {"id": 2, "name": context_update_example.bug.product_component},
+        {"id": 1, "name": action_context.bug.component},
+        {"id": 2, "name": action_context.bug.product_component},
     ]
     mocked_jira.update_issue_field.side_effect = requests.exceptions.HTTPError(
         "Field 'components' cannot be set", response=mock.MagicMock(status_code=400)
     )
-    context_update_example.current_step = "maybe_update_components"
 
-    action_params = action_params_factory(
-        jira_project_key=context_update_example.jira.project,
-    )
+    action_params = action_params_factory(jira_project_key=action_context.jira.project)
 
     with capturelogs.for_logger("jbi.steps").at_level(logging.DEBUG):
         result, _context = steps.maybe_update_components(
-            context=context_update_example,
+            context=action_context,
             parameters=action_params,
             jira_service=JiraService(mocked_jira),
         )
@@ -903,19 +969,24 @@ def test_maybe_update_components_failing(
 
 
 def test_sync_whiteboard_labels(
-    context_create_example: ActionContext, mocked_jira, action_params_factory
+    action_context_factory,
+    mocked_jira,
+    action_params_factory,
 ):
-    context_create_example.jira.issue = context_create_example.jira.project + "-123"
+    action_context = action_context_factory(
+        operation=Operation.CREATE, jira__issue="JBI-123"
+    )
+
     callable_object = Executor(
         action_params_factory(
-            jira_project_key=context_create_example.jira.project,
+            jira_project_key=action_context.jira.project,
             steps={"new": ["sync_whiteboard_labels"]},
         )
     )
-    callable_object(context=context_create_example)
+    callable_object(context=action_context)
 
     mocked_jira.update_issue.assert_called_once_with(
-        issue_key=context_create_example.jira.issue,
+        issue_key=action_context.jira.issue,
         update={
             "update": {
                 "labels": [
@@ -928,20 +999,22 @@ def test_sync_whiteboard_labels(
 
 
 def test_sync_whiteboard_labels_with_brackets(
-    context_create_example: ActionContext, mocked_jira, action_params_factory
+    action_context_factory, mocked_jira, action_params_factory
 ):
-    context_create_example.jira.issue = context_create_example.jira.project + "-123"
+    action_context = action_context_factory(
+        operation=Operation.CREATE, jira__issue="JBI-123"
+    )
     callable_object = Executor(
         action_params_factory(
-            jira_project_key=context_create_example.jira.project,
+            jira_project_key=action_context.jira.project,
             steps={"new": ["sync_whiteboard_labels"]},
             labels_brackets="both",
         )
     )
-    callable_object(context=context_create_example)
+    callable_object(context=action_context)
 
     mocked_jira.update_issue.assert_called_once_with(
-        issue_key=context_create_example.jira.issue,
+        issue_key=action_context.jira.issue,
         update={
             "update": {
                 "labels": [
@@ -955,31 +1028,33 @@ def test_sync_whiteboard_labels_with_brackets(
 
 
 def test_sync_whiteboard_labels_update(
-    context_update_example: ActionContext,
+    action_context_factory,
     mocked_jira,
     action_params_factory,
     webhook_event_change_factory,
 ):
-    context_update_example.jira.issue = context_update_example.jira.project + "-123"
-
-    context_update_example.event.changes = [
-        webhook_event_change_factory(
-            field="whiteboard",
-            removed="[remotesettings] [server]",
-            added="[remotesettings]",
-        )
-    ]
+    action_context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="JBI-123",
+        event__changes=[
+            webhook_event_change_factory(
+                field="whiteboard",
+                removed="[remotesettings] [server]",
+                added="[remotesettings]",
+            )
+        ],
+    )
 
     callable_object = Executor(
         action_params_factory(
-            jira_project_key=context_update_example.jira.project,
+            jira_project_key=action_context.jira.project,
             steps={"existing": ["sync_whiteboard_labels"]},
         )
     )
-    callable_object(context=context_update_example)
+    callable_object(context=action_context)
 
     mocked_jira.update_issue.assert_called_once_with(
-        issue_key=context_update_example.jira.issue,
+        issue_key=action_context.jira.issue,
         update={
             "update": {
                 "labels": [
@@ -993,7 +1068,7 @@ def test_sync_whiteboard_labels_update(
 
 
 def test_sync_whiteboard_labels_failing(
-    context_update_example: ActionContext,
+    action_context_factory,
     mocked_jira,
     capturelogs,
     action_params_factory,
@@ -1001,20 +1076,22 @@ def test_sync_whiteboard_labels_failing(
     mocked_jira.update_issue.side_effect = requests.exceptions.HTTPError(
         "some message", response=mock.MagicMock(status_code=400)
     )
-    context_update_example.current_step = "sync_whiteboard_labels"
+    action_context = action_context_factory(
+        current_step="sync_whiteboard_labels", jira__issue="JBI-123"
+    )
 
     action_params = action_params_factory(
-        jira_project_key=context_update_example.jira.project,
+        jira_project_key=action_context.jira.project,
     )
 
     with capturelogs.for_logger("jbi.steps").at_level(logging.DEBUG):
         result, context = steps.sync_whiteboard_labels(
-            context=context_update_example,
+            context=action_context,
             parameters=action_params,
             jira_service=JiraService(mocked_jira),
         )
     assert result == steps.StepStatus.INCOMPLETE
 
     assert capturelogs.messages == [
-        "Could not set labels on issue JBI-234: some message"
+        "Could not set labels on issue JBI-123: some message"
     ]
