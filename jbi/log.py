@@ -78,7 +78,7 @@ CONFIG = {
 }
 
 
-class RequestSummary(BaseModel):
+class RequestSummary(BaseModel, frozen=True):
     """Request summary as specified by MozLog format"""
 
     agent: str
