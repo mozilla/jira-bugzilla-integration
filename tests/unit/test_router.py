@@ -301,11 +301,11 @@ def test_jira_heartbeat_unknown_issue_types(anon_client, mocked_jira):
 
 @pytest.mark.parametrize("method", ["HEAD", "GET"])
 def test_read_heartbeat_success(
-    anon_client, method, mocked_jira, mocked_bugzilla, bugzilla_webhook_factory
+    anon_client, method, mocked_jira, mocked_bugzilla, bugzilla_webhook
 ):
     """/__heartbeat__ returns 200 when checks succeed."""
     mocked_bugzilla.logged_in.return_value = True
-    mocked_bugzilla.list_webhooks.return_value = [bugzilla_webhook_factory()]
+    mocked_bugzilla.list_webhooks.return_value = [bugzilla_webhook]
     mocked_jira.get_server_info.return_value = {}
     mocked_jira.paginated_projects.return_value = {
         "values": [
