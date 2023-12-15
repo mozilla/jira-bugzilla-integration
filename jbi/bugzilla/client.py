@@ -1,24 +1,16 @@
-"""Contains a Bugzilla REST client and functions comprised of common operations
-with that REST client
-"""
-
 import logging
-from functools import lru_cache
 
 import requests
-from statsd.defaults.env import statsd
 
-from jbi import Operation, environment
+from jbi import environment
+from jbi.common.instrument import instrument
 from jbi.models import (
-    ActionContext,
     BugzillaApiResponse,
     BugzillaBug,
     BugzillaComment,
     BugzillaComments,
     BugzillaWebhooksResponse,
 )
-
-from .common import ServiceHealth, instrument
 
 settings = environment.get_settings()
 
@@ -53,8 +45,12 @@ class BugzillaClient:
         # https://bmo.readthedocs.io/en/latest/api/core/v1/general.html?highlight=x-bugzilla-api-key#authentication
         headers = kwargs.setdefault("headers", {})
         headers.setdefault("x-bugzilla-api-key", self.api_key)
-        resp = self._client.request(verb, url, *args, **kwargs)
-        resp.raise_for_status()
+        try:
+            resp = self._client.request(verb, url, *args, **kwargs)
+            resp.raise_for_status()
+        except requests.HTTPError:
+            logger.exception("%s %s", verb, url)
+            raise
         parsed = resp.json()
         if parsed.get("error"):
             raise BugzillaClientError(parsed["message"])
@@ -64,7 +60,10 @@ class BugzillaClient:
     def logged_in(self) -> bool:
         """Verify the API key validity."""
         # https://bugzilla.readthedocs.io/en/latest/api/core/v1/user.html#who-am-i
-        resp = self._call("GET", f"{self.base_url}/rest/whoami")
+        try:
+            resp = self._call("GET", f"{self.base_url}/rest/whoami")
+        except (requests.HTTPError, BugzillaClientError):
+            return False
         return "id" in resp
 
     @instrumented_method
@@ -125,91 +124,3 @@ class BugzillaClient:
                 f"Unexpected response content from 'GET {url}' (no 'webhooks' field)"
             )
         return [wh for wh in parsed.webhooks if "/bugzilla_webhook" in wh.url]
-
-
-class BugzillaService:
-    """Used by action workflows to perform action-specific Bugzilla tasks"""
-
-    def __init__(self, client: BugzillaClient) -> None:
-        self.client = client
-
-    def check_health(self) -> ServiceHealth:
-        """Check health for Bugzilla Service"""
-        logged_in = self.client.logged_in()
-
-        # Check that all JBI webhooks are enabled in Bugzilla,
-        # and report disabled ones.
-        all_webhooks_enabled = False
-        if logged_in:
-            jbi_webhooks = self.client.list_webhooks()
-            all_webhooks_enabled = len(jbi_webhooks) > 0
-            for webhook in jbi_webhooks:
-                # Report errors in each webhook
-                statsd.gauge(
-                    f"jbi.bugzilla.webhooks.{webhook.slug}.errors", webhook.errors
-                )
-                # Warn developers when there are errors
-                if webhook.errors > 0:
-                    logger.warning(
-                        "Webhook %s has %s error(s)", webhook.name, webhook.errors
-                    )
-                if not webhook.enabled:
-                    all_webhooks_enabled = False
-                    logger.error(
-                        "Webhook %s is disabled (%s errors)",
-                        webhook.name,
-                        webhook.errors,
-                    )
-
-        health: ServiceHealth = {
-            "up": logged_in,
-            "all_webhooks_enabled": all_webhooks_enabled,
-        }
-        return health
-
-    def add_link_to_jira(self, context: ActionContext):
-        """Add link to Jira in Bugzilla ticket"""
-        bug = context.bug
-        issue_key = context.jira.issue
-        jira_url = f"{settings.jira_base_url}browse/{issue_key}"
-        logger.debug(
-            "Link %r on Bug %s",
-            jira_url,
-            bug.id,
-            extra=context.update(operation=Operation.LINK).model_dump(),
-        )
-        return self.client.update_bug(bug.id, see_also={"add": [jira_url]})
-
-    def get_description(self, bug_id: int):
-        """Fetch a bug's description
-
-        A Bug's description does not appear in the payload of a bug. Instead, it is "comment 0"
-        """
-
-        comment_list = self.client.get_comments(bug_id)
-        comment_body = comment_list[0].text if comment_list else ""
-        return str(comment_body)
-
-    def refresh_bug_data(self, bug: BugzillaBug):
-        """Re-fetch a bug to ensure we have the most up-to-date data"""
-
-        updated_bug = self.client.get_bug(bug.id)
-        # When bugs come in as webhook payloads, they have a "comment"
-        # attribute, but this field isn't available when we get a bug by ID.
-        # So, we make sure to add the comment back if it was present on the bug.
-        updated_bug.comment = bug.comment
-        return updated_bug
-
-    def list_webhooks(self):
-        """List the currently configured webhooks, including their status."""
-
-        return self.client.list_webhooks()
-
-
-@lru_cache(maxsize=1)
-def get_service():
-    """Get bugzilla service"""
-    client = BugzillaClient(
-        settings.bugzilla_base_url, api_key=str(settings.bugzilla_api_key)
-    )
-    return BugzillaService(client=client)

@@ -16,9 +16,9 @@ repos:
       - id: trailing-whitespace
   - repo: local
     hooks:
-      - id: pylint
-        name: pylint
-        entry: bin/lint.sh pylint
+      - id: lint
+        name: lint
+        entry: bin/lint.sh lint
         language: script
         types: [python]
   - repo: local
@@ -43,16 +43,9 @@ repos:
         language: script
   - repo: local
     hooks:
-      - id: isort
-        name: isort
-        entry: bin/lint.sh isort
-        language: script
-        types: [python]
-  - repo: local
-    hooks:
-      - id: black
-        name: black
-        entry: bin/lint.sh black
+      - id: format
+        name: format
+        entry: bin/lint.sh format
         language: script
         types: [python]
   - repo: local

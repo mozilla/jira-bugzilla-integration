@@ -18,9 +18,9 @@ def test_settings_env_is_enum_string():
 
 
 def test_sentry_dsn():
-    settings = Settings(sentry_dsn="http://www.example.com/")
+    Settings(sentry_dsn="http://www.example.com/")
 
 
 def test_sentry_dsn_no_url_string_raises():
     with pytest.raises(pydantic.ValidationError):
-        settings = Settings(sentry_dsn="foobar")
+        Settings(sentry_dsn="foobar")

@@ -1,5 +1,5 @@
 # Creating a python base with shared environment variables
-FROM python:3.11.5 as base
+FROM python:3.12.1 as base
 ENV PIP_NO_CACHE_DIR=off \
     PIP_DEFAULT_TIMEOUT=100 \
     PIP_DISABLE_PIP_VERSION_CHECK=on \
@@ -12,7 +12,7 @@ ENV PATH="$POETRY_HOME/bin:$PATH"
 
 # Install Poetry - respects $POETRY_VERSION & $POETRY_HOME
 RUN python3 -m venv $POETRY_HOME && \
-    $POETRY_HOME/bin/pip install poetry==1.4.0 && \
+    $POETRY_HOME/bin/pip install poetry==1.7.1 && \
     $POETRY_HOME/bin/poetry --version
 
 # We copy our Python requirements here to cache them
@@ -22,7 +22,7 @@ COPY ./poetry.lock ./pyproject.toml ./
 RUN $POETRY_HOME/bin/poetry install --without dev --no-root
 
 # `production` stage uses the dependencies downloaded in the `base` stage
-FROM python:3.11.5-slim as production
+FROM python:3.12.1-slim as production
 ENV PORT=8000 \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \

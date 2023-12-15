@@ -110,11 +110,11 @@ class Actions(RootModel):
     @functools.cached_property
     def by_tag(self) -> Mapping[str, Action]:
         """Build mapping of actions by lookup tag."""
-        # pylint: disable-next=not-an-iterable
+
         return {action.whiteboard_tag: action for action in self.root}
 
     def __iter__(self):
-        return iter(self.root)  # pylint: disable=not-an-iterable
+        return iter(self.root)
 
     def __len__(self):
         return len(self.root)
@@ -129,7 +129,7 @@ class Actions(RootModel):
     @functools.cached_property
     def configured_jira_projects_keys(self) -> set[str]:
         """Return the list of Jira project keys from all configured actions"""
-        # pylint: disable-next=not-an-iterable
+
         return {action.jira_project_key for action in self.root}
 
     @field_validator("root")
@@ -138,12 +138,20 @@ class Actions(RootModel):
         """
         Inspect the list of actions:
          - Validate that lookup tags are uniques
+         - Ensure we haven't exceeded our maximum configured project limit (see error below)
          - If the action's bugzilla_user_id is "tbd", emit a warning.
         """
         tags = [action.whiteboard_tag.lower() for action in actions]
         duplicated_tags = [t for i, t in enumerate(tags) if t in tags[:i]]
         if duplicated_tags:
             raise ValueError(f"actions have duplicated lookup tags: {duplicated_tags}")
+
+        if len(tags) > 50:
+            raise ValueError(
+                "The Jira client's `paginated_projects` method assumes we have "
+                "up to 50 projects configured. Adjust that implementation before "
+                "removing this validation check."
+            )
 
         for action in actions:
             if action.bugzilla_user_id == "tbd":
@@ -167,6 +175,8 @@ class BugzillaWebhookUser(BaseModel):
 class BugzillaWebhookEventChange(BaseModel):
     """Bugzilla Change Object"""
 
+    model_config = ConfigDict(coerce_numbers_to_str=True)
+
     field: str
     removed: str
     added: str
@@ -184,7 +194,7 @@ class BugzillaWebhookEvent(BaseModel):
 
     def changed_fields(self) -> list[str]:
         """Returns the names of changed fields in a bug"""
-        # pylint: disable-next=not-an-iterable
+
         return [c.field for c in self.changes] if self.changes else []
 
 
@@ -238,7 +248,7 @@ class BugzillaBug(BaseModel):
             return None
 
         candidates = []
-        for url in self.see_also:  # pylint: disable=not-an-iterable
+        for url in self.see_also:
             try:
                 parsed_url: ParseResult = urlparse(url=url)
                 host_parts = parsed_url.hostname.split(".")
@@ -286,7 +296,6 @@ class BugzillaBug(BaseModel):
 class BugzillaWebhookRequest(BaseModel):
     """Bugzilla Webhook Request Object"""
 
-    rid: str = ""  # This field has a default since it's not parsed from body.
     webhook_id: int
     webhook_name: str
     event: BugzillaWebhookEvent
@@ -362,7 +371,6 @@ BugId = TypedDict("BugId", {"id": Optional[int]})
 class RunnerContext(Context, extra="forbid"):
     """Logging context from runner"""
 
-    rid: str
     operation: Operation
     event: BugzillaWebhookEvent
     action: Optional[Action] = None
@@ -373,7 +381,6 @@ class ActionContext(Context, extra="forbid"):
     """Logging context from actions"""
 
     action: Action
-    rid: str
     operation: Operation
     current_step: Optional[str] = None
     event: BugzillaWebhookEvent

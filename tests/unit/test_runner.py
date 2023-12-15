@@ -475,7 +475,7 @@ def test_counter_is_incremented_for_create(
     )
     mocked_bugzilla.get_bug.return_value = webhook_payload.bug
     with mock.patch("jbi.runner.statsd") as mocked:
-        result = execute_action(
+        execute_action(
             request=webhook_factory(),
             actions=actions_factory(),
         )
@@ -492,7 +492,7 @@ def test_counter_is_incremented_for_update(
     mocked_bugzilla.get_bug.return_value = webhook_payload.bug
     mocked_jira.get_issue.return_value = {"fields": {"project": {"key": "JBI"}}}
     with mock.patch("jbi.runner.statsd") as mocked:
-        result = execute_action(
+        execute_action(
             request=webhook_payload,
             actions=actions_factory(),
         )
@@ -509,7 +509,7 @@ def test_counter_is_incremented_for_comment(
     mocked_bugzilla.get_bug.return_value = webhook_payload.bug
     mocked_jira.get_issue.return_value = {"fields": {"project": {"key": "JBI"}}}
     with mock.patch("jbi.runner.statsd") as mocked:
-        result = execute_action(
+        execute_action(
             request=webhook_payload,
             actions=actions_factory(),
         )

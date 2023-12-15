@@ -27,13 +27,13 @@ def instrument(prefix: str, exceptions: Sequence[Type[Exception]], **backoff_par
     """
 
     def decorator(func):
-        @wraps(func)
         @backoff.on_exception(
             backoff.expo,
             exceptions,
             max_tries=settings.max_retries + 1,
             **backoff_params,
         )
+        @wraps(func)
         def wrapper(*args, **kwargs):
             # Increment the call counter.
             statsd.incr(f"jbi.{prefix}.methods.{func.__name__}.count")

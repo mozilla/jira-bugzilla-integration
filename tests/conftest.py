@@ -9,13 +9,12 @@ import responses
 from fastapi.testclient import TestClient
 from pytest_factoryboy import register
 
-from jbi import Operation
+import tests.fixtures.factories as factories
+from jbi import Operation, bugzilla, jira
 from jbi.app import app
 from jbi.configuration import get_actions
 from jbi.environment import Settings
-from jbi.models import ActionContext, BugzillaWebhookRequest
-from jbi.services import bugzilla, jira
-from tests.fixtures.factories import *
+from jbi.models import ActionContext
 
 
 class FilteredLogCaptureFixture(pytest.LogCaptureFixture):
@@ -51,22 +50,28 @@ def capturelogs(request):
 
 @pytest.fixture(autouse=True)
 def mocked_statsd():
-    with mock.patch("jbi.services.common.statsd") as _mocked_statsd:
+    with mock.patch("jbi.common.instrument.statsd") as _mocked_statsd:
         yield _mocked_statsd
 
 
-register(ActionContextFactory)
-register(ActionFactory)
-register(ActionsFactory)
-register(ActionParamsFactory)
-register(BugFactory)
-register(BugzillaWebhookFactory)
-register(CommentFactory)
-register(JiraContextFactory)
-register(WebhookFactory)
-register(WebhookEventChangeFactory)
-register(WebhookEventFactory)
-register(WebhookUserFactory)
+register(factories.ActionContextFactory)
+register(factories.ActionFactory)
+register(factories.ActionsFactory)
+register(factories.ActionParamsFactory)
+register(factories.BugFactory)
+register(factories.BugzillaWebhookFactory)
+register(factories.CommentFactory)
+register(factories.JiraContextFactory)
+register(factories.WebhookFactory)
+register(factories.WebhookEventChangeFactory)
+register(factories.WebhookEventFactory)
+register(factories.WebhookUserFactory)
+
+
+register(
+    factories.ActionContextFactory, "context_create_example", operation=Operation.CREATE
+)
+register(factories.WebhookFactory, "webhook_create_example")
 
 
 @pytest.fixture
@@ -83,7 +88,6 @@ def settings():
 
 @pytest.fixture(autouse=True)
 def actions():
-    get_actions.cache_clear()
     return get_actions()
 
 
@@ -93,7 +97,7 @@ def mocked_bugzilla(request):
         yield None
         bugzilla.get_service.cache_clear()
     else:
-        with mock.patch("jbi.services.bugzilla.BugzillaClient") as mocked_bz:
+        with mock.patch("jbi.bugzilla.service.BugzillaClient") as mocked_bz:
             yield mocked_bz()
             bugzilla.get_service.cache_clear()
 
@@ -104,7 +108,7 @@ def mocked_jira(request):
         yield None
         jira.get_service.cache_clear()
     else:
-        with mock.patch("jbi.services.jira.JiraClient") as mocked_jira:
+        with mock.patch("jbi.jira.service.JiraClient") as mocked_jira:
             yield mocked_jira()
             jira.get_service.cache_clear()
 
@@ -113,9 +117,6 @@ def mocked_jira(request):
 def mocked_responses():
     with responses.RequestsMock() as rsps:
         yield rsps
-
-
-register(ActionContextFactory, "context_create_example", operation=Operation.CREATE)
 
 
 @pytest.fixture
@@ -130,9 +131,6 @@ def context_comment_example(action_context_factory) -> ActionContext:
         event__user__login="mathieu@mozilla.org",
         jira__issue="JBI-234",
     )
-
-
-register(WebhookFactory, "webhook_create_example")
 
 
 @pytest.fixture(autouse=True)

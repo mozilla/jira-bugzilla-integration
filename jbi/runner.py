@@ -8,7 +8,7 @@ from typing import Optional
 
 from statsd.defaults.env import statsd
 
-from jbi import ActionResult, Operation
+from jbi import ActionResult, Operation, bugzilla, jira
 from jbi import steps as steps_module
 from jbi.environment import get_settings
 from jbi.errors import ActionNotFoundError, IgnoreInvalidRequestError
@@ -21,7 +21,6 @@ from jbi.models import (
     JiraContext,
     RunnerContext,
 )
-from jbi.services import bugzilla, jira
 from jbi.steps import StepStatus
 
 logger = logging.getLogger(__name__)
@@ -152,7 +151,6 @@ def execute_action(
     """
     bug, event = request.bug, request.event
     runner_context = RunnerContext(
-        rid=request.rid,
         bug=bug,
         event=event,
         operation=Operation.HANDLE,
@@ -190,7 +188,6 @@ def execute_action(
 
         action_context = ActionContext(
             action=action,
-            rid=request.rid,
             bug=bug,
             event=event,
             operation=Operation.IGNORE,
