@@ -79,10 +79,7 @@ def test_paginated_projects_no_keys(settings, jira_client, mocked_responses):
     assert resp == mocked_response_data
 
 
-def test_paginated_projects_with_keys(
-    settings, jira_client, mocked_responses, action_factory
-):
-    action_factory()
+def test_paginated_projects_with_keys(settings, jira_client, mocked_responses):
     url = f"{settings.jira_base_url}rest/api/2/project/search"
     mocked_response_data = {"some": "data"}
     mocked_responses.add(

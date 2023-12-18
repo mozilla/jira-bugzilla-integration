@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 JIRA_HOSTNAMES = ("jira", "atlassian")
 
 
-class ActionSteps(BaseModel):
+class ActionSteps(BaseModel, frozen=True):
     """Step functions to run for each type of Bugzilla webhook payload"""
 
     new: list[str] = [
@@ -63,7 +63,7 @@ class ActionSteps(BaseModel):
         return function_names
 
 
-class JiraComponents(BaseModel):
+class JiraComponents(BaseModel, frozen=True):
     """Controls how Jira components are set on issues in the `maybe_update_components` step."""
 
     use_bug_component: bool = True
@@ -72,7 +72,7 @@ class JiraComponents(BaseModel):
     set_custom_components: list[str] = []
 
 
-class ActionParams(BaseModel):
+class ActionParams(BaseModel, frozen=True):
     """Params passed to Action step functions"""
 
     jira_project_key: str
@@ -84,7 +84,7 @@ class ActionParams(BaseModel):
     issue_type_map: dict[str, str] = {"task": "Task", "defect": "Bug"}
 
 
-class Action(BaseModel):
+class Action(BaseModel, frozen=True):
     """
     Action is the inner model for each action in the configuration file"""
 
@@ -164,7 +164,7 @@ class Actions(RootModel):
     model_config = ConfigDict(ignored_types=(functools.cached_property,))
 
 
-class BugzillaWebhookUser(BaseModel):
+class BugzillaWebhookUser(BaseModel, frozen=True):
     """Bugzilla User Object"""
 
     id: int
@@ -172,17 +172,15 @@ class BugzillaWebhookUser(BaseModel):
     real_name: str
 
 
-class BugzillaWebhookEventChange(BaseModel):
+class BugzillaWebhookEventChange(BaseModel, frozen=True, coerce_numbers_to_str=True):
     """Bugzilla Change Object"""
-
-    model_config = ConfigDict(coerce_numbers_to_str=True)
 
     field: str
     removed: str
     added: str
 
 
-class BugzillaWebhookEvent(BaseModel):
+class BugzillaWebhookEvent(BaseModel, frozen=True):
     """Bugzilla Event Object"""
 
     action: str
@@ -198,7 +196,7 @@ class BugzillaWebhookEvent(BaseModel):
         return [c.field for c in self.changes] if self.changes else []
 
 
-class BugzillaWebhookComment(BaseModel):
+class BugzillaWebhookComment(BaseModel, frozen=True):
     """Bugzilla Comment Object"""
 
     body: Optional[str] = None
@@ -208,7 +206,7 @@ class BugzillaWebhookComment(BaseModel):
     creation_time: Optional[datetime.datetime] = None
 
 
-class BugzillaBug(BaseModel):
+class BugzillaBug(BaseModel, frozen=True):
     """Bugzilla Bug Object"""
 
     id: int
@@ -293,7 +291,7 @@ class BugzillaBug(BaseModel):
         raise ActionNotFoundError(", ".join(actions.by_tag.keys()))
 
 
-class BugzillaWebhookRequest(BaseModel):
+class BugzillaWebhookRequest(BaseModel, frozen=True):
     """Bugzilla Webhook Request Object"""
 
     webhook_id: int
@@ -302,7 +300,7 @@ class BugzillaWebhookRequest(BaseModel):
     bug: BugzillaBug
 
 
-class BugzillaComment(BaseModel):
+class BugzillaComment(BaseModel, frozen=True):
     """Bugzilla Comment"""
 
     id: int
@@ -314,14 +312,14 @@ class BugzillaComment(BaseModel):
 BugzillaComments = TypeAdapter(list[BugzillaComment])
 
 
-class BugzillaApiResponse(BaseModel):
+class BugzillaApiResponse(BaseModel, frozen=True):
     """Bugzilla Response Object"""
 
     faults: Optional[list] = None
     bugs: Optional[list[BugzillaBug]] = None
 
 
-class BugzillaWebhook(BaseModel):
+class BugzillaWebhook(BaseModel, frozen=True):
     """Bugzilla Webhook"""
 
     id: int
@@ -343,13 +341,13 @@ class BugzillaWebhook(BaseModel):
         return f"{self.id}-{name}-{product}"
 
 
-class BugzillaWebhooksResponse(BaseModel):
+class BugzillaWebhooksResponse(BaseModel, frozen=True):
     """Bugzilla Webhooks List Response Object"""
 
     webhooks: Optional[list[BugzillaWebhook]] = None
 
 
-class Context(BaseModel):
+class Context(BaseModel, frozen=True):
     """Generic log context throughout JBI"""
 
     def update(self, **kwargs):

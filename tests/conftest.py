@@ -12,7 +12,6 @@ from pytest_factoryboy import register
 import tests.fixtures.factories as factories
 from jbi import Operation, bugzilla, jira
 from jbi.app import app
-from jbi.configuration import get_actions
 from jbi.environment import Settings
 from jbi.models import ActionContext
 
@@ -56,7 +55,7 @@ def mocked_statsd():
 
 register(factories.ActionContextFactory)
 register(factories.ActionFactory)
-register(factories.ActionsFactory)
+register(factories.ActionsFactory, "_actions")
 register(factories.ActionParamsFactory)
 register(factories.BugFactory)
 register(factories.BugzillaWebhookFactory)
@@ -71,7 +70,6 @@ register(factories.WebhookUserFactory)
 register(
     factories.ActionContextFactory, "context_create_example", operation=Operation.CREATE
 )
-register(factories.WebhookFactory, "webhook_create_example")
 
 
 @pytest.fixture
@@ -86,9 +84,9 @@ def settings():
     return Settings()
 
 
-@pytest.fixture(autouse=True)
-def actions():
-    return get_actions()
+@pytest.fixture()
+def actions(actions_factory):
+    return actions_factory()
 
 
 @pytest.fixture(autouse=True)

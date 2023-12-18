@@ -20,7 +20,7 @@ def test_actual_jbi_files():
     )
 
 
-def test_filename_uses_env(mocker, actions, settings):
+def test_filename_uses_env(mocker, settings):
     get_actions_from_file_spy = mocker.spy(configuration, "get_actions_from_file")
     assert settings.env == "local"
 

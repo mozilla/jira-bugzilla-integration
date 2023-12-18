@@ -81,11 +81,11 @@ def test_statics_are_served(anon_client):
 
 
 def test_webhook_is_200_if_action_succeeds(
-    webhook_create_example: BugzillaWebhookRequest,
+    bugzilla_webhook_request: BugzillaWebhookRequest,
     mocked_jira,
     mocked_bugzilla,
 ):
-    mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
+    mocked_bugzilla.get_bug.return_value = bugzilla_webhook_request.bug
     mocked_bugzilla.update_bug.return_value = {
         "bugs": [
             {
@@ -109,24 +109,21 @@ def test_webhook_is_200_if_action_succeeds(
 
     with TestClient(app) as anon_client:
         response = anon_client.post(
-            "/bugzilla_webhook", data=webhook_create_example.model_dump_json()
+            "/bugzilla_webhook", data=bugzilla_webhook_request.model_dump_json()
         )
         assert response
         assert response.status_code == 200
 
 
 def test_webhook_is_200_if_action_raises_IgnoreInvalidRequestError(
-    webhook_create_example: BugzillaWebhookRequest,
+    webhook_factory,
     mocked_bugzilla,
 ):
-    assert webhook_create_example.bug
-    webhook_create_example.bug.whiteboard = "unmatched"
-    mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
+    webhook = webhook_factory(bug__whiteboard="unmatched")
+    mocked_bugzilla.get_bug.return_value = webhook.bug
 
     with TestClient(app) as anon_client:
-        response = anon_client.post(
-            "/bugzilla_webhook", data=webhook_create_example.model_dump_json()
-        )
+        response = anon_client.post("/bugzilla_webhook", data=webhook.model_dump_json())
         assert response
         assert response.status_code == 200
         assert (
@@ -135,13 +132,11 @@ def test_webhook_is_200_if_action_raises_IgnoreInvalidRequestError(
         )
 
 
-def test_webhook_is_422_if_bug_information_missing(webhook_create_example):
-    webhook_create_example.bug = None
+def test_webhook_is_422_if_bug_information_missing(webhook_factory):
+    webhook = webhook_factory.build(bug=None)
 
     with TestClient(app) as anon_client:
-        response = anon_client.post(
-            "/bugzilla_webhook", data=webhook_create_example.json()
-        )
+        response = anon_client.post("/bugzilla_webhook", data=webhook.model_dump_json())
         assert response.status_code == 422
         assert response.json()["detail"][0]["loc"] == ["body", "bug"]
 
@@ -306,11 +301,11 @@ def test_jira_heartbeat_unknown_issue_types(anon_client, mocked_jira):
 
 @pytest.mark.parametrize("method", ["HEAD", "GET"])
 def test_read_heartbeat_success(
-    anon_client, method, mocked_jira, mocked_bugzilla, bugzilla_webhook_factory
+    anon_client, method, mocked_jira, mocked_bugzilla, bugzilla_webhook
 ):
     """/__heartbeat__ returns 200 when checks succeed."""
     mocked_bugzilla.logged_in.return_value = True
-    mocked_bugzilla.list_webhooks.return_value = [bugzilla_webhook_factory()]
+    mocked_bugzilla.list_webhooks.return_value = [bugzilla_webhook]
     mocked_jira.get_server_info.return_value = {}
     mocked_jira.paginated_projects.return_value = {
         "values": [

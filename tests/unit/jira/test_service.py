@@ -22,7 +22,7 @@ def jira_service(settings):
 
 
 def test_jira_retries_failing_connections_in_health_check(
-    jira_service, settings, mocked_responses, actions_factory
+    jira_service, settings, mocked_responses, actions
 ):
     url = f"{settings.jira_base_url}rest/api/2/serverInfo?doHealthCheck=True"
 
@@ -34,7 +34,7 @@ def test_jira_retries_failing_connections_in_health_check(
         body=ConnectionError(),
     )
 
-    healthcheck = jira_service.check_health(actions_factory())
+    healthcheck = jira_service.check_health(actions)
     assert healthcheck["up"] is False
     assert len(mocked_responses.calls) == 4
 
@@ -110,19 +110,18 @@ def test_all_project_custom_components_exist_no_components_param(
 
 
 def test_get_issue(
-    jira_service, settings, mocked_responses, action_context_factory, capturelogs
+    jira_service, settings, mocked_responses, action_context, capturelogs
 ):
-    context = action_context_factory()
     url = f"{settings.jira_base_url}rest/api/2/issue/JBI-234"
     mock_response_data = {"key": "JBI-234", "fields": {"project": {"key": "JBI"}}}
     mocked_responses.add(responses.GET, url, json=mock_response_data)
 
     with capturelogs.for_logger("jbi.jira.service").at_level(logging.DEBUG):
-        response = jira_service.get_issue(context=context, issue_key="JBI-234")
+        response = jira_service.get_issue(context=action_context, issue_key="JBI-234")
 
     assert response == mock_response_data
     for record in capturelogs.records:
-        assert record.action["whiteboard_tag"] == context.action.whiteboard_tag
+        assert record.action["whiteboard_tag"] == action_context.action.whiteboard_tag
 
     before, after = capturelogs.messages
     assert before == "Getting issue JBI-234"
@@ -130,14 +129,13 @@ def test_get_issue(
 
 
 def test_get_issue_handles_404(
-    jira_service, settings, mocked_responses, action_context_factory, capturelogs
+    jira_service, settings, mocked_responses, action_context, capturelogs
 ):
-    context = action_context_factory()
     url = f"{settings.jira_base_url}rest/api/2/issue/JBI-234"
     mocked_responses.add(responses.GET, url, status=404)
 
     with capturelogs.for_logger("jbi.jira.service").at_level(logging.DEBUG):
-        return_val = jira_service.get_issue(context=context, issue_key="JBI-234")
+        return_val = jira_service.get_issue(context=action_context, issue_key="JBI-234")
 
     assert return_val is None
 
@@ -150,15 +148,14 @@ def test_get_issue_handles_404(
 
 
 def test_get_issue_reraises_other_erroring_status_codes(
-    jira_service, settings, mocked_responses, action_context_factory, capturelogs
+    jira_service, settings, mocked_responses, action_context, capturelogs
 ):
-    context = action_context_factory()
     url = f"{settings.jira_base_url}rest/api/2/issue/JBI-234"
     mocked_responses.add(responses.GET, url, status=401)
 
     with capturelogs.for_logger("jbi.jira.service").at_level(logging.DEBUG):
         with pytest.raises(requests.HTTPError):
-            jira_service.get_issue(context=context, issue_key="JBI-234")
+            jira_service.get_issue(context=action_context, issue_key="JBI-234")
 
     [record] = capturelogs.records
     assert record.levelno == logging.DEBUG
