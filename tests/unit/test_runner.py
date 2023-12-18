@@ -6,7 +6,7 @@ import requests
 import responses
 
 from jbi import Operation
-from jbi.bugzilla.models import BugzillaWebhookRequest
+from jbi.bugzilla import BugzillaWebhookRequest
 from jbi.environment import get_settings
 from jbi.errors import IgnoreInvalidRequestError
 from jbi.models import ActionContext

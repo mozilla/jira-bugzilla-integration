@@ -76,7 +76,7 @@ def version(version_json: VersionDep):
 def bugzilla_webhook(
     request: Request,
     actions: ActionsDep,
-    webhook_request: bugzilla.models.BugzillaWebhookRequest = Body(..., embed=False),
+    webhook_request: bugzilla.BugzillaWebhookRequest = Body(..., embed=False),
 ):
     """API endpoint that Bugzilla Webhook Events request"""
     try:

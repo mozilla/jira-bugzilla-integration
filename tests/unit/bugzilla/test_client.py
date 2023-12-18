@@ -2,8 +2,8 @@ import pytest
 import responses
 from responses import matchers
 
+from jbi.bugzilla import BugzillaWebhookRequest
 from jbi.bugzilla.client import BugzillaClient, BugzillaClientError
-from jbi.bugzilla.models import BugzillaWebhookRequest
 
 
 @pytest.fixture

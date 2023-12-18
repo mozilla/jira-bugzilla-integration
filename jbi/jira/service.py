@@ -13,9 +13,9 @@ from typing import TYPE_CHECKING, Any, Iterable, Optional
 import requests
 from requests import exceptions as requests_exceptions
 
-from jbi import Operation, environment
+from jbi import Operation, bugzilla, environment
 from jbi.common.instrument import ServiceHealth
-from jbi.models import ActionContext, BugzillaBug
+from jbi.models import ActionContext
 
 from .client import JiraClient, JiraCreateError
 
@@ -306,7 +306,7 @@ class JiraService:
         return jira_response_comments
 
     def delete_jira_issue_if_duplicate(
-        self, context: ActionContext, latest_bug: BugzillaBug
+        self, context: ActionContext, latest_bug: bugzilla.BugzillaBug
     ):
         """Rollback the Jira issue creation if there is already a linked Jira issue
         on the Bugzilla ticket"""

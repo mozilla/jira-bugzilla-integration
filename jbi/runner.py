@@ -138,7 +138,7 @@ class Executor:
 
 @statsd.timer("jbi.action.execution.timer")
 def execute_action(
-    request: bugzilla.models.BugzillaWebhookRequest,
+    request: bugzilla.BugzillaWebhookRequest,
     actions: Actions,
 ):
     """Execute the configured action for the specified `request`.

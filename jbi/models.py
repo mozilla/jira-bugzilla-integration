@@ -17,7 +17,7 @@ from pydantic import (
 )
 
 from jbi import Operation, steps
-from jbi.bugzilla.models import BugId, BugzillaBug, BugzillaWebhookEvent
+from jbi.bugzilla import BugId, BugzillaBug, BugzillaWebhookEvent
 
 logger = logging.getLogger(__name__)
 
