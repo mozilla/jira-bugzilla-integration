@@ -79,13 +79,13 @@ def test_traces_sampler(sampling_context, expected):
 
 
 def test_errors_are_reported_to_sentry(
-    anon_client, webhook_create_example: BugzillaWebhookRequest
+    anon_client, bugzilla_webhook_request: BugzillaWebhookRequest
 ):
     with patch("sentry_sdk.hub.Hub.capture_event") as mocked:
         with patch("jbi.router.execute_action", side_effect=ValueError):
             with pytest.raises(ValueError):
                 anon_client.post(
-                    "/bugzilla_webhook", data=webhook_create_example.model_dump_json()
+                    "/bugzilla_webhook", data=bugzilla_webhook_request.model_dump_json()
                 )
 
     assert mocked.called, "Sentry captured the exception"
@@ -93,11 +93,11 @@ def test_errors_are_reported_to_sentry(
 
 def test_request_id_is_passed_down_to_logger_contexts(
     caplog,
-    webhook_create_example: BugzillaWebhookRequest,
+    bugzilla_webhook_request: BugzillaWebhookRequest,
     mocked_jira,
     mocked_bugzilla,
 ):
-    mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
+    mocked_bugzilla.get_bug.return_value = bugzilla_webhook_request.bug
     mocked_jira.create_issue.return_value = {
         "key": "JBI-1922",
     }
@@ -105,7 +105,7 @@ def test_request_id_is_passed_down_to_logger_contexts(
         with TestClient(app) as anon_client:
             anon_client.post(
                 "/bugzilla_webhook",
-                data=webhook_create_example.model_dump_json(),
+                data=bugzilla_webhook_request.model_dump_json(),
                 headers={
                     "X-Request-Id": "foo-bar",
                 },

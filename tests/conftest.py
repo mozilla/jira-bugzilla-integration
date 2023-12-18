@@ -70,7 +70,6 @@ register(factories.WebhookUserFactory)
 register(
     factories.ActionContextFactory, "context_create_example", operation=Operation.CREATE
 )
-register(factories.WebhookFactory, "webhook_create_example")
 
 
 @pytest.fixture

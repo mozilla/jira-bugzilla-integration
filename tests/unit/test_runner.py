@@ -13,19 +13,19 @@ from jbi.runner import Executor, execute_action
 
 
 def test_bugzilla_object_is_always_fetched(
-    mocked_jira, mocked_bugzilla, webhook_create_example, actions, bug_factory
+    mocked_jira, mocked_bugzilla, bugzilla_webhook_request, actions, bug_factory
 ):
     # See https://github.com/mozilla/jira-bugzilla-integration/issues/292
     fetched_bug = bug_factory(
-        id=webhook_create_example.bug.id,
+        id=bugzilla_webhook_request.bug.id,
         see_also=[f"{get_settings().jira_base_url}browse/JBI-234"],
     )
     mocked_bugzilla.get_bug.return_value = fetched_bug
     mocked_jira.get_issue.return_value = {"fields": {"project": {"key": "JBI"}}}
 
-    execute_action(request=webhook_create_example, actions=actions)
+    execute_action(request=bugzilla_webhook_request, actions=actions)
 
-    mocked_bugzilla.get_bug.assert_called_once_with(webhook_create_example.bug.id)
+    mocked_bugzilla.get_bug.assert_called_once_with(bugzilla_webhook_request.bug.id)
 
 
 def test_request_is_ignored_because_project_mismatch(
@@ -93,14 +93,14 @@ def test_request_is_ignored_because_no_action(
 
 def test_execution_logging_for_successful_requests(
     capturelogs,
-    webhook_create_example: BugzillaWebhookRequest,
+    bugzilla_webhook_request: BugzillaWebhookRequest,
     actions,
     mocked_bugzilla,
 ):
-    mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
+    mocked_bugzilla.get_bug.return_value = bugzilla_webhook_request.bug
 
     with capturelogs.for_logger("jbi.runner").at_level(logging.DEBUG):
-        execute_action(request=webhook_create_example, actions=actions)
+        execute_action(request=bugzilla_webhook_request, actions=actions)
 
     assert {
         "Handling incoming request",
@@ -130,15 +130,15 @@ def test_execution_logging_for_ignored_requests(
 
 def test_action_is_logged_as_success_if_returns_true(
     capturelogs,
-    webhook_create_example: BugzillaWebhookRequest,
+    bugzilla_webhook_request: BugzillaWebhookRequest,
     actions,
     mocked_bugzilla,
 ):
-    mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
+    mocked_bugzilla.get_bug.return_value = bugzilla_webhook_request.bug
 
     with mock.patch("jbi.runner.Executor.__call__", return_value=(True, {})):
         with capturelogs.for_logger("jbi.runner").at_level(logging.DEBUG):
-            execute_action(request=webhook_create_example, actions=actions)
+            execute_action(request=bugzilla_webhook_request, actions=actions)
 
     captured_log_msgs = [(r.getMessage(), r.operation) for r in capturelogs.records]
 
@@ -156,15 +156,15 @@ def test_action_is_logged_as_success_if_returns_true(
 
 def test_action_is_logged_as_ignore_if_returns_false(
     capturelogs,
-    webhook_create_example: BugzillaWebhookRequest,
+    bugzilla_webhook_request: BugzillaWebhookRequest,
     actions,
     mocked_bugzilla,
 ):
-    mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
+    mocked_bugzilla.get_bug.return_value = bugzilla_webhook_request.bug
 
     with mock.patch("jbi.runner.Executor.__call__", return_value=(False, {})):
         with capturelogs.for_logger("jbi.runner").at_level(logging.DEBUG):
-            execute_action(request=webhook_create_example, actions=actions)
+            execute_action(request=bugzilla_webhook_request, actions=actions)
 
     captured_log_msgs = [(r.getMessage(), r.operation) for r in capturelogs.records]
 
@@ -193,14 +193,14 @@ def test_counter_is_incremented_on_ignored_requests(
 
 
 def test_counter_is_incremented_on_processed_requests(
-    webhook_create_example: BugzillaWebhookRequest,
+    bugzilla_webhook_request: BugzillaWebhookRequest,
     actions,
     mocked_bugzilla,
 ):
-    mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
+    mocked_bugzilla.get_bug.return_value = bugzilla_webhook_request.bug
 
     with mock.patch("jbi.runner.statsd") as mocked:
-        execute_action(request=webhook_create_example, actions=actions)
+        execute_action(request=bugzilla_webhook_request, actions=actions)
     mocked.incr.assert_called_with("jbi.bugzilla.processed.count")
 
 

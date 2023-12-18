@@ -8,7 +8,7 @@ class PydanticFactory(factory.Factory):
     - factory_instance(**kwargs) -> Model(**kwargs)
     - factory_instance.create(**kwargs) -> Model(**kwargs)
     - factory_instance.build(**kwargs) -> Model.model_construct(**kwargs)
-    
+
     https://docs.pydantic.dev/latest/api/base_model/#pydantic.main.BaseModel.model_construct
     """
 

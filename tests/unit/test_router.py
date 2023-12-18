@@ -81,11 +81,11 @@ def test_statics_are_served(anon_client):
 
 
 def test_webhook_is_200_if_action_succeeds(
-    webhook_create_example: BugzillaWebhookRequest,
+    bugzilla_webhook_request: BugzillaWebhookRequest,
     mocked_jira,
     mocked_bugzilla,
 ):
-    mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
+    mocked_bugzilla.get_bug.return_value = bugzilla_webhook_request.bug
     mocked_bugzilla.update_bug.return_value = {
         "bugs": [
             {
@@ -109,7 +109,7 @@ def test_webhook_is_200_if_action_succeeds(
 
     with TestClient(app) as anon_client:
         response = anon_client.post(
-            "/bugzilla_webhook", data=webhook_create_example.model_dump_json()
+            "/bugzilla_webhook", data=bugzilla_webhook_request.model_dump_json()
         )
         assert response
         assert response.status_code == 200
