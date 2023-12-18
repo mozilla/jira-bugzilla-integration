@@ -1,5 +1,6 @@
 import factory
 
+import jbi.bugzilla.models as bugzilla_models
 from jbi import Operation, models
 
 
@@ -51,7 +52,7 @@ class ActionsFactory(PydanticFactory):
 
 class BugzillaWebhookCommentFactory(PydanticFactory):
     class Meta:
-        model = models.BugzillaWebhookComment
+        model = bugzilla_models.BugzillaWebhookComment
 
     body = None
     id = None
@@ -62,7 +63,7 @@ class BugzillaWebhookCommentFactory(PydanticFactory):
 
 class BugFactory(PydanticFactory):
     class Meta:
-        model = models.BugzillaBug
+        model = bugzilla_models.BugzillaBug
 
     class Params:
         with_comment = factory.Trait(
@@ -90,7 +91,7 @@ class BugFactory(PydanticFactory):
 
 class WebhookUserFactory(PydanticFactory):
     class Meta:
-        model = models.BugzillaWebhookUser
+        model = bugzilla_models.BugzillaWebhookUser
 
     id = 123456
     login = "nobody@mozilla.org"
@@ -99,7 +100,7 @@ class WebhookUserFactory(PydanticFactory):
 
 class WebhookEventChangeFactory(PydanticFactory):
     class Meta:
-        model = models.BugzillaWebhookEventChange
+        model = bugzilla_models.BugzillaWebhookEventChange
 
     field = "field"
     removed = "old value"
@@ -108,7 +109,7 @@ class WebhookEventChangeFactory(PydanticFactory):
 
 class WebhookEventFactory(PydanticFactory):
     class Meta:
-        model = models.BugzillaWebhookEvent
+        model = bugzilla_models.BugzillaWebhookEvent
 
     action = "create"
     changes = None
@@ -120,7 +121,7 @@ class WebhookEventFactory(PydanticFactory):
 
 class WebhookFactory(PydanticFactory):
     class Meta:
-        model = models.BugzillaWebhookRequest
+        model = bugzilla_models.BugzillaWebhookRequest
 
     bug = factory.SubFactory(BugFactory)
     event = factory.SubFactory(WebhookEventFactory)
@@ -130,7 +131,7 @@ class WebhookFactory(PydanticFactory):
 
 class CommentFactory(PydanticFactory):
     class Meta:
-        model = models.BugzillaComment
+        model = bugzilla_models.BugzillaComment
 
     id = 343
     text = "comment text"
@@ -162,7 +163,7 @@ class ActionContextFactory(PydanticFactory):
 
 class BugzillaWebhookFactory(PydanticFactory):
     class Meta:
-        model = models.BugzillaWebhook
+        model = bugzilla_models.BugzillaWebhook
 
     component = "General"
     creator = "admin@mozilla.bugs"

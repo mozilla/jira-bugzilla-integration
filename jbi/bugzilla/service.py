@@ -1,17 +1,20 @@
+from __future__ import annotations
+
 import logging
 from functools import lru_cache
+from typing import TYPE_CHECKING
 
 import requests
 from statsd.defaults.env import statsd
 
 from jbi import Operation, environment
 from jbi.common.instrument import ServiceHealth
-from jbi.models import (
-    ActionContext,
-    BugzillaBug,
-)
 
 from .client import BugzillaClient, BugzillaClientError
+from .models import BugzillaBug
+
+if TYPE_CHECKING:
+    from jbi.models import ActionContext
 
 settings = environment.get_settings()
 

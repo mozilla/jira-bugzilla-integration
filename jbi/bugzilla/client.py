@@ -4,7 +4,8 @@ import requests
 
 from jbi import environment
 from jbi.common.instrument import instrument
-from jbi.models import (
+
+from .models import (
     BugzillaApiResponse,
     BugzillaBug,
     BugzillaComment,

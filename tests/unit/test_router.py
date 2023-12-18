@@ -7,8 +7,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from jbi.app import app
+from jbi.bugzilla.models import BugzillaWebhookRequest
 from jbi.environment import get_settings
-from jbi.models import BugzillaWebhookRequest
 
 
 def test_read_root(anon_client):

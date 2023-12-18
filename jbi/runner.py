@@ -17,7 +17,6 @@ from jbi.models import (
     ActionParams,
     Actions,
     ActionSteps,
-    BugzillaWebhookRequest,
     JiraContext,
     RunnerContext,
 )
@@ -139,7 +138,7 @@ class Executor:
 
 @statsd.timer("jbi.action.execution.timer")
 def execute_action(
-    request: BugzillaWebhookRequest,
+    request: bugzilla.models.BugzillaWebhookRequest,
     actions: Actions,
 ):
     """Execute the configured action for the specified `request`.
