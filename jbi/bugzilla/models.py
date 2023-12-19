@@ -1,17 +1,9 @@
-from __future__ import annotations
-
 import datetime
 import logging
-import re
-from typing import TYPE_CHECKING, Optional, TypedDict
+from typing import Optional, TypedDict
 from urllib.parse import ParseResult, urlparse
 
 from pydantic import BaseModel, TypeAdapter
-
-from jbi.errors import ActionNotFoundError
-
-if TYPE_CHECKING:
-    from jbi.models import Action, Actions
 
 logger = logging.getLogger(__name__)
 JIRA_HOSTNAMES = ("jira", "atlassian")
@@ -128,22 +120,6 @@ class BugzillaBug(BaseModel, frozen=True):
                     candidates.append(parsed_jira_key)
 
         return candidates[0] if candidates else None
-
-    def lookup_action(self, actions: Actions) -> Action:
-        """
-        Find first matching action from bug's whiteboard field.
-
-        Tags are strings between brackets and can have prefixes/suffixes
-        using dashes (eg. ``[project]``, ``[project-moco]``, ``[project-moco-sprint1]``).
-        """
-        if self.whiteboard:
-            for tag, action in actions.by_tag.items():
-                # [tag-word], [tag-], [tag], but not [word-tag] or [tagword]
-                search_string = r"\[" + tag + r"(-[^\]]*)*\]"
-                if re.search(search_string, self.whiteboard, flags=re.IGNORECASE):
-                    return action
-
-        raise ActionNotFoundError(", ".join(actions.by_tag.keys()))
 
 
 class BugzillaWebhookRequest(BaseModel, frozen=True):

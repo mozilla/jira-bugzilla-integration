@@ -8,9 +8,9 @@ import responses
 from jbi import Operation
 from jbi.bugzilla import BugzillaWebhookRequest
 from jbi.environment import get_settings
-from jbi.errors import IgnoreInvalidRequestError
+from jbi.errors import ActionNotFoundError, IgnoreInvalidRequestError
 from jbi.models import ActionContext
-from jbi.runner import Executor, execute_action
+from jbi.runner import Executor, execute_action, lookup_action
 
 
 def test_bugzilla_object_is_always_fetched(
@@ -457,3 +457,51 @@ def test_counter_is_incremented_for_comment(
     with mock.patch("jbi.runner.statsd") as mocked:
         execute_action(request=webhook_payload, actions=actions)
     mocked.incr.assert_any_call("jbi.operation.comment.count")
+
+
+@pytest.mark.parametrize(
+    "whiteboard",
+    [
+        "[DevTest]",
+        "[DevTest-]",
+        "[DevTest-test]",
+        "[DevTest-test-foo]",
+        "[example][DevTest]",
+        "[DevTest][example]",
+        "[example][DevTest][example]",
+    ],
+)
+def test_lookup_action_found(whiteboard, actions, bug_factory):
+    bug = bug_factory(id=1234, whiteboard=whiteboard)
+    action = lookup_action(bug, actions)
+    assert action.whiteboard_tag == "devtest"
+    assert "test config" in action.description
+
+
+@pytest.mark.parametrize(
+    "whiteboard",
+    [
+        "DevTest",
+        "[-DevTest-]",
+        "[-DevTest]",
+        "[test-DevTest]",
+        "[foo-DevTest-bar]",
+        "[foo-bar-DevTest-foo-bar]",
+        "foo DevTest",
+        "DevTest bar",
+        "foo DevTest bar",
+        "[fooDevTest]",
+        "[foo DevTest]",
+        "[DevTestbar]",
+        "[DevTest bar]",
+        "[fooDevTestbar]",
+        "[fooDevTest-bar]",
+        "[foo-DevTestbar]",
+        "[foo] devtest [bar]",
+    ],
+)
+def test_lookup_action_not_found(whiteboard, actions, bug_factory):
+    bug = bug_factory(id=1234, whiteboard=whiteboard)
+    with pytest.raises(ActionNotFoundError) as exc_info:
+        lookup_action(bug, actions)
+    assert str(exc_info.value) == "devtest"
