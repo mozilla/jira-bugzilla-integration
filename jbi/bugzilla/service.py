@@ -1,20 +1,14 @@
-from __future__ import annotations
-
 import logging
 from functools import lru_cache
-from typing import TYPE_CHECKING
 
 import requests
 from statsd.defaults.env import statsd
 
-from jbi import Operation, environment
+from jbi import environment
 from jbi.common.instrument import ServiceHealth
 
 from .client import BugzillaClient, BugzillaClientError
 from .models import BugzillaBug
-
-if TYPE_CHECKING:
-    from jbi.models import ActionContext
 
 settings = environment.get_settings()
 
@@ -70,18 +64,10 @@ class BugzillaService:
                 return False
         return True
 
-    def add_link_to_jira(self, context: ActionContext):
-        """Add link to Jira in Bugzilla ticket"""
-        bug = context.bug
-        issue_key = context.jira.issue
-        jira_url = f"{settings.jira_base_url}browse/{issue_key}"
-        logger.debug(
-            "Link %r on Bug %s",
-            jira_url,
-            bug.id,
-            extra=context.update(operation=Operation.LINK).model_dump(),
-        )
-        return self.client.update_bug(bug.id, see_also={"add": [jira_url]})
+    def add_link_to_see_also(self, bug: BugzillaBug, link: str):
+        """Add link to Bugzilla ticket"""
+
+        return self.client.update_bug(bug.id, see_also={"add": [link]})
 
     def get_description(self, bug_id: int):
         """Fetch a bug's description
