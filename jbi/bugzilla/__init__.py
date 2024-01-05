@@ -1,7 +1,7 @@
 from .models import (
+    Bug,
     BugId,
-    BugzillaBug,
-    BugzillaWebhookEvent,
-    BugzillaWebhookRequest,
+    WebhookEvent,
+    WebhookRequest,
 )
 from .service import BugzillaService, get_service

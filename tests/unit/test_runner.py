@@ -29,14 +29,16 @@ def test_bugzilla_object_is_always_fetched(
 
 
 def test_request_is_ignored_because_project_mismatch(
-    webhook_factory,
+    webhook_request_factory,
     actions,
     mocked_jira,
     mocked_bugzilla,
     bug_factory,
     settings,
 ):
-    webhook = webhook_factory(bug__see_also=[f"{settings.jira_base_url}browse/JBI-234"])
+    webhook = webhook_request_factory(
+        bug__see_also=[f"{settings.jira_base_url}browse/JBI-234"]
+    )
     mocked_bugzilla.get_bug.return_value = webhook.bug
     mocked_jira.get_issue.return_value = {"fields": {"project": {"key": "FXDROID"}}}
 
@@ -47,12 +49,12 @@ def test_request_is_ignored_because_project_mismatch(
 
 
 def test_request_is_ignored_because_private(
-    webhook_factory,
+    webhook_request_factory,
     actions,
     mocked_bugzilla,
     bug_factory,
 ):
-    webhook = webhook_factory(bug__is_private=True)
+    webhook = webhook_request_factory(bug__is_private=True)
     mocked_bugzilla.get_bug.return_value = webhook.bug
 
     with pytest.raises(IgnoreInvalidRequestError) as exc_info:
@@ -62,9 +64,9 @@ def test_request_is_ignored_because_private(
 
 
 def test_added_comment_without_linked_issue_is_ignored(
-    actions, mocked_bugzilla, webhook_factory
+    actions, mocked_bugzilla, webhook_request_factory
 ):
-    webhook_with_comment = webhook_factory(
+    webhook_with_comment = webhook_request_factory(
         bug__see_also=[],
         bug__comment__number=2,
         bug__comment__body="hello",
@@ -79,11 +81,11 @@ def test_added_comment_without_linked_issue_is_ignored(
 
 
 def test_request_is_ignored_because_no_action(
-    webhook_factory,
+    webhook_request_factory,
     actions,
     mocked_bugzilla,
 ):
-    webhook = webhook_factory(bug__whiteboard="bar")
+    webhook = webhook_request_factory(bug__whiteboard="bar")
     mocked_bugzilla.get_bug.return_value = webhook.bug
 
     with pytest.raises(IgnoreInvalidRequestError) as exc_info:
@@ -111,11 +113,11 @@ def test_execution_logging_for_successful_requests(
 
 def test_execution_logging_for_ignored_requests(
     capturelogs,
-    webhook_factory,
+    webhook_request_factory,
     actions,
     mocked_bugzilla,
 ):
-    webhook = webhook_factory(bug__whiteboard="foo")
+    webhook = webhook_request_factory(bug__whiteboard="foo")
     mocked_bugzilla.get_bug.return_value = webhook.bug
 
     with capturelogs.for_logger("jbi.runner").at_level(logging.DEBUG):
@@ -179,11 +181,11 @@ def test_action_is_logged_as_ignore_if_returns_false(
 
 
 def test_counter_is_incremented_on_ignored_requests(
-    webhook_factory,
+    webhook_request_factory,
     actions,
     mocked_bugzilla,
 ):
-    webhoook = webhook_factory(bug__whiteboard="foo")
+    webhoook = webhook_request_factory(bug__whiteboard="foo")
     mocked_bugzilla.get_bug.return_value = webhoook.bug
 
     with mock.patch("jbi.runner.statsd") as mocked:
@@ -206,12 +208,12 @@ def test_counter_is_incremented_on_processed_requests(
 
 def test_runner_ignores_if_jira_issue_is_not_readable(
     actions,
-    webhook_factory,
+    webhook_request_factory,
     mocked_bugzilla,
     mocked_jira,
     capturelogs,
 ):
-    webhook = webhook_factory(
+    webhook = webhook_request_factory(
         bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
     )
     mocked_jira.get_issue.return_value = None
@@ -229,11 +231,11 @@ def test_runner_ignores_if_jira_issue_is_not_readable(
 
 
 def test_runner_ignores_request_if_jira_is_linked_but_without_whiteboard(
-    webhook_factory,
+    webhook_request_factory,
     actions,
     mocked_bugzilla,
 ):
-    webhook = webhook_factory(
+    webhook = webhook_request_factory(
         bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
         bug__whiteboard="[not-matching-local-config]",
     )
@@ -418,9 +420,9 @@ def test_step_function_counter_not_incremented_for_noop(
 
 
 def test_counter_is_incremented_for_create(
-    webhook_factory, actions, mocked_bugzilla, bug_factory
+    webhook_request_factory, actions, mocked_bugzilla, bug_factory
 ):
-    webhook_payload = webhook_factory(
+    webhook_payload = webhook_request_factory(
         event__target="bug",
         bug__see_also=[],
     )
@@ -431,9 +433,9 @@ def test_counter_is_incremented_for_create(
 
 
 def test_counter_is_incremented_for_update(
-    actions, webhook_factory, mocked_bugzilla, mocked_jira
+    actions, webhook_request_factory, mocked_bugzilla, mocked_jira
 ):
-    webhook_payload = webhook_factory(
+    webhook_payload = webhook_request_factory(
         event__target="bug",
         bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
     )
@@ -445,9 +447,9 @@ def test_counter_is_incremented_for_update(
 
 
 def test_counter_is_incremented_for_comment(
-    actions, webhook_factory, mocked_bugzilla, mocked_jira
+    actions, webhook_request_factory, mocked_bugzilla, mocked_jira
 ):
-    webhook_payload = webhook_factory(
+    webhook_payload = webhook_request_factory(
         event__target="comment",
         bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
     )

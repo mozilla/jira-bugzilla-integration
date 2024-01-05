@@ -17,7 +17,7 @@ from pydantic import (
 )
 
 from jbi import Operation, steps
-from jbi.bugzilla import BugId, BugzillaBug, BugzillaWebhookEvent
+from jbi.bugzilla import Bug, BugId, WebhookEvent
 
 logger = logging.getLogger(__name__)
 
@@ -179,9 +179,9 @@ class RunnerContext(Context, extra="forbid"):
     """Logging context from runner"""
 
     operation: Operation
-    event: BugzillaWebhookEvent
+    event: WebhookEvent
     action: Optional[Action] = None
-    bug: BugId | BugzillaBug
+    bug: BugId | Bug
 
 
 class ActionContext(Context, extra="forbid"):
@@ -190,9 +190,9 @@ class ActionContext(Context, extra="forbid"):
     action: Action
     operation: Operation
     current_step: Optional[str] = None
-    event: BugzillaWebhookEvent
+    event: WebhookEvent
     jira: JiraContext
-    bug: BugzillaBug
+    bug: Bug
     extra: dict[str, str] = {}
     responses_by_step: DefaultDict[str, list] = defaultdict(list)
 

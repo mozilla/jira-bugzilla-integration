@@ -8,7 +8,7 @@ from jbi import environment
 from jbi.common.instrument import ServiceHealth
 
 from .client import BugzillaClient, BugzillaClientError
-from .models import BugzillaBug
+from .models import Bug
 
 settings = environment.get_settings()
 
@@ -64,7 +64,7 @@ class BugzillaService:
                 return False
         return True
 
-    def add_link_to_see_also(self, bug: BugzillaBug, link: str):
+    def add_link_to_see_also(self, bug: Bug, link: str):
         """Add link to Bugzilla ticket"""
 
         return self.client.update_bug(bug.id, see_also={"add": [link]})
@@ -79,7 +79,7 @@ class BugzillaService:
         comment_body = comment_list[0].text if comment_list else ""
         return str(comment_body)
 
-    def refresh_bug_data(self, bug: BugzillaBug):
+    def refresh_bug_data(self, bug: Bug):
         """Re-fetch a bug to ensure we have the most up-to-date data"""
 
         refreshed_bug_data = self.client.get_bug(bug.id)

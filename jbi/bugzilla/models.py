@@ -11,7 +11,7 @@ JIRA_HOSTNAMES = ("jira", "atlassian")
 BugId = TypedDict("BugId", {"id": Optional[int]})
 
 
-class BugzillaWebhookUser(BaseModel, frozen=True):
+class WebhookUser(BaseModel, frozen=True):
     """Bugzilla User Object"""
 
     id: int
@@ -19,7 +19,7 @@ class BugzillaWebhookUser(BaseModel, frozen=True):
     real_name: str
 
 
-class BugzillaWebhookEventChange(BaseModel, frozen=True, coerce_numbers_to_str=True):
+class WebhookEventChange(BaseModel, frozen=True, coerce_numbers_to_str=True):
     """Bugzilla Change Object"""
 
     field: str
@@ -27,13 +27,13 @@ class BugzillaWebhookEventChange(BaseModel, frozen=True, coerce_numbers_to_str=T
     added: str
 
 
-class BugzillaWebhookEvent(BaseModel, frozen=True):
+class WebhookEvent(BaseModel, frozen=True):
     """Bugzilla Event Object"""
 
     action: str
     time: Optional[datetime.datetime] = None
-    user: Optional[BugzillaWebhookUser] = None
-    changes: Optional[list[BugzillaWebhookEventChange]] = None
+    user: Optional[WebhookUser] = None
+    changes: Optional[list[WebhookEventChange]] = None
     target: Optional[str] = None
     routing_key: Optional[str] = None
 
@@ -43,7 +43,7 @@ class BugzillaWebhookEvent(BaseModel, frozen=True):
         return [c.field for c in self.changes] if self.changes else []
 
 
-class BugzillaWebhookComment(BaseModel, frozen=True):
+class WebhookComment(BaseModel, frozen=True):
     """Bugzilla Comment Object"""
 
     body: Optional[str] = None
@@ -53,7 +53,7 @@ class BugzillaWebhookComment(BaseModel, frozen=True):
     creation_time: Optional[datetime.datetime] = None
 
 
-class BugzillaBug(BaseModel, frozen=True):
+class Bug(BaseModel, frozen=True):
     """Bugzilla Bug Object"""
 
     id: int
@@ -73,7 +73,7 @@ class BugzillaBug(BaseModel, frozen=True):
     priority: Optional[str] = None
     creator: Optional[str] = None
     assigned_to: Optional[str] = None
-    comment: Optional[BugzillaWebhookComment] = None
+    comment: Optional[WebhookComment] = None
 
     @property
     def product_component(self) -> str:
@@ -122,16 +122,16 @@ class BugzillaBug(BaseModel, frozen=True):
         return candidates[0] if candidates else None
 
 
-class BugzillaWebhookRequest(BaseModel, frozen=True):
+class WebhookRequest(BaseModel, frozen=True):
     """Bugzilla Webhook Request Object"""
 
     webhook_id: int
     webhook_name: str
-    event: BugzillaWebhookEvent
-    bug: BugzillaBug
+    event: WebhookEvent
+    bug: Bug
 
 
-class BugzillaComment(BaseModel, frozen=True):
+class Comment(BaseModel, frozen=True):
     """Bugzilla Comment"""
 
     id: int
@@ -140,17 +140,17 @@ class BugzillaComment(BaseModel, frozen=True):
     creator: str
 
 
-BugzillaComments = TypeAdapter(list[BugzillaComment])
+BugzillaComments = TypeAdapter(list[Comment])
 
 
-class BugzillaApiResponse(BaseModel, frozen=True):
+class ApiResponse(BaseModel, frozen=True):
     """Bugzilla Response Object"""
 
     faults: Optional[list] = None
-    bugs: Optional[list[BugzillaBug]] = None
+    bugs: Optional[list[Bug]] = None
 
 
-class BugzillaWebhook(BaseModel, frozen=True):
+class Webhook(BaseModel, frozen=True):
     """Bugzilla Webhook"""
 
     id: int
@@ -172,7 +172,7 @@ class BugzillaWebhook(BaseModel, frozen=True):
         return f"{self.id}-{name}-{product}"
 
 
-class BugzillaWebhooksResponse(BaseModel, frozen=True):
+class WebhooksResponse(BaseModel, frozen=True):
     """Bugzilla Webhooks List Response Object"""
 
-    webhooks: Optional[list[BugzillaWebhook]] = None
+    webhooks: Optional[list[Webhook]] = None

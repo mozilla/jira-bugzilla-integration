@@ -51,7 +51,7 @@ def groups2operation(steps: ActionSteps):
     return by_operation
 
 
-def lookup_action(bug: bugzilla.BugzillaBug, actions: Actions) -> Action:
+def lookup_action(bug: bugzilla.Bug, actions: Actions) -> Action:
     """
     Find first matching action from bug's whiteboard field.
 
@@ -158,7 +158,7 @@ class Executor:
 
 @statsd.timer("jbi.action.execution.timer")
 def execute_action(
-    request: bugzilla.BugzillaWebhookRequest,
+    request: bugzilla.WebhookRequest,
     actions: Actions,
 ):
     """Execute the configured action for the specified `request`.

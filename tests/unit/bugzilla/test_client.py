@@ -7,7 +7,7 @@ from jbi.bugzilla.client import BugzillaClient, BugzillaClientError
 
 @pytest.fixture
 def webhook_private_comment_example(
-    webhook_user_factory, webhook_event_factory, bug_factory, webhook_factory
+    webhook_user_factory, webhook_event_factory, bug_factory, webhook_request_factory
 ):
     user = webhook_user_factory(login="mathieu@mozilla.org")
     event = webhook_event_factory(target="comment", user=user)
@@ -15,7 +15,7 @@ def webhook_private_comment_example(
         comment={"id": 344, "number": 2, "is_private": True},
         see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
     )
-    webhook_payload = webhook_factory(bug=bug, event=event)
+    webhook_payload = webhook_request_factory(bug=bug, event=event)
     return webhook_payload
 
 

@@ -6,11 +6,11 @@ from jbi import environment
 from jbi.common.instrument import instrument
 
 from .models import (
-    BugzillaApiResponse,
-    BugzillaBug,
-    BugzillaComment,
+    ApiResponse,
+    Bug,
     BugzillaComments,
-    BugzillaWebhooksResponse,
+    Comment,
+    WebhooksResponse,
 )
 
 settings = environment.get_settings()
@@ -68,12 +68,12 @@ class BugzillaClient:
         return "id" in resp
 
     @instrumented_method
-    def get_bug(self, bugid) -> BugzillaBug:
+    def get_bug(self, bugid) -> Bug:
         """Retrieve details about the specified bug id."""
         # https://bugzilla.readthedocs.io/en/latest/api/core/v1/bug.html#rest-single-bug
         url = f"{self.base_url}/rest/bug/{bugid}"
         bug_info = self._call("GET", url)
-        parsed = BugzillaApiResponse.model_validate(bug_info)
+        parsed = ApiResponse.model_validate(bug_info)
         if not parsed.bugs:
             raise BugzillaClientError(
                 f"Unexpected response content from 'GET {url}' (no 'bugs' field)"
@@ -89,7 +89,7 @@ class BugzillaClient:
         return bug
 
     @instrumented_method
-    def get_comments(self, bugid) -> list[BugzillaComment]:
+    def get_comments(self, bugid) -> list[Comment]:
         """Retrieve the list of comments of the specified bug id."""
         # https://bugzilla.readthedocs.io/en/latest/api/core/v1/comment.html#rest-comments
         url = f"{self.base_url}/rest/bug/{bugid}/comment"
@@ -102,12 +102,12 @@ class BugzillaClient:
         return BugzillaComments.validate_python(comments)
 
     @instrumented_method
-    def update_bug(self, bugid, **fields) -> BugzillaBug:
+    def update_bug(self, bugid, **fields) -> Bug:
         """Update the specified fields of the specified bug."""
         # https://bugzilla.readthedocs.io/en/latest/api/core/v1/bug.html#rest-update-bug
         url = f"{self.base_url}/rest/bug/{bugid}"
         updated_info = self._call("PUT", url, json=fields)
-        parsed = BugzillaApiResponse.model_validate(updated_info)
+        parsed = ApiResponse.model_validate(updated_info)
         if not parsed.bugs:
             raise BugzillaClientError(
                 f"Unexpected response content from 'PUT {url}' (no 'bugs' field)"
@@ -119,7 +119,7 @@ class BugzillaClient:
         """List the currently configured webhooks, including their status."""
         url = f"{self.base_url}/rest/webhooks/list"
         webhooks_info = self._call("GET", url)
-        parsed = BugzillaWebhooksResponse.model_validate(webhooks_info)
+        parsed = WebhooksResponse.model_validate(webhooks_info)
         if parsed.webhooks is None:
             raise BugzillaClientError(
                 f"Unexpected response content from 'GET {url}' (no 'webhooks' field)"
