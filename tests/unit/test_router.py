@@ -7,7 +7,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from jbi.app import app
-from jbi.bugzilla import BugzillaWebhookRequest
 from jbi.environment import get_settings
 
 
@@ -81,7 +80,7 @@ def test_statics_are_served(anon_client):
 
 
 def test_webhook_is_200_if_action_succeeds(
-    bugzilla_webhook_request: BugzillaWebhookRequest,
+    bugzilla_webhook_request,
     mocked_jira,
     mocked_bugzilla,
 ):

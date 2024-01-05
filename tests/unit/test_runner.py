@@ -6,7 +6,6 @@ import requests
 import responses
 
 from jbi import Operation
-from jbi.bugzilla import BugzillaWebhookRequest
 from jbi.environment import get_settings
 from jbi.errors import ActionNotFoundError, IgnoreInvalidRequestError
 from jbi.models import ActionContext
@@ -94,7 +93,7 @@ def test_request_is_ignored_because_no_action(
 
 def test_execution_logging_for_successful_requests(
     capturelogs,
-    bugzilla_webhook_request: BugzillaWebhookRequest,
+    bugzilla_webhook_request,
     actions,
     mocked_bugzilla,
 ):
@@ -112,7 +111,7 @@ def test_execution_logging_for_successful_requests(
 
 def test_execution_logging_for_ignored_requests(
     capturelogs,
-    webhook_factory: BugzillaWebhookRequest,
+    webhook_factory,
     actions,
     mocked_bugzilla,
 ):
@@ -131,7 +130,7 @@ def test_execution_logging_for_ignored_requests(
 
 def test_action_is_logged_as_success_if_returns_true(
     capturelogs,
-    bugzilla_webhook_request: BugzillaWebhookRequest,
+    bugzilla_webhook_request,
     actions,
     mocked_bugzilla,
 ):
@@ -157,7 +156,7 @@ def test_action_is_logged_as_success_if_returns_true(
 
 def test_action_is_logged_as_ignore_if_returns_false(
     capturelogs,
-    bugzilla_webhook_request: BugzillaWebhookRequest,
+    bugzilla_webhook_request,
     actions,
     mocked_bugzilla,
 ):
@@ -194,7 +193,7 @@ def test_counter_is_incremented_on_ignored_requests(
 
 
 def test_counter_is_incremented_on_processed_requests(
-    bugzilla_webhook_request: BugzillaWebhookRequest,
+    bugzilla_webhook_request,
     actions,
     mocked_bugzilla,
 ):

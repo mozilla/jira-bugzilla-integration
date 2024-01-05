@@ -2,14 +2,13 @@ import pytest
 import responses
 from responses import matchers
 
-from jbi.bugzilla import BugzillaWebhookRequest
 from jbi.bugzilla.client import BugzillaClient, BugzillaClientError
 
 
 @pytest.fixture
 def webhook_private_comment_example(
     webhook_user_factory, webhook_event_factory, bug_factory, webhook_factory
-) -> BugzillaWebhookRequest:
+):
     user = webhook_user_factory(login="mathieu@mozilla.org")
     event = webhook_event_factory(target="comment", user=user)
     bug = bug_factory(
