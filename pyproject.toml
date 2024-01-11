@@ -12,7 +12,7 @@ pydantic = {version = "^2.5.2", extras = ["email"]}
 uvicorn = {extras = ["standard"], version = "^0.25.0"}
 atlassian-python-api = "^3.41.4"
 dockerflow = "2024.1.0"
-Jinja2 = "^3.1.2"
+Jinja2 = "^3.1.3"
 sentry-sdk = {extras = ["fastapi"], version = "^1.39.2"}
 pydantic-yaml = "^1.2.0"
 backoff = "^2.2.1"
