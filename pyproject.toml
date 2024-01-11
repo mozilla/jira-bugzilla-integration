@@ -24,7 +24,7 @@ asgi-correlation-id = "^4.2.0"
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^3.5.0"
 coverage = {extras = ["toml"], version = "^7.4"}
-mypy = "^1.7"
+mypy = "^1.8"
 detect-secrets = "^1.4.0"
 bandit = "^1.7.5"
 pytest = "^7.4.3"
