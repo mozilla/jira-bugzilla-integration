@@ -7,11 +7,11 @@ license = "MPL"
 
 [tool.poetry.dependencies]
 python = ">=3.12, <3.13"
-fastapi = "^0.104.1"
+fastapi = "^0.108.0"
 pydantic = {version = "^2.5.2", extras = ["email"]}
-uvicorn = {extras = ["standard"], version = "^0.24.0.post1"}
+uvicorn = {extras = ["standard"], version = "^0.25.0"}
 atlassian-python-api = "^3.41.4"
-dockerflow = "2022.8.0"
+dockerflow = "2024.1.0"
 Jinja2 = "^3.1.2"
 sentry-sdk = {extras = ["fastapi"], version = "^1.38.0"}
 pydantic-yaml = "^1.2.0"
@@ -35,7 +35,7 @@ responses = "^0.24.1"
 httpx = "^0.25.2"
 factory-boy = "^3.3.0"
 pytest-factoryboy = "^2.6.0"
-ruff = "^0.1.7"
+ruff = "^0.1.11"
 pytest-mock = "^3.12.0"
 
 [build-system]
