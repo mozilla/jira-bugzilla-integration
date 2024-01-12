@@ -17,6 +17,9 @@ from typing import TYPE_CHECKING, Optional
 from requests import exceptions as requests_exceptions
 
 from jbi import Operation
+from jbi.environment import get_settings
+
+settings = get_settings()
 
 
 class StepStatus(Enum):
@@ -88,7 +91,14 @@ def add_link_to_jira(
     context: ActionContext, *, bugzilla_service: BugzillaService
 ) -> StepResult:
     """Add the URL to the Jira issue in the `see_also` field on the Bugzilla ticket"""
-    bugzilla_response = bugzilla_service.add_link_to_jira(context)
+    jira_url = f"{settings.jira_base_url}browse/{context.jira.issue}"
+    logger.debug(
+        "Link %r on Bug %s",
+        jira_url,
+        context.bug.id,
+        extra=context.update(operation=Operation.LINK).model_dump(),
+    )
+    bugzilla_response = bugzilla_service.add_link_to_see_also(context.bug, jira_url)
     context = context.append_responses(bugzilla_response)
     return (StepStatus.SUCCESS, context)
 

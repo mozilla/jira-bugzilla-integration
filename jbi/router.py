@@ -12,7 +12,7 @@ from fastapi.templating import Jinja2Templates
 from jbi import bugzilla, jira
 from jbi.configuration import ACTIONS
 from jbi.environment import Settings, get_settings, get_version
-from jbi.models import Actions, BugzillaWebhookRequest
+from jbi.models import Actions
 from jbi.runner import IgnoreInvalidRequestError, execute_action
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
@@ -76,7 +76,7 @@ def version(version_json: VersionDep):
 def bugzilla_webhook(
     request: Request,
     actions: ActionsDep,
-    webhook_request: BugzillaWebhookRequest = Body(..., embed=False),
+    webhook_request: bugzilla.WebhookRequest = Body(..., embed=False),
 ):
     """API endpoint that Bugzilla Webhook Events request"""
     try:

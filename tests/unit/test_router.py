@@ -8,7 +8,6 @@ from fastapi.testclient import TestClient
 
 from jbi.app import app
 from jbi.environment import get_settings
-from jbi.models import BugzillaWebhookRequest
 
 
 def test_read_root(anon_client):
@@ -59,10 +58,10 @@ def test_powered_by_jbi_filtered(exclude_middleware, anon_client):
     assert "DevTest" not in html
 
 
-def test_webhooks_details(anon_client, mocked_bugzilla, bugzilla_webhook_factory):
+def test_webhooks_details(anon_client, mocked_bugzilla, webhook_factory):
     mocked_bugzilla.list_webhooks.return_value = [
-        bugzilla_webhook_factory(),
-        bugzilla_webhook_factory(errors=42, enabled=False),
+        webhook_factory(),
+        webhook_factory(errors=42, enabled=False),
     ]
     resp = anon_client.get("/bugzilla_webhooks/")
 
@@ -81,7 +80,7 @@ def test_statics_are_served(anon_client):
 
 
 def test_webhook_is_200_if_action_succeeds(
-    bugzilla_webhook_request: BugzillaWebhookRequest,
+    bugzilla_webhook_request,
     mocked_jira,
     mocked_bugzilla,
 ):
@@ -116,10 +115,10 @@ def test_webhook_is_200_if_action_succeeds(
 
 
 def test_webhook_is_200_if_action_raises_IgnoreInvalidRequestError(
-    webhook_factory,
+    webhook_request_factory,
     mocked_bugzilla,
 ):
-    webhook = webhook_factory(bug__whiteboard="unmatched")
+    webhook = webhook_request_factory(bug__whiteboard="unmatched")
     mocked_bugzilla.get_bug.return_value = webhook.bug
 
     with TestClient(app) as anon_client:
@@ -132,8 +131,8 @@ def test_webhook_is_200_if_action_raises_IgnoreInvalidRequestError(
         )
 
 
-def test_webhook_is_422_if_bug_information_missing(webhook_factory):
-    webhook = webhook_factory.build(bug=None)
+def test_webhook_is_422_if_bug_information_missing(webhook_request_factory):
+    webhook = webhook_request_factory.build(bug=None)
 
     with TestClient(app) as anon_client:
         response = anon_client.post("/bugzilla_webhook", data=webhook.model_dump_json())
@@ -194,12 +193,10 @@ def test_read_heartbeat_jira_services_fails(anon_client, mocked_jira):
 
 
 def test_read_heartbeat_bugzilla_webhooks_fails(
-    anon_client, mocked_bugzilla, bugzilla_webhook_factory
+    anon_client, mocked_bugzilla, webhook_factory
 ):
     mocked_bugzilla.logged_in.return_value = True
-    mocked_bugzilla.list_webhooks.return_value = [
-        bugzilla_webhook_factory(enabled=False)
-    ]
+    mocked_bugzilla.list_webhooks.return_value = [webhook_factory(enabled=False)]
 
     resp = anon_client.get("/__heartbeat__")
 
@@ -211,12 +208,12 @@ def test_read_heartbeat_bugzilla_webhooks_fails(
 
 
 def test_heartbeat_bugzilla_reports_webhooks_errors(
-    anon_client, mocked_bugzilla, bugzilla_webhook_factory
+    anon_client, mocked_bugzilla, webhook_factory
 ):
     mocked_bugzilla.logged_in.return_value = True
     mocked_bugzilla.list_webhooks.return_value = [
-        bugzilla_webhook_factory(id=1, errors=0, product="Remote Settings"),
-        bugzilla_webhook_factory(id=2, errors=3, name="Search Toolbar"),
+        webhook_factory(id=1, errors=0, product="Remote Settings"),
+        webhook_factory(id=2, errors=3, name="Search Toolbar"),
     ]
 
     with mock.patch("jbi.bugzilla.service.statsd") as mocked:

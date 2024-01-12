@@ -46,6 +46,9 @@ build-backend = "poetry.core.masonry.api"
 target-version = "py312"
 extend-select = ["I"]
 
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+
 [tool.pytest.ini_options]
 testpaths = [
     "tests/unit",

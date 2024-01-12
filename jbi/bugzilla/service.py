@@ -4,14 +4,11 @@ from functools import lru_cache
 import requests
 from statsd.defaults.env import statsd
 
-from jbi import Operation, environment
+from jbi import environment
 from jbi.common.instrument import ServiceHealth
-from jbi.models import (
-    ActionContext,
-    BugzillaBug,
-)
 
 from .client import BugzillaClient, BugzillaClientError
+from .models import Bug
 
 settings = environment.get_settings()
 
@@ -67,18 +64,10 @@ class BugzillaService:
                 return False
         return True
 
-    def add_link_to_jira(self, context: ActionContext):
-        """Add link to Jira in Bugzilla ticket"""
-        bug = context.bug
-        issue_key = context.jira.issue
-        jira_url = f"{settings.jira_base_url}browse/{issue_key}"
-        logger.debug(
-            "Link %r on Bug %s",
-            jira_url,
-            bug.id,
-            extra=context.update(operation=Operation.LINK).model_dump(),
-        )
-        return self.client.update_bug(bug.id, see_also={"add": [jira_url]})
+    def add_link_to_see_also(self, bug: Bug, link: str):
+        """Add link to Bugzilla ticket"""
+
+        return self.client.update_bug(bug.id, see_also={"add": [link]})
 
     def get_description(self, bug_id: int):
         """Fetch a bug's description
@@ -90,7 +79,7 @@ class BugzillaService:
         comment_body = comment_list[0].text if comment_list else ""
         return str(comment_body)
 
-    def refresh_bug_data(self, bug: BugzillaBug):
+    def refresh_bug_data(self, bug: Bug):
         """Re-fetch a bug to ensure we have the most up-to-date data"""
 
         refreshed_bug_data = self.client.get_bug(bug.id)

@@ -6,7 +6,6 @@ from fastapi.testclient import TestClient
 
 from jbi.app import app, traces_sampler
 from jbi.environment import get_settings
-from jbi.models import BugzillaWebhookRequest
 
 
 def test_request_summary_is_logged(caplog, anon_client):
@@ -37,8 +36,8 @@ def test_request_summary_defaults_user_agent_to_empty_string(caplog, anon_client
         assert summary.agent == ""
 
 
-def test_422_errors_are_logged(webhook_factory, caplog):
-    webhook = webhook_factory.build(bug=None)
+def test_422_errors_are_logged(webhook_request_factory, caplog):
+    webhook = webhook_request_factory.build(bug=None)
 
     with TestClient(app) as anon_client:
         with caplog.at_level(logging.INFO):
@@ -78,9 +77,7 @@ def test_traces_sampler(sampling_context, expected):
     assert traces_sampler(sampling_context) == expected
 
 
-def test_errors_are_reported_to_sentry(
-    anon_client, bugzilla_webhook_request: BugzillaWebhookRequest
-):
+def test_errors_are_reported_to_sentry(anon_client, bugzilla_webhook_request):
     with patch("sentry_sdk.hub.Hub.capture_event") as mocked:
         with patch("jbi.router.execute_action", side_effect=ValueError):
             with pytest.raises(ValueError):
@@ -93,7 +90,7 @@ def test_errors_are_reported_to_sentry(
 
 def test_request_id_is_passed_down_to_logger_contexts(
     caplog,
-    bugzilla_webhook_request: BugzillaWebhookRequest,
+    bugzilla_webhook_request,
     mocked_jira,
     mocked_bugzilla,
 ):
