@@ -9,7 +9,7 @@ license = "MPL"
 python = ">=3.12, <3.13"
 fastapi = "^0.109.0"
 pydantic = {version = "^2.5.3", extras = ["email"]}
-uvicorn = {extras = ["standard"], version = "^0.25.0"}
+uvicorn = {extras = ["standard"], version = "^0.26.0"}
 atlassian-python-api = "^3.41.8"
 dockerflow = "2024.1.0"
 Jinja2 = "^3.1.3"
