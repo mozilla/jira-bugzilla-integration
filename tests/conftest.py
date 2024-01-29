@@ -79,6 +79,13 @@ def anon_client():
 
 
 @pytest.fixture
+def authenticated_client():
+    """A test client with no authorization."""
+    # api key for tests defined in .env.example
+    return TestClient(app, headers={"X-Api-Key": "fake_api_key"})
+
+
+@pytest.fixture
 def settings():
     """A test Settings object"""
     return Settings()
