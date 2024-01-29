@@ -1,12 +1,14 @@
 """
 Core FastAPI app (setup, middleware)
 """
+import secrets
 from pathlib import Path
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Body, Depends, Request, Response
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse
+from fastapi.security import APIKeyHeader
 from fastapi.templating import Jinja2Templates
 
 from jbi import bugzilla, jira
@@ -20,6 +22,7 @@ ActionsDep = Annotated[Actions, Depends(lambda: ACTIONS)]
 VersionDep = Annotated[dict, Depends(get_version)]
 BugzillaServiceDep = Annotated[bugzilla.BugzillaService, Depends(bugzilla.get_service)]
 JiraServiceDep = Annotated[jira.JiraService, Depends(jira.get_service)]
+
 router = APIRouter()
 
 
@@ -72,7 +75,22 @@ def version(version_json: VersionDep):
     return version_json
 
 
-@router.post("/bugzilla_webhook")
+header_scheme = APIKeyHeader(name="X-Api-Key")
+
+
+def api_key_auth(
+    settings: SettingsDep, api_key: Annotated[str, Depends(header_scheme)]
+):
+    if not secrets.compare_digest(api_key, settings.jbi_api_key):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Forbidden"
+        )
+
+
+@router.post(
+    "/bugzilla_webhook",
+    dependencies=[Depends(api_key_auth)],
+)
 def bugzilla_webhook(
     request: Request,
     actions: ActionsDep,

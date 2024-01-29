@@ -4,9 +4,7 @@ from datetime import datetime
 from unittest import mock
 
 import pytest
-from fastapi.testclient import TestClient
 
-from jbi.app import app
 from jbi.environment import get_settings
 
 
@@ -80,9 +78,7 @@ def test_statics_are_served(anon_client):
 
 
 def test_webhook_is_200_if_action_succeeds(
-    bugzilla_webhook_request,
-    mocked_jira,
-    mocked_bugzilla,
+    bugzilla_webhook_request, mocked_jira, mocked_bugzilla, authenticated_client
 ):
     mocked_bugzilla.get_bug.return_value = bugzilla_webhook_request.bug
     mocked_bugzilla.update_bug.return_value = {
@@ -106,38 +102,62 @@ def test_webhook_is_200_if_action_succeeds(
         "self": f"{get_settings().jira_base_url}rest/api/2/issue/JBI-1922/remotelink/18936",
     }
 
-    with TestClient(app) as anon_client:
-        response = anon_client.post(
-            "/bugzilla_webhook", data=bugzilla_webhook_request.model_dump_json()
-        )
-        assert response
-        assert response.status_code == 200
+    response = authenticated_client.post(
+        "/bugzilla_webhook",
+        data=bugzilla_webhook_request.model_dump_json(),
+    )
+    assert response
+    assert response.status_code == 200
 
 
 def test_webhook_is_200_if_action_raises_IgnoreInvalidRequestError(
-    webhook_request_factory,
-    mocked_bugzilla,
+    webhook_request_factory, mocked_bugzilla, authenticated_client
 ):
     webhook = webhook_request_factory(bug__whiteboard="unmatched")
     mocked_bugzilla.get_bug.return_value = webhook.bug
 
-    with TestClient(app) as anon_client:
-        response = anon_client.post("/bugzilla_webhook", data=webhook.model_dump_json())
-        assert response
-        assert response.status_code == 200
-        assert (
-            response.json()["error"]
-            == "no bug whiteboard matching action tags: devtest"
-        )
+    response = authenticated_client.post(
+        "/bugzilla_webhook",
+        data=webhook.model_dump_json(),
+    )
+    assert response
+    assert response.status_code == 200
+    assert response.json()["error"] == "no bug whiteboard matching action tags: devtest"
 
 
-def test_webhook_is_422_if_bug_information_missing(webhook_request_factory):
+def test_webhook_is_401_if_unathenticated(
+    webhook_request_factory, mocked_bugzilla, anon_client
+):
+    response = anon_client.post(
+        "/bugzilla_webhook",
+        data={},
+    )
+    assert response.status_code == 403
+
+
+def test_webhook_is_401_if_wrong_key(
+    webhook_request_factory, mocked_bugzilla, anon_client
+):
+    response = anon_client.post(
+        "/bugzilla_webhook",
+        headers={"X-Api-Key": "not the right key"},
+        data={},
+    )
+    assert response.status_code == 401
+
+
+def test_webhook_is_422_if_bug_information_missing(
+    webhook_request_factory, authenticated_client
+):
     webhook = webhook_request_factory.build(bug=None)
 
-    with TestClient(app) as anon_client:
-        response = anon_client.post("/bugzilla_webhook", data=webhook.model_dump_json())
-        assert response.status_code == 422
-        assert response.json()["detail"][0]["loc"] == ["body", "bug"]
+    response = authenticated_client.post(
+        "/bugzilla_webhook",
+        headers={"X-Api-Key": "fake_api_key"},
+        data=webhook.model_dump_json(),
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", "bug"]
 
 
 def test_read_version(anon_client):
