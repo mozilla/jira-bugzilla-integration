@@ -108,7 +108,9 @@ def test_webhook_is_200_if_action_succeeds(
 
     with TestClient(app) as anon_client:
         response = anon_client.post(
-            "/bugzilla_webhook", data=bugzilla_webhook_request.model_dump_json()
+            "/bugzilla_webhook",
+            headers={"X-Api-Key": "fake_api_key"},
+            data=bugzilla_webhook_request.model_dump_json(),
         )
         assert response
         assert response.status_code == 200
@@ -122,7 +124,11 @@ def test_webhook_is_200_if_action_raises_IgnoreInvalidRequestError(
     mocked_bugzilla.get_bug.return_value = webhook.bug
 
     with TestClient(app) as anon_client:
-        response = anon_client.post("/bugzilla_webhook", data=webhook.model_dump_json())
+        response = anon_client.post(
+            "/bugzilla_webhook",
+            headers={"X-Api-Key": "fake_api_key"},
+            data=webhook.model_dump_json(),
+        )
         assert response
         assert response.status_code == 200
         assert (
@@ -131,11 +137,40 @@ def test_webhook_is_200_if_action_raises_IgnoreInvalidRequestError(
         )
 
 
+def test_webhook_is_401_if_unathenticated(
+    webhook_request_factory,
+    mocked_bugzilla,
+):
+    with TestClient(app) as anon_client:
+        response = anon_client.post(
+            "/bugzilla_webhook",
+            data={},
+        )
+        assert response.status_code == 403
+
+
+def test_webhook_is_401_if_wrong_key(
+    webhook_request_factory,
+    mocked_bugzilla,
+):
+    with TestClient(app) as anon_client:
+        response = anon_client.post(
+            "/bugzilla_webhook",
+            headers={"X-Api-Key": "not the right key"},
+            data={},
+        )
+        assert response.status_code == 401
+
+
 def test_webhook_is_422_if_bug_information_missing(webhook_request_factory):
     webhook = webhook_request_factory.build(bug=None)
 
     with TestClient(app) as anon_client:
-        response = anon_client.post("/bugzilla_webhook", data=webhook.model_dump_json())
+        response = anon_client.post(
+            "/bugzilla_webhook",
+            headers={"X-Api-Key": "fake_api_key"},
+            data=webhook.model_dump_json(),
+        )
         assert response.status_code == 422
         assert response.json()["detail"][0]["loc"] == ["body", "bug"]
 
