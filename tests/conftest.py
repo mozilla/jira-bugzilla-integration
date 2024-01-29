@@ -80,7 +80,7 @@ def anon_client():
 
 @pytest.fixture
 def authenticated_client():
-    """A test client with no authorization."""
+    """An test client with a valid API key."""
     # api key for tests defined in .env.example
     return TestClient(app, headers={"X-Api-Key": "fake_api_key"})
 
