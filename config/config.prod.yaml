@@ -454,7 +454,6 @@
       INCOMPLETE: Done
       MOVED: Done
 
-
 - whiteboard_tag: dataquality
   bugzilla_user_id: tbd
   description: Data Quality
@@ -495,3 +494,9 @@
       WORKSFORME: Done
       INCOMPLETE: Done
       MOVED: Done
+
+- whiteboard_tag: jbi-prodtest
+  bugzilla_user_id: tbd
+  description: Prod testing whiteboard tag (JBI Bin Project)
+  parameters:
+    jira_project_key: JB
