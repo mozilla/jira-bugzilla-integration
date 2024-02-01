@@ -227,7 +227,7 @@ def test_added_comment(
 
     mocked_jira.issue_add_comment.assert_called_once_with(
         issue_key="JBI-234",
-        comment="*(mathieu@mozilla.org)* commented: \n{quote}hello{quote}",
+        comment="*mathieu@mozilla.org* commented: \nhello",
     )
 
 

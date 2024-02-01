@@ -15,6 +15,7 @@ from requests import exceptions as requests_exceptions
 
 from jbi import Operation, bugzilla, environment
 from jbi.common.instrument import ServiceHealth
+from jbi.jira import md2jira
 from jbi.models import ActionContext
 
 from .client import JiraClient, JiraCreateError
@@ -213,7 +214,7 @@ class JiraService:
         fields: dict[str, Any] = {
             "summary": bug.summary,
             "issuetype": {"name": issue_type},
-            "description": description[:JIRA_DESCRIPTION_CHAR_LIMIT],
+            "description": md2jira.convert(description)[:JIRA_DESCRIPTION_CHAR_LIMIT],
             "project": {"key": context.jira.project},
         }
         logger.debug(
@@ -257,7 +258,7 @@ class JiraService:
 
         issue_key = context.jira.issue
         formatted_comment = (
-            f"*({commenter})* commented: \n{{quote}}{comment.body}{{quote}}"
+            f"*{commenter}* commented: \n{md2jira.convert(comment.body or "")}"
         )
         jira_response = self.client.issue_add_comment(
             issue_key=issue_key,
