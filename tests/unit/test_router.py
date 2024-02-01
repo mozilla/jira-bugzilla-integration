@@ -16,52 +16,68 @@ def test_read_root(anon_client):
     assert get_settings().jira_base_url in infos["configuration"]["jira_base_url"]
 
 
-def test_whiteboard_tags(anon_client):
-    resp = anon_client.get("/whiteboard_tags")
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "/whiteboard_tags",
+        "/jira_projects/",
+        "/powered_by_jbi/",
+        "/bugzilla_webhooks/",
+    ],
+)
+def test_get_protected_endpoints(
+    endpoint, webhook_request_factory, mocked_bugzilla, anon_client
+):
+    resp = anon_client.get(endpoint)
+    assert resp.status_code == 403
+
+
+def test_whiteboard_tags(authenticated_client):
+    resp = authenticated_client.get("/whiteboard_tags")
     actions = resp.json()
 
     assert actions["devtest"]["description"] == "DevTest whiteboard tag"
 
 
-def test_jira_projects(anon_client, mocked_jira):
+def test_jira_projects(authenticated_client, mocked_jira):
     mocked_jira.permitted_projects.return_value = [{"key": "Firefox"}, {"key": "Fenix"}]
 
-    resp = anon_client.get("/jira_projects/")
+    resp = authenticated_client.get("/jira_projects/")
     infos = resp.json()
 
     assert infos == ["Firefox", "Fenix"]
 
 
-def test_whiteboard_tags_filtered(anon_client):
-    resp = anon_client.get("/whiteboard_tags/?whiteboard_tag=devtest")
+def test_whiteboard_tags_filtered(authenticated_client):
+    resp = authenticated_client.get("/whiteboard_tags/?whiteboard_tag=devtest")
     infos = resp.json()
     assert sorted(infos.keys()) == ["devtest"]
 
-    resp = anon_client.get("/whiteboard_tags/?whiteboard_tag=foo")
+    resp = authenticated_client.get("/whiteboard_tags/?whiteboard_tag=foo")
     infos = resp.json()
     assert sorted(infos.keys()) == ["devtest"]
 
 
-def test_powered_by_jbi(exclude_middleware, anon_client):
-    resp = anon_client.get("/powered_by_jbi/")
+def test_powered_by_jbi(exclude_middleware, authenticated_client):
+    resp = authenticated_client.get("/powered_by_jbi/")
     html = resp.text
     assert "<title>Powered by JBI</title>" in html
     assert 'href="/static/styles.css"' in html
     assert "DevTest" in html
 
 
-def test_powered_by_jbi_filtered(exclude_middleware, anon_client):
-    resp = anon_client.get("/powered_by_jbi/?enabled=false")
+def test_powered_by_jbi_filtered(exclude_middleware, authenticated_client):
+    resp = authenticated_client.get("/powered_by_jbi/?enabled=false")
     html = resp.text
     assert "DevTest" not in html
 
 
-def test_webhooks_details(anon_client, mocked_bugzilla, webhook_factory):
+def test_webhooks_details(authenticated_client, mocked_bugzilla, webhook_factory):
     mocked_bugzilla.list_webhooks.return_value = [
         webhook_factory(),
         webhook_factory(errors=42, enabled=False),
     ]
-    resp = anon_client.get("/bugzilla_webhooks/")
+    resp = authenticated_client.get("/bugzilla_webhooks/")
 
     wh1, wh2 = resp.json()
 
@@ -72,8 +88,8 @@ def test_webhooks_details(anon_client, mocked_bugzilla, webhook_factory):
     assert wh2["errors"] == 42
 
 
-def test_statics_are_served(anon_client):
-    resp = anon_client.get("/static/styles.css")
+def test_statics_are_served(authenticated_client):
+    resp = authenticated_client.get("/static/styles.css")
     assert resp.status_code == 200
 
 
