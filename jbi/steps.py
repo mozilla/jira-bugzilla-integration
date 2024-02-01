@@ -406,7 +406,7 @@ def sync_keywords_labels(
             return (StepStatus.NOOP, context)
     else:
         # On creation, just add them all.
-        additions = context.bug.keywords
+        additions = context.bug.keywords or []
         removals = []
 
     return _update_issue_labels(context, jira_service, additions, removals)
