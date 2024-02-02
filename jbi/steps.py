@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 from enum import Enum, auto
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Iterable, Optional
 
 from requests import exceptions as requests_exceptions
 
@@ -385,9 +385,41 @@ def sync_whiteboard_labels(
             added=context.bug.whiteboard, labels_brackets=parameters.labels_brackets
         )
 
+    return _update_issue_labels(context, jira_service, additions, removals)
+
+
+def sync_keywords_labels(
+    context: ActionContext, *, parameters: ActionParams, jira_service: JiraService
+) -> StepResult:
+    """
+    Set keywords as labels on the Jira issue.
+    """
+    if context.event.changes:
+        changes_by_field = {change.field: change for change in context.event.changes}
+        if change := changes_by_field.get("keywords"):
+            additions = [x.strip() for x in change.added.split(",")]
+            removed = [x.strip() for x in change.removed.split(",")]
+            removals = sorted(
+                set(removed).difference(set(additions))
+            )  # sorted for unit testing
+        else:
+            return (StepStatus.NOOP, context)
+    else:
+        # On creation, just add them all.
+        additions = context.bug.keywords or []
+        removals = []
+
+    return _update_issue_labels(context, jira_service, additions, removals)
+
+
+def _update_issue_labels(
+    context: ActionContext,
+    jira_service: JiraService,
+    additions: Iterable[str],
+    removals: Iterable[str],
+) -> StepResult:
     if not context.jira.issue:
         raise ValueError("Jira issue unset in Action Context")
-
     try:
         resp = jira_service.update_issue_labels(
             issue_key=context.jira.issue, add=additions, remove=removals

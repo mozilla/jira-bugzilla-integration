@@ -104,7 +104,10 @@ def bugzilla_webhook(
         return {"error": str(exception)}
 
 
-@router.get("/whiteboard_tags/")
+@router.get(
+    "/whiteboard_tags/",
+    dependencies=[Depends(api_key_auth)],
+)
 def get_whiteboard_tags(
     actions: ActionsDep,
     whiteboard_tag: Optional[str] = None,
@@ -115,13 +118,19 @@ def get_whiteboard_tags(
     return actions.by_tag
 
 
-@router.get("/bugzilla_webhooks/")
+@router.get(
+    "/bugzilla_webhooks/",
+    dependencies=[Depends(api_key_auth)],
+)
 def get_bugzilla_webhooks(bugzilla_service: BugzillaServiceDep):
     """API for viewing webhooks details"""
     return bugzilla_service.list_webhooks()
 
 
-@router.get("/jira_projects/")
+@router.get(
+    "/jira_projects/",
+    dependencies=[Depends(api_key_auth)],
+)
 def get_jira_projects(jira_service: JiraServiceDep):
     """API for viewing projects that are currently accessible by API"""
     return jira_service.fetch_visible_projects()
@@ -131,7 +140,11 @@ SRC_DIR = Path(__file__).parent
 templates = Jinja2Templates(directory=SRC_DIR / "templates")
 
 
-@router.get("/powered_by_jbi/", response_class=HTMLResponse)
+@router.get(
+    "/powered_by_jbi/",
+    dependencies=[Depends(api_key_auth)],
+    response_class=HTMLResponse,
+)
 def powered_by_jbi(
     request: Request,
     actions: ActionsDep,
