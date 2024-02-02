@@ -15,6 +15,7 @@ from requests import exceptions as requests_exceptions
 
 from jbi import Operation, bugzilla, environment
 from jbi.common.instrument import ServiceHealth
+from jbi.jira.utils import markdown_to_jira
 from jbi.models import ActionContext
 
 from .client import JiraClient, JiraCreateError
@@ -66,6 +67,7 @@ class JiraService:
             and self._all_project_custom_components_exist(actions),
             "all_projects_issue_types_exist": is_up
             and self._all_project_issue_types_exist(actions),
+            "pandoc_install": markdown_to_jira("- Test") == "* Test",
         }
         return health
 
@@ -213,7 +215,7 @@ class JiraService:
         fields: dict[str, Any] = {
             "summary": bug.summary,
             "issuetype": {"name": issue_type},
-            "description": description[:JIRA_DESCRIPTION_CHAR_LIMIT],
+            "description": markdown_to_jira(description[:JIRA_DESCRIPTION_CHAR_LIMIT]),
             "project": {"key": context.jira.project},
         }
         logger.debug(
@@ -257,7 +259,7 @@ class JiraService:
 
         issue_key = context.jira.issue
         formatted_comment = (
-            f"*({commenter})* commented: \n{{quote}}{comment.body}{{quote}}"
+            f"*{commenter}* commented: \n{markdown_to_jira(comment.body or "")}"
         )
         jira_response = self.client.issue_add_comment(
             issue_key=issue_key,
@@ -409,7 +411,9 @@ class JiraService:
             bug.id,
             extra=context.model_dump(),
         )
-        truncated_summary = (bug.summary or "")[:JIRA_DESCRIPTION_CHAR_LIMIT]
+        truncated_summary = markdown_to_jira(bug.summary or "")[
+            :JIRA_DESCRIPTION_CHAR_LIMIT
+        ]
         fields: dict[str, str] = {
             "summary": truncated_summary,
         }

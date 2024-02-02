@@ -227,7 +227,7 @@ def test_added_comment(
 
     mocked_jira.issue_add_comment.assert_called_once_with(
         issue_key="JBI-234",
-        comment="*(mathieu@mozilla.org)* commented: \n{quote}hello{quote}",
+        comment="*mathieu@mozilla.org* commented: \nhello",
     )
 
 
@@ -254,7 +254,7 @@ def test_create_with_no_assignee(
 ):
     mocked_bugzilla.get_bug.return_value = context_create_example.bug
     mocked_bugzilla.get_comments.return_value = [
-        comment_factory(text="Initial comment")
+        comment_factory(text="Initial `comment`")
     ]
     mocked_jira.create_issue.return_value = {"key": "new-id"}
     callable_object = Executor(
@@ -269,7 +269,7 @@ def test_create_with_no_assignee(
         fields={
             "summary": "JBI Test",
             "issuetype": {"name": "Bug"},
-            "description": "Initial comment",
+            "description": "Initial {{comment}}",
             "project": {"key": "JBI"},
         },
     )

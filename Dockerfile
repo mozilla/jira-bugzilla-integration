@@ -23,6 +23,11 @@ RUN $POETRY_HOME/bin/poetry install --without dev --no-root
 
 # `production` stage uses the dependencies downloaded in the `base` stage
 FROM python:3.12.1-slim as production
+
+# Install pandoc for markdown to Jira conversions.
+RUN apt-get -y update && \
+    apt-get -y install --no-install-recommends pandoc
+
 ENV PORT=8000 \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
