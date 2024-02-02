@@ -35,11 +35,10 @@ def test_bold_and_italic():
     """
         )
     )
-    assert converted == convert(
+    assert converted == (
         dedent(
             """
-    this sentence *has* *bold* and _has_ _italic_
-    """
+    this sentence *has* *bold* and _has_ _italic_"""
         )
     )
 
@@ -52,11 +51,10 @@ def test_strikethrough():
     """
         )
     )
-    assert converted == convert(
+    assert converted == (
         dedent(
             """
-    this was -wrong-
-    """
+    this was -wrong-"""
         )
     )
 
@@ -69,11 +67,10 @@ def test_monospace():
     """
         )
     )
-    assert converted == convert(
+    assert converted == (
         dedent(
             """
-    this was {{inline}} value {{that}} is turned into {{monospace}} tag.
-    """
+    this was {{inline}} value {{that}} is turned into {{monospace}} tag."""
         )
     )
 
@@ -86,11 +83,10 @@ def test_links():
     """
         )
     )
-    assert converted == convert(
+    assert converted == (
         dedent(
             """
-    there is a [link|http://site.com]
-    """
+    there is a [link|http://site.com]"""
         )
     )
 
