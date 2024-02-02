@@ -75,6 +75,78 @@ def test_monospace():
     )
 
 
+def test_lists():
+    converted = convert(
+        dedent(
+            """
+    A bulleted list
+
+    * some
+    * bullet
+      * indented
+      * bullets
+    * points
+
+    A list item
+
+    - different
+    - bullet
+    - types
+
+    A number list
+
+    1. a
+    2. numbered
+    11. list
+
+    Mixed nested lists
+
+    * a
+    * bulleted
+      * with
+      * nested
+        * nested-nested
+      * numbered
+    * list
+    """
+        )
+    )
+    assert converted == (
+        dedent(
+            """
+    A bulleted list
+
+    * some
+    * bullet
+    ** indented
+    ** bullets
+    * points
+
+    A list item
+
+    - different
+    - bullet
+    - types
+
+    A number list
+
+    # a
+    # numbered
+    # list
+
+    Mixed nested lists
+
+    * a
+    * bulleted
+    ** with
+    ** nested
+    *** nested-nested
+    ** numbered
+    * list"""
+        )
+    )
+
+
 def test_links():
     converted = convert(
         dedent(

@@ -7,7 +7,7 @@ def convert(markdown: str) -> str:
     https://jira.atlassian.com/secure/WikiRendererHelpAction.jspa?section=all
 
     Known Limitations:
-    - No nested lists
+    - No mixed nested lists
     - No nested quoted text (eg. quote of quote)
     - No images
     - No tables
@@ -61,6 +61,15 @@ def convert_line(line: str) -> str:
     # Titles
     for level in range(7, 0, -1):
         line = re.sub("^" + ("#" * level) + "\\s*(.+)", f"h{level}. \\1", line)
+    # Lists
+    for level in range(4, -1, -1):
+        line = re.sub(
+            "^" + (r"\s{2}" * level) + r"(\*|\-|\d+\.)",
+            lambda match: r"#" * (level + 1)
+            if "." in match.group(1)
+            else match.group(1) * (level + 1),
+            line,
+        )
     # Links
     line = re.sub(r"\[(.+?)\]\((.+?)\)", r"[\1|\2]", line)
     # Strikethrough
