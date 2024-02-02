@@ -71,4 +71,6 @@ def convert_line(line: str) -> str:
     # Italic
     line = re.sub(r"\*(.+?)\*", r"_\1_", line)
     line = re.sub(r"_(.+?)_", r"_\1_", line)
+    # Monospace
+    line = re.sub(r"`+(.+?)`+", r"{{\1}}", line)
     return line

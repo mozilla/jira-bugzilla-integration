@@ -61,6 +61,23 @@ def test_strikethrough():
     )
 
 
+def test_monospace():
+    converted = convert(
+        dedent(
+            """
+    this was `inline` value ``that`` is turned into ```monospace``` tag.
+    """
+        )
+    )
+    assert converted == convert(
+        dedent(
+            """
+    this was {{inline}} value {{that}} is turned into {{monospace}} tag.
+    """
+        )
+    )
+
+
 def test_links():
     converted = convert(
         dedent(
