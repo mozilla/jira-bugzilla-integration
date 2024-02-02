@@ -1095,3 +1095,105 @@ def test_sync_whiteboard_labels_failing(
     assert capturelogs.messages == [
         "Could not set labels on issue JBI-123: some message"
     ]
+
+
+def test_sync_keywords_labels(
+    action_context_factory,
+    mocked_jira,
+    action_params_factory,
+):
+    action_context = action_context_factory(
+        operation=Operation.CREATE,
+        jira__issue="JBI-123",
+        bug__keywords=["devtests", "bugzilla"],
+    )
+
+    callable_object = Executor(
+        action_params_factory(
+            jira_project_key=action_context.jira.project,
+            steps={"new": ["sync_whiteboard_labels"]},
+        )
+    )
+    callable_object(context=action_context)
+
+    mocked_jira.update_issue.assert_called_once_with(
+        issue_key=action_context.jira.issue,
+        update={
+            "update": {
+                "labels": [
+                    {"add": "bugzilla"},
+                    {"add": "devtest"},
+                ]
+            }
+        },
+    )
+
+
+def test_sync_keywords_labels_update(
+    action_context_factory,
+    mocked_jira,
+    action_params_factory,
+    webhook_event_change_factory,
+):
+    action_context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="JBI-123",
+        event__changes=[
+            webhook_event_change_factory(
+                field="keywords",
+                removed="interface, sprint, next",
+                added="sprint",
+            )
+        ],
+    )
+
+    callable_object = Executor(
+        action_params_factory(
+            jira_project_key=action_context.jira.project,
+            steps={"existing": ["sync_keywords_labels"]},
+        )
+    )
+    callable_object(context=action_context)
+
+    mocked_jira.update_issue.assert_called_once_with(
+        issue_key=action_context.jira.issue,
+        update={
+            "update": {
+                "labels": [
+                    {"add": "sprint"},
+                    {"remove": "interface"},
+                    {"remove": "next"},
+                ]
+            }
+        },
+    )
+
+
+def test_sync_keywords_labels_failing(
+    action_context_factory,
+    mocked_jira,
+    capturelogs,
+    action_params_factory,
+):
+    mocked_jira.update_issue.side_effect = requests.exceptions.HTTPError(
+        "some message", response=mock.MagicMock(status_code=400)
+    )
+    action_context = action_context_factory(
+        current_step="sync_keywords_labels", jira__issue="JBI-123"
+    )
+
+    action_params = action_params_factory(
+        jira_project_key=action_context.jira.project,
+    )
+
+    with capturelogs.for_logger("jbi.steps").at_level(logging.DEBUG):
+        result, context = steps.sync_keywords_labels(
+            context=action_context,
+            parameters=action_params,
+            jira_service=JiraService(mocked_jira),
+        )
+    assert result == steps.StepStatus.INCOMPLETE
+
+    assert capturelogs.messages == [
+        "Could not set labels on issue JBI-123: some message"
+    ]
