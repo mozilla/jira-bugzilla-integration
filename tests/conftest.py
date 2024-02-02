@@ -131,7 +131,7 @@ def context_comment_example(action_context_factory) -> ActionContext:
         bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
         bug__with_comment=True,
         bug__comment__number=2,
-        bug__comment__body="hello",
+        bug__comment__body="> hello\n>\n\nworld",
         event__target="comment",
         event__user__login="mathieu@mozilla.org",
         jira__issue="JBI-234",
