@@ -74,12 +74,14 @@ def convert_line(line: str) -> str:
     line = re.sub(r"\[(.+?)\]\((.+?)\)", r"[\1|\2]", line)
     # Strikethrough
     line = re.sub(r"~~(.+?)~~", r"-\1-", line)
+    # Italic.
+    # _this_ but not __this__
+    line = re.sub(r"([^_])_([^_]+?)_", r"\1_\2_", line)
+    # *this* but not **this**
+    line = re.sub(r"([^\*])\*([^\*]+?)\*", r"\1_\2_", line)
     # Bold
     line = re.sub(r"\*\*(.+?)\*\*", r"*\1*", line)
     line = re.sub(r"__(.+?)__", r"*\1*", line)
-    # Italic
-    line = re.sub(r"\*(.+?)\*", r"_\1_", line)
-    line = re.sub(r"_(.+?)_", r"_\1_", line)
     # Monospace
     line = re.sub(r"`+(.+?)`+", r"{{\1}}", line)
     return line
