@@ -5,6 +5,12 @@ def convert(markdown: str) -> str:
     """
     Best effort to transform Bugzilla markdown to Jira text formatting.
     https://jira.atlassian.com/secure/WikiRendererHelpAction.jspa?section=all
+
+    Known Limitations:
+    - No nested lists
+    - No nested quoted text (eg. quote of quote)
+    - No images
+    - No tables
     """
     result = markdown
 
@@ -22,22 +28,26 @@ def convert(markdown: str) -> str:
     block = False
     quote = False
     for line in result.splitlines():
+        # Turn adjacent lines of quoted text (`> `)
+        # into a {quote} block.
         if line.startswith(">"):
-            if not quote:
+            if not quote:  # first quoted line
                 converted.append("{quote}")
             quote = True
         else:
-            if quote:
+            if quote:  # last quoted line
                 converted.append("{quote}")
             quote = False
 
         if quote:
+            # Strip leading `> ` from the text and convert syntax.
             converted.append(convert_line(re.sub("^>\\s*", "", line)))
         else:
+            # Do not convert text that's within a {code} block.
             if line.startswith("{code"):
                 block = not block
             if block:
-                converted.append(line)
+                converted.append(line)  # raw
             else:
                 converted.append(convert_line(line))
 
@@ -45,6 +55,9 @@ def convert(markdown: str) -> str:
 
 
 def convert_line(line: str) -> str:
+    """
+    Basic conversion of Markdown syntax to Jira syntax.
+    """
     # Titles
     for level in range(7, 0, -1):
         line = re.sub("^" + ("#" * level) + "\\s*(.+)", f"h{level}. \\1", line)
