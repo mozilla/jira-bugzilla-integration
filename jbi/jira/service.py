@@ -215,7 +215,9 @@ class JiraService:
         fields: dict[str, Any] = {
             "summary": bug.summary,
             "issuetype": {"name": issue_type},
-            "description": markdown_to_jira(description[:JIRA_DESCRIPTION_CHAR_LIMIT]),
+            "description": markdown_to_jira(
+                description, max_length=JIRA_DESCRIPTION_CHAR_LIMIT
+            ),
             "project": {"key": context.jira.project},
         }
         logger.debug(
@@ -411,9 +413,9 @@ class JiraService:
             bug.id,
             extra=context.model_dump(),
         )
-        truncated_summary = markdown_to_jira(bug.summary or "")[
-            :JIRA_DESCRIPTION_CHAR_LIMIT
-        ]
+        truncated_summary = markdown_to_jira(
+            bug.summary or "", max_length=JIRA_DESCRIPTION_CHAR_LIMIT
+        )
         fields: dict[str, str] = {
             "summary": truncated_summary,
         }
