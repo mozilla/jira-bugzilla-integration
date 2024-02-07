@@ -8,13 +8,13 @@ license = "MPL"
 [tool.poetry.dependencies]
 python = ">=3.12, <3.13"
 fastapi = "^0.109.2"
-pydantic = {version = "^2.6.0", extras = ["email"]}
+pydantic = {version = "^2.6.1", extras = ["email"]}
 uvicorn = {extras = ["standard"], version = "^0.27.0"}
 atlassian-python-api = "^3.41.9"
 dockerflow = "2024.1.0"
 Jinja2 = "^3.1.3"
-sentry-sdk = {extras = ["fastapi"], version = "^1.40.0"}
-pydantic-yaml = "^1.2.0"
+sentry-sdk = {extras = ["fastapi"], version = "^1.40.1"}
+pydantic-yaml = "^1.2.1"
 backoff = "^2.2.1"
 statsd = "^4.0.1"
 requests = "^2.31.0"
@@ -29,14 +29,14 @@ mypy = "^1.8"
 detect-secrets = "^1.4.0"
 bandit = "^1.7.7"
 pytest = "^8.0.0"
-yamllint = "^1.33.0"
+yamllint = "^1.34.0"
 pytest-dotenv = "^0.5.2"
 types-requests = "^2.31.0"
 responses = "^0.24.1"
 httpx = "^0.26.0"
 factory-boy = "^3.3.0"
 pytest-factoryboy = "^2.6.0"
-ruff = "^0.2.0"
+ruff = "^0.2.1"
 pytest-mock = "^3.12.0"
 
 [build-system]
