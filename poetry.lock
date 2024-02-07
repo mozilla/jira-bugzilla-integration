@@ -1098,23 +1098,23 @@ python-dotenv = ">=0.21.0"
 
 [[package]]
 name = "pydantic-yaml"
-version = "1.2.0"
+version = "1.2.1"
 description = "Adds some YAML functionality to the excellent `pydantic` library."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "pydantic_yaml-1.2.0-py3-none-any.whl", hash = "sha256:196cd4286a66cbe913bcc2e463251cb6b73ebe5ac9c8af2ceed0b1c72ddc03a2"},
-    {file = "pydantic_yaml-1.2.0.tar.gz", hash = "sha256:54bdaf4da25bca95bb9ba790b1a5c6b4b3e93f7cf218fcde46b3073b61779f81"},
+    {file = "pydantic_yaml-1.2.1-py3-none-any.whl", hash = "sha256:5c14571c2b5d438d77ec575ac37119a728ecae806b6a149633d6e8fc078eed9a"},
+    {file = "pydantic_yaml-1.2.1.tar.gz", hash = "sha256:cd6c70e04e08545501d3b67e04ab3cd164360b07a851efbf9fb9bc11e88cc206"},
 ]
 
 [package.dependencies]
 importlib-metadata = "*"
 pydantic = ">=1.8"
-"ruamel.yaml" = ">=0.16.0,<0.18.0"
+"ruamel.yaml" = ">=0.16.0,<0.19.0"
 typing-extensions = ">=4.5.0"
 
 [package.extras]
-dev = ["black (==23.3.0)", "mypy (==1.5.1)", "pre-commit (==2.21.0)", "pytest (==7.4.2)", "ruff (==0.0.291)", "setuptools (>=61.0.0)", "setuptools-scm[toml] (>=6.2)"]
+dev = ["black (==23.11.0)", "mypy (==1.5.1)", "pre-commit (==2.21.0)", "pytest (==7.4.2)", "ruff (==0.1.5)", "setuptools (>=61.0.0)", "setuptools-scm[toml] (>=6.2)"]
 docs = ["mkdocs", "mkdocs-material", "mkdocstrings[python]", "pygments", "pymdown-extensions"]
 
 [[package]]
@@ -2018,4 +2018,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.12, <3.13"
-content-hash = "9606b6a3fb329eb792163261f6d64179f7e53decd541fb3f2a6cf51c3bbfd859"
+content-hash = "c46f59f4da52c573b224c5cdd9dc3e4562144b433e115ca8c787af2837bdb73d"
