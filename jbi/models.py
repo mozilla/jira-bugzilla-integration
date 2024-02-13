@@ -33,10 +33,12 @@ class ActionSteps(BaseModel, frozen=True):
         "add_link_to_bugzilla",
         "add_link_to_jira",
         "sync_whiteboard_labels",
+        "sync_keywords_labels",
     ]
     existing: list[str] = [
         "update_issue_summary",
         "sync_whiteboard_labels",
+        "sync_keywords_labels",
         "add_jira_comments_for_changes",
     ]
     comment: list[str] = [
