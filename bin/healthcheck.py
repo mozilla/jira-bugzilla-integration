@@ -2,15 +2,29 @@
 
 import os
 
+import backoff
 import requests
-from requests.adapters import HTTPAdapter, Retry
 
-PORT = os.environ["PORT"]
+PORT = os.getenv("PORT", "8000")
 
-session = requests.Session()
 
-retries = Retry(total=5, backoff_factor=0.1, status_forcelist=[500, 502, 503, 504])
-session.mount("http://", HTTPAdapter(max_retries=retries))
-if __name__ == "__main__":
-    response = session.get(f"http://0.0.0.0:{PORT}/")
+@backoff.on_exception(
+    backoff.expo,
+    requests.exceptions.RequestException,
+    max_tries=5,
+)
+def check_server():
+    url = f"http://0.0.0.0:{PORT}"
+    response = requests.get(f"{url}/")
     response.raise_for_status()
+
+    hb_response = requests.get(f"{url}/__heartbeat__")
+    hb_details = hb_response.json()
+    # Check that pandoc is installed, but ignore other checks
+    # like connection to Jira or Bugzilla.
+    assert hb_details["jira"]["pandoc_install"]
+    print("Ok")
+
+
+if __name__ == "__main__":
+    check_server()

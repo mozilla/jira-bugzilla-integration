@@ -72,6 +72,8 @@ graph TD
 
 # Development
 
+We use [pandoc](https://pandoc.org) to convert markdown to the Jira syntax. Make sure the binary is found in path or [specify your custom location](https://github.com/JessicaTegner/pypandoc#specifying-the-location-of-pandoc-binaries).
+
 - `make start`: run the application locally (http://localhost:8000)
 - `make test`: run the unit tests suites
 - `make lint`: static analysis of the code base

@@ -1133,6 +1133,17 @@ plugins = ["importlib-metadata"]
 windows-terminal = ["colorama (>=0.4.6)"]
 
 [[package]]
+name = "pypandoc"
+version = "1.12"
+description = "Thin wrapper for pandoc."
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "pypandoc-1.12-py3-none-any.whl", hash = "sha256:efb4f7d68ead8bec32e22b62f02d5608a1700978b51bfc4af286fd6acfe9d218"},
+    {file = "pypandoc-1.12.tar.gz", hash = "sha256:8f44740a9f074e121d81b489f073160421611d4ead62d1b306aeb11aab3c32df"},
+]
+
+[[package]]
 name = "pytest"
 version = "8.0.0"
 description = "pytest: simple powerful testing with Python"
@@ -2018,4 +2029,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.12, <3.13"
-content-hash = "7ef88ccbea7fb572ad4c3e74256ea7038a431da7b507f8120ac125ed878a1eb4"
+content-hash = "6a5beebe3d1afb1bb555d4efa389a8c837ff6dc92fd870583008132555c54dd0"

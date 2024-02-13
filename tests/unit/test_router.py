@@ -204,6 +204,7 @@ def test_read_heartbeat_all_services_fail(anon_client, mocked_jira, mocked_bugzi
             "all_projects_have_permissions": False,
             "all_project_custom_components_exist": False,
             "all_projects_issue_types_exist": False,
+            "pandoc_install": True,
         },
         "bugzilla": {
             "up": False,
@@ -225,6 +226,7 @@ def test_read_heartbeat_jira_services_fails(anon_client, mocked_jira):
         "all_projects_have_permissions": False,
         "all_project_custom_components_exist": False,
         "all_projects_issue_types_exist": False,
+        "pandoc_install": True,
     }
 
 
@@ -365,6 +367,7 @@ def test_read_heartbeat_success(
                 "all_projects_have_permissions": True,
                 "all_project_custom_components_exist": True,
                 "all_projects_issue_types_exist": True,
+                "pandoc_install": True,
             },
             "bugzilla": {
                 "up": True,

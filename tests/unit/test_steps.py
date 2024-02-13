@@ -150,9 +150,12 @@ def test_modified_public(
     action_context = action_context_factory(
         operation=Operation.UPDATE,
         bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+        bug__summary="JBI [Test](http://test.com)",
         jira__issue="JBI-234",
         event__changes=[
-            webhook_event_change_factory(field="summary", removed="", added="JBI Test")
+            webhook_event_change_factory(
+                field="summary", removed="", added="JBI [Test](http://test.com)"
+            )
         ],
     )
 
@@ -168,7 +171,7 @@ def test_modified_public(
 
     mocked_jira.update_issue_field.assert_called_once_with(
         key="JBI-234",
-        fields={"summary": "JBI Test"},
+        fields={"summary": "JBI [Test|http://test.com]"},
     )
 
 
@@ -227,7 +230,7 @@ def test_added_comment(
 
     mocked_jira.issue_add_comment.assert_called_once_with(
         issue_key="JBI-234",
-        comment="*(mathieu@mozilla.org)* commented: \n{quote}hello{quote}",
+        comment="*mathieu@mozilla.org* commented: \nbq. hello\nworld",
     )
 
 
@@ -254,7 +257,7 @@ def test_create_with_no_assignee(
 ):
     mocked_bugzilla.get_bug.return_value = context_create_example.bug
     mocked_bugzilla.get_comments.return_value = [
-        comment_factory(text="Initial comment")
+        comment_factory(text="Initial `comment`")
     ]
     mocked_jira.create_issue.return_value = {"key": "new-id"}
     callable_object = Executor(
@@ -269,7 +272,7 @@ def test_create_with_no_assignee(
         fields={
             "summary": "JBI Test",
             "issuetype": {"name": "Bug"},
-            "description": "Initial comment",
+            "description": "Initial {{comment}}",
             "project": {"key": "JBI"},
         },
     )
