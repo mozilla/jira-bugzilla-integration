@@ -9,6 +9,14 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ join(github.event.pull_request.labels.*.name, ', ') == '' }}
     steps:
+      - name: Wait for triage
+        uses: lewagon/wait-on-check-action@v1.3.3
+        with:
+          ref: ${{ github.ref }}
+          check-name: triage
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 5
+
       - run: |
           echo 'Pull-request must have at least one label'
           exit 1
