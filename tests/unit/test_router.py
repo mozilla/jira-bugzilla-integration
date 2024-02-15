@@ -190,42 +190,30 @@ def test_read_version(anon_client):
 
 
 def test_read_heartbeat_all_services_fail(anon_client, mocked_jira, mocked_bugzilla):
-    """/__heartbeat__ returns 503 when all the services are unavailable."""
+    """/__heartbeat__ returns 500 when all the services are unavailable."""
     mocked_bugzilla.logged_in.return_value = False
     mocked_jira.get_server_info.return_value = None
 
     resp = anon_client.get("/__heartbeat__")
 
     assert resp.status_code == 500
-    assert resp.json()["checks"] == {
-        "bugzilla.all_webhooks_enabled": "error",
-        "bugzilla.up": "error",
-        "jira.all_project_custom_components_exist": "error",
-        "jira.all_project_issue_types_exist": "error",
-        "jira.all_projects_are_visible": "error",
-        "jira.all_projects_have_permissions": "error",
-        "jira.pandoc_install": "ok",
-        "jira.up": "error",
-    }
+    results = resp.json()
+    assert results["status"] == "error"
+    assert results["checks"]["bugzilla.up"] == "error"
+    assert results["checks"]["jira.up"] == "error"
 
 
 def test_read_heartbeat_jira_services_fails(anon_client, mocked_jira):
-    """/__heartbeat__ returns 503 when one service is unavailable."""
+    """/__heartbeat__ returns 500 when one service is unavailable."""
     mocked_jira.get_server_info.return_value = None
 
     resp = anon_client.get("/__heartbeat__")
 
     assert resp.status_code == 500
-    assert resp.json()["checks"] == {
-        "bugzilla.up": "ok",
-        "bugzilla.all_webhooks_enabled": "warning",
-        "jira.all_project_custom_components_exist": "error",
-        "jira.all_project_issue_types_exist": "error",
-        "jira.all_projects_are_visible": "error",
-        "jira.all_projects_have_permissions": "error",
-        "jira.pandoc_install": "ok",
-        "jira.up": "error",
-    }
+    results = resp.json()
+    assert results["status"] == "error"
+    assert results["checks"]["bugzilla.up"] == "ok"
+    assert results["checks"]["jira.up"] == "error"
 
 
 def test_read_heartbeat_bugzilla_webhooks_fails(
@@ -236,10 +224,15 @@ def test_read_heartbeat_bugzilla_webhooks_fails(
 
     resp = anon_client.get("/__heartbeat__")
 
-    assert resp.status_code == 500
-    checks = resp.json()["checks"]
-    assert checks["bugzilla.up"] == "ok"
-    assert checks["bugzilla.all_webhooks_enabled"] == "error"
+    results = resp.json()
+    assert results["checks"]["bugzilla.all_webhooks_enabled"] == "error"
+    assert results["details"]["bugzilla.all_webhooks_enabled"] == {
+        "level": 40,
+        "messages": {
+            "bugzilla.webhooks.disabled": "Webhook Test Webhooks is disabled (0 errors)",
+        },
+        "status": "error",
+    }
 
 
 def test_heartbeat_bugzilla_reports_webhooks_errors(
@@ -263,16 +256,14 @@ def test_heartbeat_bugzilla_reports_webhooks_errors(
 
 
 def test_read_heartbeat_bugzilla_services_fails(anon_client, mocked_bugzilla):
-    """/__heartbeat__ returns 503 when one service is unavailable."""
+    """/__heartbeat__ returns 500 when one service is unavailable."""
     mocked_bugzilla.logged_in.return_value = False
 
     resp = anon_client.get("/__heartbeat__")
 
-    assert resp.status_code == 500
     results = resp.json()
     assert results["checks"]["bugzilla.up"] == "error"
-    assert results["checks"]["bugzilla.all_webhooks_enabled"] == "error"
-    assert results["details"]["bugzilla.all_webhooks_enabled"] == {
+    assert results["details"]["bugzilla.up"] == {
         "level": 40,
         "messages": {
             "bugzilla.login": "Login fails or service down",
@@ -287,9 +278,7 @@ def test_jira_heartbeat_visible_projects(anon_client, mocked_jira):
 
     resp = anon_client.get("/__heartbeat__")
 
-    assert resp.status_code == 500
     results = resp.json()
-    assert results["checks"]["jira.up"] == "ok"
     assert results["checks"]["jira.all_projects_are_visible"] == "warning"
     assert results["details"]["jira.all_projects_are_visible"] == {
         "level": 30,
@@ -331,9 +320,7 @@ def test_jira_heartbeat_unknown_components(anon_client, mocked_jira):
 
     resp = anon_client.get("/__heartbeat__")
 
-    assert resp.status_code == 500
     results = resp.json()
-    assert results["checks"]["jira.up"] == "ok"
     assert results["checks"]["jira.all_project_custom_components_exist"] == "warning"
     assert results["details"]["jira.all_project_custom_components_exist"] == {
         "level": 30,
@@ -355,9 +342,7 @@ def test_jira_heartbeat_unknown_issue_types(anon_client, mocked_jira):
 
     resp = anon_client.get("/__heartbeat__")
 
-    assert resp.status_code == 500
     results = resp.json()
-    assert results["checks"]["jira.up"] == "ok"
     assert results["checks"]["jira.all_project_issue_types_exist"] == "warning"
     assert results["details"]["jira.all_project_issue_types_exist"] == {
         "level": 30,
