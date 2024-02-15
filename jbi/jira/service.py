@@ -454,7 +454,7 @@ def check_jira_all_projects_have_permissions(service=None, actions=None):
     if missing_perms:
         missing = ", ".join(missing_perms)
         return [
-            checks.Error(
+            checks.Warning(
                 f"Missing permissions for projects {missing}",
                 id="jira.permitted.missing",
             )

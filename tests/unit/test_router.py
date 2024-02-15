@@ -315,16 +315,14 @@ def test_jira_heartbeat_missing_permissions(anon_client, mocked_jira):
 
     resp = anon_client.get("/__heartbeat__")
 
-    assert resp.status_code == 500
     results = resp.json()
-    assert results["checks"]["jira.up"] == "ok"
-    assert results["checks"]["jira.all_projects_have_permissions"] == "error"
+    assert results["checks"]["jira.all_projects_have_permissions"] == "warning"
     assert results["details"]["jira.all_projects_have_permissions"] == {
-        "level": 40,
+        "level": 30,
         "messages": {
             "jira.permitted.missing": "Missing permissions for projects DevTest",
         },
-        "status": "error",
+        "status": "warning",
     }
 
 
@@ -416,7 +414,6 @@ def test_heartbeat_with_warning_only(anon_client, mocked_jira, mocked_bugzilla):
     """/__heartbeat__ returns 200 when checks are only warning."""
     mocked_bugzilla.logged_in.return_value = True
     mocked_bugzilla.list_webhooks.return_value = []
-    mocked_jira.permitted_projects.return_value = [{"key": "DevTest"}]
 
     resp = anon_client.get("__heartbeat__")
 
