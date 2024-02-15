@@ -2,10 +2,10 @@ import logging
 from functools import lru_cache
 
 import requests
+from dockerflow import checks
 from statsd.defaults.env import statsd
 
 from jbi import environment
-from jbi.common.instrument import ServiceHealth
 
 from .client import BugzillaClient, BugzillaClientError
 from .models import Bug
@@ -20,49 +20,6 @@ class BugzillaService:
 
     def __init__(self, client: BugzillaClient) -> None:
         self.client = client
-
-    def check_health(self) -> ServiceHealth:
-        """Check health for Bugzilla Service"""
-        logged_in = self.client.logged_in()
-        all_webhooks_enabled = False
-        if logged_in:
-            all_webhooks_enabled = self._all_webhooks_enabled()
-
-        health: ServiceHealth = {
-            "up": logged_in,
-            "all_webhooks_enabled": all_webhooks_enabled,
-        }
-        return health
-
-    def _all_webhooks_enabled(self):
-        # Check that all JBI webhooks are enabled in Bugzilla,
-        # and report disabled ones.
-
-        try:
-            jbi_webhooks = self.client.list_webhooks()
-        except (BugzillaClientError, requests.HTTPError):
-            return False
-
-        if len(jbi_webhooks) == 0:
-            logger.info("No webhooks enabled")
-            return True
-
-        for webhook in jbi_webhooks:
-            # Report errors in each webhook
-            statsd.gauge(f"jbi.bugzilla.webhooks.{webhook.slug}.errors", webhook.errors)
-            # Warn developers when there are errors
-            if webhook.errors > 0:
-                logger.warning(
-                    "Webhook %s has %s error(s)", webhook.name, webhook.errors
-                )
-            if not webhook.enabled:
-                logger.error(
-                    "Webhook %s is disabled (%s errors)",
-                    webhook.name,
-                    webhook.errors,
-                )
-                return False
-        return True
 
     def add_link_to_see_also(self, bug: Bug, link: str):
         """Add link to Bugzilla ticket"""
@@ -102,3 +59,58 @@ def get_service():
         settings.bugzilla_base_url, api_key=str(settings.bugzilla_api_key)
     )
     return BugzillaService(client=client)
+
+
+@checks.register(name="bugzilla.up")
+def check_bugzilla_connection():
+    service = get_service()
+    if not service.client.logged_in():
+        return [checks.Error("Login fails or service down", id="bugzilla.login")]
+    return []
+
+
+@checks.register(name="bugzilla.all_webhooks_enabled")
+def check_bugzilla_webhooks():
+    service = get_service()
+
+    # Do not bother executing the rest of checks if connection fails.
+    if messages := check_bugzilla_connection():
+        return messages
+
+    # Check that all JBI webhooks are enabled in Bugzilla,
+    # and report disabled ones.
+    try:
+        jbi_webhooks = service.list_webhooks()
+    except (BugzillaClientError, requests.HTTPError) as e:
+        return [
+            checks.Error(f"Could not list webhooks ({e})", id="bugzilla.webhooks.fetch")
+        ]
+
+    results = []
+
+    if len(jbi_webhooks) == 0:
+        results.append(
+            checks.Warning("No webhooks enabled", id="bugzilla.webhooks.empty")
+        )
+
+    for webhook in jbi_webhooks:
+        # Report errors in each webhook
+        statsd.gauge(f"jbi.bugzilla.webhooks.{webhook.slug}.errors", webhook.errors)
+        # Warn developers when there are errors
+        if webhook.errors > 0:
+            results.append(
+                checks.Warning(
+                    f"Webhook {webhook.name} has {webhook.errors} error(s)",
+                    id="bugzilla.webhooks.errors",
+                )
+            )
+
+        if not webhook.enabled:
+            results.append(
+                checks.Error(
+                    f"Webhook {webhook.name} is disabled ({webhook.errors} errors)",
+                    id="bugzilla.webhooks.disabled",
+                )
+            )
+
+    return results

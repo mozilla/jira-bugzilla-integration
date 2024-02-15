@@ -5,6 +5,7 @@ import secrets
 from pathlib import Path
 from typing import Annotated, Optional
 
+from dockerflow import checks as dockerflow_checks
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse
@@ -45,21 +46,26 @@ def root(request: Request, settings: SettingsDep):
 @router.head("/__heartbeat__")
 def heartbeat(
     response: Response,
-    actions: ActionsDep,
     bugzilla_service: BugzillaServiceDep,
     jira_service: JiraServiceDep,
 ):
     """Return status of backing services, as required by Dockerflow."""
-    health_map = {
-        "bugzilla": bugzilla_service.check_health(),
-        "jira": jira_service.check_health(actions),
+    check_results = dockerflow_checks.run_checks(
+        dockerflow_checks.get_checks().items(),
+    )
+
+    payload = {
+        "status": dockerflow_checks.level_to_text(check_results.level),
+        "checks": check_results.statuses,
+        "details": check_results.details,
     }
-    health_checks: list = []
-    for health in health_map.values():
-        health_checks.extend(health.values())
-    if not all(health_checks):
-        response.status_code = 503
-    return health_map
+
+    if check_results.level < dockerflow_checks.ERROR:
+        response.status_code = 200
+    else:
+        response.status_code = 500
+
+    return payload
 
 
 @router.get("/__lbheartbeat__")

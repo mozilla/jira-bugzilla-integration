@@ -6,6 +6,12 @@ import responses
 from requests.exceptions import ConnectionError
 
 from jbi import jira
+from jbi.jira.service import (
+    check_jira_all_project_custom_components_exist,
+    check_jira_all_project_issue_types_exist,
+    check_jira_all_projects_have_permissions,
+    check_jira_connection,
+)
 from jbi.models import Actions, JiraComponents
 
 
@@ -22,7 +28,7 @@ def jira_service(settings):
 
 
 def test_jira_retries_failing_connections_in_health_check(
-    jira_service, settings, mocked_responses, actions
+    jira_service, settings, mocked_responses
 ):
     url = f"{settings.jira_base_url}rest/api/2/serverInfo?doHealthCheck=True"
 
@@ -34,8 +40,9 @@ def test_jira_retries_failing_connections_in_health_check(
         body=ConnectionError(),
     )
 
-    healthcheck = jira_service.check_health(actions)
-    assert healthcheck["up"] is False
+    results = check_jira_connection(jira_service)
+    assert len(results) == 1
+    assert results[0].id == "jira.server.down"
     assert len(mocked_responses.calls) == 4
 
 
@@ -60,13 +67,13 @@ def test_jira_does_not_retry_4XX(
 @pytest.mark.parametrize(
     "jira_components, project_components, expected_result",
     [
-        (["Foo"], [{"name": "Foo"}], True),
-        (["Foo"], [{"name": "Foo"}, {"name": "Bar"}], True),
-        (["Foo", "Bar"], [{"name": "Foo"}, {"name": "Bar"}], True),
-        ([], [], True),
-        (["Foo"], [{"name": "Bar"}], False),
-        (["Foo", "Bar"], [{"name": "Foo"}], False),
-        (["Foo"], [], False),
+        (["Foo"], [{"name": "Foo"}], []),
+        (["Foo"], [{"name": "Foo"}, {"name": "Bar"}], []),
+        (["Foo", "Bar"], [{"name": "Foo"}, {"name": "Bar"}], []),
+        ([], [], []),
+        (["Foo"], [{"name": "Bar"}], ["jira.components.missing"]),
+        (["Foo", "Bar"], [{"name": "Foo"}], ["jira.components.missing"]),
+        (["Foo"], [], ["jira.components.missing"]),
     ],
 )
 def test_all_project_custom_components_exist(
@@ -92,8 +99,8 @@ def test_all_project_custom_components_exist(
         }
     )
     actions = Actions(root=[action])
-    result = jira_service._all_project_custom_components_exist(actions)
-    assert result is expected_result
+    result = check_jira_all_project_custom_components_exist(jira_service, actions)
+    assert [msg.id for msg in result] == expected_result
 
 
 def test_all_project_custom_components_exist_no_components_param(
@@ -105,8 +112,8 @@ def test_all_project_custom_components_exist_no_components_param(
         }
     )
     actions = Actions(root=[action])
-    result = jira_service._all_project_custom_components_exist(actions)
-    assert result is True
+    result = check_jira_all_project_custom_components_exist(jira_service, actions)
+    assert result == []
 
 
 def test_get_issue(
@@ -330,20 +337,20 @@ def test_create_jira_issue_returns_errors(
                 {"key": "ABC", "issueTypes": [{"name": "Task"}, {"name": "Bug"}]},
                 {"key": "DEF", "issueTypes": [{"name": "Task"}, {"name": "Bug"}]},
             ],
-            True,
+            [],
         ),
         (
             [
                 {"key": "ABC", "issueTypes": [{"name": "Task"}]},
                 {"key": "DEF", "issueTypes": [{"name": "Task"}, {"name": "Bug"}]},
             ],
-            False,
+            ["jira.types.missing"],
         ),
         (
             [
                 {"key": "ABC", "issueTypes": [{"name": "Task"}, {"name": "Bug"}]},
             ],
-            False,
+            ["jira.types.missing"],
         ),
     ],
 )
@@ -375,7 +382,8 @@ def test_all_project_issue_types_exist(
         json={"values": project_data},
     )
 
-    assert jira_service._all_project_issue_types_exist(actions) == expected_result
+    results = check_jira_all_project_issue_types_exist(jira_service, actions)
+    assert [result.id for result in results] == expected_result
 
 
 def test_visible_projects(jira_service, settings, mocked_responses):
@@ -401,11 +409,11 @@ def test_visible_projects(jira_service, settings, mocked_responses):
     [
         (
             [{"key": "ABC"}, {"key": "DEF"}],
-            True,
+            [],
         ),
         (
             [{"key": "ABC"}],
-            False,
+            ["jira.permitted.missing"],
         ),
     ],
 )
@@ -437,4 +445,5 @@ def test_all_projects_permissions(
         json={"projects": project_data},
     )
 
-    assert jira_service._all_projects_permissions(actions) == expected_result
+    results = check_jira_all_projects_have_permissions(jira_service, actions)
+    assert [msg.id for msg in results] == expected_result
