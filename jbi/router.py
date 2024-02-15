@@ -9,7 +9,7 @@ from dockerflow import checks as dockerflow_checks
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse
-from fastapi.security import APIKeyHeader
+from fastapi.security import APIKeyHeader, HTTPBasic, HTTPBasicCredentials
 from fastapi.templating import Jinja2Templates
 
 from jbi import bugzilla, jira
@@ -81,15 +81,22 @@ def version(version_json: VersionDep):
     return version_json
 
 
-header_scheme = APIKeyHeader(name="X-Api-Key")
+header_scheme = APIKeyHeader(name="X-Api-Key", auto_error=False)
+basicauth_scheme = HTTPBasic(auto_error=False)
 
 
 def api_key_auth(
-    settings: SettingsDep, api_key: Annotated[str, Depends(header_scheme)]
+    settings: SettingsDep,
+    api_key: Annotated[str, Depends(header_scheme)],
+    basic_auth: Annotated[HTTPBasicCredentials, Depends(basicauth_scheme)],
 ):
-    if not secrets.compare_digest(api_key, settings.jbi_api_key):
+    if not api_key and basic_auth:
+        api_key = basic_auth.password
+    if not api_key or not secrets.compare_digest(api_key, settings.jbi_api_key):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Forbidden"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect API Key",
+            headers={"WWW-Authenticate": "Basic"},
         )
 
 
