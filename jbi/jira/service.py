@@ -558,7 +558,7 @@ def check_jira_all_project_issue_types_exist(service=None, actions=None):
     if missing_issue_types_by_project:
         return [
             checks.Warning(
-                "Jira projects with missing issue types",
+                f"Jira projects {set(missing_issue_types_by_project.keys())} with missing issue types",
                 obj=missing_issue_types_by_project,
                 id="jira.types.missing",
             )

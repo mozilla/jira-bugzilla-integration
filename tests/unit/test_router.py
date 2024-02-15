@@ -364,7 +364,7 @@ def test_jira_heartbeat_unknown_issue_types(anon_client, mocked_jira):
     assert results["details"]["jira.all_project_issue_types_exist"] == {
         "level": 30,
         "messages": {
-            "jira.types.missing": "Jira projects with missing issue types",
+            "jira.types.missing": "Jira projects {'DevTest'} with missing issue types",
         },
         "status": "warning",
     }
@@ -410,6 +410,18 @@ def test_read_heartbeat_success(
             "details": {},
             "status": "ok",
         }
+
+
+def test_heartbeat_with_warning_only(anon_client, mocked_jira, mocked_bugzilla):
+    """/__heartbeat__ returns 200 when checks are only warning."""
+    mocked_bugzilla.logged_in.return_value = True
+    mocked_bugzilla.list_webhooks.return_value = []
+    mocked_jira.permitted_projects.return_value = [{"key": "DevTest"}]
+
+    resp = anon_client.get("__heartbeat__")
+
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "warning"
 
 
 @pytest.mark.parametrize("method", ["HEAD", "GET"])
