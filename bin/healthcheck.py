@@ -22,7 +22,7 @@ def check_server():
     hb_details = hb_response.json()
     # Check that pandoc is installed, but ignore other checks
     # like connection to Jira or Bugzilla.
-    assert hb_details["jira"]["pandoc_install"]
+    assert hb_details["checks"]["jira.pandoc_install"] == "ok"
     print("Ok")
 
 
