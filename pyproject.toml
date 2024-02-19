@@ -18,7 +18,7 @@ pydantic-yaml = "^1.2.1"
 backoff = "^2.2.1"
 statsd = "^4.0.1"
 requests = "^2.31.0"
-pydantic-settings = "^2.1.0"
+pydantic-settings = "^2.2.0"
 asgi-correlation-id = "^4.3.0"
 pypandoc = "^1.13"
 
