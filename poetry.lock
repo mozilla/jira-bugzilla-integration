@@ -1134,13 +1134,13 @@ windows-terminal = ["colorama (>=0.4.6)"]
 
 [[package]]
 name = "pypandoc"
-version = "1.12"
+version = "1.13"
 description = "Thin wrapper for pandoc."
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "pypandoc-1.12-py3-none-any.whl", hash = "sha256:efb4f7d68ead8bec32e22b62f02d5608a1700978b51bfc4af286fd6acfe9d218"},
-    {file = "pypandoc-1.12.tar.gz", hash = "sha256:8f44740a9f074e121d81b489f073160421611d4ead62d1b306aeb11aab3c32df"},
+    {file = "pypandoc-1.13-py3-none-any.whl", hash = "sha256:4c7d71bf2f1ed122aac287113b5c4d537a33bbc3c1df5aed11a7d4a7ac074681"},
+    {file = "pypandoc-1.13.tar.gz", hash = "sha256:31652073c7960c2b03570bd1e94f602ca9bc3e70099df5ead4cea98ff5151c1e"},
 ]
 
 [[package]]
@@ -2029,4 +2029,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.12, <3.13"
-content-hash = "408cbbf70c6119b15ba97c04a5f9092597e5d0d1d60713e5401a63282000949d"
+content-hash = "213f4164b21de2f79681d478612cd76efd558441ce8507711c2d7d529c3fff7e"
