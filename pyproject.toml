@@ -23,7 +23,7 @@ asgi-correlation-id = "^4.3.0"
 pypandoc = "^1.13"
 
 [tool.poetry.group.dev.dependencies]
-pre-commit = "^3.6.1"
+pre-commit = "^3.6.2"
 coverage = {extras = ["toml"], version = "^7.4"}
 mypy = "^1.8"
 detect-secrets = "^1.4.0"
