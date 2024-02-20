@@ -43,7 +43,7 @@ JBI will log that we couldn't process a specific payload, along with relevant ID
 - Still requires engineers to investigate further if needed
 
 ### Option 2: Ask a human to do something
-JBI will alert users that data could not be sync'd. This could happen through an IM alert or an email immediately, or a scheduled (daily?) report. We should know which users to identify based on project configuration in bugzilla or a distribution list.
+JBI will alert users that data could not be sync'd. This could happen through an IM alert or an email immediately, or a scheduled (daily?) report, or by creating a well-formed log that an alerting workflow picks up. We should know which users to identify based on project configuration in bugzilla or a distribution list if doing an IM or email directly.
 
 **Decision Drivers**
 - Amount of initial engineering effort: low
@@ -77,8 +77,28 @@ Create a persistence layer within the JBI containers that will queue and retry j
 - High effort for engineers to build and maintain
 - Less intuitive to users and engineers, we would need to report on cache/queue metrics to logs
 
-### Option 4: Queue data externally
-Similar to option 3, but instead of JBI queing the events we would have a dedicated service that accepts all API calls from bugzilla and puts them into a queue. JBI would shift to being a downstream service and process these events asynchronously. If events fail to process to many times, they would get sent to a DLQ (dead letter queue) that could be replayed later if needed.
+### Option 4: Use a simple DLQ (dead letter queue)
+We would always return 200, but any events that fail to process internally would get sent to a DLQ and be replayed later if needed. This could be a storage bucket, kubernetes volume, or table in a database. A scheduled kubernetes job would then run to try and pick these up and reprocess them later (every 4 hours, for exmaple). 
+
+After too many failed attempts the payload would be marked as unprocessable (setting a flag in the table, or updating the file name).
+
+**Decision Drivers**
+- Amount of initial engineering effort: mid, minimal added infrastructure (database/table or k8s volume or storage bucket)
+- Amount of maintenance effort: mid-low (mid if we spin up a new database)
+- Overall performance of JBI: high
+- How intuitive the solution: high to engineers, low to users
+
+**Pros:**
+- Durable and expandable solution
+- Does not reduce JBI throughput
+- Intuitive to engineers
+
+**Cons:**
+- Added infrastructure
+- Not intuitive to end users unless we build additional reporting so they know why an update didn't come over
+
+### Option 5: Use a dedicated queue solution
+We would have a dedicated service that accepts all API calls from bugzilla and puts them into a queue (apache kafka, rabbitMQ, etc). JBI would shift to being a downstream service and process these events asynchronously. Any events that fail to process would get sent to a DLQ (dead letter queue) that could be replayed later if needed.
 
 There are plenty of existing solutions we could use to solve this problem from a technical perspective. A seperate ADR would be done to identify the best answer if we choose to go this route.
 
@@ -97,8 +117,8 @@ There are plenty of existing solutions we could use to solve this problem from a
 - Most complex solution
 - Highest effort for engineers to build and maintain
 
-## Option 5: A combination of the above
-Example: We could create an external queue for processing and then alert users if the DLQ grows too quickly.
+### Option 6: A combination of the above
+Example: We could create a simple DLQ (a table in postgres) external queue for re-processing and then alert users if the DLQ grows too quickly.
 
 ## Decision Outcome
 
