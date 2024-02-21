@@ -7,6 +7,7 @@ from __future__ import annotations
 import concurrent
 import json
 import logging
+import os
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any, Iterable, Optional
 
@@ -38,6 +39,8 @@ JIRA_REQUIRED_PERMISSIONS = {
     "DELETE_ISSUES",
     "EDIT_ISSUES",
 }
+
+CPU_COUNT = len(os.sched_getaffinity(0))  # 0: pid of current process
 
 
 class JiraService:
@@ -474,7 +477,7 @@ def check_jira_all_project_custom_components_exist(service=None, actions=None):
 
     results = []
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=CPU_COUNT) as executor:
         futures = {
             executor.submit(_check_project_components, service, action): action
             for action in actions
