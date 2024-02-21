@@ -76,6 +76,7 @@ Create a persistence layer within the JBI containers that will queue and retry j
 - Data will not persist container restarts
 - High effort for engineers to build and maintain
 - Less intuitive to users and engineers, we would need to report on cache/queue metrics to logs
+- Data could be processed out of order, causing newer updates to get lost
 
 ### Option 4: Use a simple DLQ (dead letter queue)
 We would always return 200, but any events that fail to process internally would get sent to a DLQ and be replayed later if needed. This could be a storage bucket, kubernetes volume, or table in a database. A scheduled kubernetes job would then run to try and pick these up and reprocess them later (every 4 hours, for exmaple). 
@@ -96,6 +97,7 @@ After too many failed attempts the payload would be marked as unprocessable (set
 **Cons:**
 - Added infrastructure
 - Not intuitive to end users unless we build additional reporting so they know why an update didn't come over
+- Data could be processed out of order, causing newer updates to get lost
 
 ### Option 5: Use a dedicated queue solution
 We would have a dedicated service that accepts all API calls from bugzilla and puts them into a queue (apache kafka, rabbitMQ, etc). JBI would shift to being a downstream service and process these events asynchronously. Any events that fail to process would get sent to a DLQ (dead letter queue) that could be replayed later if needed.
