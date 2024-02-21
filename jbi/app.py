@@ -56,6 +56,7 @@ app = FastAPI(
     debug=settings.app_debug,
 )
 
+app.state.APP_DIR = APP_DIR
 app.include_router(router)
 app.include_router(dockerflow_router)
 app.add_middleware(MozlogRequestSummaryLogger)
