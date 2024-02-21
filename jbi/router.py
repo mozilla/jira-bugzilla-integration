@@ -5,8 +5,7 @@ import secrets
 from pathlib import Path
 from typing import Annotated, Optional
 
-from dockerflow import checks as dockerflow_checks
-from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse
 from fastapi.security import APIKeyHeader, HTTPBasic, HTTPBasicCredentials
@@ -14,13 +13,12 @@ from fastapi.templating import Jinja2Templates
 
 from jbi import bugzilla, jira
 from jbi.configuration import ACTIONS
-from jbi.environment import Settings, get_settings, get_version
+from jbi.environment import Settings, get_settings
 from jbi.models import Actions
 from jbi.runner import IgnoreInvalidRequestError, execute_action
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 ActionsDep = Annotated[Actions, Depends(lambda: ACTIONS)]
-VersionDep = Annotated[dict, Depends(get_version)]
 BugzillaServiceDep = Annotated[bugzilla.BugzillaService, Depends(bugzilla.get_service)]
 JiraServiceDep = Annotated[jira.JiraService, Depends(jira.get_service)]
 
@@ -40,45 +38,6 @@ def root(request: Request, settings: SettingsDep):
             "bugzilla_base_url": settings.bugzilla_base_url,
         },
     }
-
-
-@router.get("/__heartbeat__")
-@router.head("/__heartbeat__")
-def heartbeat(
-    response: Response,
-    bugzilla_service: BugzillaServiceDep,
-    jira_service: JiraServiceDep,
-):
-    """Return status of backing services, as required by Dockerflow."""
-    check_results = dockerflow_checks.run_checks(
-        dockerflow_checks.get_checks().items(),
-    )
-
-    payload = {
-        "status": dockerflow_checks.level_to_text(check_results.level),
-        "checks": check_results.statuses,
-        "details": check_results.details,
-    }
-
-    if check_results.level < dockerflow_checks.ERROR:
-        response.status_code = 200
-    else:
-        response.status_code = 500
-
-    return payload
-
-
-@router.get("/__lbheartbeat__")
-@router.head("/__lbheartbeat__")
-def lbheartbeat():
-    """Dockerflow API for lbheartbeat: HEAD"""
-    return {"status": "OK"}
-
-
-@router.get("/__version__")
-def version(version_json: VersionDep):
-    """Return version.json, as required by Dockerflow."""
-    return version_json
 
 
 header_scheme = APIKeyHeader(name="X-Api-Key", auto_error=False)

@@ -2,27 +2,30 @@
 Core FastAPI app (setup, middleware)
 """
 import logging
-import time
 from pathlib import Path
 from secrets import token_hex
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 import sentry_sdk
 from asgi_correlation_id import CorrelationIdMiddleware
+from dockerflow.version import get_version
+from dockerflow.fastapi import router as dockerflow_router
+from dockerflow.fastapi.middleware import MozlogRequestSummaryLogger
 from fastapi import FastAPI, Request, Response, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from jbi.environment import get_settings, get_version
-from jbi.log import CONFIG, format_request_summary_fields
+from jbi.environment import get_settings
+from jbi.log import CONFIG
 from jbi.router import router
 
 SRC_DIR = Path(__file__).parent
+APP_DIR = Path(__file__).parents[1]
 
 settings = get_settings()
-version_info = get_version()
+version_info = get_version(APP_DIR)
 
 logging.config.dictConfig(CONFIG)
 
@@ -54,29 +57,10 @@ app = FastAPI(
 )
 
 app.include_router(router)
+app.include_router(dockerflow_router)
+app.add_middleware(MozlogRequestSummaryLogger)
+
 app.mount("/static", StaticFiles(directory=SRC_DIR / "static"), name="static")
-
-
-@app.middleware("http")
-async def request_summary(
-    request: Request, call_next: Callable[[Request], Awaitable[Response]]
-) -> Response:
-    """Middleware to log request info"""
-    summary_logger = logging.getLogger("request.summary")
-    request_time = time.time()
-    try:
-        response = await call_next(request)
-        log_fields = format_request_summary_fields(
-            request, request_time, status_code=response.status_code
-        )
-        summary_logger.info("", extra=log_fields)
-        return response
-    except Exception as exc:
-        log_fields = format_request_summary_fields(
-            request, request_time, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-        summary_logger.info(exc, extra=log_fields)
-        raise
 
 
 @app.exception_handler(RequestValidationError)

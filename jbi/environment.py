@@ -1,12 +1,10 @@
 """
 Module dedicated to interacting with the environment (variables, version.json)
 """
-import json
 
 # https://github.com/python/mypy/issues/12841
 from enum import StrEnum, auto  # type: ignore
 from functools import lru_cache
-from pathlib import Path
 from typing import Optional
 
 from pydantic import AnyUrl
@@ -57,13 +55,3 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Return the Settings object; use cache"""
     return Settings()
-
-
-@lru_cache(maxsize=1)
-def get_version():
-    """Return contents of version.json. This has generic data in repo, but gets the build details in CI."""
-    info = {}
-    version_path = Path(__file__).parents[1] / "version.json"
-    if version_path.exists():
-        info = json.loads(version_path.read_text(encoding="utf8"))
-    return info
