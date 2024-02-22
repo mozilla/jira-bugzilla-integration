@@ -50,7 +50,7 @@ def test_jira_retries_failing_connections_in_health_check(
         url,
         body=ConnectionError(),
     )
-    results = check_jira_connection(jira_service)
+    results = check_jira_connection(lambda: jira_service)
     assert len(results) == 1
     assert results[0].id == "jira.server.down"
     assert len(mocked_responses.calls) == 4
@@ -110,7 +110,9 @@ def test_all_project_custom_components_exist(
         }
     )
     actions = Actions(root=[action])
-    result = check_jira_all_project_custom_components_exist(actions, jira_service)
+    result = check_jira_all_project_custom_components_exist(
+        actions, lambda: jira_service
+    )
     assert [msg.id for msg in result] == expected_result
 
 
@@ -123,7 +125,9 @@ def test_all_project_custom_components_exist_no_components_param(
         }
     )
     actions = Actions(root=[action])
-    result = check_jira_all_project_custom_components_exist(actions, jira_service)
+    result = check_jira_all_project_custom_components_exist(
+        actions, lambda: jira_service
+    )
     assert result == []
 
 
@@ -394,7 +398,7 @@ def test_all_project_issue_types_exist(
         json={"values": project_data},
     )
 
-    results = check_jira_all_project_issue_types_exist(actions, jira_service)
+    results = check_jira_all_project_issue_types_exist(actions, lambda: jira_service)
     assert [result.id for result in results] == expected_result
 
 
@@ -458,5 +462,5 @@ def test_all_projects_permissions(
         json={"projects": project_data},
     )
 
-    results = check_jira_all_projects_have_permissions(actions, jira_service)
+    results = check_jira_all_projects_have_permissions(actions, lambda: jira_service)
     assert [msg.id for msg in results] == expected_result

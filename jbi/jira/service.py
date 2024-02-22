@@ -385,9 +385,8 @@ def get_service():
     return JiraService(client=client)
 
 
-@checks.register(name="jira.up")
-def check_jira_connection(service=None):
-    service = service or get_service()
+def check_jira_connection(_get_service):
+    service = _get_service()
     try:
         if service.client.get_server_info(True) is None:
             return [checks.Error("Login fails", id="login.fail")]
@@ -396,11 +395,18 @@ def check_jira_connection(service=None):
     return []
 
 
-def check_jira_all_projects_are_visible(actions, service=None):
-    service = service or get_service()
+checks.register_partial(
+    check_jira_connection,
+    get_service,
+    name="jira.up",
+)
+
+
+def check_jira_all_projects_are_visible(actions, _get_service):
+    service = _get_service()
 
     # Do not bother executing the rest of checks if connection fails.
-    if messages := check_jira_connection(service):
+    if messages := check_jira_connection(_get_service):
         return messages
 
     try:
@@ -427,16 +433,17 @@ def check_jira_all_projects_are_visible(actions, service=None):
 checks.register_partial(
     check_jira_all_projects_are_visible,
     ACTIONS,
+    get_service,
     name="jira.all_projects_are_visible",
 )
 
 
-def check_jira_all_projects_have_permissions(actions, service=None):
+def check_jira_all_projects_have_permissions(actions, _get_service):
     """Fetches and validates that required permissions exist for the configured projects"""
-    service = service or get_service()
+    service = _get_service()
 
     # Do not bother executing the rest of checks if connection fails.
-    if messages := check_jira_connection(service):
+    if messages := check_jira_connection(_get_service):
         return messages
 
     try:
@@ -465,15 +472,16 @@ def check_jira_all_projects_have_permissions(actions, service=None):
 checks.register_partial(
     check_jira_all_projects_have_permissions,
     ACTIONS,
+    get_service,
     name="jira.all_projects_have_permissions",
 )
 
 
-def check_jira_all_project_custom_components_exist(actions, service=None):
+def check_jira_all_project_custom_components_exist(actions, _get_service):
     # Do not bother executing the rest of checks if connection fails.
-    service = service or get_service()
+    service = _get_service()
 
-    if messages := check_jira_connection(service):
+    if messages := check_jira_connection(_get_service):
         return messages
 
     results = []
@@ -492,6 +500,7 @@ def check_jira_all_project_custom_components_exist(actions, service=None):
 checks.register_partial(
     check_jira_all_project_custom_components_exist,
     ACTIONS,
+    get_service,
     name="jira.all_project_custom_components_exist",
 )
 
@@ -532,11 +541,11 @@ def _check_project_components(service, action):
     return []
 
 
-def check_jira_all_project_issue_types_exist(actions, service=None):
+def check_jira_all_project_issue_types_exist(actions, _get_service):
     # Do not bother executing the rest of checks if connection fails.
-    service = service or get_service()
+    service = _get_service()
 
-    if messages := check_jira_connection(service):
+    if messages := check_jira_connection(_get_service):
         return messages
 
     try:
@@ -578,6 +587,7 @@ def check_jira_all_project_issue_types_exist(actions, service=None):
 checks.register_partial(
     check_jira_all_project_issue_types_exist,
     ACTIONS,
+    get_service,
     name="jira.all_project_issue_types_exist",
 )
 
