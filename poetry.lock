@@ -404,17 +404,18 @@ wmi = ["wmi (>=1.5.1,<2.0.0)"]
 
 [[package]]
 name = "dockerflow"
-version = "2024.1.0"
+version = "2024.2.0"
 description = "Python tools and helpers for Mozilla's Dockerflow"
 optional = false
 python-versions = ">=3.7,<4"
 files = [
-    {file = "dockerflow-2024.1.0-py2.py3-none-any.whl", hash = "sha256:df1597fb3d58d759993e5b5e7f254162804882c04c09d5b7df97aa47b0a9d15b"},
-    {file = "dockerflow-2024.1.0.tar.gz", hash = "sha256:38d6a60a01e87d33dcf802f1ef2f09ae2f375c829d3805923d88409387562d66"},
+    {file = "dockerflow-2024.2.0-py2.py3-none-any.whl", hash = "sha256:bab3ce211dbdf439fae21c37e17e03383d7366943789463baf6b441885f3cfa7"},
+    {file = "dockerflow-2024.2.0.tar.gz", hash = "sha256:eff23fe7bda12d24de6c0d69ed0aea75441c171c4730be5bae8bb576a7b3e912"},
 ]
 
 [package.extras]
 django = ["django"]
+fastapi = ["asgiref", "fastapi"]
 flask = ["blinker", "flask"]
 sanic = ["sanic"]
 
@@ -2033,4 +2034,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.12, <3.13"
-content-hash = "f60e6ca55bb18d05598e7c3909874ff5c2de2fd569c3dc669bd0dff634f8ed83"
+content-hash = "321bc106c477cd96de6516d59c2f8b43ce59fda1c03b5cf2087aea62ce9fb226"
