@@ -33,13 +33,13 @@ trio = ["trio (<0.22)"]
 
 [[package]]
 name = "asgi-correlation-id"
-version = "4.3.0"
+version = "4.3.1"
 description = "Middleware correlating project logs to individual requests"
 optional = false
 python-versions = ">=3.8,<4.0"
 files = [
-    {file = "asgi_correlation_id-4.3.0-py3-none-any.whl", hash = "sha256:f48548514e178f2906d6833aff6774dc46baf1dd2c561a7d5b5f88578e2b11cc"},
-    {file = "asgi_correlation_id-4.3.0.tar.gz", hash = "sha256:507b6b0ef388b8643768eb75f97af82c716b098ffc29b7fca115cc0329265007"},
+    {file = "asgi_correlation_id-4.3.1-py3-none-any.whl", hash = "sha256:128509a822e87ac544662804b402761ee2d8fd9769f23339cff220d22d222546"},
+    {file = "asgi_correlation_id-4.3.1.tar.gz", hash = "sha256:3d7efa2c002fa909d6e1a452c1cf8088ff5ac186884b4d9aa5430ed00b036278"},
 ]
 
 [package.dependencies]
@@ -2033,4 +2033,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.12, <3.13"
-content-hash = "8e9b4b3bd99ee78a640da9ee72d21b73cdad50fd3cd108f0e4a2b921a3660ed8"
+content-hash = "f60e6ca55bb18d05598e7c3909874ff5c2de2fd569c3dc669bd0dff634f8ed83"

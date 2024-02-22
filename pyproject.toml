@@ -19,7 +19,7 @@ backoff = "^2.2.1"
 statsd = "^4.0.1"
 requests = "^2.31.0"
 pydantic-settings = "^2.2.1"
-asgi-correlation-id = "^4.3.0"
+asgi-correlation-id = "^4.3.1"
 pypandoc = "^1.13"
 
 [tool.poetry.group.dev.dependencies]
