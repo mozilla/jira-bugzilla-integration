@@ -8,9 +8,9 @@ from typing import Any
 
 import sentry_sdk
 from asgi_correlation_id import CorrelationIdMiddleware
-from dockerflow.version import get_version
 from dockerflow.fastapi import router as dockerflow_router
 from dockerflow.fastapi.middleware import MozlogRequestSummaryLogger
+from dockerflow.version import get_version
 from fastapi import FastAPI, Request, Response, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
