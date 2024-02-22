@@ -8,7 +8,7 @@ import concurrent
 import json
 import logging
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, Iterable, Optional
+from typing import Any, Iterable, Optional
 
 import requests
 from dockerflow import checks
@@ -20,10 +20,6 @@ from jbi.jira.utils import markdown_to_jira
 from jbi.models import ActionContext
 
 from .client import JiraClient, JiraCreateError
-
-# https://docs.python.org/3.11/library/typing.html#typing.TYPE_CHECKING
-if TYPE_CHECKING:
-    pass
 
 settings = environment.get_settings()
 
