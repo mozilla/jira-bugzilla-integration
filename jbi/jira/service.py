@@ -15,7 +15,7 @@ from dockerflow import checks
 from requests import exceptions as requests_exceptions
 
 from jbi import Operation, bugzilla, environment
-from jbi.configuration import get_actions
+from jbi.configuration import ACTIONS
 from jbi.jira.utils import markdown_to_jira
 from jbi.models import ActionContext
 
@@ -396,13 +396,11 @@ def check_jira_connection(service=None):
     return []
 
 
-@checks.register(name="jira.all_projects_are_visible")
-def check_jira_all_projects_are_visible():
-    service = get_service()
-    actions = get_actions()
+def check_jira_all_projects_are_visible(actions, service=None):
+    service = service or get_service()
 
     # Do not bother executing the rest of checks if connection fails.
-    if messages := check_jira_connection():
+    if messages := check_jira_connection(service):
         return messages
 
     try:
@@ -426,14 +424,19 @@ def check_jira_all_projects_are_visible():
     return []
 
 
-@checks.register(name="jira.all_projects_have_permissions")
-def check_jira_all_projects_have_permissions(service=None, actions=None):
+checks.register_partial(
+    check_jira_all_projects_are_visible,
+    ACTIONS,
+    name="jira.all_projects_are_visible",
+)
+
+
+def check_jira_all_projects_have_permissions(actions, service=None):
     """Fetches and validates that required permissions exist for the configured projects"""
     service = service or get_service()
-    actions = actions or get_actions()
 
     # Do not bother executing the rest of checks if connection fails.
-    if messages := check_jira_connection():
+    if messages := check_jira_connection(service):
         return messages
 
     try:
@@ -459,13 +462,18 @@ def check_jira_all_projects_have_permissions(service=None, actions=None):
     return []
 
 
-@checks.register(name="jira.all_project_custom_components_exist")
-def check_jira_all_project_custom_components_exist(service=None, actions=None):
-    service = service or get_service()
-    actions = actions or get_actions()
+checks.register_partial(
+    check_jira_all_projects_have_permissions,
+    ACTIONS,
+    name="jira.all_projects_have_permissions",
+)
 
+
+def check_jira_all_project_custom_components_exist(actions, service=None):
     # Do not bother executing the rest of checks if connection fails.
-    if messages := check_jira_connection():
+    service = service or get_service()
+
+    if messages := check_jira_connection(service):
         return messages
 
     results = []
@@ -479,6 +487,13 @@ def check_jira_all_project_custom_components_exist(service=None, actions=None):
         for future in concurrent.futures.as_completed(futures):
             results.extend(future.result())
     return results
+
+
+checks.register_partial(
+    check_jira_all_project_custom_components_exist,
+    ACTIONS,
+    name="jira.all_project_custom_components_exist",
+)
 
 
 def _check_project_components(service, action):
@@ -517,13 +532,11 @@ def _check_project_components(service, action):
     return []
 
 
-@checks.register(name="jira.all_project_issue_types_exist")
-def check_jira_all_project_issue_types_exist(service=None, actions=None):
-    actions = actions or get_actions()
+def check_jira_all_project_issue_types_exist(actions, service=None):
+    # Do not bother executing the rest of checks if connection fails.
     service = service or get_service()
 
-    # Do not bother executing the rest of checks if connection fails.
-    if messages := check_jira_connection():
+    if messages := check_jira_connection(service):
         return messages
 
     try:
@@ -560,6 +573,13 @@ def check_jira_all_project_issue_types_exist(service=None, actions=None):
             )
         ]
     return []
+
+
+checks.register_partial(
+    check_jira_all_project_issue_types_exist,
+    ACTIONS,
+    name="jira.all_project_issue_types_exist",
+)
 
 
 @checks.register(name="jira.pandoc_install")

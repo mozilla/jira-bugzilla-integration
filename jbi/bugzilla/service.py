@@ -62,19 +62,19 @@ def get_service():
 
 
 @checks.register(name="bugzilla.up")
-def check_bugzilla_connection():
-    service = get_service()
+def check_bugzilla_connection(service=None):
+    service = service or get_service()
     if not service.client.logged_in():
         return [checks.Error("Login fails or service down", id="bugzilla.login")]
     return []
 
 
 @checks.register(name="bugzilla.all_webhooks_enabled")
-def check_bugzilla_webhooks():
-    service = get_service()
+def check_bugzilla_webhooks(service=None):
+    service = service or get_service()
 
     # Do not bother executing the rest of checks if connection fails.
-    if messages := check_bugzilla_connection():
+    if messages := check_bugzilla_connection(service):
         return messages
 
     # Check that all JBI webhooks are enabled in Bugzilla,

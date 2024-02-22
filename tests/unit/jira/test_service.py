@@ -27,6 +27,17 @@ def jira_service(settings):
     return jira.JiraService(client=client)
 
 
+@pytest.fixture()
+def mock_jira_server_info(settings, mocked_responses):
+    url = f"{settings.jira_base_url}rest/api/2/serverInfo?doHealthCheck=True"
+    mocked_responses.add(
+        responses.GET,
+        url,
+        json={"ok": True},
+    )
+    return mocked_responses
+
+
 def test_jira_retries_failing_connections_in_health_check(
     jira_service, settings, mocked_responses
 ):
@@ -39,7 +50,6 @@ def test_jira_retries_failing_connections_in_health_check(
         url,
         body=ConnectionError(),
     )
-
     results = check_jira_connection(jira_service)
     assert len(results) == 1
     assert results[0].id == "jira.server.down"
@@ -77,6 +87,7 @@ def test_jira_does_not_retry_4XX(
     ],
 )
 def test_all_project_custom_components_exist(
+    mock_jira_server_info,
     jira_service,
     settings,
     jira_components,
@@ -99,12 +110,12 @@ def test_all_project_custom_components_exist(
         }
     )
     actions = Actions(root=[action])
-    result = check_jira_all_project_custom_components_exist(jira_service, actions)
+    result = check_jira_all_project_custom_components_exist(actions, jira_service)
     assert [msg.id for msg in result] == expected_result
 
 
 def test_all_project_custom_components_exist_no_components_param(
-    jira_service, settings, action_factory, mocked_responses
+    jira_service, settings, action_factory, mock_jira_server_info
 ):
     action = action_factory(
         parameters={
@@ -112,7 +123,7 @@ def test_all_project_custom_components_exist_no_components_param(
         }
     )
     actions = Actions(root=[action])
-    result = check_jira_all_project_custom_components_exist(jira_service, actions)
+    result = check_jira_all_project_custom_components_exist(actions, jira_service)
     assert result == []
 
 
@@ -355,6 +366,7 @@ def test_create_jira_issue_returns_errors(
     ],
 )
 def test_all_project_issue_types_exist(
+    mock_jira_server_info,
     jira_service,
     settings,
     mocked_responses,
@@ -382,7 +394,7 @@ def test_all_project_issue_types_exist(
         json={"values": project_data},
     )
 
-    results = check_jira_all_project_issue_types_exist(jira_service, actions)
+    results = check_jira_all_project_issue_types_exist(actions, jira_service)
     assert [result.id for result in results] == expected_result
 
 
@@ -418,6 +430,7 @@ def test_visible_projects(jira_service, settings, mocked_responses):
     ],
 )
 def test_all_projects_permissions(
+    mock_jira_server_info,
     jira_service,
     settings,
     mocked_responses,
@@ -445,5 +458,5 @@ def test_all_projects_permissions(
         json={"projects": project_data},
     )
 
-    results = check_jira_all_projects_have_permissions(jira_service, actions)
+    results = check_jira_all_projects_have_permissions(actions, jira_service)
     assert [msg.id for msg in results] == expected_result
