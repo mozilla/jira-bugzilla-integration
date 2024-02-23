@@ -53,8 +53,9 @@ sentry_sdk.init(
 )
 
 
+# https://github.com/tiangolo/fastapi/discussions/9241
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI):  # type: ignore
     jira_service = jbi.jira.get_service()
     bugzilla_service = jbi.bugzilla.get_service()
 
