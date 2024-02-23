@@ -5,7 +5,7 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 from secrets import token_hex
-from typing import Any
+from typing import Any, AsyncGenerator
 
 import sentry_sdk
 from asgi_correlation_id import CorrelationIdMiddleware
@@ -55,7 +55,7 @@ sentry_sdk.init(
 
 # https://github.com/tiangolo/fastapi/discussions/9241
 @asynccontextmanager
-async def lifespan(app: FastAPI):  # type: ignore
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     jira_service = jbi.jira.get_service()
     bugzilla_service = jbi.bugzilla.get_service()
 
