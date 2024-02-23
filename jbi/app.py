@@ -100,6 +100,9 @@ app = FastAPI(
 )
 
 app.state.APP_DIR = APP_DIR
+app.state.DOCKERFLOW_HEARTBEAT_FAILED_STATUS_CODE = 503
+app.state.DOCKERFLOW_SUMMARY_LOG_QUERYSTRING = True
+
 app.include_router(router)
 app.include_router(dockerflow_router)
 app.add_middleware(MozlogRequestSummaryLogger)
