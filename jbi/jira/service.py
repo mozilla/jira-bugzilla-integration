@@ -378,10 +378,7 @@ class JiraService:
             return [checks.Error("Could not connect to server", id="jira.server.down")]
         return []
 
-    def check_jira_all_projects_are_visible(
-        self,
-        actions,
-    ):
+    def check_jira_all_projects_are_visible(self, actions):
         # Do not bother executing the rest of checks if connection fails.
         if messages := self.check_jira_connection():
             return messages
@@ -406,10 +403,7 @@ class JiraService:
 
         return []
 
-    def check_jira_all_projects_have_permissions(
-        self,
-        actions,
-    ):
+    def check_jira_all_projects_have_permissions(self, actions):
         """Fetches and validates that required permissions exist for the configured projects"""
 
         # Do not bother executing the rest of checks if connection fails.
@@ -440,10 +434,7 @@ class JiraService:
 
         return []
 
-    def check_jira_all_project_custom_components_exist(
-        self,
-        actions,
-    ):
+    def check_jira_all_project_custom_components_exist(self, actions):
         # Do not bother executing the rest of checks if connection fails.
 
         if messages := self.check_jira_connection():
@@ -498,10 +489,7 @@ class JiraService:
 
         return []
 
-    def check_jira_all_project_issue_types_exist(
-        self,
-        actions,
-    ):
+    def check_jira_all_project_issue_types_exist(self, actions):
         # Do not bother executing the rest of checks if connection fails.
 
         if messages := self.check_jira_connection():

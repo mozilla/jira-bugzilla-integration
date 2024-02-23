@@ -56,8 +56,15 @@ sentry_sdk.init(
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     jira_service = jbi.jira.get_service()
-    checks.register(jira_service.check_jira_connection, name="jira.up")
+    bugzilla_service = jbi.bugzilla.get_service()
 
+    checks.register(bugzilla_service.check_bugzilla_connection, name="bugzilla.up")
+    checks.register(
+        bugzilla_service.check_bugzilla_webhooks,
+        name="bugzilla.all_webhooks_enabled",
+    )
+
+    checks.register(jira_service.check_jira_connection, name="jira.up")
     checks.register_partial(
         jira_service.check_jira_all_projects_are_visible,
         ACTIONS,
