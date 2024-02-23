@@ -15,7 +15,6 @@ from dockerflow import checks
 from requests import exceptions as requests_exceptions
 
 from jbi import Operation, bugzilla, environment
-from jbi.configuration import ACTIONS
 from jbi.jira.utils import markdown_to_jira
 from jbi.models import ActionContext
 
@@ -371,6 +370,173 @@ class JiraService:
             update={"update": {"labels": updated_labels}},
         )
 
+    def check_jira_connection(self):
+        try:
+            if self.client.get_server_info(True) is None:
+                return [checks.Error("Login fails", id="login.fail")]
+        except requests.RequestException:
+            return [checks.Error("Could not connect to server", id="jira.server.down")]
+        return []
+
+    def check_jira_all_projects_are_visible(self, actions):
+        # Do not bother executing the rest of checks if connection fails.
+        if messages := self.check_jira_connection():
+            return messages
+
+        try:
+            visible_projects = self.fetch_visible_projects()
+        except requests.HTTPError:
+            return [
+                checks.Error(
+                    "Error fetching visible Jira projects", id="jira.visible.error"
+                )
+            ]
+
+        missing_projects = actions.configured_jira_projects_keys - set(visible_projects)
+        if missing_projects:
+            return [
+                checks.Warning(
+                    f"Jira projects {missing_projects} are not visible with configured credentials",
+                    id="jira.projects.missing",
+                )
+            ]
+
+        return []
+
+    def check_jira_all_projects_have_permissions(self, actions):
+        """Fetches and validates that required permissions exist for the configured projects"""
+
+        # Do not bother executing the rest of checks if connection fails.
+        if messages := self.check_jira_connection():
+            return messages
+
+        try:
+            projects = self.client.permitted_projects(JIRA_REQUIRED_PERMISSIONS)
+        except requests.HTTPError:
+            return [
+                checks.Error(
+                    "Error fetching permitted Jira projects", id="jira.permitted.error"
+                )
+            ]
+
+        projects_with_required_perms = {project["key"] for project in projects}
+        missing_perms = (
+            actions.configured_jira_projects_keys - projects_with_required_perms
+        )
+        if missing_perms:
+            missing = ", ".join(missing_perms)
+            return [
+                checks.Warning(
+                    f"Missing permissions for projects {missing}",
+                    id="jira.permitted.missing",
+                )
+            ]
+
+        return []
+
+    def check_jira_all_project_custom_components_exist(self, actions):
+        # Do not bother executing the rest of checks if connection fails.
+
+        if messages := self.check_jira_connection():
+            return messages
+
+        results = []
+
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            futures = {
+                executor.submit(self._check_project_components, action): action
+                for action in actions
+                if action.parameters.jira_components.set_custom_components
+            }
+            for future in concurrent.futures.as_completed(futures):
+                results.extend(future.result())
+        return results
+
+    def _check_project_components(self, action):
+        project_key = action.parameters.jira_project_key
+        specified_components = set(
+            action.parameters.jira_components.set_custom_components
+        )
+
+        try:
+            all_project_components = self.client.get_project_components(project_key)
+        except requests.HTTPError:
+            return [
+                checks.Error(
+                    f"Error checking project components for {project_key}",
+                    id="jira.components.error",
+                )
+            ]
+
+        try:
+            all_components_names = set(comp["name"] for comp in all_project_components)
+        except KeyError:
+            return [
+                checks.Error(
+                    f"Unexpected get_project_components response for {action.whiteboard_tag}",
+                    id="jira.components.parsing",
+                )
+            ]
+
+        unknown = specified_components - all_components_names
+        if unknown:
+            return [
+                checks.Warning(
+                    f"Jira project {project_key} does not have components {unknown}",
+                    id="jira.components.missing",
+                )
+            ]
+
+        return []
+
+    def check_jira_all_project_issue_types_exist(self, actions):
+        # Do not bother executing the rest of checks if connection fails.
+
+        if messages := self.check_jira_connection():
+            return messages
+
+        try:
+            paginated_project_response = self.client.paginated_projects(
+                expand="issueTypes", keys=actions.configured_jira_projects_keys
+            )
+        except requests.RequestException:
+            return [
+                checks.Error(
+                    "Couldn't fetch projects",
+                    id="jira.projects.error",
+                )
+            ]
+
+        projects = paginated_project_response["values"]
+        issue_types_by_project = {
+            project["key"]: {issue_type["name"] for issue_type in project["issueTypes"]}
+            for project in projects
+        }
+        missing_issue_types_by_project = {}
+        for action in actions:
+            action_issue_types = set(action.parameters.issue_type_map.values())
+            project_issue_types = issue_types_by_project.get(
+                action.jira_project_key, set()
+            )
+            if missing_issue_types := action_issue_types - project_issue_types:
+                missing_issue_types_by_project[
+                    action.jira_project_key
+                ] = missing_issue_types
+        if missing_issue_types_by_project:
+            return [
+                checks.Warning(
+                    f"Jira projects {set(missing_issue_types_by_project.keys())} with missing issue types",
+                    obj=missing_issue_types_by_project,
+                    id="jira.types.missing",
+                )
+            ]
+        return []
+
+    def check_jira_pandoc_install(self):
+        if markdown_to_jira("- Test") != "* Test":
+            return [checks.Error("Pandoc conversion failed", id="jira.pandoc")]
+        return []
+
 
 @lru_cache(maxsize=1)
 def get_service():
@@ -383,217 +549,3 @@ def get_service():
     )
 
     return JiraService(client=client)
-
-
-def check_jira_connection(_get_service):
-    service = _get_service()
-    try:
-        if service.client.get_server_info(True) is None:
-            return [checks.Error("Login fails", id="login.fail")]
-    except requests.RequestException:
-        return [checks.Error("Could not connect to server", id="jira.server.down")]
-    return []
-
-
-checks.register_partial(
-    check_jira_connection,
-    get_service,
-    name="jira.up",
-)
-
-
-def check_jira_all_projects_are_visible(actions, _get_service):
-    service = _get_service()
-
-    # Do not bother executing the rest of checks if connection fails.
-    if messages := check_jira_connection(_get_service):
-        return messages
-
-    try:
-        visible_projects = service.fetch_visible_projects()
-    except requests.HTTPError:
-        return [
-            checks.Error(
-                "Error fetching visible Jira projects", id="jira.visible.error"
-            )
-        ]
-
-    missing_projects = actions.configured_jira_projects_keys - set(visible_projects)
-    if missing_projects:
-        return [
-            checks.Warning(
-                f"Jira projects {missing_projects} are not visible with configured credentials",
-                id="jira.projects.missing",
-            )
-        ]
-
-    return []
-
-
-checks.register_partial(
-    check_jira_all_projects_are_visible,
-    ACTIONS,
-    get_service,
-    name="jira.all_projects_are_visible",
-)
-
-
-def check_jira_all_projects_have_permissions(actions, _get_service):
-    """Fetches and validates that required permissions exist for the configured projects"""
-    service = _get_service()
-
-    # Do not bother executing the rest of checks if connection fails.
-    if messages := check_jira_connection(_get_service):
-        return messages
-
-    try:
-        projects = service.client.permitted_projects(JIRA_REQUIRED_PERMISSIONS)
-    except requests.HTTPError:
-        return [
-            checks.Error(
-                "Error fetching permitted Jira projects", id="jira.permitted.error"
-            )
-        ]
-
-    projects_with_required_perms = {project["key"] for project in projects}
-    missing_perms = actions.configured_jira_projects_keys - projects_with_required_perms
-    if missing_perms:
-        missing = ", ".join(missing_perms)
-        return [
-            checks.Warning(
-                f"Missing permissions for projects {missing}",
-                id="jira.permitted.missing",
-            )
-        ]
-
-    return []
-
-
-checks.register_partial(
-    check_jira_all_projects_have_permissions,
-    ACTIONS,
-    get_service,
-    name="jira.all_projects_have_permissions",
-)
-
-
-def check_jira_all_project_custom_components_exist(actions, _get_service):
-    # Do not bother executing the rest of checks if connection fails.
-    service = _get_service()
-
-    if messages := check_jira_connection(_get_service):
-        return messages
-
-    results = []
-
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        futures = {
-            executor.submit(_check_project_components, service, action): action
-            for action in actions
-            if action.parameters.jira_components.set_custom_components
-        }
-        for future in concurrent.futures.as_completed(futures):
-            results.extend(future.result())
-    return results
-
-
-checks.register_partial(
-    check_jira_all_project_custom_components_exist,
-    ACTIONS,
-    get_service,
-    name="jira.all_project_custom_components_exist",
-)
-
-
-def _check_project_components(service, action):
-    project_key = action.parameters.jira_project_key
-    specified_components = set(action.parameters.jira_components.set_custom_components)
-
-    try:
-        all_project_components = service.client.get_project_components(project_key)
-    except requests.HTTPError:
-        return [
-            checks.Error(
-                f"Error checking project components for {project_key}",
-                id="jira.components.error",
-            )
-        ]
-
-    try:
-        all_components_names = set(comp["name"] for comp in all_project_components)
-    except KeyError:
-        return [
-            checks.Error(
-                f"Unexpected get_project_components response for {action.whiteboard_tag}",
-                id="jira.components.parsing",
-            )
-        ]
-
-    unknown = specified_components - all_components_names
-    if unknown:
-        return [
-            checks.Warning(
-                f"Jira project {project_key} does not have components {unknown}",
-                id="jira.components.missing",
-            )
-        ]
-
-    return []
-
-
-def check_jira_all_project_issue_types_exist(actions, _get_service):
-    # Do not bother executing the rest of checks if connection fails.
-    service = _get_service()
-
-    if messages := check_jira_connection(_get_service):
-        return messages
-
-    try:
-        paginated_project_response = service.client.paginated_projects(
-            expand="issueTypes", keys=actions.configured_jira_projects_keys
-        )
-    except requests.RequestException:
-        return [
-            checks.Error(
-                "Couldn't fetch projects",
-                id="jira.projects.error",
-            )
-        ]
-
-    projects = paginated_project_response["values"]
-    issue_types_by_project = {
-        project["key"]: {issue_type["name"] for issue_type in project["issueTypes"]}
-        for project in projects
-    }
-    missing_issue_types_by_project = {}
-    for action in actions:
-        action_issue_types = set(action.parameters.issue_type_map.values())
-        project_issue_types = issue_types_by_project.get(action.jira_project_key, set())
-        if missing_issue_types := action_issue_types - project_issue_types:
-            missing_issue_types_by_project[
-                action.jira_project_key
-            ] = missing_issue_types
-    if missing_issue_types_by_project:
-        return [
-            checks.Warning(
-                f"Jira projects {set(missing_issue_types_by_project.keys())} with missing issue types",
-                obj=missing_issue_types_by_project,
-                id="jira.types.missing",
-            )
-        ]
-    return []
-
-
-checks.register_partial(
-    check_jira_all_project_issue_types_exist,
-    ACTIONS,
-    get_service,
-    name="jira.all_project_issue_types_exist",
-)
-
-
-@checks.register(name="jira.pandoc_install")
-def check_jira_pandoc_install():
-    if markdown_to_jira("- Test") != "* Test":
-        return [checks.Error("Pandoc conversion failed", id="jira.pandoc")]
-    return []

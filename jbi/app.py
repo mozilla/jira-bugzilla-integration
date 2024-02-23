@@ -2,12 +2,14 @@
 Core FastAPI app (setup, middleware)
 """
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 from secrets import token_hex
 from typing import Any
 
 import sentry_sdk
 from asgi_correlation_id import CorrelationIdMiddleware
+from dockerflow import checks
 from dockerflow.fastapi import router as dockerflow_router
 from dockerflow.fastapi.middleware import MozlogRequestSummaryLogger
 from dockerflow.version import get_version
@@ -17,6 +19,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+import jbi.jira
+from jbi.configuration import ACTIONS
 from jbi.environment import get_settings
 from jbi.log import CONFIG
 from jbi.router import router
@@ -49,11 +53,50 @@ sentry_sdk.init(
 )
 
 
+# https://github.com/tiangolo/fastapi/discussions/9241
+@asynccontextmanager
+async def lifespan(app: FastAPI):  # type: ignore
+    jira_service = jbi.jira.get_service()
+    bugzilla_service = jbi.bugzilla.get_service()
+
+    checks.register(bugzilla_service.check_bugzilla_connection, name="bugzilla.up")
+    checks.register(
+        bugzilla_service.check_bugzilla_webhooks,
+        name="bugzilla.all_webhooks_enabled",
+    )
+
+    checks.register(jira_service.check_jira_connection, name="jira.up")
+    checks.register_partial(
+        jira_service.check_jira_all_projects_are_visible,
+        ACTIONS,
+        name="jira.all_projects_are_visible",
+    )
+    checks.register_partial(
+        jira_service.check_jira_all_projects_have_permissions,
+        ACTIONS,
+        name="jira.all_projects_have_permissions",
+    )
+    checks.register_partial(
+        jira_service.check_jira_all_project_custom_components_exist,
+        ACTIONS,
+        name="jira.all_project_custom_components_exist",
+    )
+    checks.register_partial(
+        jira_service.check_jira_all_project_issue_types_exist,
+        ACTIONS,
+        name="jira.all_project_issue_types_exist",
+    )
+    checks.register(jira_service.check_jira_pandoc_install, name="jira.pandoc_install")
+
+    yield
+
+
 app = FastAPI(
     title="Jira Bugzilla Integration (JBI)",
     description="Platform providing synchronization of Bugzilla bugs to Jira issues.",
     version=version_info["version"],
     debug=settings.app_debug,
+    lifespan=lifespan,
 )
 
 app.state.APP_DIR = APP_DIR
