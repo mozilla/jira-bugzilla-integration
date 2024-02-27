@@ -682,7 +682,7 @@ def test_change_to_known_resolution_with_resolution_map(
     mocked_jira.update_issue_field.assert_called_with(  # not once
         key="JBI-234",
         fields={
-            "resolution": "Duplicate",
+            "resolution": {"name": "Duplicate"},
         },
     )
 
