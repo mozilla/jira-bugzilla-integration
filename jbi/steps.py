@@ -51,7 +51,7 @@ def create_comment(context: ActionContext, *, jira_service: JiraService) -> Step
     bug = context.bug
 
     if bug.comment is None:
-        logger.debug(
+        logger.info(
             "No matching comment found in payload",
             extra=context.model_dump(),
         )
@@ -92,7 +92,7 @@ def add_link_to_jira(
 ) -> StepResult:
     """Add the URL to the Jira issue in the `see_also` field on the Bugzilla ticket"""
     jira_url = f"{settings.jira_base_url}browse/{context.jira.issue}"
-    logger.debug(
+    logger.info(
         "Link %r on Bug %s",
         jira_url,
         context.bug.id,
@@ -178,7 +178,7 @@ def maybe_assign_jira_user(
             context.append_responses(resp)
             return (StepStatus.SUCCESS, context)
         except ValueError as exc:
-            logger.debug(str(exc), extra=context.model_dump())
+            logger.info(str(exc), extra=context.model_dump())
             return (StepStatus.INCOMPLETE, context)
 
     if context.operation == Operation.UPDATE:
@@ -191,7 +191,7 @@ def maybe_assign_jira_user(
             try:
                 resp = jira_service.assign_jira_user(context, bug.assigned_to)  # type: ignore
             except ValueError as exc:
-                logger.debug(str(exc), extra=context.model_dump())
+                logger.info(str(exc), extra=context.model_dump())
                 # If that failed then just fall back to clearing the assignee.
                 resp = jira_service.clear_assignee(context)
         context.append_responses(resp)
@@ -212,7 +212,7 @@ def maybe_update_issue_resolution(
     jira_resolution = parameters.resolution_map.get(bz_resolution)
 
     if jira_resolution is None:
-        logger.debug(
+        logger.info(
             "Bug resolution %r was not in the resolution map.",
             bz_resolution,
             extra=context.update(
@@ -246,7 +246,7 @@ def maybe_update_issue_status(
     jira_status = parameters.status_map.get(bz_status or "")
 
     if jira_status is None:
-        logger.debug(
+        logger.info(
             "Bug status %r was not in the status map.",
             bz_status,
             extra=context.update(

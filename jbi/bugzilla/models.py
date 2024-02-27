@@ -98,7 +98,7 @@ class Bug(BaseModel, frozen=True):
                 parsed_url: ParseResult = urlparse(url=url)
                 host_parts = parsed_url.hostname.split(".")
             except (ValueError, AttributeError):
-                logger.debug(
+                logger.info(
                     "Bug %s `see_also` is not a URL: %s",
                     self.id,
                     url,
