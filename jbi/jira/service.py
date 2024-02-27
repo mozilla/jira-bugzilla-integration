@@ -298,7 +298,7 @@ class JiraService:
         )
         response = self.client.update_issue_field(
             key=issue_key,
-            fields={"resolution": jira_resolution},
+            fields={"resolution": {"name": jira_resolution}},
         )
         logger.debug(
             "Updated resolution of Jira issue %s to %s",
