@@ -193,7 +193,9 @@ def test_update_issue_resolution(
         responses.PUT,
         url,
         match=[
-            responses.matchers.json_params_matcher({"fields": {"resolution": "DONEZO"}})
+            responses.matchers.json_params_matcher(
+                {"fields": {"resolution": {"name": "DONEZO"}}}
+            )
         ],
     )
 
@@ -215,7 +217,9 @@ def test_update_issue_resolution_raises(
         url,
         status=401,
         match=[
-            responses.matchers.json_params_matcher({"fields": {"resolution": "DONEZO"}})
+            responses.matchers.json_params_matcher(
+                {"fields": {"resolution": {"name": "DONEZO"}}}
+            )
         ],
     )
 
