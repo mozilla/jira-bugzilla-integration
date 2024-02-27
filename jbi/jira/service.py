@@ -50,10 +50,10 @@ class JiraService:
 
     def get_issue(self, context: ActionContext, issue_key):
         """Return the Jira issue fields or `None` if not found."""
-        logger.debug("Getting issue %s", issue_key, extra=context.model_dump())
+        logger.info("Getting issue %s", issue_key, extra=context.model_dump())
         try:
             response = self.client.get_issue(issue_key)
-            logger.debug(
+            logger.info(
                 "Received issue %s",
                 issue_key,
                 extra={"response": response, **context.model_dump()},
@@ -83,7 +83,7 @@ class JiraService:
             ),
             "project": {"key": context.jira.project},
         }
-        logger.debug(
+        logger.info(
             "Creating new Jira issue for Bug %s",
             bug.id,
             extra={"fields": fields, **context.model_dump()},
@@ -107,7 +107,7 @@ class JiraService:
         # Jira response can be of the form: List or Dictionary
         # if a list is returned, get the first item
         issue_data = response[0] if isinstance(response, list) else response
-        logger.debug(
+        logger.info(
             "Jira issue %s created for Bug %s",
             issue_data["key"],
             bug.id,
@@ -130,7 +130,7 @@ class JiraService:
             issue_key=issue_key,
             comment=formatted_comment,
         )
-        logger.debug(
+        logger.info(
             "User comment added to Jira issue %s",
             issue_key,
             extra=context.model_dump(),
@@ -159,7 +159,7 @@ class JiraService:
 
         jira_response_comments = []
         for i, comment in enumerate(comments):
-            logger.debug(
+            logger.info(
                 "Create comment #%s on Jira issue %s",
                 i + 1,
                 issue_key,
@@ -201,7 +201,7 @@ class JiraService:
         bug = context.bug
         issue_key = context.jira.issue
         bugzilla_url = f"{settings.bugzilla_base_url}/show_bug.cgi?id={bug.id}"
-        logger.debug(
+        logger.info(
             "Link %r on Jira issue %s",
             bugzilla_url,
             issue_key,
@@ -219,12 +219,12 @@ class JiraService:
     def clear_assignee(self, context: ActionContext):
         """Clear the assignee of the specified Jira issue."""
         issue_key = context.jira.issue
-        logger.debug("Clearing assignee", extra=context.model_dump())
+        logger.info("Clearing assignee", extra=context.model_dump())
         return self.client.update_issue_field(key=issue_key, fields={"assignee": None})
 
     def find_jira_user(self, context: ActionContext, email: str):
         """Lookup Jira users, raise an error if not exactly one found."""
-        logger.debug("Find Jira user with email %s", email, extra=context.model_dump())
+        logger.info("Find Jira user with email %s", email, extra=context.model_dump())
         users = self.client.user_find_by_user_string(query=email)
         if len(users) != 1:
             raise ValueError(f"User {email} not found")
@@ -255,7 +255,7 @@ class JiraService:
         issue_key = context.jira.issue
         assert issue_key  # Until we have more fine-grained typing of contexts
 
-        logger.debug(
+        logger.info(
             "Updating Jira status to %s",
             jira_status,
             extra=context.model_dump(),
@@ -270,7 +270,7 @@ class JiraService:
 
         bug = context.bug
         issue_key = context.jira.issue
-        logger.debug(
+        logger.info(
             "Update summary of Jira issue %s for Bug %s",
             issue_key,
             bug.id,
@@ -290,7 +290,7 @@ class JiraService:
         issue_key = context.jira.issue
         assert issue_key  # Until we have more fine-grained typing of contexts
 
-        logger.debug(
+        logger.info(
             "Updating resolution of Jira issue %s to %s",
             issue_key,
             jira_resolution,
@@ -300,7 +300,7 @@ class JiraService:
             key=issue_key,
             fields={"resolution": {"name": jira_resolution}},
         )
-        logger.debug(
+        logger.info(
             "Updated resolution of Jira issue %s to %s",
             issue_key,
             jira_resolution,

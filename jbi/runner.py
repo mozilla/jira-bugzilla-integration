@@ -140,7 +140,7 @@ class Executor:
             if step_responses:
                 has_produced_request = True
             for response in step_responses:
-                logger.debug(
+                logger.info(
                     "Received %s",
                     response,
                     extra={
@@ -178,7 +178,7 @@ def execute_action(
         if bug.is_private:
             raise IgnoreInvalidRequestError("private bugs are not supported")
 
-        logger.debug(
+        logger.info(
             "Handling incoming request",
             extra=runner_context.model_dump(),
         )
