@@ -50,13 +50,13 @@ celery = ["celery"]
 
 [[package]]
 name = "atlassian-python-api"
-version = "3.41.10"
+version = "3.41.11"
 description = "Python Atlassian REST API Wrapper"
 optional = false
 python-versions = "*"
 files = [
-    {file = "atlassian-python-api-3.41.10.tar.gz", hash = "sha256:2a0592c5f7db6abeafdabd86b68de2e85aa3396fdcd4d721e9787532fa497ffe"},
-    {file = "atlassian_python_api-3.41.10-py3-none-any.whl", hash = "sha256:cab50e8796b01033a6d69233d4edf35273e280e57b07744e7cc76c74b8e6aa90"},
+    {file = "atlassian-python-api-3.41.11.tar.gz", hash = "sha256:e6503b2bfeedf100fcabc1d541718a8ab5e6fd757164438fcf4948e6ecea12e4"},
+    {file = "atlassian_python_api-3.41.11-py3-none-any.whl", hash = "sha256:47ac76a171f08537cff64253d1b49a016dc6636dfbba324944c01397d755391c"},
 ]
 
 [package.dependencies]
@@ -2034,4 +2034,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.12, <3.13"
-content-hash = "883e63bc141682423cf2611123e0e753b0f3d2a97134a80dc2c13fdf48cfff85"
+content-hash = "99cf9469a63194a198c4f0270e7203df5a5b25dd00b7b41e66ee609f50e1dd3b"
