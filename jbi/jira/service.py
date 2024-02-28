@@ -1,31 +1,25 @@
-"""Contains a Jira REST client and functions comprised of common operations
-with that REST client
-"""
 # This import is needed (as of Pyhon 3.11) to enable type checking with modules
 # imported under `TYPE_CHECKING`
 # https://docs.python.org/3/whatsnew/3.7.html#pep-563-postponed-evaluation-of-annotations
 # https://docs.python.org/3/whatsnew/3.11.html#pep-563-may-not-be-the-future
 from __future__ import annotations
 
-import concurrent.futures
+import concurrent
 import json
 import logging
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, Iterable, Optional
+from typing import Any, Iterable, Optional
 
 import requests
-from atlassian import Jira
-from atlassian import errors as atlassian_errors
+from dockerflow import checks
 from requests import exceptions as requests_exceptions
 
-from jbi import Operation, environment
-from jbi.models import ActionContext, BugzillaBug
+from jbi import Operation, bugzilla, environment
+from jbi.configuration import ACTIONS
+from jbi.jira.utils import markdown_to_jira
+from jbi.models import ActionContext
 
-from .common import ServiceHealth, instrument
-
-# https://docs.python.org/3.11/library/typing.html#typing.TYPE_CHECKING
-if TYPE_CHECKING:
-    from jbi.models import Actions
+from .client import JiraClient, JiraCreateError
 
 settings = environment.get_settings()
 
@@ -42,203 +36,31 @@ JIRA_REQUIRED_PERMISSIONS = {
 }
 
 
-def fatal_code(exc):
-    """Do not retry 4XX errors, mark them as fatal."""
-    try:
-        return 400 <= exc.response.status_code < 500
-    except AttributeError:
-        # `ApiError` or `ConnectionError` won't have response attribute.
-        return False
-
-
-instrumented_method = instrument(
-    prefix="jira",
-    exceptions=(
-        atlassian_errors.ApiError,
-        requests_exceptions.RequestException,
-    ),
-    giveup=fatal_code,
-)
-
-
-class JiraCreateError(Exception):
-    """Error raised on Jira issue creation."""
-
-
-class JiraClient(Jira):
-    """Adapted Atlassian Jira client that logs errors and wraps methods
-    in our instrumentation decorator.
-    """
-
-    def raise_for_status(self, *args, **kwargs):
-        """Catch and log HTTP errors responses of the Jira self.client.
-
-        Without this the actual requests and responses are not exposed when an error
-        occurs, which makes troubleshooting tedious.
-        """
-        try:
-            return super().raise_for_status(*args, **kwargs)
-        except requests.HTTPError as exc:
-            request = exc.request
-            response = exc.response
-            logger.error(
-                "HTTP: %s %s -> %s %s",
-                request.method,
-                request.path_url,
-                response.status_code,
-                response.reason,
-                extra={"body": response.text},
-            )
-            raise
-
-    get_server_info = instrumented_method(Jira.get_server_info)
-    get_permissions = instrumented_method(Jira.get_permissions)
-    get_project_components = instrumented_method(Jira.get_project_components)
-    projects = instrumented_method(Jira.projects)
-    update_issue = instrumented_method(Jira.update_issue)
-    update_issue_field = instrumented_method(Jira.update_issue_field)
-    set_issue_status = instrumented_method(Jira.set_issue_status)
-    issue_add_comment = instrumented_method(Jira.issue_add_comment)
-    create_issue = instrumented_method(Jira.create_issue)
-    get_project = instrumented_method(Jira.get_project)
-
-
 class JiraService:
     """Used by action workflows to perform action-specific Jira tasks"""
 
     def __init__(self, client) -> None:
         self.client = client
 
-    def fetch_visible_projects(self) -> list[dict]:
+    def fetch_visible_projects(self) -> list[str]:
         """Return list of projects that are visible with the configured Jira credentials"""
 
-        projects: list[dict] = self.client.projects(included_archived=None)
-        return projects
-
-    def check_health(self, actions: Actions) -> ServiceHealth:
-        """Check health for Jira Service"""
-
-        server_info = self.client.get_server_info(True)
-        is_up = server_info is not None
-        health: ServiceHealth = {
-            "up": is_up,
-            "all_projects_are_visible": is_up and self._all_projects_visible(actions),
-            "all_projects_have_permissions": self._all_projects_permissions(actions),
-            "all_projects_components_exist": is_up
-            and self._all_projects_components_exist(actions),
-            "all_projects_issue_types_exist": is_up
-            and self._all_project_issue_types_exist(actions),
-        }
-        return health
-
-    def _all_projects_visible(self, actions: Actions) -> bool:
-        visible_projects = {project["key"] for project in self.fetch_visible_projects()}
-        missing_projects = actions.configured_jira_projects_keys - visible_projects
-        if missing_projects:
-            logger.error(
-                "Jira projects %s are not visible with configured credentials",
-                missing_projects,
-            )
-        return not missing_projects
-
-    def _all_projects_permissions(self, actions: Actions):
-        """Fetches and validates that required permissions exist for the configured projects"""
-        all_projects_perms = self._fetch_project_permissions(actions)
-        return self._validate_permissions(all_projects_perms)
-
-    def _fetch_project_permissions(self, actions: Actions):
-        """Fetches permissions for the configured projects"""
-
-        all_projects_perms = {}
-        # Query permissions for all configured projects in parallel threads.
-        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-            futures_to_projects = {
-                executor.submit(
-                    self.client.get_permissions,
-                    project_key=project_key,
-                    permissions=",".join(JIRA_REQUIRED_PERMISSIONS),
-                ): project_key
-                for project_key in actions.configured_jira_projects_keys
-            }
-            # Obtain futures' results unordered.
-            for future in concurrent.futures.as_completed(futures_to_projects):
-                project_key = futures_to_projects[future]
-                response = future.result()
-                all_projects_perms[project_key] = response["permissions"]
-        return all_projects_perms
-
-    def _validate_permissions(self, all_projects_perms):
-        """Validates permissions for the configured projects"""
-        misconfigured = []
-        for project_key, obtained_perms in all_projects_perms.items():
-            missing_required_perms = JIRA_REQUIRED_PERMISSIONS - set(
-                obtained_perms.keys()
-            )
-            not_given = set(
-                entry["key"]
-                for entry in obtained_perms.values()
-                if not entry["havePermission"]
-            )
-            if missing_permissions := missing_required_perms.union(not_given):
-                misconfigured.append((project_key, missing_permissions))
-        for project_key, missing in misconfigured:
-            logger.error(
-                "Configured credentials don't have permissions %s on Jira project %s",
-                ",".join(missing),
-                project_key,
-                extra={
-                    "jira": {
-                        "project": project_key,
-                    }
-                },
-            )
-        return not misconfigured
-
-    def _all_projects_components_exist(self, actions: Actions):
-        components_by_project = {
-            action.parameters.jira_project_key: action.parameters.jira_components.set_custom_components
-            for action in actions
-        }
-        success = True
-        for project, specified_components in components_by_project.items():
-            all_project_components = self.client.get_project_components(project)
-            all_components_names = set(comp["name"] for comp in all_project_components)
-            unknown = set(specified_components) - all_components_names
-            if unknown:
-                logger.error(
-                    "Jira project %s does not have components %s",
-                    project,
-                    unknown,
-                )
-                success = False
-
-        return success
-
-    def _all_project_issue_types_exist(self, actions: Actions):
-        issue_types_by_project = {
-            action.parameters.jira_project_key: set(
-                action.parameters.issue_type_map.values()
-            )
-            for action in actions
-        }
-        success = True
-        for project, specified_issue_types in issue_types_by_project.items():
-            response = self.client.get_project(project)
-            all_issue_types_names = set(it["name"] for it in response["issueTypes"])
-            unknown = set(specified_issue_types) - all_issue_types_names
-            if unknown:
-                logger.error(
-                    "Jira project %s does not have issue type %s", project, unknown
-                )
-                success = False
-        return success
+        projects = self.client.permitted_projects()
+        return [project["key"] for project in projects]
 
     def get_issue(self, context: ActionContext, issue_key):
         """Return the Jira issue fields or `None` if not found."""
+        logger.info("Getting issue %s", issue_key, extra=context.model_dump())
         try:
-            return self.client.get_issue(issue_key)
+            response = self.client.get_issue(issue_key)
+            logger.info(
+                "Received issue %s",
+                issue_key,
+                extra={"response": response, **context.model_dump()},
+            )
+            return response
         except requests_exceptions.HTTPError as exc:
-            if exc.response.status_code != 404:
+            if getattr(exc.response, "status_code", None) != 404:
                 raise
             logger.error(
                 "Could not read issue %s: %s",
@@ -253,33 +75,45 @@ class JiraService:
     ):
         """Create a Jira issue with basic fields in the project and return its key."""
         bug = context.bug
-        logger.debug(
-            "Create new Jira issue for Bug %s",
-            bug.id,
-            extra=context.model_dump(),
-        )
         fields: dict[str, Any] = {
             "summary": bug.summary,
             "issuetype": {"name": issue_type},
-            "description": description[:JIRA_DESCRIPTION_CHAR_LIMIT],
+            "description": markdown_to_jira(
+                description, max_length=JIRA_DESCRIPTION_CHAR_LIMIT
+            ),
             "project": {"key": context.jira.project},
         }
+        logger.info(
+            "Creating new Jira issue for Bug %s",
+            bug.id,
+            extra={"fields": fields, **context.model_dump()},
+        )
+        try:
+            response = self.client.create_issue(fields=fields)
+        except requests.HTTPError as exc:
+            assert exc.response is not None
+            try:
+                response = exc.response.json()
+            except json.JSONDecodeError:
+                response = exc.response.text
 
-        jira_response_create = self.client.create_issue(fields=fields)
+            logger.exception(
+                "Failed to create issue for Bug %s",
+                bug.id,
+                extra={"response": response, **context.model_dump()},
+            )
+            raise JiraCreateError(f"Failed to create issue for Bug {bug.id}") from exc
 
         # Jira response can be of the form: List or Dictionary
-        if isinstance(jira_response_create, list):
-            # if a list is returned, get the first item
-            jira_response_create = jira_response_create[0]
-
-        if isinstance(jira_response_create, dict):
-            # if a dict is returned or the first item in a list, confirm there are no errors
-            errs = ",".join(jira_response_create.get("errors", []))
-            msgs = ",".join(jira_response_create.get("errorMessages", []))
-            if errs or msgs:
-                raise JiraCreateError(errs + msgs)
-
-        return jira_response_create
+        # if a list is returned, get the first item
+        issue_data = response[0] if isinstance(response, list) else response
+        logger.info(
+            "Jira issue %s created for Bug %s",
+            issue_data["key"],
+            bug.id,
+            extra={"response": response, **context.model_dump()},
+        )
+        return issue_data
 
     def add_jira_comment(self, context: ActionContext):
         """Publish a comment on the specified Jira issue"""
@@ -290,13 +124,13 @@ class JiraService:
 
         issue_key = context.jira.issue
         formatted_comment = (
-            f"*({commenter})* commented: \n{{quote}}{comment.body}{{quote}}"
+            f"*{commenter}* commented: \n{markdown_to_jira(comment.body or "")}"
         )
         jira_response = self.client.issue_add_comment(
             issue_key=issue_key,
             comment=formatted_comment,
         )
-        logger.debug(
+        logger.info(
             "User comment added to Jira issue %s",
             issue_key,
             extra=context.model_dump(),
@@ -325,7 +159,7 @@ class JiraService:
 
         jira_response_comments = []
         for i, comment in enumerate(comments):
-            logger.debug(
+            logger.info(
                 "Create comment #%s on Jira issue %s",
                 i + 1,
                 issue_key,
@@ -339,7 +173,7 @@ class JiraService:
         return jira_response_comments
 
     def delete_jira_issue_if_duplicate(
-        self, context: ActionContext, latest_bug: BugzillaBug
+        self, context: ActionContext, latest_bug: bugzilla.Bug
     ):
         """Rollback the Jira issue creation if there is already a linked Jira issue
         on the Bugzilla ticket"""
@@ -367,7 +201,7 @@ class JiraService:
         bug = context.bug
         issue_key = context.jira.issue
         bugzilla_url = f"{settings.bugzilla_base_url}/show_bug.cgi?id={bug.id}"
-        logger.debug(
+        logger.info(
             "Link %r on Jira issue %s",
             bugzilla_url,
             issue_key,
@@ -385,12 +219,12 @@ class JiraService:
     def clear_assignee(self, context: ActionContext):
         """Clear the assignee of the specified Jira issue."""
         issue_key = context.jira.issue
-        logger.debug("Clearing assignee", extra=context.model_dump())
+        logger.info("Clearing assignee", extra=context.model_dump())
         return self.client.update_issue_field(key=issue_key, fields={"assignee": None})
 
     def find_jira_user(self, context: ActionContext, email: str):
         """Lookup Jira users, raise an error if not exactly one found."""
-        logger.debug("Find Jira user with email %s", email, extra=context.model_dump())
+        logger.info("Find Jira user with email %s", email, extra=context.model_dump())
         users = self.client.user_find_by_user_string(query=email)
         if len(users) != 1:
             raise ValueError(f"User {email} not found")
@@ -421,7 +255,7 @@ class JiraService:
         issue_key = context.jira.issue
         assert issue_key  # Until we have more fine-grained typing of contexts
 
-        logger.debug(
+        logger.info(
             "Updating Jira status to %s",
             jira_status,
             extra=context.model_dump(),
@@ -436,13 +270,15 @@ class JiraService:
 
         bug = context.bug
         issue_key = context.jira.issue
-        logger.debug(
+        logger.info(
             "Update summary of Jira issue %s for Bug %s",
             issue_key,
             bug.id,
             extra=context.model_dump(),
         )
-        truncated_summary = (bug.summary or "")[:JIRA_DESCRIPTION_CHAR_LIMIT]
+        truncated_summary = markdown_to_jira(
+            bug.summary or "", max_length=JIRA_DESCRIPTION_CHAR_LIMIT
+        )
         fields: dict[str, str] = {
             "summary": truncated_summary,
         }
@@ -454,15 +290,23 @@ class JiraService:
         issue_key = context.jira.issue
         assert issue_key  # Until we have more fine-grained typing of contexts
 
-        logger.debug(
-            "Updating Jira resolution to %s",
+        logger.info(
+            "Updating resolution of Jira issue %s to %s",
+            issue_key,
             jira_resolution,
             extra=context.model_dump(),
         )
-        return self.client.update_issue_field(
+        response = self.client.update_issue_field(
             key=issue_key,
-            fields={"resolution": jira_resolution},
+            fields={"resolution": {"name": jira_resolution}},
         )
+        logger.info(
+            "Updated resolution of Jira issue %s to %s",
+            issue_key,
+            jira_resolution,
+            extra={"response": response, **context.model_dump()},
+        )
+        return response
 
     def update_issue_components(
         self,
@@ -539,3 +383,217 @@ def get_service():
     )
 
     return JiraService(client=client)
+
+
+def check_jira_connection(_get_service):
+    service = _get_service()
+    try:
+        if service.client.get_server_info(True) is None:
+            return [checks.Error("Login fails", id="login.fail")]
+    except requests.RequestException:
+        return [checks.Error("Could not connect to server", id="jira.server.down")]
+    return []
+
+
+checks.register_partial(
+    check_jira_connection,
+    get_service,
+    name="jira.up",
+)
+
+
+def check_jira_all_projects_are_visible(actions, _get_service):
+    service = _get_service()
+
+    # Do not bother executing the rest of checks if connection fails.
+    if messages := check_jira_connection(_get_service):
+        return messages
+
+    try:
+        visible_projects = service.fetch_visible_projects()
+    except requests.HTTPError:
+        return [
+            checks.Error(
+                "Error fetching visible Jira projects", id="jira.visible.error"
+            )
+        ]
+
+    missing_projects = actions.configured_jira_projects_keys - set(visible_projects)
+    if missing_projects:
+        return [
+            checks.Warning(
+                f"Jira projects {missing_projects} are not visible with configured credentials",
+                id="jira.projects.missing",
+            )
+        ]
+
+    return []
+
+
+checks.register_partial(
+    check_jira_all_projects_are_visible,
+    ACTIONS,
+    get_service,
+    name="jira.all_projects_are_visible",
+)
+
+
+def check_jira_all_projects_have_permissions(actions, _get_service):
+    """Fetches and validates that required permissions exist for the configured projects"""
+    service = _get_service()
+
+    # Do not bother executing the rest of checks if connection fails.
+    if messages := check_jira_connection(_get_service):
+        return messages
+
+    try:
+        projects = service.client.permitted_projects(JIRA_REQUIRED_PERMISSIONS)
+    except requests.HTTPError:
+        return [
+            checks.Error(
+                "Error fetching permitted Jira projects", id="jira.permitted.error"
+            )
+        ]
+
+    projects_with_required_perms = {project["key"] for project in projects}
+    missing_perms = actions.configured_jira_projects_keys - projects_with_required_perms
+    if missing_perms:
+        missing = ", ".join(missing_perms)
+        return [
+            checks.Warning(
+                f"Missing permissions for projects {missing}",
+                id="jira.permitted.missing",
+            )
+        ]
+
+    return []
+
+
+checks.register_partial(
+    check_jira_all_projects_have_permissions,
+    ACTIONS,
+    get_service,
+    name="jira.all_projects_have_permissions",
+)
+
+
+def check_jira_all_project_custom_components_exist(actions, _get_service):
+    # Do not bother executing the rest of checks if connection fails.
+    service = _get_service()
+
+    if messages := check_jira_connection(_get_service):
+        return messages
+
+    results = []
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = {
+            executor.submit(_check_project_components, service, action): action
+            for action in actions
+            if action.parameters.jira_components.set_custom_components
+        }
+        for future in concurrent.futures.as_completed(futures):
+            results.extend(future.result())
+    return results
+
+
+checks.register_partial(
+    check_jira_all_project_custom_components_exist,
+    ACTIONS,
+    get_service,
+    name="jira.all_project_custom_components_exist",
+)
+
+
+def _check_project_components(service, action):
+    project_key = action.parameters.jira_project_key
+    specified_components = set(action.parameters.jira_components.set_custom_components)
+
+    try:
+        all_project_components = service.client.get_project_components(project_key)
+    except requests.HTTPError:
+        return [
+            checks.Error(
+                f"Error checking project components for {project_key}",
+                id="jira.components.error",
+            )
+        ]
+
+    try:
+        all_components_names = set(comp["name"] for comp in all_project_components)
+    except KeyError:
+        return [
+            checks.Error(
+                f"Unexpected get_project_components response for {action.whiteboard_tag}",
+                id="jira.components.parsing",
+            )
+        ]
+
+    unknown = specified_components - all_components_names
+    if unknown:
+        return [
+            checks.Warning(
+                f"Jira project {project_key} does not have components {unknown}",
+                id="jira.components.missing",
+            )
+        ]
+
+    return []
+
+
+def check_jira_all_project_issue_types_exist(actions, _get_service):
+    # Do not bother executing the rest of checks if connection fails.
+    service = _get_service()
+
+    if messages := check_jira_connection(_get_service):
+        return messages
+
+    try:
+        paginated_project_response = service.client.paginated_projects(
+            expand="issueTypes", keys=actions.configured_jira_projects_keys
+        )
+    except requests.RequestException:
+        return [
+            checks.Error(
+                "Couldn't fetch projects",
+                id="jira.projects.error",
+            )
+        ]
+
+    projects = paginated_project_response["values"]
+    issue_types_by_project = {
+        project["key"]: {issue_type["name"] for issue_type in project["issueTypes"]}
+        for project in projects
+    }
+    missing_issue_types_by_project = {}
+    for action in actions:
+        action_issue_types = set(action.parameters.issue_type_map.values())
+        project_issue_types = issue_types_by_project.get(action.jira_project_key, set())
+        if missing_issue_types := action_issue_types - project_issue_types:
+            missing_issue_types_by_project[
+                action.jira_project_key
+            ] = missing_issue_types
+    if missing_issue_types_by_project:
+        return [
+            checks.Warning(
+                f"Jira projects {set(missing_issue_types_by_project.keys())} with missing issue types",
+                obj=missing_issue_types_by_project,
+                id="jira.types.missing",
+            )
+        ]
+    return []
+
+
+checks.register_partial(
+    check_jira_all_project_issue_types_exist,
+    ACTIONS,
+    get_service,
+    name="jira.all_project_issue_types_exist",
+)
+
+
+@checks.register(name="jira.pandoc_install")
+def check_jira_pandoc_install():
+    if markdown_to_jira("- Test") != "* Test":
+        return [checks.Error("Pandoc conversion failed", id="jira.pandoc")]
+    return []

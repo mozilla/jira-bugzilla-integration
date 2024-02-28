@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     max_retries: int = 3
     # https://github.com/python/mypy/issues/12841
     env: Environment = Environment.NONPROD  # type: ignore
+    jbi_api_key: str
 
     # Jira
     jira_base_url: str = "https://mozit-test.atlassian.net/"

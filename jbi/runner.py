@@ -4,28 +4,25 @@ Execute actions from Webhook requests
 import inspect
 import itertools
 import logging
+import re
 from typing import Optional
 
 from statsd.defaults.env import statsd
 
-from jbi import ActionResult, Operation
+from jbi import ActionResult, Operation, bugzilla, jira
 from jbi import steps as steps_module
 from jbi.environment import get_settings
-from jbi.errors import (
-    ActionNotFoundError,
-    IgnoreInvalidRequestError,
-    IncompleteStepError,
-)
+from jbi.errors import ActionNotFoundError, IgnoreInvalidRequestError
 from jbi.models import (
+    Action,
     ActionContext,
     ActionParams,
     Actions,
     ActionSteps,
-    BugzillaWebhookRequest,
     JiraContext,
     RunnerContext,
 )
-from jbi.services import bugzilla, jira
+from jbi.steps import StepStatus
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +49,24 @@ def groups2operation(steps: ActionSteps):
     except KeyError as err:
         raise ValueError(f"Unsupported entry in `steps`: {err}") from err
     return by_operation
+
+
+def lookup_action(bug: bugzilla.Bug, actions: Actions) -> Action:
+    """
+    Find first matching action from bug's whiteboard field.
+
+    Tags are strings between brackets and can have prefixes/suffixes
+    using dashes (eg. ``[project]``, ``[project-moco]``, ``[project-moco-sprint1]``).
+    """
+
+    if bug.whiteboard:
+        for tag, action in actions.by_tag.items():
+            # [tag-word], [tag-], [tag], but not [word-tag] or [tagword]
+            search_string = r"\[" + tag + r"(-[^\]]*)*\]"
+            if re.search(search_string, bug.whiteboard, flags=re.IGNORECASE):
+                return action
+
+    raise ActionNotFoundError(", ".join(actions.by_tag.keys()))
 
 
 class Executor:
@@ -102,15 +117,16 @@ class Executor:
 
         for step in self.steps[context.operation]:
             context = context.update(current_step=step.__name__)
+            step_kwargs = self.build_step_kwargs(step)
             try:
-                step_kwargs = self.build_step_kwargs(step)
-                context = step(context=context, **step_kwargs)
-            except IncompleteStepError as exc:
-                # Step did not execute all its operations.
-                context = exc.context
-                statsd.incr(
-                    f"jbi.action.{context.action.whiteboard_tag}.incomplete.count"
-                )
+                result, context = step(context=context, **step_kwargs)
+                if result == StepStatus.SUCCESS:
+                    statsd.incr(f"jbi.steps.{step.__name__}.count")
+                elif result == StepStatus.INCOMPLETE:
+                    # Step did not execute all its operations.
+                    statsd.incr(
+                        f"jbi.action.{context.action.whiteboard_tag}.incomplete.count"
+                    )
             except Exception:
                 if has_produced_request:
                     # Count the number of workflows that produced at least one request,
@@ -124,7 +140,7 @@ class Executor:
             if step_responses:
                 has_produced_request = True
             for response in step_responses:
-                logger.debug(
+                logger.info(
                     "Received %s",
                     response,
                     extra={
@@ -142,7 +158,7 @@ class Executor:
 
 @statsd.timer("jbi.action.execution.timer")
 def execute_action(
-    request: BugzillaWebhookRequest,
+    request: bugzilla.WebhookRequest,
     actions: Actions,
 ):
     """Execute the configured action for the specified `request`.
@@ -154,7 +170,6 @@ def execute_action(
     """
     bug, event = request.bug, request.event
     runner_context = RunnerContext(
-        rid=request.rid,
         bug=bug,
         event=event,
         operation=Operation.HANDLE,
@@ -163,7 +178,7 @@ def execute_action(
         if bug.is_private:
             raise IgnoreInvalidRequestError("private bugs are not supported")
 
-        logger.debug(
+        logger.info(
             "Handling incoming request",
             extra=runner_context.model_dump(),
         )
@@ -179,7 +194,7 @@ def execute_action(
 
         runner_context = runner_context.update(bug=bug)
         try:
-            action = bug.lookup_action(actions)
+            action = lookup_action(bug, actions)
         except ActionNotFoundError as err:
             raise IgnoreInvalidRequestError(
                 f"no bug whiteboard matching action tags: {err}"
@@ -192,7 +207,6 @@ def execute_action(
 
         action_context = ActionContext(
             action=action,
-            rid=request.rid,
             bug=bug,
             event=event,
             operation=Operation.IGNORE,
@@ -248,7 +262,7 @@ def execute_action(
         )
         executor = Executor(parameters=action.parameters)
         handled, details = executor(context=action_context)
-
+        statsd.incr(f"jbi.operation.{action_context.operation.lower()}.count")
         logger.info(
             "Action %r executed successfully for Bug %s",
             action.whiteboard_tag,

@@ -10,7 +10,7 @@ jobs:
       - uses: actions/setup-python@v4
         id: setup-python
         with:
-          python-version: "3.11"
+          python-version: "3.12"
       - name: Install poetry
         run: pipx install poetry
       - uses: actions/cache@v3
@@ -27,7 +27,9 @@ jobs:
       - uses: actions/setup-python@v4
         id: setup-python
         with:
-          python-version: "3.11"
+          python-version: "3.12"
+      - name: Install pandoc
+        run: sudo apt-get install -y pandoc
       - name: Install poetry
         run: pipx install poetry
       - uses: actions/cache@v3

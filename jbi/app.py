@@ -8,17 +8,25 @@ from secrets import token_hex
 from typing import Any, Awaitable, Callable
 
 import sentry_sdk
-from fastapi import FastAPI, Request, Response
+from asgi_correlation_id import CorrelationIdMiddleware
+from fastapi import FastAPI, Request, Response, status
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from jbi.environment import get_settings, get_version
-from jbi.log import format_request_summary_fields
+from jbi.log import CONFIG, format_request_summary_fields
 from jbi.router import router
 
 SRC_DIR = Path(__file__).parent
 
 settings = get_settings()
 version_info = get_version()
+
+logging.config.dictConfig(CONFIG)
+
+logger = logging.getLogger(__name__)
 
 
 def traces_sampler(sampling_context: dict[str, Any]) -> float:
@@ -50,16 +58,6 @@ app.mount("/static", StaticFiles(directory=SRC_DIR / "static"), name="static")
 
 
 @app.middleware("http")
-async def request_id(
-    request: Request, call_next: Callable[[Request], Awaitable[Response]]
-) -> Response:
-    """Read the request id from headers. This is set by NGinx."""
-    request.state.rid = request.headers.get("X-Request-Id", token_hex(16))
-    response = await call_next(request)
-    return response
-
-
-@app.middleware("http")
 async def request_summary(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]
 ) -> Response:
@@ -75,7 +73,37 @@ async def request_summary(
         return response
     except Exception as exc:
         log_fields = format_request_summary_fields(
-            request, request_time, status_code=500
+            request, request_time, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
         summary_logger.info(exc, extra=log_fields)
         raise
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(
+    request: Request, exc: RequestValidationError
+) -> Response:
+    """
+    Override the default exception handler for validation
+    errors in order to log some information about malformed
+    requests.
+    """
+    logger.error(
+        "invalid incoming request: %s",
+        exc,
+        extra={
+            "errors": exc.errors(),
+        },
+    )
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={"detail": jsonable_encoder(exc.errors())},
+    )
+
+
+app.add_middleware(
+    CorrelationIdMiddleware,
+    header_name="X-Request-Id",
+    generator=lambda: token_hex(16),
+    validator=None,
+)

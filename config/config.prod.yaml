@@ -149,6 +149,7 @@
         - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_whiteboard_labels
+        - sync_keywords_labels
       existing:
         - update_issue_summary
         - maybe_update_components
@@ -156,6 +157,7 @@
         - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_whiteboard_labels
+        - sync_keywords_labels
       comment:
         - create_comment
     status_map:
@@ -276,12 +278,14 @@
         - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_whiteboard_labels
+        - sync_keywords_labels
       existing:
         - update_issue_summary
         - maybe_assign_jira_user
         - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_whiteboard_labels
+        - sync_keywords_labels
       comment:
         - create_comment
     status_map:
@@ -315,6 +319,38 @@
   parameters:
     jira_project_key: FIDEFE
     labels_brackets: both
+
+- whiteboard_tag: recomp
+  bugzilla_user_id: 462407
+  description: Reusable Components Engineering
+  parameters:
+    jira_project_key: RECOMP
+    steps:
+      new:
+        - create_issue
+        - maybe_delete_duplicate
+        - add_link_to_bugzilla
+        - add_link_to_jira
+        - maybe_assign_jira_user
+        - maybe_update_issue_resolution
+        - maybe_update_issue_status
+        - sync_whiteboard_labels
+      existing:
+        - update_issue_summary
+        - maybe_assign_jira_user
+        - maybe_update_issue_resolution
+        - maybe_update_issue_status
+        - sync_whiteboard_labels
+    labels_brackets: both
+    status_map:
+      ASSIGNED: In Progress
+      FIXED: Closed
+      WONTFIX: Closed
+      DUPLICATE: Closed
+      INVALID: Closed
+      INCOMPLETE: Closed
+      WORKSFORME: Closed
+      REOPENED: In Progress
 
 - whiteboard_tag: relops
   bugzilla_user_id: tbd
@@ -373,6 +409,7 @@
         - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_whiteboard_labels
+        - sync_keywords_labels
       existing:
         - update_issue_summary
         - maybe_assign_jira_user
@@ -380,6 +417,7 @@
         - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_whiteboard_labels
+        - sync_keywords_labels
       comment:
         - create_comment
     status_map:
@@ -448,7 +486,6 @@
       INCOMPLETE: Done
       MOVED: Done
 
-
 - whiteboard_tag: dataquality
   bugzilla_user_id: tbd
   description: Data Quality
@@ -489,3 +526,9 @@
       WORKSFORME: Done
       INCOMPLETE: Done
       MOVED: Done
+
+- whiteboard_tag: jbi-prodtest
+  bugzilla_user_id: tbd
+  description: Prod testing whiteboard tag (JBI Bin Project)
+  parameters:
+    jira_project_key: JB

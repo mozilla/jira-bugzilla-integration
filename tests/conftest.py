@@ -9,13 +9,11 @@ import responses
 from fastapi.testclient import TestClient
 from pytest_factoryboy import register
 
-from jbi import Operation
+import tests.fixtures.factories as factories
+from jbi import Operation, bugzilla, jira
 from jbi.app import app
-from jbi.configuration import get_actions
 from jbi.environment import Settings
-from jbi.models import ActionContext, BugzillaWebhookRequest
-from jbi.services import bugzilla, jira
-from tests.fixtures.factories import *
+from jbi.models import ActionContext
 
 
 class FilteredLogCaptureFixture(pytest.LogCaptureFixture):
@@ -51,22 +49,27 @@ def capturelogs(request):
 
 @pytest.fixture(autouse=True)
 def mocked_statsd():
-    with mock.patch("jbi.services.common.statsd") as _mocked_statsd:
+    with mock.patch("jbi.common.instrument.statsd") as _mocked_statsd:
         yield _mocked_statsd
 
 
-register(ActionContextFactory)
-register(ActionFactory)
-register(ActionsFactory)
-register(ActionParamsFactory)
-register(BugFactory)
-register(BugzillaWebhookFactory)
-register(CommentFactory)
-register(JiraContextFactory)
-register(WebhookFactory)
-register(WebhookEventChangeFactory)
-register(WebhookEventFactory)
-register(WebhookUserFactory)
+register(factories.ActionContextFactory)
+register(factories.ActionFactory)
+register(factories.ActionsFactory, "_actions")
+register(factories.ActionParamsFactory)
+register(factories.BugFactory)
+register(factories.WebhookFactory, "bugzilla_webhook")
+register(factories.CommentFactory)
+register(factories.JiraContextFactory)
+register(factories.WebhookEventFactory)
+register(factories.WebhookEventChangeFactory)
+register(factories.WebhookRequestFactory, "bugzilla_webhook_request")
+register(factories.WebhookUserFactory)
+
+
+register(
+    factories.ActionContextFactory, "context_create_example", operation=Operation.CREATE
+)
 
 
 @pytest.fixture
@@ -76,15 +79,26 @@ def anon_client():
 
 
 @pytest.fixture
+def test_api_key():
+    # api key for tests defined in .env.example
+    return "fake_api_key"
+
+
+@pytest.fixture
+def authenticated_client(test_api_key):
+    """An test client with a valid API key."""
+    return TestClient(app, headers={"X-Api-Key": test_api_key})
+
+
+@pytest.fixture
 def settings():
     """A test Settings object"""
     return Settings()
 
 
-@pytest.fixture(autouse=True)
-def actions():
-    get_actions.cache_clear()
-    return get_actions()
+@pytest.fixture()
+def actions(actions_factory):
+    return actions_factory()
 
 
 @pytest.fixture(autouse=True)
@@ -93,7 +107,7 @@ def mocked_bugzilla(request):
         yield None
         bugzilla.get_service.cache_clear()
     else:
-        with mock.patch("jbi.services.bugzilla.BugzillaClient") as mocked_bz:
+        with mock.patch("jbi.bugzilla.service.BugzillaClient") as mocked_bz:
             yield mocked_bz()
             bugzilla.get_service.cache_clear()
 
@@ -104,7 +118,7 @@ def mocked_jira(request):
         yield None
         jira.get_service.cache_clear()
     else:
-        with mock.patch("jbi.services.jira.JiraClient") as mocked_jira:
+        with mock.patch("jbi.jira.service.JiraClient") as mocked_jira:
             yield mocked_jira()
             jira.get_service.cache_clear()
 
@@ -115,9 +129,6 @@ def mocked_responses():
         yield rsps
 
 
-register(ActionContextFactory, "context_create_example", operation=Operation.CREATE)
-
-
 @pytest.fixture
 def context_comment_example(action_context_factory) -> ActionContext:
     return action_context_factory(
@@ -125,14 +136,11 @@ def context_comment_example(action_context_factory) -> ActionContext:
         bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
         bug__with_comment=True,
         bug__comment__number=2,
-        bug__comment__body="hello",
+        bug__comment__body="> hello\n>\n\nworld",
         event__target="comment",
         event__user__login="mathieu@mozilla.org",
         jira__issue="JBI-234",
     )
-
-
-register(WebhookFactory, "webhook_create_example")
 
 
 @pytest.fixture(autouse=True)

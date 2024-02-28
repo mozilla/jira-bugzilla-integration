@@ -6,42 +6,49 @@ authors = ["@mozilla/jbi-core"]
 license = "MPL"
 
 [tool.poetry.dependencies]
-python = ">=3.10 <3.12"
-fastapi = "^0.104.1"
-pydantic = {version = "^2.4.2", extras = ["email"]}
-uvicorn = {extras = ["standard"], version = "^0.23.2"}
-atlassian-python-api = "^3.41.3"
-dockerflow = "2022.8.0"
-Jinja2 = "^3.1.2"
-pydantic-yaml = {extras = ["pyyaml","ruamel"], version = "^1.2.0"}
-sentry-sdk = {extras = ["fastapi"], version = "^1.33.1"}
+python = ">=3.12, <3.13"
+fastapi = "^0.110.0"
+pydantic = {version = "^2.6.3", extras = ["email"]}
+uvicorn = {extras = ["standard"], version = "^0.27.1"}
+atlassian-python-api = "^3.41.11"
+dockerflow = "2024.2.0"
+Jinja2 = "^3.1.3"
+sentry-sdk = {extras = ["fastapi"], version = "^1.40.6"}
+pydantic-yaml = "^1.2.1"
 backoff = "^2.2.1"
 statsd = "^4.0.1"
 requests = "^2.31.0"
-pydantic-settings = "^2.0.3"
+pydantic-settings = "^2.2.1"
+asgi-correlation-id = "^4.3.1"
+pypandoc = "^1.13"
 
 [tool.poetry.group.dev.dependencies]
-pre-commit = "^3.5.0"
-black = "^23.10.1"
-isort = "^5.12.0"
-coverage = {extras = ["toml"], version = "^7.3"}
-mypy = "^1.6"
+pre-commit = "^3.6.2"
+coverage = {extras = ["toml"], version = "^7.4"}
+mypy = "^1.8"
 detect-secrets = "^1.4.0"
-bandit = "^1.7.5"
-pylint = "^2.17.6"
-pylint-pytest = "^1.1.4"
-pytest = "^7.4.3"
-yamllint = "^1.32.0"
+bandit = "^1.7.7"
+pytest = "^8.0.2"
+yamllint = "^1.35.1"
 pytest-dotenv = "^0.5.2"
 types-requests = "^2.31.0"
-responses = "^0.24.0"
-httpx = "^0.25.1"
+responses = "^0.25.0"
+httpx = "^0.27.0"
 factory-boy = "^3.3.0"
 pytest-factoryboy = "^2.6.0"
+ruff = "^0.2.2"
+pytest-mock = "^3.12.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+target-version = "py312"
+extend-select = ["I"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
 
 [tool.pytest.ini_options]
 testpaths = [
@@ -56,34 +63,14 @@ markers = [
     "no_mocked_jira",
 ]
 
-[tool.pylint]
-    [tool.pylint.'MESSAGES CONTROL']
-    disable = [
-        "C0301", #line-too-long
-        "R0903", #too-few-public-methods
-        "W0613", #unused-argument
-    ]
-    [tool.pylint.REPORTS]
-    output-format = 'colorized'
-    [tool.pylint.MASTER]
-    load-plugins='pylint_pytest'
-    ignore='third_party'
-    ignore-patterns = "tests/*"
-    extension-pkg-whitelist = "pydantic"
-    [tool.pylint.SIMILARITIES]
-    ignore-signatures = "yes"
-
-[tool.isort]
-profile = "black"
-
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.12"
 # Warn when returning Any from function with non-Any return
 warn_return_any = true
 plugins = "pydantic.mypy"
 
 [[tool.mypy.overrides]]
-module = ["ruamel", "bugzilla", "atlassian", "statsd.defaults.env"]
+module = ["ruamel", "bugzilla", "atlassian", "atlassian.rest_client", "statsd.defaults.env", "dockerflow"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

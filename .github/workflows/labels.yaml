@@ -4,7 +4,16 @@ on:
   pull_request:
     types: [opened, labeled, unlabeled]
 jobs:
+  wait-triage:
+    runs-on: ubuntu-latest
+    if: github.event.action == 'opened'
+    steps:
+      - name: Wait for auto-labeler
+        run: sleep 10s
+        shell: bash
+
   pr-has-label:
+    needs: wait-triage
     name: Will be skipped if labelled
     runs-on: ubuntu-latest
     if: ${{ join(github.event.pull_request.labels.*.name, ', ') == '' }}

@@ -16,8 +16,8 @@ help:
 	@echo ""
 	@echo "Local"
 	@echo "  clean         - clean local cache folders"
-	@echo "  format        - run formatters (black, isort), fix in place"
-	@echo "  lint          - run linters"
+	@echo "  format        - run linting checks, fix in place"
+	@echo "  lint          - run linting checks"
 	@echo "  start         - run the API service locally"
 	@echo "  test          - run test suite"
 	@echo ""
@@ -31,7 +31,7 @@ help:
 .PHONY: clean
 clean:
 	find . -name "__pycache__" | xargs rm -rf
-	rm -rf .mypy_cache .pytest_cache .coverage .venv
+	rm -rf .mypy_cache .ruff_cache .coverage .venv
 
 $(VENV)/bin/python:
 	python3 -m venv $(VENV)
@@ -49,8 +49,8 @@ build:
 
 .PHONY: format
 format: $(INSTALL_STAMP)
-	bin/lint.sh black --fix
-	bin/lint.sh isort --fix
+	bin/lint.sh lint --fix
+	bin/lint.sh format --fix
 
 .PHONY: lint
 lint: $(INSTALL_STAMP)

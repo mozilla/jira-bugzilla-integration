@@ -1,7 +1,6 @@
 import pydantic
 import pytest
 
-from jbi.errors import ActionNotFoundError
 from jbi.models import ActionParams, Actions, ActionSteps
 
 
@@ -37,8 +36,8 @@ def test_default_invalid_step():
 
 def test_duplicated_whiteboard_tag_fails(action_factory):
     with pytest.raises(ValueError) as exc_info:
-        Actions.parse_obj(
-            [
+        Actions(
+            root=[
                 action_factory(whiteboard_tag="x"),
                 action_factory(whiteboard_tag="y"),
                 action_factory(whiteboard_tag="x"),
@@ -49,8 +48,8 @@ def test_duplicated_whiteboard_tag_fails(action_factory):
 
 def test_override_step_configuration_for_single_action_type():
     default_steps = ActionSteps()
-    params = ActionParams.parse_obj(
-        {"jira_project_key": "JBI", "steps": {"new": ["create_issue"]}}
+    params = ActionParams(
+        jira_project_key="JBI", steps=ActionSteps(new=["create_issue"])
     )
     assert params.steps.new == ["create_issue"]
     assert params.steps.new != default_steps.new
@@ -107,54 +106,6 @@ def test_product_component(product, component, expected, bug_factory):
     assert bug.product_component == expected
 
 
-@pytest.mark.parametrize(
-    "whiteboard",
-    [
-        "[DevTest]",
-        "[DevTest-]",
-        "[DevTest-test]",
-        "[DevTest-test-foo]",
-        "[example][DevTest]",
-        "[DevTest][example]",
-        "[example][DevTest][example]",
-    ],
-)
-def test_lookup_action_found(whiteboard, actions_factory, bug_factory):
-    bug = bug_factory(id=1234, whiteboard=whiteboard)
-    action = bug.lookup_action(actions_factory())
-    assert action.whiteboard_tag == "devtest"
-    assert "test config" in action.description
-
-
-@pytest.mark.parametrize(
-    "whiteboard",
-    [
-        "DevTest",
-        "[-DevTest-]",
-        "[-DevTest]",
-        "[test-DevTest]",
-        "[foo-DevTest-bar]",
-        "[foo-bar-DevTest-foo-bar]",
-        "foo DevTest",
-        "DevTest bar",
-        "foo DevTest bar",
-        "[fooDevTest]",
-        "[foo DevTest]",
-        "[DevTestbar]",
-        "[DevTest bar]",
-        "[fooDevTestbar]",
-        "[fooDevTest-bar]",
-        "[foo-DevTestbar]",
-        "[foo] devtest [bar]",
-    ],
-)
-def test_lookup_action_not_found(whiteboard, actions_factory, bug_factory):
-    bug = bug_factory(id=1234, whiteboard=whiteboard)
-    with pytest.raises(ActionNotFoundError) as exc_info:
-        bug.lookup_action(actions_factory())
-    assert str(exc_info.value) == "devtest"
-
-
 def test_payload_empty_changes_list(webhook_event_factory):
     event = webhook_event_factory(routing_key="bug.modify", changes=None)
     assert event.changed_fields() == []
@@ -172,3 +123,20 @@ def test_payload_changes_list(webhook_event_change_factory, webhook_event_factor
         "status",
         "assignee",
     ]
+
+
+def test_payload_changes_coerces_numbers_to_strings(
+    webhook_event_change_factory, webhook_event_factory
+):
+    changes = [
+        webhook_event_change_factory(field="is_confirmed", removed="1", added=0),
+    ]
+    event = webhook_event_factory(routing_key="bug.modify", changes=changes)
+    assert event.changed_fields() == ["is_confirmed"]
+    assert event.changes[0].added == "0"
+
+
+def test_max_configured_projects_raises_error(action_factory):
+    actions = [action_factory(whiteboard_tag=str(i)) for i in range(51)]
+    with pytest.raises(pydantic.ValidationError):
+        Actions(root=actions)
