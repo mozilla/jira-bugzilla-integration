@@ -5,28 +5,9 @@ import logging
 import logging.config
 import sys
 
-from asgi_correlation_id import CorrelationIdFilter
-
 from jbi.environment import get_settings
 
 settings = get_settings()
-
-
-class RequestIdFilter(CorrelationIdFilter):
-    """Renames `correlation_id` log field to `rid`"""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def filter(self, record) -> bool:
-        result = super().filter(record)  # Apply the existing filter
-
-        # Rename the field from 'correlation_id' to 'rid'
-        if hasattr(record, "correlation_id"):
-            setattr(record, "rid", getattr(record, "correlation_id"))
-            delattr(record, "correlation_id")
-
-        return result
 
 
 CONFIG = {
@@ -34,9 +15,7 @@ CONFIG = {
     "disable_existing_loggers": False,
     "filters": {
         "request_id": {
-            "()": RequestIdFilter,
-            "uuid_length": 32,
-            "default_value": "-",
+            "()": "dockerflow.logging.RequestIdLogFilter",
         },
     },
     "formatters": {

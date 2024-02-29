@@ -32,23 +32,6 @@ test = ["anyio[trio]", "coverage[toml] (>=4.5)", "hypothesis (>=4.0)", "mock (>=
 trio = ["trio (<0.22)"]
 
 [[package]]
-name = "asgi-correlation-id"
-version = "4.3.1"
-description = "Middleware correlating project logs to individual requests"
-optional = false
-python-versions = ">=3.8,<4.0"
-files = [
-    {file = "asgi_correlation_id-4.3.1-py3-none-any.whl", hash = "sha256:128509a822e87ac544662804b402761ee2d8fd9769f23339cff220d22d222546"},
-    {file = "asgi_correlation_id-4.3.1.tar.gz", hash = "sha256:3d7efa2c002fa909d6e1a452c1cf8088ff5ac186884b4d9aa5430ed00b036278"},
-]
-
-[package.dependencies]
-starlette = ">=0.18"
-
-[package.extras]
-celery = ["celery"]
-
-[[package]]
 name = "asgiref"
 version = "3.7.2"
 description = "ASGI specs, helper code, and adapters"
@@ -2052,4 +2035,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.12, <3.13"
-content-hash = "21a19a3c97187847df73c4de32876464990cfff3fae89525813e6d9d1522c54b"
+content-hash = "5a1e1f704bc4b351c64722e265d68ea89cf204e077ad4a4ff901233a414ac385"

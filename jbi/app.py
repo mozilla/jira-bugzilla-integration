@@ -4,14 +4,12 @@ Core FastAPI app (setup, middleware)
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
-from secrets import token_hex
 from typing import Any, AsyncGenerator
 
 import sentry_sdk
-from asgi_correlation_id import CorrelationIdMiddleware
 from dockerflow import checks
 from dockerflow.fastapi import router as dockerflow_router
-from dockerflow.fastapi.middleware import MozlogRequestSummaryLogger
+from dockerflow.fastapi.middleware import RequestIdMiddleware, MozlogRequestSummaryLogger
 from dockerflow.version import get_version
 from fastapi import FastAPI, Request, Response, status
 from fastapi.encoders import jsonable_encoder
@@ -105,6 +103,7 @@ app.state.DOCKERFLOW_SUMMARY_LOG_QUERYSTRING = True
 
 app.include_router(router)
 app.include_router(dockerflow_router)
+app.add_middleware(RequestIdMiddleware)
 app.add_middleware(MozlogRequestSummaryLogger)
 
 app.mount("/static", StaticFiles(directory=SRC_DIR / "static"), name="static")
@@ -130,11 +129,3 @@ async def validation_exception_handler(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={"detail": jsonable_encoder(exc.errors())},
     )
-
-
-app.add_middleware(
-    CorrelationIdMiddleware,
-    header_name="X-Request-Id",
-    generator=lambda: token_hex(16),
-    validator=None,
-)
