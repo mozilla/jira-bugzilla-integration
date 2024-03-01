@@ -250,6 +250,29 @@ class JiraService:
                 f"Could not assign {jira_user_id} to issue {issue_key}"
             ) from exc
 
+    def update_issue_named_field(self, context: ActionContext, field: str, value: str):
+        bug = context.bug
+        issue_key = context.jira.issue
+        logger.info(
+            f"Updating {field} of Jira issue %s to %s for Bug %s",
+            issue_key,
+            value,
+            bug.id,
+            extra=context.model_dump(),
+        )
+        fields: dict[str, Any] = {
+            field: {"name": value},
+        }
+        response = self.client.update_issue_field(key=issue_key, fields=fields)
+        logger.info(
+            f"Updated {field} of Jira issue %s to %s for Bug %s",
+            issue_key,
+            value,
+            bug.id,
+            extra={"response": response, **context.model_dump()},
+        )
+        return response
+
     def update_issue_status(self, context: ActionContext, jira_status: str):
         """Update the status of the Jira issue"""
         issue_key = context.jira.issue
@@ -287,26 +310,7 @@ class JiraService:
 
     def update_issue_resolution(self, context: ActionContext, jira_resolution: str):
         """Update the resolution of the Jira issue."""
-        issue_key = context.jira.issue
-        assert issue_key  # Until we have more fine-grained typing of contexts
-
-        logger.info(
-            "Updating resolution of Jira issue %s to %s",
-            issue_key,
-            jira_resolution,
-            extra=context.model_dump(),
-        )
-        response = self.client.update_issue_field(
-            key=issue_key,
-            fields={"resolution": {"name": jira_resolution}},
-        )
-        logger.info(
-            "Updated resolution of Jira issue %s to %s",
-            issue_key,
-            jira_resolution,
-            extra={"response": response, **context.model_dump()},
-        )
-        return response
+        return self.update_issue_named_field(context, field="resolution", value=jira_resolution)
 
     def update_issue_components(
         self,

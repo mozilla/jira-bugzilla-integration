@@ -200,21 +200,19 @@ def maybe_assign_jira_user(
     return (StepStatus.NOOP, context)
 
 
-def maybe_update_issue_resolution(
-    context: ActionContext, *, parameters: ActionParams, jira_service: JiraService
+def _maybe_update_issue_mapped_field(
+    source_field: str,
+    target_field: str,
+    context: ActionContext,
+    parameters: ActionParams,
+    jira_service: JiraService,
 ) -> StepResult:
-    """
-    Update the Jira issue status
-    https://support.atlassian.com/jira-cloud-administration/docs/what-are-issue-statuses-priorities-and-resolutions/
-    """
-
-    bz_resolution = context.bug.resolution or ""
-    jira_resolution = parameters.resolution_map.get(bz_resolution)
-
-    if jira_resolution is None:
+    source_value = getattr(context.bug, source_field, None) or ""
+    target_value = getattr(parameters, f"{source_field}_map").get(source_value)
+    if target_value is None:
         logger.info(
-            "Bug resolution %r was not in the resolution map.",
-            bz_resolution,
+            f"Bug {source_field} %r was not in the {source_field} map.",
+            source_value,
             extra=context.update(
                 operation=Operation.IGNORE,
             ).model_dump(),
@@ -222,17 +220,29 @@ def maybe_update_issue_resolution(
         return (StepStatus.INCOMPLETE, context)
 
     if context.operation == Operation.CREATE:
-        resp = jira_service.update_issue_resolution(context, jira_resolution)
+        resp = jira_service.update_issue_named_field(context, target_field, target_value)
         context.append_responses(resp)
         return (StepStatus.SUCCESS, context)
 
     if context.operation == Operation.UPDATE:
-        if "resolution" in context.event.changed_fields():
-            resp = jira_service.update_issue_resolution(context, jira_resolution)
+        if source_field in context.event.changed_fields():
+            resp = jira_service.update_issue_named_field(context, target_field, target_value)
             context.append_responses(resp)
             return (StepStatus.SUCCESS, context)
 
     return (StepStatus.NOOP, context)
+
+
+def maybe_update_issue_resolution(
+    context: ActionContext, *, parameters: ActionParams, jira_service: JiraService
+) -> StepResult:
+    """
+    Update the Jira issue status
+    https://support.atlassian.com/jira-cloud-administration/docs/what-are-issue-statuses-priorities-and-resolutions/
+    """
+    return _maybe_update_issue_mapped_field(
+        "resolution", "resolution", context, parameters, jira_service
+    )
 
 
 def maybe_update_issue_status(
