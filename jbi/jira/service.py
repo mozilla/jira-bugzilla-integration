@@ -570,9 +570,9 @@ def check_jira_all_project_issue_types_exist(actions, _get_service):
         action_issue_types = set(action.parameters.issue_type_map.values())
         project_issue_types = issue_types_by_project.get(action.jira_project_key, set())
         if missing_issue_types := action_issue_types - project_issue_types:
-            missing_issue_types_by_project[
-                action.jira_project_key
-            ] = missing_issue_types
+            missing_issue_types_by_project[action.jira_project_key] = (
+                missing_issue_types
+            )
     if missing_issue_types_by_project:
         return [
             checks.Warning(
