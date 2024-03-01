@@ -74,6 +74,7 @@ class ActionParams(BaseModel, frozen=True):
     jira_project_key: str
     steps: ActionSteps = ActionSteps()
     jira_components: JiraComponents = JiraComponents()
+    jira_cf_fx_points_field: str = "customfield_10037"
     jira_severity_field: str = "customfield_10716"
     jira_priority_field: str = "priority"
     jira_resolution_field: str = "resolution"
@@ -88,6 +89,18 @@ class ActionParams(BaseModel, frozen=True):
     }
     resolution_map: dict[str, str] = {}
     severity_map: dict[str, str] = {}
+    cf_fx_points_map: dict[str, int] = {
+        "?": 0,
+        "1": 1,
+        "2": 2,
+        "3": 3,
+        "5": 5,
+        "7": 7,
+        "8": 8,
+        "12": 12,
+        "13": 13,
+        "15": 15,
+    }
     issue_type_map: dict[str, str] = {"task": "Task", "defect": "Bug"}
 
 
