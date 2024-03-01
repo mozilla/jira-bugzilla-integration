@@ -78,23 +78,9 @@ class ActionParams(BaseModel, frozen=True):
     jira_resolution_field: str = "resolution"
     labels_brackets: Literal["yes", "no", "both"] = "no"
     status_map: dict[str, str] = {}
-    priority_map: dict[str, str] = {
-        "P1": "1",
-        "P2": "2",
-        "P3": "3",
-        "P4": "4",
-        "P5": "5",
-        "--": "10000",
-    }
+    priority_map: dict[str, str] = {}
     resolution_map: dict[str, str] = {}
-    severity_map: dict[str, str] = {
-        "S1": "1",
-        "S2": "2",
-        "S3": "3",
-        "S4": "4",
-        "N/A": "--",
-        "--": "--",
-    }
+    severity_map: dict[str, str] = {}
     issue_type_map: dict[str, str] = {"task": "Task", "defect": "Bug"}
 
 
