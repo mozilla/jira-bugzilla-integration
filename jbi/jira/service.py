@@ -241,16 +241,21 @@ class JiraService:
             # There doesn't appear to be an easy way to verify that
             # this user can be assigned to this issue, so just try
             # and do it.
-            return self.client.update_issue_field(
-                key=issue_key,
-                fields={"assignee": {"accountId": jira_user_id}},
+            return self.update_issue_field(
+                context, "assignee", jira_user_id, wrap_value="accountId"
             )
         except (requests_exceptions.HTTPError, IOError) as exc:
             raise ValueError(
                 f"Could not assign {jira_user_id} to issue {issue_key}"
             ) from exc
 
-    def update_issue_named_field(self, context: ActionContext, field: str, value: str):
+    def update_issue_field(
+        self,
+        context: ActionContext,
+        field: str,
+        value: Any,
+        wrap_value: Optional[str] = None,
+    ):
         bug = context.bug
         issue_key = context.jira.issue
         logger.info(
@@ -260,9 +265,7 @@ class JiraService:
             bug.id,
             extra=context.model_dump(),
         )
-        fields: dict[str, Any] = {
-            field: {"name": value},
-        }
+        fields: dict[str, Any] = {field: {wrap_value: value} if wrap_value else value}
         response = self.client.update_issue_field(key=issue_key, fields=fields)
         logger.info(
             f"Updated {field} of Jira issue %s to %s for Bug %s",
@@ -290,34 +293,25 @@ class JiraService:
 
     def update_issue_summary(self, context: ActionContext):
         """Update's an issue's summary with the description of an incoming bug"""
-
-        bug = context.bug
-        issue_key = context.jira.issue
-        logger.info(
-            "Update summary of Jira issue %s for Bug %s",
-            issue_key,
-            bug.id,
-            extra=context.model_dump(),
-        )
         truncated_summary = markdown_to_jira(
-            bug.summary or "", max_length=JIRA_DESCRIPTION_CHAR_LIMIT
+            context.bug.summary or "", max_length=JIRA_DESCRIPTION_CHAR_LIMIT
         )
-        fields: dict[str, str] = {
-            "summary": truncated_summary,
-        }
-        jira_response = self.client.update_issue_field(key=issue_key, fields=fields)
-        return jira_response
+        return self.update_issue_field(
+            context, field="summary", value=truncated_summary
+        )
 
     def update_issue_resolution(self, context: ActionContext, jira_resolution: str):
         """Update the resolution of the Jira issue."""
-        return self.update_issue_named_field(
-            context, field="resolution", value=jira_resolution
+        return self.update_issue_field(
+            context,
+            field="resolution",
+            value=jira_resolution,
+            wrap_value="name",
         )
 
     def update_issue_components(
         self,
-        issue_key: str,
-        project: str,
+        context: ActionContext,
         components: Iterable[str],
     ) -> tuple[Optional[dict], set]:
         """Attempt to add components to the specified issue
@@ -334,7 +328,9 @@ class JiraService:
         missing_components = set(components)
         jira_components = []
 
-        all_project_components = self.client.get_project_components(project)
+        all_project_components = self.client.get_project_components(
+            context.jira.project
+        )
         for comp in all_project_components:
             if comp["name"] in missing_components:
                 jira_components.append({"id": comp["id"]})
@@ -343,13 +339,8 @@ class JiraService:
         if not jira_components:
             return None, missing_components
 
-        logger.info(
-            "attempting to add components '%s' to issue '%s'",
-            ",".join(components),
-            issue_key,
-        )
-        resp = self.client.update_issue_field(
-            key=issue_key, fields={"components": jira_components}
+        resp = self.update_issue_field(
+            context, field="components", value=jira_components
         )
         return resp, missing_components
 
@@ -576,9 +567,9 @@ def check_jira_all_project_issue_types_exist(actions, _get_service):
         action_issue_types = set(action.parameters.issue_type_map.values())
         project_issue_types = issue_types_by_project.get(action.jira_project_key, set())
         if missing_issue_types := action_issue_types - project_issue_types:
-            missing_issue_types_by_project[
-                action.jira_project_key
-            ] = missing_issue_types
+            missing_issue_types_by_project[action.jira_project_key] = (
+                missing_issue_types
+            )
     if missing_issue_types_by_project:
         return [
             checks.Warning(

@@ -73,6 +73,9 @@ class ActionParams(BaseModel, frozen=True):
     jira_project_key: str
     steps: ActionSteps = ActionSteps()
     jira_components: JiraComponents = JiraComponents()
+    jira_severity_field: str = "severity"
+    jira_priority_field: str = "priority"
+    jira_resolution_field: str = "resolution"
     labels_brackets: Literal["yes", "no", "both"] = "no"
     status_map: dict[str, str] = {}
     priority_map: dict[str, str] = {

@@ -202,13 +202,14 @@ def maybe_assign_jira_user(
 
 def _maybe_update_issue_mapped_field(
     source_field: str,
-    target_field: str,
     context: ActionContext,
     parameters: ActionParams,
     jira_service: JiraService,
+    wrap_value: Optional[str] = None,
 ) -> StepResult:
     source_value = getattr(context.bug, source_field, None) or ""
-    target_value = getattr(parameters, f"{source_field}_map").get(source_value)
+    target_field = getattr(parameters, f"jira_{source_field}_field")
+    target_value = getattr(parameters, f"{target_field}_map").get(source_value)
     if target_value is None:
         logger.info(
             f"Bug {source_field} %r was not in the {source_field} map.",
@@ -220,16 +221,22 @@ def _maybe_update_issue_mapped_field(
         return (StepStatus.INCOMPLETE, context)
 
     if context.operation == Operation.CREATE:
-        resp = jira_service.update_issue_named_field(
-            context, target_field, target_value
+        resp = jira_service.update_issue_field(
+            context,
+            target_field,
+            target_value,
+            wrap_value,
         )
         context.append_responses(resp)
         return (StepStatus.SUCCESS, context)
 
     if context.operation == Operation.UPDATE:
         if source_field in context.event.changed_fields():
-            resp = jira_service.update_issue_named_field(
-                context, target_field, target_value
+            resp = jira_service.update_issue_field(
+                context,
+                target_field,
+                target_value,
+                wrap_value,
             )
             context.append_responses(resp)
             return (StepStatus.SUCCESS, context)
@@ -244,7 +251,7 @@ def maybe_update_issue_priority(
     Update the Jira issue priority
     """
     return _maybe_update_issue_mapped_field(
-        "priority", "priority", context, parameters, jira_service
+        "priority", context, parameters, jira_service, wrap_value="name"
     )
 
 
@@ -256,7 +263,7 @@ def maybe_update_issue_resolution(
     https://support.atlassian.com/jira-cloud-administration/docs/what-are-issue-statuses-priorities-and-resolutions/
     """
     return _maybe_update_issue_mapped_field(
-        "resolution", "resolution", context, parameters, jira_service
+        "resolution", context, parameters, jira_service, wrap_value="name"
     )
 
 
@@ -267,7 +274,7 @@ def maybe_update_issue_severity(
     Update the Jira issue severity
     """
     return _maybe_update_issue_mapped_field(
-        "severity", "severity", context, parameters, jira_service
+        "severity", context, parameters, jira_service, wrap_value="name"
     )
 
 
@@ -337,8 +344,7 @@ def maybe_update_components(
 
     try:
         resp, missing_components = jira_service.update_issue_components(
-            issue_key=context.jira.issue,
-            project=parameters.jira_project_key,
+            context=context,
             components=candidate_components,
         )
     except requests_exceptions.HTTPError as exc:
