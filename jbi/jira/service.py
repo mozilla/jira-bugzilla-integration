@@ -310,7 +310,9 @@ class JiraService:
 
     def update_issue_resolution(self, context: ActionContext, jira_resolution: str):
         """Update the resolution of the Jira issue."""
-        return self.update_issue_named_field(context, field="resolution", value=jira_resolution)
+        return self.update_issue_named_field(
+            context, field="resolution", value=jira_resolution
+        )
 
     def update_issue_components(
         self,

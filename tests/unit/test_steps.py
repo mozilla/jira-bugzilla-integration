@@ -728,6 +728,74 @@ def test_change_to_unknown_resolution_with_resolution_map(
     ]
 
 
+def test_update_issue_priority(
+    action_context_factory,
+    mocked_jira,
+    action_params_factory,
+    webhook_event_change_factory,
+):
+    action_context = action_context_factory(
+        operation=Operation.UPDATE,
+        current_step="maybe_update_issue_priority",
+        bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+        jira__issue="JBI-234",
+        bug__priority="P1",
+        event__action="modify",
+        event__changes=[
+            webhook_event_change_factory(field="priority", removed="--", added="P1")
+        ],
+    )
+
+    params = action_params_factory(
+        jira_project_key=action_context.jira.project,
+        priority_map={
+            "P1": "Urgent",
+        },
+    )
+    steps.maybe_update_issue_priority(
+        action_context, parameters=params, jira_service=JiraService(mocked_jira)
+    )
+
+    mocked_jira.create_issue.assert_not_called()
+    mocked_jira.update_issue_field(
+        key="JBI-234", fields={"priority": {"name": "Urgent"}}
+    )
+
+
+def test_update_issue_severity(
+    action_context_factory,
+    mocked_jira,
+    action_params_factory,
+    webhook_event_change_factory,
+):
+    action_context = action_context_factory(
+        operation=Operation.UPDATE,
+        current_step="maybe_update_issue_severity",
+        bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+        jira__issue="JBI-234",
+        bug__severity="S3",
+        event__action="modify",
+        event__changes=[
+            webhook_event_change_factory(field="severity", removed="--", added="S3")
+        ],
+    )
+
+    params = action_params_factory(
+        jira_project_key=action_context.jira.project,
+        status_map={
+            "S3": "Moderate",
+        },
+    )
+    steps.maybe_update_issue_severity(
+        action_context, parameters=params, jira_service=JiraService(mocked_jira)
+    )
+
+    mocked_jira.create_issue.assert_not_called()
+    mocked_jira.update_issue_field(
+        key="JBI-234", fields={"severity": {"name": "Moderate"}}
+    )
+
+
 @pytest.mark.parametrize(
     "project_components,bug_component,config_components,expected_jira_components,expected_logs",
     [

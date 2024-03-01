@@ -220,17 +220,32 @@ def _maybe_update_issue_mapped_field(
         return (StepStatus.INCOMPLETE, context)
 
     if context.operation == Operation.CREATE:
-        resp = jira_service.update_issue_named_field(context, target_field, target_value)
+        resp = jira_service.update_issue_named_field(
+            context, target_field, target_value
+        )
         context.append_responses(resp)
         return (StepStatus.SUCCESS, context)
 
     if context.operation == Operation.UPDATE:
         if source_field in context.event.changed_fields():
-            resp = jira_service.update_issue_named_field(context, target_field, target_value)
+            resp = jira_service.update_issue_named_field(
+                context, target_field, target_value
+            )
             context.append_responses(resp)
             return (StepStatus.SUCCESS, context)
 
     return (StepStatus.NOOP, context)
+
+
+def maybe_update_issue_priority(
+    context: ActionContext, *, parameters: ActionParams, jira_service: JiraService
+) -> StepResult:
+    """
+    Update the Jira issue priority
+    """
+    return _maybe_update_issue_mapped_field(
+        "priority", "priority", context, parameters, jira_service
+    )
 
 
 def maybe_update_issue_resolution(
@@ -242,6 +257,17 @@ def maybe_update_issue_resolution(
     """
     return _maybe_update_issue_mapped_field(
         "resolution", "resolution", context, parameters, jira_service
+    )
+
+
+def maybe_update_issue_severity(
+    context: ActionContext, *, parameters: ActionParams, jira_service: JiraService
+) -> StepResult:
+    """
+    Update the Jira issue severity
+    """
+    return _maybe_update_issue_mapped_field(
+        "severity", "severity", context, parameters, jira_service
     )
 
 
