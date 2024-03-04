@@ -1,9 +1,27 @@
 import factory
 
+import jbi.bugzilla.models as bugzilla_models
 from jbi import Operation, models
 
 
-class ActionParamsFactory(factory.Factory):
+class PydanticFactory(factory.Factory):
+    """
+    - factory_instance(**kwargs) -> Model(**kwargs)
+    - factory_instance.create(**kwargs) -> Model(**kwargs)
+    - factory_instance.build(**kwargs) -> Model.model_construct(**kwargs)
+
+    https://docs.pydantic.dev/latest/api/base_model/#pydantic.main.BaseModel.model_construct
+    """
+
+    class Meta:
+        abstract = True
+
+    @classmethod
+    def _build(cls, model_class, *args, **kwargs):
+        return model_class.model_construct(**kwargs)
+
+
+class ActionParamsFactory(PydanticFactory):
     class Meta:
         model = models.ActionParams
 
@@ -15,7 +33,7 @@ class ActionParamsFactory(factory.Factory):
     issue_type_map = {"task": "Task", "defect": "Bug"}
 
 
-class ActionFactory(factory.Factory):
+class ActionFactory(PydanticFactory):
     class Meta:
         model = models.Action
 
@@ -25,16 +43,16 @@ class ActionFactory(factory.Factory):
     parameters = factory.SubFactory(ActionParamsFactory)
 
 
-class ActionsFactory(factory.Factory):
+class ActionsFactory(PydanticFactory):
     class Meta:
         model = models.Actions
 
     root = factory.List([factory.SubFactory(ActionFactory)])
 
 
-class BugzillaWebhookCommentFactory(factory.Factory):
+class WebhookCommentFactory(PydanticFactory):
     class Meta:
-        model = models.BugzillaWebhookComment
+        model = bugzilla_models.WebhookComment
 
     body = None
     id = None
@@ -43,14 +61,12 @@ class BugzillaWebhookCommentFactory(factory.Factory):
     creation_time = None
 
 
-class BugFactory(factory.Factory):
+class BugFactory(PydanticFactory):
     class Meta:
-        model = models.BugzillaBug
+        model = bugzilla_models.Bug
 
     class Params:
-        with_comment = factory.Trait(
-            comment=factory.SubFactory(BugzillaWebhookCommentFactory)
-        )
+        with_comment = factory.Trait(comment=factory.SubFactory(WebhookCommentFactory))
 
     assigned_to = "nobody@mozilla.org"
     comment = None
@@ -71,27 +87,27 @@ class BugFactory(factory.Factory):
     whiteboard = "[devtest]"
 
 
-class WebhookUserFactory(factory.Factory):
+class WebhookUserFactory(PydanticFactory):
     class Meta:
-        model = models.BugzillaWebhookUser
+        model = bugzilla_models.WebhookUser
 
     id = 123456
     login = "nobody@mozilla.org"
     real_name = "Nobody [ :nobody ]"
 
 
-class WebhookEventChangeFactory(factory.Factory):
+class WebhookEventChangeFactory(PydanticFactory):
     class Meta:
-        model = models.BugzillaWebhookEventChange
+        model = bugzilla_models.WebhookEventChange
 
     field = "field"
     removed = "old value"
     added = "new value"
 
 
-class WebhookEventFactory(factory.Factory):
+class WebhookEventFactory(PydanticFactory):
     class Meta:
-        model = models.BugzillaWebhookEvent
+        model = bugzilla_models.WebhookEvent
 
     action = "create"
     changes = None
@@ -101,9 +117,9 @@ class WebhookEventFactory(factory.Factory):
     user = factory.SubFactory(WebhookUserFactory)
 
 
-class WebhookFactory(factory.Factory):
+class WebhookRequestFactory(PydanticFactory):
     class Meta:
-        model = models.BugzillaWebhookRequest
+        model = bugzilla_models.WebhookRequest
 
     bug = factory.SubFactory(BugFactory)
     event = factory.SubFactory(WebhookEventFactory)
@@ -111,9 +127,9 @@ class WebhookFactory(factory.Factory):
     webhook_name = "local-test"
 
 
-class CommentFactory(factory.Factory):
+class CommentFactory(PydanticFactory):
     class Meta:
-        model = models.BugzillaComment
+        model = bugzilla_models.Comment
 
     id = 343
     text = "comment text"
@@ -123,7 +139,7 @@ class CommentFactory(factory.Factory):
     creator = "mathieu@mozilla.org"
 
 
-class JiraContextFactory(factory.Factory):
+class JiraContextFactory(PydanticFactory):
     class Meta:
         model = models.JiraContext
 
@@ -132,7 +148,7 @@ class JiraContextFactory(factory.Factory):
     labels = []
 
 
-class ActionContextFactory(factory.Factory):
+class ActionContextFactory(PydanticFactory):
     class Meta:
         model = models.ActionContext
 
@@ -143,9 +159,9 @@ class ActionContextFactory(factory.Factory):
     jira = factory.SubFactory(JiraContextFactory)
 
 
-class BugzillaWebhookFactory(factory.Factory):
+class WebhookFactory(PydanticFactory):
     class Meta:
-        model = models.BugzillaWebhook
+        model = bugzilla_models.Webhook
 
     component = "General"
     creator = "admin@mozilla.bugs"
@@ -156,19 +172,3 @@ class BugzillaWebhookFactory(factory.Factory):
     name = "Test Webhooks"
     product = "Firefox"
     url = "http://server.example.com/bugzilla_webhook"
-
-
-__all__ = [
-    "ActionContextFactory",
-    "ActionFactory",
-    "ActionParamsFactory",
-    "ActionsFactory",
-    "BugFactory",
-    "BugzillaWebhookFactory",
-    "CommentFactory",
-    "JiraContextFactory",
-    "WebhookEventChangeFactory",
-    "WebhookEventFactory",
-    "WebhookFactory",
-    "WebhookUserFactory",
-]

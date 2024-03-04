@@ -7,35 +7,36 @@ license = "MPL"
 
 [tool.poetry.dependencies]
 python = ">=3.12, <3.13"
-fastapi = "^0.104.1"
-pydantic = {version = "^2.5.2", extras = ["email"]}
-uvicorn = {extras = ["standard"], version = "^0.24.0.post1"}
-atlassian-python-api = "^3.41.4"
-dockerflow = "2022.8.0"
-Jinja2 = "^3.1.2"
-sentry-sdk = {extras = ["fastapi"], version = "^1.38.0"}
-pydantic-yaml = "^1.2.0"
+fastapi = "^0.110.0"
+pydantic = {version = "^2.6.3", extras = ["email"]}
+uvicorn = {extras = ["standard"], version = "^0.27.1"}
+atlassian-python-api = "^3.41.11"
+dockerflow = "2024.2.0"
+Jinja2 = "^3.1.3"
+sentry-sdk = {extras = ["fastapi"], version = "^1.40.6"}
+pydantic-yaml = "^1.2.1"
 backoff = "^2.2.1"
 statsd = "^4.0.1"
 requests = "^2.31.0"
-pydantic-settings = "^2.1.0"
-asgi-correlation-id = "^4.2.0"
+pydantic-settings = "^2.2.1"
+asgi-correlation-id = "^4.3.1"
+pypandoc = "^1.13"
 
 [tool.poetry.group.dev.dependencies]
-pre-commit = "^3.5.0"
-coverage = {extras = ["toml"], version = "^7.3"}
-mypy = "^1.7"
+pre-commit = "^3.6.2"
+coverage = {extras = ["toml"], version = "^7.4"}
+mypy = "^1.8"
 detect-secrets = "^1.4.0"
-bandit = "^1.7.5"
-pytest = "^7.4.3"
-yamllint = "^1.33.0"
+bandit = "^1.7.7"
+pytest = "^8.1.0"
+yamllint = "^1.35.1"
 pytest-dotenv = "^0.5.2"
 types-requests = "^2.31.0"
-responses = "^0.24.1"
-httpx = "^0.25.2"
+responses = "^0.25.0"
+httpx = "^0.27.0"
 factory-boy = "^3.3.0"
 pytest-factoryboy = "^2.6.0"
-ruff = "^0.1.7"
+ruff = "^0.3.0"
 pytest-mock = "^3.12.0"
 
 [build-system]
@@ -44,7 +45,10 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
 target-version = "py312"
-extend-select = ["I"]
+lint.extend-select = ["I"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
 
 [tool.pytest.ini_options]
 testpaths = [
@@ -66,7 +70,7 @@ warn_return_any = true
 plugins = "pydantic.mypy"
 
 [[tool.mypy.overrides]]
-module = ["ruamel", "bugzilla", "atlassian", "atlassian.rest_client", "statsd.defaults.env"]
+module = ["ruamel", "bugzilla", "atlassian", "atlassian.rest_client", "statsd.defaults.env", "dockerflow"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

@@ -2,11 +2,9 @@ import logging
 from unittest.mock import patch
 
 import pytest
-from fastapi.testclient import TestClient
 
-from jbi.app import app, traces_sampler
+from jbi.app import traces_sampler
 from jbi.environment import get_settings
-from jbi.models import BugzillaWebhookRequest
 
 
 def test_request_summary_is_logged(caplog, anon_client):
@@ -37,12 +35,15 @@ def test_request_summary_defaults_user_agent_to_empty_string(caplog, anon_client
         assert summary.agent == ""
 
 
-def test_422_errors_are_logged(webhook_create_example, caplog):
-    webhook_create_example.bug = None
+def test_422_errors_are_logged(authenticated_client, webhook_request_factory, caplog):
+    webhook = webhook_request_factory.build(bug=None)
 
-    with TestClient(app) as anon_client:
-        with caplog.at_level(logging.INFO):
-            anon_client.post("/bugzilla_webhook", data=webhook_create_example.json())
+    with caplog.at_level(logging.INFO):
+        authenticated_client.post(
+            "/bugzilla_webhook",
+            headers={"X-Api-Key": "fake_api_key"},
+            data=webhook.model_dump_json(),
+        )
 
     logged = [r for r in caplog.records if r.name == "jbi.app"][0]
     assert logged.errors[0]["loc"] == ("body", "bug")
@@ -78,14 +79,14 @@ def test_traces_sampler(sampling_context, expected):
     assert traces_sampler(sampling_context) == expected
 
 
-def test_errors_are_reported_to_sentry(
-    anon_client, webhook_create_example: BugzillaWebhookRequest
-):
+def test_errors_are_reported_to_sentry(anon_client, bugzilla_webhook_request):
     with patch("sentry_sdk.hub.Hub.capture_event") as mocked:
         with patch("jbi.router.execute_action", side_effect=ValueError):
             with pytest.raises(ValueError):
                 anon_client.post(
-                    "/bugzilla_webhook", data=webhook_create_example.model_dump_json()
+                    "/bugzilla_webhook",
+                    headers={"X-Api-Key": "fake_api_key"},
+                    data=bugzilla_webhook_request.model_dump_json(),
                 )
 
     assert mocked.called, "Sentry captured the exception"
@@ -93,23 +94,23 @@ def test_errors_are_reported_to_sentry(
 
 def test_request_id_is_passed_down_to_logger_contexts(
     caplog,
-    webhook_create_example: BugzillaWebhookRequest,
+    bugzilla_webhook_request,
+    authenticated_client,
     mocked_jira,
     mocked_bugzilla,
 ):
-    mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
+    mocked_bugzilla.get_bug.return_value = bugzilla_webhook_request.bug
     mocked_jira.create_issue.return_value = {
         "key": "JBI-1922",
     }
     with caplog.at_level(logging.DEBUG):
-        with TestClient(app) as anon_client:
-            anon_client.post(
-                "/bugzilla_webhook",
-                data=webhook_create_example.model_dump_json(),
-                headers={
-                    "X-Request-Id": "foo-bar",
-                },
-            )
+        authenticated_client.post(
+            "/bugzilla_webhook",
+            data=bugzilla_webhook_request.model_dump_json(),
+            headers={
+                "X-Request-Id": "foo-bar",
+            },
+        )
 
     runner_logs = [r for r in caplog.records if r.name == "jbi.runner"]
     assert runner_logs[0].rid == "foo-bar"

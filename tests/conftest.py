@@ -1,6 +1,7 @@
 """
 Module for setting up pytest fixtures
 """
+
 import time
 from unittest import mock
 
@@ -12,7 +13,6 @@ from pytest_factoryboy import register
 import tests.fixtures.factories as factories
 from jbi import Operation, bugzilla, jira
 from jbi.app import app
-from jbi.configuration import get_actions
 from jbi.environment import Settings
 from jbi.models import ActionContext
 
@@ -56,22 +56,21 @@ def mocked_statsd():
 
 register(factories.ActionContextFactory)
 register(factories.ActionFactory)
-register(factories.ActionsFactory)
+register(factories.ActionsFactory, "_actions")
 register(factories.ActionParamsFactory)
 register(factories.BugFactory)
-register(factories.BugzillaWebhookFactory)
+register(factories.WebhookFactory, "bugzilla_webhook")
 register(factories.CommentFactory)
 register(factories.JiraContextFactory)
-register(factories.WebhookFactory)
-register(factories.WebhookEventChangeFactory)
 register(factories.WebhookEventFactory)
+register(factories.WebhookEventChangeFactory)
+register(factories.WebhookRequestFactory, "bugzilla_webhook_request")
 register(factories.WebhookUserFactory)
 
 
 register(
     factories.ActionContextFactory, "context_create_example", operation=Operation.CREATE
 )
-register(factories.WebhookFactory, "webhook_create_example")
 
 
 @pytest.fixture
@@ -81,14 +80,26 @@ def anon_client():
 
 
 @pytest.fixture
+def test_api_key():
+    # api key for tests defined in .env.example
+    return "fake_api_key"
+
+
+@pytest.fixture
+def authenticated_client(test_api_key):
+    """An test client with a valid API key."""
+    return TestClient(app, headers={"X-Api-Key": test_api_key})
+
+
+@pytest.fixture
 def settings():
     """A test Settings object"""
     return Settings()
 
 
-@pytest.fixture(autouse=True)
-def actions():
-    return get_actions()
+@pytest.fixture()
+def actions(actions_factory):
+    return actions_factory()
 
 
 @pytest.fixture(autouse=True)
@@ -126,7 +137,7 @@ def context_comment_example(action_context_factory) -> ActionContext:
         bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
         bug__with_comment=True,
         bug__comment__number=2,
-        bug__comment__body="hello",
+        bug__comment__body="> hello\n>\n\nworld",
         event__target="comment",
         event__user__login="mathieu@mozilla.org",
         jira__issue="JBI-234",

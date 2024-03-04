@@ -1,14 +1,12 @@
+import base64
 import json
 import os
 from datetime import datetime
 from unittest import mock
 
 import pytest
-from fastapi.testclient import TestClient
 
-from jbi.app import app
 from jbi.environment import get_settings
-from jbi.models import BugzillaWebhookRequest
 
 
 def test_read_root(anon_client):
@@ -19,52 +17,81 @@ def test_read_root(anon_client):
     assert get_settings().jira_base_url in infos["configuration"]["jira_base_url"]
 
 
-def test_whiteboard_tags(anon_client):
-    resp = anon_client.get("/whiteboard_tags")
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "/whiteboard_tags",
+        "/jira_projects/",
+        "/powered_by_jbi/",
+        "/bugzilla_webhooks/",
+    ],
+)
+def test_get_protected_endpoints(
+    endpoint, webhook_request_factory, mocked_bugzilla, anon_client, test_api_key
+):
+    resp = anon_client.get(endpoint)
+    assert resp.status_code == 401
+
+    # Supports authentication via `X-Api-Key` header
+    resp = anon_client.get(endpoint, headers={"X-Api-Key": test_api_key})
+    assert resp.status_code == 200
+
+    # Supports authentication via Basic Auth header
+    username_password = ":" + test_api_key
+    credentials_b64 = base64.b64encode(username_password.encode("utf8")).decode("utf8")
+    resp = anon_client.get(
+        endpoint,
+        headers={"Authorization": f"Basic {credentials_b64}"},
+    )
+    assert resp.status_code == 200
+
+
+def test_whiteboard_tags(authenticated_client):
+    resp = authenticated_client.get("/whiteboard_tags")
     actions = resp.json()
 
     assert actions["devtest"]["description"] == "DevTest whiteboard tag"
 
 
-def test_jira_projects(anon_client, mocked_jira):
+def test_jira_projects(authenticated_client, mocked_jira):
     mocked_jira.permitted_projects.return_value = [{"key": "Firefox"}, {"key": "Fenix"}]
 
-    resp = anon_client.get("/jira_projects/")
+    resp = authenticated_client.get("/jira_projects/")
     infos = resp.json()
 
     assert infos == ["Firefox", "Fenix"]
 
 
-def test_whiteboard_tags_filtered(anon_client):
-    resp = anon_client.get("/whiteboard_tags/?whiteboard_tag=devtest")
+def test_whiteboard_tags_filtered(authenticated_client):
+    resp = authenticated_client.get("/whiteboard_tags/?whiteboard_tag=devtest")
     infos = resp.json()
     assert sorted(infos.keys()) == ["devtest"]
 
-    resp = anon_client.get("/whiteboard_tags/?whiteboard_tag=foo")
+    resp = authenticated_client.get("/whiteboard_tags/?whiteboard_tag=foo")
     infos = resp.json()
     assert sorted(infos.keys()) == ["devtest"]
 
 
-def test_powered_by_jbi(exclude_middleware, anon_client):
-    resp = anon_client.get("/powered_by_jbi/")
+def test_powered_by_jbi(exclude_middleware, authenticated_client):
+    resp = authenticated_client.get("/powered_by_jbi/")
     html = resp.text
     assert "<title>Powered by JBI</title>" in html
     assert 'href="/static/styles.css"' in html
     assert "DevTest" in html
 
 
-def test_powered_by_jbi_filtered(exclude_middleware, anon_client):
-    resp = anon_client.get("/powered_by_jbi/?enabled=false")
+def test_powered_by_jbi_filtered(exclude_middleware, authenticated_client):
+    resp = authenticated_client.get("/powered_by_jbi/?enabled=false")
     html = resp.text
     assert "DevTest" not in html
 
 
-def test_webhooks_details(anon_client, mocked_bugzilla, bugzilla_webhook_factory):
+def test_webhooks_details(authenticated_client, mocked_bugzilla, webhook_factory):
     mocked_bugzilla.list_webhooks.return_value = [
-        bugzilla_webhook_factory(),
-        bugzilla_webhook_factory(errors=42, enabled=False),
+        webhook_factory(),
+        webhook_factory(errors=42, enabled=False),
     ]
-    resp = anon_client.get("/bugzilla_webhooks/")
+    resp = authenticated_client.get("/bugzilla_webhooks/")
 
     wh1, wh2 = resp.json()
 
@@ -75,17 +102,15 @@ def test_webhooks_details(anon_client, mocked_bugzilla, bugzilla_webhook_factory
     assert wh2["errors"] == 42
 
 
-def test_statics_are_served(anon_client):
-    resp = anon_client.get("/static/styles.css")
+def test_statics_are_served(authenticated_client):
+    resp = authenticated_client.get("/static/styles.css")
     assert resp.status_code == 200
 
 
 def test_webhook_is_200_if_action_succeeds(
-    webhook_create_example: BugzillaWebhookRequest,
-    mocked_jira,
-    mocked_bugzilla,
+    bugzilla_webhook_request, mocked_jira, mocked_bugzilla, authenticated_client
 ):
-    mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
+    mocked_bugzilla.get_bug.return_value = bugzilla_webhook_request.bug
     mocked_bugzilla.update_bug.return_value = {
         "bugs": [
             {
@@ -107,43 +132,62 @@ def test_webhook_is_200_if_action_succeeds(
         "self": f"{get_settings().jira_base_url}rest/api/2/issue/JBI-1922/remotelink/18936",
     }
 
-    with TestClient(app) as anon_client:
-        response = anon_client.post(
-            "/bugzilla_webhook", data=webhook_create_example.model_dump_json()
-        )
-        assert response
-        assert response.status_code == 200
+    response = authenticated_client.post(
+        "/bugzilla_webhook",
+        data=bugzilla_webhook_request.model_dump_json(),
+    )
+    assert response
+    assert response.status_code == 200
 
 
 def test_webhook_is_200_if_action_raises_IgnoreInvalidRequestError(
-    webhook_create_example: BugzillaWebhookRequest,
-    mocked_bugzilla,
+    webhook_request_factory, mocked_bugzilla, authenticated_client
 ):
-    assert webhook_create_example.bug
-    webhook_create_example.bug.whiteboard = "unmatched"
-    mocked_bugzilla.get_bug.return_value = webhook_create_example.bug
+    webhook = webhook_request_factory(bug__whiteboard="unmatched")
+    mocked_bugzilla.get_bug.return_value = webhook.bug
 
-    with TestClient(app) as anon_client:
-        response = anon_client.post(
-            "/bugzilla_webhook", data=webhook_create_example.model_dump_json()
-        )
-        assert response
-        assert response.status_code == 200
-        assert (
-            response.json()["error"]
-            == "no bug whiteboard matching action tags: devtest"
-        )
+    response = authenticated_client.post(
+        "/bugzilla_webhook",
+        data=webhook.model_dump_json(),
+    )
+    assert response
+    assert response.status_code == 200
+    assert response.json()["error"] == "no bug whiteboard matching action tags: devtest"
 
 
-def test_webhook_is_422_if_bug_information_missing(webhook_create_example):
-    webhook_create_example.bug = None
+def test_webhook_is_401_if_unathenticated(
+    webhook_request_factory, mocked_bugzilla, anon_client
+):
+    response = anon_client.post(
+        "/bugzilla_webhook",
+        data={},
+    )
+    assert response.status_code == 401
 
-    with TestClient(app) as anon_client:
-        response = anon_client.post(
-            "/bugzilla_webhook", data=webhook_create_example.json()
-        )
-        assert response.status_code == 422
-        assert response.json()["detail"][0]["loc"] == ["body", "bug"]
+
+def test_webhook_is_401_if_wrong_key(
+    webhook_request_factory, mocked_bugzilla, anon_client
+):
+    response = anon_client.post(
+        "/bugzilla_webhook",
+        headers={"X-Api-Key": "not the right key"},
+        data={},
+    )
+    assert response.status_code == 401
+
+
+def test_webhook_is_422_if_bug_information_missing(
+    webhook_request_factory, authenticated_client
+):
+    webhook = webhook_request_factory.build(bug=None)
+
+    response = authenticated_client.post(
+        "/bugzilla_webhook",
+        headers={"X-Api-Key": "fake_api_key"},
+        data=webhook.model_dump_json(),
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", "bug"]
 
 
 def test_read_version(anon_client):
@@ -160,68 +204,58 @@ def test_read_version(anon_client):
 
 
 def test_read_heartbeat_all_services_fail(anon_client, mocked_jira, mocked_bugzilla):
-    """/__heartbeat__ returns 503 when all the services are unavailable."""
+    """/__heartbeat__ returns 500 when all the services are unavailable."""
     mocked_bugzilla.logged_in.return_value = False
     mocked_jira.get_server_info.return_value = None
 
     resp = anon_client.get("/__heartbeat__")
 
-    assert resp.status_code == 503
-    assert resp.json() == {
-        "jira": {
-            "up": False,
-            "all_projects_are_visible": False,
-            "all_projects_have_permissions": False,
-            "all_project_custom_components_exist": False,
-            "all_projects_issue_types_exist": False,
-        },
-        "bugzilla": {
-            "up": False,
-            "all_webhooks_enabled": False,
-        },
-    }
+    assert resp.status_code == 500
+    results = resp.json()
+    assert results["status"] == "error"
+    assert results["checks"]["bugzilla.up"] == "error"
+    assert results["checks"]["jira.up"] == "error"
 
 
 def test_read_heartbeat_jira_services_fails(anon_client, mocked_jira):
-    """/__heartbeat__ returns 503 when one service is unavailable."""
+    """/__heartbeat__ returns 500 when one service is unavailable."""
     mocked_jira.get_server_info.return_value = None
 
     resp = anon_client.get("/__heartbeat__")
 
-    assert resp.status_code == 503
-    assert resp.json()["jira"] == {
-        "up": False,
-        "all_projects_are_visible": False,
-        "all_projects_have_permissions": False,
-        "all_project_custom_components_exist": False,
-        "all_projects_issue_types_exist": False,
-    }
+    assert resp.status_code == 500
+    results = resp.json()
+    assert results["status"] == "error"
+    assert results["checks"]["bugzilla.up"] == "ok"
+    assert results["checks"]["jira.up"] == "error"
 
 
 def test_read_heartbeat_bugzilla_webhooks_fails(
-    anon_client, mocked_bugzilla, bugzilla_webhook_factory
+    anon_client, mocked_bugzilla, webhook_factory
 ):
     mocked_bugzilla.logged_in.return_value = True
-    mocked_bugzilla.list_webhooks.return_value = [
-        bugzilla_webhook_factory(enabled=False)
-    ]
+    mocked_bugzilla.list_webhooks.return_value = [webhook_factory(enabled=False)]
 
     resp = anon_client.get("/__heartbeat__")
 
-    assert resp.status_code == 503
-    assert resp.json()["bugzilla"] == {
-        "up": True,
-        "all_webhooks_enabled": False,
+    results = resp.json()
+    assert results["checks"]["bugzilla.all_webhooks_enabled"] == "error"
+    assert results["details"]["bugzilla.all_webhooks_enabled"] == {
+        "level": 40,
+        "messages": {
+            "bugzilla.webhooks.disabled": "Webhook Test Webhooks is disabled (0 errors)",
+        },
+        "status": "error",
     }
 
 
 def test_heartbeat_bugzilla_reports_webhooks_errors(
-    anon_client, mocked_bugzilla, bugzilla_webhook_factory
+    anon_client, mocked_bugzilla, webhook_factory
 ):
     mocked_bugzilla.logged_in.return_value = True
     mocked_bugzilla.list_webhooks.return_value = [
-        bugzilla_webhook_factory(id=1, errors=0, product="Remote Settings"),
-        bugzilla_webhook_factory(id=2, errors=3, name="Search Toolbar"),
+        webhook_factory(id=1, errors=0, product="Remote Settings"),
+        webhook_factory(id=2, errors=3, name="Search Toolbar"),
     ]
 
     with mock.patch("jbi.bugzilla.service.statsd") as mocked:
@@ -236,15 +270,19 @@ def test_heartbeat_bugzilla_reports_webhooks_errors(
 
 
 def test_read_heartbeat_bugzilla_services_fails(anon_client, mocked_bugzilla):
-    """/__heartbeat__ returns 503 when one service is unavailable."""
+    """/__heartbeat__ returns 500 when one service is unavailable."""
     mocked_bugzilla.logged_in.return_value = False
 
     resp = anon_client.get("/__heartbeat__")
 
-    assert resp.status_code == 503
-    assert resp.json()["bugzilla"] == {
-        "up": False,
-        "all_webhooks_enabled": False,
+    results = resp.json()
+    assert results["checks"]["bugzilla.up"] == "error"
+    assert results["details"]["bugzilla.up"] == {
+        "level": 40,
+        "messages": {
+            "bugzilla.login": "Login fails or service down",
+        },
+        "status": "error",
     }
 
 
@@ -254,9 +292,16 @@ def test_jira_heartbeat_visible_projects(anon_client, mocked_jira):
 
     resp = anon_client.get("/__heartbeat__")
 
-    assert resp.status_code == 503
-    assert resp.json()["jira"]["up"]
-    assert not resp.json()["jira"]["all_projects_are_visible"]
+    results = resp.json()
+    assert results["checks"]["jira.all_projects_are_visible"] == "warning"
+    assert results["details"]["jira.all_projects_are_visible"] == {
+        "level": 30,
+        "messages": {
+            "jira.projects.missing": "Jira projects {'DevTest'} are not visible with configured "
+            "credentials",
+        },
+        "status": "warning",
+    }
 
 
 def test_jira_heartbeat_missing_permissions(anon_client, mocked_jira):
@@ -273,9 +318,15 @@ def test_jira_heartbeat_missing_permissions(anon_client, mocked_jira):
 
     resp = anon_client.get("/__heartbeat__")
 
-    assert resp.status_code == 503
-    assert resp.json()["jira"]["up"]
-    assert not resp.json()["jira"]["all_projects_have_permissions"]
+    results = resp.json()
+    assert results["checks"]["jira.all_projects_have_permissions"] == "warning"
+    assert results["details"]["jira.all_projects_have_permissions"] == {
+        "level": 30,
+        "messages": {
+            "jira.permitted.missing": "Missing permissions for projects DevTest",
+        },
+        "status": "warning",
+    }
 
 
 def test_jira_heartbeat_unknown_components(anon_client, mocked_jira):
@@ -283,9 +334,15 @@ def test_jira_heartbeat_unknown_components(anon_client, mocked_jira):
 
     resp = anon_client.get("/__heartbeat__")
 
-    assert resp.status_code == 503
-    assert resp.json()["jira"]["up"]
-    assert not resp.json()["jira"]["all_project_custom_components_exist"]
+    results = resp.json()
+    assert results["checks"]["jira.all_project_custom_components_exist"] == "warning"
+    assert results["details"]["jira.all_project_custom_components_exist"] == {
+        "level": 30,
+        "messages": {
+            "jira.components.missing": "Jira project DevTest does not have components {'Main'}",
+        },
+        "status": "warning",
+    }
 
 
 def test_jira_heartbeat_unknown_issue_types(anon_client, mocked_jira):
@@ -299,18 +356,24 @@ def test_jira_heartbeat_unknown_issue_types(anon_client, mocked_jira):
 
     resp = anon_client.get("/__heartbeat__")
 
-    assert resp.status_code == 503
-    assert resp.json()["jira"]["up"]
-    assert not resp.json()["jira"]["all_projects_issue_types_exist"]
+    results = resp.json()
+    assert results["checks"]["jira.all_project_issue_types_exist"] == "warning"
+    assert results["details"]["jira.all_project_issue_types_exist"] == {
+        "level": 30,
+        "messages": {
+            "jira.types.missing": "Jira projects {'DevTest'} with missing issue types",
+        },
+        "status": "warning",
+    }
 
 
 @pytest.mark.parametrize("method", ["HEAD", "GET"])
 def test_read_heartbeat_success(
-    anon_client, method, mocked_jira, mocked_bugzilla, bugzilla_webhook_factory
+    anon_client, method, mocked_jira, mocked_bugzilla, bugzilla_webhook
 ):
     """/__heartbeat__ returns 200 when checks succeed."""
     mocked_bugzilla.logged_in.return_value = True
-    mocked_bugzilla.list_webhooks.return_value = [bugzilla_webhook_factory()]
+    mocked_bugzilla.list_webhooks.return_value = [bugzilla_webhook]
     mocked_jira.get_server_info.return_value = {}
     mocked_jira.paginated_projects.return_value = {
         "values": [
@@ -331,18 +394,30 @@ def test_read_heartbeat_success(
     assert resp.status_code == 200
     if method == "GET":
         assert resp.json() == {
-            "jira": {
-                "up": True,
-                "all_projects_are_visible": True,
-                "all_projects_have_permissions": True,
-                "all_project_custom_components_exist": True,
-                "all_projects_issue_types_exist": True,
+            "checks": {
+                "bugzilla.up": "ok",
+                "bugzilla.all_webhooks_enabled": "ok",
+                "jira.up": "ok",
+                "jira.all_project_custom_components_exist": "ok",
+                "jira.all_project_issue_types_exist": "ok",
+                "jira.all_projects_are_visible": "ok",
+                "jira.all_projects_have_permissions": "ok",
+                "jira.pandoc_install": "ok",
             },
-            "bugzilla": {
-                "up": True,
-                "all_webhooks_enabled": True,
-            },
+            "details": {},
+            "status": "ok",
         }
+
+
+def test_heartbeat_with_warning_only(anon_client, mocked_jira, mocked_bugzilla):
+    """/__heartbeat__ returns 200 when checks are only warning."""
+    mocked_bugzilla.logged_in.return_value = True
+    mocked_bugzilla.list_webhooks.return_value = []
+
+    resp = anon_client.get("__heartbeat__")
+
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "warning"
 
 
 @pytest.mark.parametrize("method", ["HEAD", "GET"])

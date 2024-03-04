@@ -1,6 +1,7 @@
 """
 Parsing and validating the YAML configuration occurs within this module
 """
+
 import logging
 
 from pydantic import ValidationError

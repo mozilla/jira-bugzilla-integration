@@ -1,9 +1,11 @@
 """
 Execute actions from Webhook requests
 """
+
 import inspect
 import itertools
 import logging
+import re
 from typing import Optional
 
 from statsd.defaults.env import statsd
@@ -13,11 +15,11 @@ from jbi import steps as steps_module
 from jbi.environment import get_settings
 from jbi.errors import ActionNotFoundError, IgnoreInvalidRequestError
 from jbi.models import (
+    Action,
     ActionContext,
     ActionParams,
     Actions,
     ActionSteps,
-    BugzillaWebhookRequest,
     JiraContext,
     RunnerContext,
 )
@@ -48,6 +50,24 @@ def groups2operation(steps: ActionSteps):
     except KeyError as err:
         raise ValueError(f"Unsupported entry in `steps`: {err}") from err
     return by_operation
+
+
+def lookup_action(bug: bugzilla.Bug, actions: Actions) -> Action:
+    """
+    Find first matching action from bug's whiteboard field.
+
+    Tags are strings between brackets and can have prefixes/suffixes
+    using dashes (eg. ``[project]``, ``[project-moco]``, ``[project-moco-sprint1]``).
+    """
+
+    if bug.whiteboard:
+        for tag, action in actions.by_tag.items():
+            # [tag-word], [tag-], [tag], but not [word-tag] or [tagword]
+            search_string = r"\[" + tag + r"(-[^\]]*)*\]"
+            if re.search(search_string, bug.whiteboard, flags=re.IGNORECASE):
+                return action
+
+    raise ActionNotFoundError(", ".join(actions.by_tag.keys()))
 
 
 class Executor:
@@ -121,7 +141,7 @@ class Executor:
             if step_responses:
                 has_produced_request = True
             for response in step_responses:
-                logger.debug(
+                logger.info(
                     "Received %s",
                     response,
                     extra={
@@ -139,7 +159,7 @@ class Executor:
 
 @statsd.timer("jbi.action.execution.timer")
 def execute_action(
-    request: BugzillaWebhookRequest,
+    request: bugzilla.WebhookRequest,
     actions: Actions,
 ):
     """Execute the configured action for the specified `request`.
@@ -159,7 +179,7 @@ def execute_action(
         if bug.is_private:
             raise IgnoreInvalidRequestError("private bugs are not supported")
 
-        logger.debug(
+        logger.info(
             "Handling incoming request",
             extra=runner_context.model_dump(),
         )
@@ -175,7 +195,7 @@ def execute_action(
 
         runner_context = runner_context.update(bug=bug)
         try:
-            action = bug.lookup_action(actions)
+            action = lookup_action(bug, actions)
         except ActionNotFoundError as err:
             raise IgnoreInvalidRequestError(
                 f"no bug whiteboard matching action tags: {err}"

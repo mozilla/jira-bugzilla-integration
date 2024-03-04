@@ -12,11 +12,14 @@ from __future__ import annotations
 
 import logging
 from enum import Enum, auto
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Iterable, Optional
 
 from requests import exceptions as requests_exceptions
 
 from jbi import Operation
+from jbi.environment import get_settings
+
+settings = get_settings()
 
 
 class StepStatus(Enum):
@@ -48,7 +51,7 @@ def create_comment(context: ActionContext, *, jira_service: JiraService) -> Step
     bug = context.bug
 
     if bug.comment is None:
-        logger.debug(
+        logger.info(
             "No matching comment found in payload",
             extra=context.model_dump(),
         )
@@ -88,7 +91,14 @@ def add_link_to_jira(
     context: ActionContext, *, bugzilla_service: BugzillaService
 ) -> StepResult:
     """Add the URL to the Jira issue in the `see_also` field on the Bugzilla ticket"""
-    bugzilla_response = bugzilla_service.add_link_to_jira(context)
+    jira_url = f"{settings.jira_base_url}browse/{context.jira.issue}"
+    logger.info(
+        "Link %r on Bug %s",
+        jira_url,
+        context.bug.id,
+        extra=context.update(operation=Operation.LINK).model_dump(),
+    )
+    bugzilla_response = bugzilla_service.add_link_to_see_also(context.bug, jira_url)
     context = context.append_responses(bugzilla_response)
     return (StepStatus.SUCCESS, context)
 
@@ -168,7 +178,7 @@ def maybe_assign_jira_user(
             context.append_responses(resp)
             return (StepStatus.SUCCESS, context)
         except ValueError as exc:
-            logger.debug(str(exc), extra=context.model_dump())
+            logger.info(str(exc), extra=context.model_dump())
             return (StepStatus.INCOMPLETE, context)
 
     if context.operation == Operation.UPDATE:
@@ -181,7 +191,7 @@ def maybe_assign_jira_user(
             try:
                 resp = jira_service.assign_jira_user(context, bug.assigned_to)  # type: ignore
             except ValueError as exc:
-                logger.debug(str(exc), extra=context.model_dump())
+                logger.info(str(exc), extra=context.model_dump())
                 # If that failed then just fall back to clearing the assignee.
                 resp = jira_service.clear_assignee(context)
         context.append_responses(resp)
@@ -202,7 +212,7 @@ def maybe_update_issue_resolution(
     jira_resolution = parameters.resolution_map.get(bz_resolution)
 
     if jira_resolution is None:
-        logger.debug(
+        logger.info(
             "Bug resolution %r was not in the resolution map.",
             bz_resolution,
             extra=context.update(
@@ -236,7 +246,7 @@ def maybe_update_issue_status(
     jira_status = parameters.status_map.get(bz_status or "")
 
     if jira_status is None:
-        logger.debug(
+        logger.info(
             "Bug status %r was not in the status map.",
             bz_status,
             extra=context.update(
@@ -375,9 +385,41 @@ def sync_whiteboard_labels(
             added=context.bug.whiteboard, labels_brackets=parameters.labels_brackets
         )
 
+    return _update_issue_labels(context, jira_service, additions, removals)
+
+
+def sync_keywords_labels(
+    context: ActionContext, *, parameters: ActionParams, jira_service: JiraService
+) -> StepResult:
+    """
+    Set keywords as labels on the Jira issue.
+    """
+    if context.event.changes:
+        changes_by_field = {change.field: change for change in context.event.changes}
+        if change := changes_by_field.get("keywords"):
+            additions = [x.strip() for x in change.added.split(",")]
+            removed = [x.strip() for x in change.removed.split(",")]
+            removals = sorted(
+                set(removed).difference(set(additions))
+            )  # sorted for unit testing
+        else:
+            return (StepStatus.NOOP, context)
+    else:
+        # On creation, just add them all.
+        additions = context.bug.keywords or []
+        removals = []
+
+    return _update_issue_labels(context, jira_service, additions, removals)
+
+
+def _update_issue_labels(
+    context: ActionContext,
+    jira_service: JiraService,
+    additions: Iterable[str],
+    removals: Iterable[str],
+) -> StepResult:
     if not context.jira.issue:
         raise ValueError("Jira issue unset in Action Context")
-
     try:
         resp = jira_service.update_issue_labels(
             issue_key=context.jira.issue, add=additions, remove=removals
