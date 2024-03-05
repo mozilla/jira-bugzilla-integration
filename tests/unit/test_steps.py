@@ -757,7 +757,7 @@ def test_update_issue_priority(
     )
 
     mocked_jira.create_issue.assert_not_called()
-    mocked_jira.update_issue_field(
+    mocked_jira.update_issue_field.assert_called_with(
         key="JBI-234", fields={"priority": {"name": "Urgent"}}
     )
 
@@ -782,7 +782,7 @@ def test_update_issue_severity(
 
     params = action_params_factory(
         jira_project_key=action_context.jira.project,
-        status_map={
+        severity_map={
             "S3": "Moderate",
         },
     )
@@ -791,8 +791,8 @@ def test_update_issue_severity(
     )
 
     mocked_jira.create_issue.assert_not_called()
-    mocked_jira.update_issue_field(
-        key="JBI-234", fields={"severity": {"name": "Moderate"}}
+    mocked_jira.update_issue_field.assert_called_with(
+        key="JBI-234", fields={"customfield_10716": {"value": "Moderate"}}
     )
 
 

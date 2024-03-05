@@ -209,7 +209,7 @@ def _maybe_update_issue_mapped_field(
 ) -> StepResult:
     source_value = getattr(context.bug, source_field, None) or ""
     target_field = getattr(parameters, f"jira_{source_field}_field")
-    target_value = getattr(parameters, f"{target_field}_map").get(source_value)
+    target_value = getattr(parameters, f"{source_field}_map").get(source_value)
     if target_value is None:
         logger.info(
             f"Bug {source_field} %r was not in the {source_field} map.",
@@ -274,7 +274,7 @@ def maybe_update_issue_severity(
     Update the Jira issue severity
     """
     return _maybe_update_issue_mapped_field(
-        "severity", context, parameters, jira_service, wrap_value="name"
+        "severity", context, parameters, jira_service, wrap_value="value"
     )
 
 
