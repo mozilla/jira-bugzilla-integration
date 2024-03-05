@@ -1,6 +1,7 @@
 """
 Module dedicated to interacting with the environment (variables, version.json)
 """
+
 import json
 
 # https://github.com/python/mypy/issues/12841

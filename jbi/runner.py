@@ -1,6 +1,7 @@
 """
 Execute actions from Webhook requests
 """
+
 import inspect
 import itertools
 import logging

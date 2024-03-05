@@ -1,6 +1,7 @@
 """
 Module for setting up pytest fixtures
 """
+
 import time
 from unittest import mock
 

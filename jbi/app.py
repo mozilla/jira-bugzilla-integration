@@ -1,6 +1,7 @@
 """
 Core FastAPI app (setup, middleware)
 """
+
 import logging
 import time
 from pathlib import Path

@@ -1,6 +1,7 @@
 """
 Core FastAPI app (setup, middleware)
 """
+
 import secrets
 from pathlib import Path
 from typing import Annotated, Optional
