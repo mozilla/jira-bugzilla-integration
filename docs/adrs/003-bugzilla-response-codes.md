@@ -17,11 +17,56 @@ When bugzilla receives too many error responses from JBI, it stops triggering we
 We don't want the entire sync process to stop because of this. We have identified four options to solve this problem.
 
 ## Decision Drivers
-
 - Amount of initial engineering effort
 - Amount of maintenance effort
 - Overall performance of JBI (how quickly is data able to move)
 - How intuitive the solution is to the users that depend on the data (will picking the easiest option solve their needs?)
+
+## Proposed Solution
+We propose to use a data bucket as DLQ. Events can attempt to be reprocessed from here, but we will skip any events identified as stale. See the diagram below:
+
+![Flow chart detailing the data flow, see expandable below for full details](./003.drawio.jpg "Proposed Solution Flow Chart")
+
+<details>
+  <summary>Braekdown of flowchart</summary>
+  1. JBI receives a payload from Bugzilla or the Retry Scheduler.
+  1. JBI will always return 200/OK for a response.
+  1. If the bug is private, discard the event and log why.
+  1. If the bug cannot be found in the bugzilla API, discard the event and log why.
+  1. If an associated action cannot be found for the event, discard the event and log why.
+  1. If a matching Jira issue cannot be found, and the event is not creating one, discard the event and log why.
+  1. If there is a mismatch between project keys in the event and Jira, discard the event and log why.
+  1. If there is a blocking event in the DLQ, skip to the Error Event Handler.
+  1. If there is a mergable event in the DLQ, merge with the current event (current event wins conflicts).
+  1. Write updated data to Jira's API.
+    1. If successful, delete any associated items in DLQ.
+    1. If error is returned, continue to Error Event Handler
+  1. Handle errors in Error Event Handler
+    1. Write an error to the logs, which may be forwarded to an alerting mechanism.
+    1. Write an updated event file to the DLQ if the original event is less than 7 days old.
+    1. If we have exceeded 7 days from the original event, delete associated DLQ items.
+  1. The retry scheduler runs every 12 hours and will re-send events to JBI. Starting with potentaially blocking events first.
+</details>
+
+### Pros:
+ - Avoids the problem of accidentally overwriting newer data with older data
+ - Avoids making users correct data manually if something is misconfigured
+ - Gives users a whole work week to update potentially misconfigured settings
+ - Low maintenance effort
+ - Mid-low engineering effort
+ - High performance of JBI
+ - Intuitive solution with alerting via error logs
+
+### Cons:
+ - Additional infrastructure for the DLQ bucket
+ - Additional complexity with logic for checking blocks and mergable events 
+
+### Notes:
+ - This relies on using the ``last_change_time`` property from bugzilla webhook payloads.
+ - Also relies on checking the ``issue.comment.updated`` and ``updated`` properties in the Jira API.
+ - This will cause a bit more latency in event processing, but nothing noticable to users.
+ - This will cause more API calls to Jira. We should consider rate limits. 
+
 
 ## Considered Options
 For all of these options, we will be returning a successful 200 response to bugzilla's webhook calls. Note: we have to return a 200 because of bugzilla's webhook functionality (they check for 200 specifically, not just any OK response).
