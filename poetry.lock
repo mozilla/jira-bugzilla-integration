@@ -1185,18 +1185,19 @@ python-dotenv = ">=0.9.1"
 
 [[package]]
 name = "pytest-factoryboy"
-version = "2.6.0"
+version = "2.6.1"
 description = "Factory Boy support for pytest."
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "pytest_factoryboy-2.6.0-py3-none-any.whl", hash = "sha256:23facf586a1beedea03e875159001bfeb8393fb56ab104d87ad06f688d269e5b"},
-    {file = "pytest_factoryboy-2.6.0.tar.gz", hash = "sha256:d09c37178693d8e594a96faf3c56e870b7753d2622710298b850ef79eb02d63d"},
+    {file = "pytest_factoryboy-2.6.1-py3-none-any.whl", hash = "sha256:ddb5beb2fd7d5246406c86d2a84061c64baf0e370f35c367899e3eca7f5675ea"},
+    {file = "pytest_factoryboy-2.6.1.tar.gz", hash = "sha256:306afe42b27fba8027d026dd5aa99a3594caad30dce9d215443cefa788136547"},
 ]
 
 [package.dependencies]
 factory_boy = ">=2.10.0"
 inflection = "*"
+packaging = "*"
 pytest = ">=6.2"
 typing_extensions = "*"
 
@@ -2034,4 +2035,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.12, <3.13"
-content-hash = "02605fe1fceb8a022dd14fa53080d3cd06bd58e20ad8c7f571dfc4950eee13b9"
+content-hash = "97d5e1716f26dcc8b10b1f1d4a7b1b5b97845a982bff72bd6f1d7d09caa56475"

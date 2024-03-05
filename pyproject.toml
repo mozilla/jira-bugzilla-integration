@@ -35,7 +35,7 @@ types-requests = "^2.31.0"
 responses = "^0.25.0"
 httpx = "^0.27.0"
 factory-boy = "^3.3.0"
-pytest-factoryboy = "^2.6.0"
+pytest-factoryboy = "^2.6.1"
 ruff = "^0.3.0"
 pytest-mock = "^3.12.0"
 
