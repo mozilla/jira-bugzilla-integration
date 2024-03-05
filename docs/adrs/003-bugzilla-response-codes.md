@@ -28,7 +28,9 @@ We propose to use a data bucket as DLQ. Events can attempt to be reprocessed fro
 ![Flow chart detailing the data flow, see expandable below for full details](./003.drawio.jpg "Proposed Solution Flow Chart")
 
 <details>
+
   <summary>Braekdown of flowchart</summary>
+
   1. JBI receives a payload from Bugzilla or the Retry Scheduler.
   1. JBI will always return 200/OK for a response.
   1. If the bug is private, discard the event and log why.
@@ -39,12 +41,12 @@ We propose to use a data bucket as DLQ. Events can attempt to be reprocessed fro
   1. If there is a blocking event in the DLQ, skip to the Error Event Handler.
   1. If there is a mergable event in the DLQ, merge with the current event (current event wins conflicts).
   1. Write updated data to Jira's API.
-    1. If successful, delete any associated items in DLQ.
-    1. If error is returned, continue to Error Event Handler
+      1. If successful, delete any associated items in DLQ.
+      1. If error is returned, continue to Error Event Handler
   1. Handle errors in Error Event Handler
-    1. Write an error to the logs, which may be forwarded to an alerting mechanism.
-    1. Write an updated event file to the DLQ if the original event is less than 7 days old.
-    1. If we have exceeded 7 days from the original event, delete associated DLQ items.
+      1. Write an error to the logs, which may be forwarded to an alerting mechanism.
+      1. Write an updated event file to the DLQ if the original event is less than 7 days old.
+      1. If we have exceeded 7 days from the original event, delete associated DLQ items.
   1. The retry scheduler runs every 12 hours and will re-send events to JBI. Starting with potentaially blocking events first.
 </details>
 
