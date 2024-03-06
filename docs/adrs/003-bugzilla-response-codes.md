@@ -23,7 +23,9 @@ We don't want the entire sync process to stop because of this. We have identifie
 - How intuitive the solution is to the users that depend on the data (will picking the easiest option solve their needs?)
 
 ## Proposed Solution
-We propose to use a data bucket as DLQ. Events can attempt to be reprocessed from here, but we will skip any events identified as stale. See the diagram below:
+We propose to use a data bucket as a dead-letter-queue. Events will attempt to be reprocessed every 12 hours for up to 7 days. After which they will be dropped. Errors will be logged for each event that cannot be processed. Alerts can be triggered based on this to let Jira and Bugzilla admins know there is a problem.
+
+See the diagram below for a detailed flow of data. Note: This is designed to show the flow of data, not be representative of coding patterns or infrastructure.
 
 ![Flow chart detailing the data flow, see expandable below for full details](./003.drawio.jpg "Proposed Solution Flow Chart")
 
@@ -47,7 +49,7 @@ We propose to use a data bucket as DLQ. Events can attempt to be reprocessed fro
       1. Write an error to the logs, which may be forwarded to an alerting mechanism.
       1. Write an updated event file to the DLQ if the original event is less than 7 days old.
       1. If we have exceeded 7 days from the original event, delete associated DLQ items.
-  1. The retry scheduler runs every 12 hours and will re-send events to JBI. Starting with potentially blocking events first.
+  1. The retry scheduler runs every 12 hours and will re-send events to JBI. Blocking events will be processed first.
 </details>
 
 ### Pros:
