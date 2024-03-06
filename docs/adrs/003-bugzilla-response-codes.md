@@ -52,6 +52,20 @@ See the diagram below for a detailed flow of data. Note: This is designed to sho
   1. The retry scheduler runs every 12 hours and will re-send events to JBI. Blocking events will be processed first.
 </details>
 
+### Blocking and merging events
+
+
+**Blocking event** - A blocking event is any event that should cause the current one from being processed. These scenarios are very limited, but would include situations where we're trying to insert child data when we haven't processed the parent data yet. 
+
+Example:  JBI receives a `create comment` or `add tag` event for an issue that failed to create in Jira. The issue could have failed to create due to invalid configuration or perhaps Jira had a brief outage. Regardless, we can't insert a comment for an issue we don't have.
+
+**Merge-able event** - We may want to merge events together when we were unable to process a previous event for the same object. There are several possible scenarios for this, but basically any create/update actions for the same object could be merged together. Examples:
+
+1. A bug is created in Bugzilla, but failed to write to Jira due to invalid data. Then we receive an update minutes later that corrects the problem.
+1. A comment is inserted in Bugzilla, but failed to write to Jira due to a brief outage. A few minutes later the author updates their comment (maybe fixing a typo) and Jira is responsive again. We can safely write the new comment to Jira and remove the old event.
+1. A bug is updated in Bugzilla and three fields are changed, but failed to write to Jira due to invalid data. Minutes later we receive another update with two fields changed, one of them corrects the previous problem. We can merge these events together to do one write that applies the latest changes to Jira.
+
+
 ### Pros:
  - Avoids the problem of accidentally overwriting newer data with older data
  - Avoids making users correct data manually if something is misconfigured
@@ -63,7 +77,7 @@ See the diagram below for a detailed flow of data. Note: This is designed to sho
 
 ### Cons:
  - Additional infrastructure for the DLQ bucket
- - Additional complexity with logic for checking blocks and merge-able events 
+ - Additional complexity with logic for checking blocking and merge-able events 
 
 ### Notes:
  - This relies on using the ``last_change_time`` property from Bugzilla webhook payloads.
@@ -173,15 +187,7 @@ Example: We could create a simple DLQ (a table in postgres) external queue for r
 
 ## Decision Outcome
 
-Pending discussion
-
-### Positive Consequences <!-- optional -->
-
-Pending discussion
-
-### Negative Consequences <!-- optional -->
-
-Pending discussion
+Discussing proposed solution
 
 ## Links 
 - [What is event streaming?](https://kafka.apache.org/documentation/#intro_streaming) - Documentation from Apache Kafka
