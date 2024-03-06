@@ -22,6 +22,7 @@ def test_request_summary_is_logged(caplog, anon_client):
     assert summary.rid == "foo-bar"
     assert summary.method == "GET"
     assert summary.path == "/"
+    assert summary.querystring == ""
 
 
 def test_request_summary_defaults_user_agent_to_empty_string(caplog, anon_client):
