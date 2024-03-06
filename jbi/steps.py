@@ -220,28 +220,20 @@ def _maybe_update_issue_mapped_field(
         )
         return (StepStatus.INCOMPLETE, context)
 
-    if context.operation == Operation.CREATE:
-        resp = jira_service.update_issue_field(
-            context,
-            target_field,
-            target_value,
-            wrap_value,
-        )
-        context.append_responses(resp)
-        return (StepStatus.SUCCESS, context)
+    if (
+        context.operation == Operation.UPDATE
+        and source_field not in context.event.changed_fields()
+    ):
+        return (StepStatus.NOOP, context)
 
-    if context.operation == Operation.UPDATE:
-        if source_field in context.event.changed_fields():
-            resp = jira_service.update_issue_field(
-                context,
-                target_field,
-                target_value,
-                wrap_value,
-            )
-            context.append_responses(resp)
-            return (StepStatus.SUCCESS, context)
-
-    return (StepStatus.NOOP, context)
+    resp = jira_service.update_issue_field(
+        context,
+        target_field,
+        target_value,
+        wrap_value,
+    )
+    context.append_responses(resp)
+    return (StepStatus.SUCCESS, context)
 
 
 def maybe_update_issue_priority(
