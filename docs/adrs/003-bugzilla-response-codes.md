@@ -12,7 +12,7 @@ Tracking issues:
 - [743 - Create alerts for when bugs fail to sync](https://github.com/mozilla/jira-bugzilla-integration/issues/743)
 
 ## Context and Problem Statement
-When bugzilla receives too many error responses from JBI, it stops triggering webhook calls for the entire project causing data to stop syncing. Frequently, these errors are due to a configuration error in Jira or bugzilla. JBI being unable to process a payload due to errors in configuration (or incomplete configuration) in Jira or a mismatch of data for a single bug. These outages can last multiple days in some cases.
+When Bugzilla receives too many error responses from JBI, it stops triggering webhook calls for the entire project causing data to stop syncing. Frequently, these errors are due to a configuration error in Jira or Bugzilla. JBI being unable to process a payload due to errors in configuration (or incomplete configuration) in Jira or a mismatch of data for a single bug. These outages can last multiple days in some cases.
 
 We don't want the entire sync process to stop because of this. We have identified four options to solve this problem.
 
@@ -29,17 +29,17 @@ We propose to use a data bucket as DLQ. Events can attempt to be reprocessed fro
 
 <details>
 
-  <summary>Braekdown of flowchart</summary>
+  <summary>Breakdown of flowchart</summary>
 
   1. JBI receives a payload from Bugzilla or the Retry Scheduler.
   1. JBI will always return 200/OK for a response.
   1. If the bug is private, discard the event and log why.
-  1. If the bug cannot be found in the bugzilla API, discard the event and log why.
+  1. If the bug cannot be found in the Bugzilla API, discard the event and log why.
   1. If an associated action cannot be found for the event, discard the event and log why.
   1. If a matching Jira issue cannot be found, and the event is not creating one, discard the event and log why.
   1. If there is a mismatch between project keys in the event and Jira, discard the event and log why.
   1. If there is a blocking event in the DLQ, skip to the Error Event Handler.
-  1. If there is a mergable event in the DLQ, merge with the current event (current event wins conflicts).
+  1. If there is a merge-able event in the DLQ, merge with the current event (current event wins conflicts).
   1. Write updated data to Jira's API.
       1. If successful, delete any associated items in DLQ.
       1. If error is returned, continue to Error Event Handler
@@ -47,7 +47,7 @@ We propose to use a data bucket as DLQ. Events can attempt to be reprocessed fro
       1. Write an error to the logs, which may be forwarded to an alerting mechanism.
       1. Write an updated event file to the DLQ if the original event is less than 7 days old.
       1. If we have exceeded 7 days from the original event, delete associated DLQ items.
-  1. The retry scheduler runs every 12 hours and will re-send events to JBI. Starting with potentaially blocking events first.
+  1. The retry scheduler runs every 12 hours and will re-send events to JBI. Starting with potentially blocking events first.
 </details>
 
 ### Pros:
@@ -61,20 +61,20 @@ We propose to use a data bucket as DLQ. Events can attempt to be reprocessed fro
 
 ### Cons:
  - Additional infrastructure for the DLQ bucket
- - Additional complexity with logic for checking blocks and mergable events 
+ - Additional complexity with logic for checking blocks and merge-able events 
 
 ### Notes:
- - This relies on using the ``last_change_time`` property from bugzilla webhook payloads.
+ - This relies on using the ``last_change_time`` property from Bugzilla webhook payloads.
  - Also relies on checking the ``issue.comment.updated`` and ``updated`` properties in the Jira API.
- - This will cause a bit more latency in event processing, but nothing noticable to users.
+ - This will cause a bit more latency in event processing, but nothing noticeable to users.
  - This will cause more API calls to Jira. We should consider rate limits. 
 
 
 ## Considered Options
-For all of these options, we will be returning a successful 200 response to bugzilla's webhook calls. Note: we have to return a 200 because of bugzilla's webhook functionality (they check for 200 specifically, not just any OK response).
+For all of these options, we will be returning a successful 200 response to Bugzilla's webhook calls. Note: we have to return a 200 because of Bugzilla's webhook functionality (they check for 200 specifically, not just any OK response).
 
 ### Option 1: Log the failure and move on
-JBI will log that we couldn't process a specific payload, along with relevant ID's (bug id, jira ticket id, comment id, etc) so further investigation can be done if needed.
+JBI will log that we couldn't process a specific payload, along with relevant ID's (bug id, Jira issue id, comment id, etc) so further investigation can be done if needed.
 
 **Decision Drivers**
 - Amount of initial engineering effort: very low
@@ -90,7 +90,7 @@ JBI will log that we couldn't process a specific payload, along with relevant ID
 - Still requires engineers to investigate further if needed
 
 ### Option 2: Ask a human to do something
-JBI will alert users that data could not be sync'd. This could happen through an IM alert or an email immediately, or a scheduled (daily?) report, or by creating a well-formed log that an alerting workflow picks up. We should know which users to identify based on project configuration in bugzilla or a distribution list if doing an IM or email directly.
+JBI will alert users that data could not be synced. This could happen through an IM alert or an email immediately, or a scheduled (daily?) report, or by creating a well-formed log that an alerting workflow picks up. We should know which users to identify based on project configuration in Bugzilla or a distribution list if doing an IM or email directly.
 
 **Decision Drivers**
 - Amount of initial engineering effort: low
@@ -126,7 +126,7 @@ Create a persistence layer within the JBI containers that will queue and retry j
 - Data could be processed out of order, causing newer updates to get lost
 
 ### Option 4: Use a simple DLQ (dead letter queue)
-We would always return 200, but any events that fail to process internally would get sent to a DLQ and be replayed later if needed. This could be a storage bucket, kubernetes volume, or table in a database. A scheduled kubernetes job would then run to try and pick these up and reprocess them later (every 4 hours, for exmaple). 
+We would always return 200, but any events that fail to process internally would get sent to a DLQ and be replayed later if needed. This could be a storage bucket, kubernetes volume, or table in a database. A scheduled kubernetes job would then run to try and pick these up and reprocess them later (every 4 hours, for example). 
 
 After too many failed attempts the payload would be marked as unprocessable (setting a flag in the table, or updating the file name).
 
@@ -147,9 +147,9 @@ After too many failed attempts the payload would be marked as unprocessable (set
 - Data could be processed out of order, causing newer updates to get lost
 
 ### Option 5: Use a dedicated queue solution
-We would have a dedicated service that accepts all API calls from bugzilla and puts them into a queue (apache kafka, rabbitMQ, etc). JBI would shift to being a downstream service and process these events asynchronously. Any events that fail to process would get sent to a DLQ (dead letter queue) that could be replayed later if needed.
+We would have a dedicated service that accepts all API calls from Bugzilla and puts them into a queue (apache kafka, rabbitMQ, etc). JBI would shift to being a downstream service and process these events asynchronously. Any events that fail to process would get sent to a DLQ (dead letter queue) that could be replayed later if needed.
 
-There are plenty of existing solutions we could use to solve this problem from a technical perspective. A seperate ADR would be done to identify the best answer if we choose to go this route.
+There are plenty of existing solutions we could use to solve this problem from a technical perspective. A separate ADR would be done to identify the best answer if we choose to go this route.
 
 **Decision Drivers**
 - Amount of initial engineering effort: high, building out more infrastructure
