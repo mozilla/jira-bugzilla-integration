@@ -200,6 +200,53 @@ def maybe_assign_jira_user(
     return (StepStatus.NOOP, context)
 
 
+def _maybe_update_issue_mapped_field(
+    source_field: str,
+    context: ActionContext,
+    parameters: ActionParams,
+    jira_service: JiraService,
+    wrap_value: Optional[str] = None,
+) -> StepResult:
+    source_value = getattr(context.bug, source_field, None) or ""
+    target_field = getattr(parameters, f"jira_{source_field}_field")
+    target_value = getattr(parameters, f"{source_field}_map").get(source_value)
+    if target_value is None:
+        logger.info(
+            f"Bug {source_field} %r was not in the {source_field} map.",
+            source_value,
+            extra=context.update(
+                operation=Operation.IGNORE,
+            ).model_dump(),
+        )
+        return (StepStatus.INCOMPLETE, context)
+
+    if (
+        context.operation == Operation.UPDATE
+        and source_field not in context.event.changed_fields()
+    ):
+        return (StepStatus.NOOP, context)
+
+    resp = jira_service.update_issue_field(
+        context,
+        target_field,
+        target_value,
+        wrap_value,
+    )
+    context.append_responses(resp)
+    return (StepStatus.SUCCESS, context)
+
+
+def maybe_update_issue_priority(
+    context: ActionContext, *, parameters: ActionParams, jira_service: JiraService
+) -> StepResult:
+    """
+    Update the Jira issue priority
+    """
+    return _maybe_update_issue_mapped_field(
+        "priority", context, parameters, jira_service, wrap_value="name"
+    )
+
+
 def maybe_update_issue_resolution(
     context: ActionContext, *, parameters: ActionParams, jira_service: JiraService
 ) -> StepResult:
@@ -207,32 +254,20 @@ def maybe_update_issue_resolution(
     Update the Jira issue status
     https://support.atlassian.com/jira-cloud-administration/docs/what-are-issue-statuses-priorities-and-resolutions/
     """
+    return _maybe_update_issue_mapped_field(
+        "resolution", context, parameters, jira_service, wrap_value="name"
+    )
 
-    bz_resolution = context.bug.resolution or ""
-    jira_resolution = parameters.resolution_map.get(bz_resolution)
 
-    if jira_resolution is None:
-        logger.info(
-            "Bug resolution %r was not in the resolution map.",
-            bz_resolution,
-            extra=context.update(
-                operation=Operation.IGNORE,
-            ).model_dump(),
-        )
-        return (StepStatus.INCOMPLETE, context)
-
-    if context.operation == Operation.CREATE:
-        resp = jira_service.update_issue_resolution(context, jira_resolution)
-        context.append_responses(resp)
-        return (StepStatus.SUCCESS, context)
-
-    if context.operation == Operation.UPDATE:
-        if "resolution" in context.event.changed_fields():
-            resp = jira_service.update_issue_resolution(context, jira_resolution)
-            context.append_responses(resp)
-            return (StepStatus.SUCCESS, context)
-
-    return (StepStatus.NOOP, context)
+def maybe_update_issue_severity(
+    context: ActionContext, *, parameters: ActionParams, jira_service: JiraService
+) -> StepResult:
+    """
+    Update the Jira issue severity
+    """
+    return _maybe_update_issue_mapped_field(
+        "severity", context, parameters, jira_service, wrap_value="value"
+    )
 
 
 def maybe_update_issue_status(
@@ -301,8 +336,7 @@ def maybe_update_components(
 
     try:
         resp, missing_components = jira_service.update_issue_components(
-            issue_key=context.jira.issue,
-            project=parameters.jira_project_key,
+            context=context,
             components=candidate_components,
         )
     except requests_exceptions.HTTPError as exc:

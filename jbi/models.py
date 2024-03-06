@@ -74,9 +74,20 @@ class ActionParams(BaseModel, frozen=True):
     jira_project_key: str
     steps: ActionSteps = ActionSteps()
     jira_components: JiraComponents = JiraComponents()
+    jira_severity_field: str = "customfield_10716"
+    jira_priority_field: str = "priority"
+    jira_resolution_field: str = "resolution"
     labels_brackets: Literal["yes", "no", "both"] = "no"
     status_map: dict[str, str] = {}
+    priority_map: dict[str, str] = {
+        "P1": "P1",
+        "P2": "P2",
+        "P3": "P3",
+        "P4": "Low",
+        "P5": "Lowest",
+    }
     resolution_map: dict[str, str] = {}
+    severity_map: dict[str, str] = {}
     issue_type_map: dict[str, str] = {"task": "Task", "defect": "Bug"}
 
 
