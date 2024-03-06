@@ -149,9 +149,12 @@ linked Jira issue status to "Closed". If the bug changes to a status not listed 
 - `update_issue`
 - `add_jira_comments_for_changes`
 - `maybe_assign_jira_user`
+- `maybe_update_issue_priority`
 - `maybe_update_issue_resolution`
+- `maybe_update_issue_severity`
 - `maybe_update_issue_status`
 - `create_comment`
+- `sync_keywords_labels`
 - `sync_whiteboard_labels`
 - `maybe_update_components`: looks at the component that's set on the bug (if any) and any components added to the project configuration with the `jira_components` parameter (see above). If those components are available on the Jira side as well, they're added to the Jira issue
 

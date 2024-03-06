@@ -404,13 +404,13 @@ wmi = ["wmi (>=1.5.1,<2.0.0)"]
 
 [[package]]
 name = "dockerflow"
-version = "2024.2.0"
+version = "2024.3.0"
 description = "Python tools and helpers for Mozilla's Dockerflow"
 optional = false
 python-versions = ">=3.7,<4"
 files = [
-    {file = "dockerflow-2024.2.0-py2.py3-none-any.whl", hash = "sha256:bab3ce211dbdf439fae21c37e17e03383d7366943789463baf6b441885f3cfa7"},
-    {file = "dockerflow-2024.2.0.tar.gz", hash = "sha256:eff23fe7bda12d24de6c0d69ed0aea75441c171c4730be5bae8bb576a7b3e912"},
+    {file = "dockerflow-2024.3.0-py2.py3-none-any.whl", hash = "sha256:e8cea4df7f7342aa551c9bfa12b401adfd3e28f7f928fc545ae657fc5614ebda"},
+    {file = "dockerflow-2024.3.0.tar.gz", hash = "sha256:96678b00636dfd61fccf08f5f4102d0444e43bec3f8850175a060d8e83559e4c"},
 ]
 
 [package.extras]
@@ -1185,18 +1185,19 @@ python-dotenv = ">=0.9.1"
 
 [[package]]
 name = "pytest-factoryboy"
-version = "2.6.0"
+version = "2.7.0"
 description = "Factory Boy support for pytest."
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "pytest_factoryboy-2.6.0-py3-none-any.whl", hash = "sha256:23facf586a1beedea03e875159001bfeb8393fb56ab104d87ad06f688d269e5b"},
-    {file = "pytest_factoryboy-2.6.0.tar.gz", hash = "sha256:d09c37178693d8e594a96faf3c56e870b7753d2622710298b850ef79eb02d63d"},
+    {file = "pytest_factoryboy-2.7.0-py3-none-any.whl", hash = "sha256:bf3222db22d954fbf46f4bff902a0a8d82f3fc3594a47c04bbdc0546ff4c59a6"},
+    {file = "pytest_factoryboy-2.7.0.tar.gz", hash = "sha256:67fc54ec8669a3feb8ac60094dd57cd71eb0b20b2c319d2957873674c776a77b"},
 ]
 
 [package.dependencies]
 factory_boy = ">=2.10.0"
 inflection = "*"
+packaging = "*"
 pytest = ">=6.2"
 typing_extensions = "*"
 
@@ -2034,4 +2035,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.12, <3.13"
-content-hash = "02605fe1fceb8a022dd14fa53080d3cd06bd58e20ad8c7f571dfc4950eee13b9"
+content-hash = "dbb07b99dc88e3030ea717831b3ff4a6495f9c45ca36e70bd2ed29ba8fd46601"

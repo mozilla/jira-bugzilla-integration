@@ -203,8 +203,10 @@ def test_update_issue_resolution(
         jira_service.update_issue_resolution(context=context, jira_resolution="DONEZO")
 
     before, after = capturelogs.messages
-    assert before == "Updating resolution of Jira issue JBI-234 to DONEZO"
-    assert after == "Updated resolution of Jira issue JBI-234 to DONEZO"
+    assert (
+        before == "Updating resolution of Jira issue JBI-234 to DONEZO for Bug 654321"
+    )
+    assert after == "Updated resolution of Jira issue JBI-234 to DONEZO for Bug 654321"
 
 
 def test_update_issue_resolution_raises(
@@ -230,7 +232,9 @@ def test_update_issue_resolution_raises(
             )
 
     [message] = capturelogs.messages
-    assert message == "Updating resolution of Jira issue JBI-234 to DONEZO"
+    assert (
+        message == "Updating resolution of Jira issue JBI-234 to DONEZO for Bug 654321"
+    )
 
 
 def test_create_jira_issue(
