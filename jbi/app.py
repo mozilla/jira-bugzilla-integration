@@ -1,6 +1,7 @@
 """
 Core FastAPI app (setup, middleware)
 """
+
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -9,7 +10,10 @@ from typing import Any, AsyncGenerator
 import sentry_sdk
 from dockerflow import checks
 from dockerflow.fastapi import router as dockerflow_router
-from dockerflow.fastapi.middleware import RequestIdMiddleware, MozlogRequestSummaryLogger
+from dockerflow.fastapi.middleware import (
+    MozlogRequestSummaryLogger,
+    RequestIdMiddleware,
+)
 from dockerflow.version import get_version
 from fastapi import FastAPI, Request, Response, status
 from fastapi.encoders import jsonable_encoder

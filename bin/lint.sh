@@ -11,8 +11,8 @@ FORMAT_CMD="$POETRY_RUN ruff format ."
 # Scan only files fixed into the repo, omit poetry.lock
 DETECT_SECRETS_FILES="$(git ls-tree --full-tree -r --name-only HEAD | grep -v poetry.lock)"
 DETECT_SECRETS_CMD="$POETRY_RUN detect-secrets-hook $DETECT_SECRETS_FILES --baseline .secrets.baseline"
-  
-LINT_CMD="$POETRY_RUN ruff ."
+
+LINT_CMD="$POETRY_RUN ruff check ."
 
 MYPY_CMD="$POETRY_RUN mypy jbi"
 
@@ -50,7 +50,7 @@ if [ -z "$1" ]; then
 else
   subcommand=$1; shift
   case $subcommand in
-    "format") 
+    "format")
       if [ -n "$1" ] && [ "$1" != "--fix" ]; then
         usage
       else
@@ -78,7 +78,7 @@ else
     "detect-secrets")
       $DETECT_SECRETS_CMD
       ;;
-    *) 
+    *)
       usage
       ;;
   esac

@@ -152,7 +152,7 @@ def test_get_issue_handles_404(
     assert return_val is None
 
     before, after = capturelogs.records
-    assert before.levelno == logging.DEBUG
+    assert before.levelno == logging.INFO
     assert before.message == "Getting issue JBI-234"
 
     assert after.levelno == logging.ERROR
@@ -170,7 +170,7 @@ def test_get_issue_reraises_other_erroring_status_codes(
             jira_service.get_issue(context=action_context, issue_key="JBI-234")
 
     [record] = capturelogs.records
-    assert record.levelno == logging.DEBUG
+    assert record.levelno == logging.INFO
     assert record.message == "Getting issue JBI-234"
 
 
@@ -183,7 +183,9 @@ def test_update_issue_resolution(
         responses.PUT,
         url,
         match=[
-            responses.matchers.json_params_matcher({"fields": {"resolution": "DONEZO"}})
+            responses.matchers.json_params_matcher(
+                {"fields": {"resolution": {"name": "DONEZO"}}}
+            )
         ],
     )
 
@@ -191,8 +193,10 @@ def test_update_issue_resolution(
         jira_service.update_issue_resolution(context=context, jira_resolution="DONEZO")
 
     before, after = capturelogs.messages
-    assert before == "Updating resolution of Jira issue JBI-234 to DONEZO"
-    assert after == "Updated resolution of Jira issue JBI-234 to DONEZO"
+    assert (
+        before == "Updating resolution of Jira issue JBI-234 to DONEZO for Bug 654321"
+    )
+    assert after == "Updated resolution of Jira issue JBI-234 to DONEZO for Bug 654321"
 
 
 def test_update_issue_resolution_raises(
@@ -205,7 +209,9 @@ def test_update_issue_resolution_raises(
         url,
         status=401,
         match=[
-            responses.matchers.json_params_matcher({"fields": {"resolution": "DONEZO"}})
+            responses.matchers.json_params_matcher(
+                {"fields": {"resolution": {"name": "DONEZO"}}}
+            )
         ],
     )
 
@@ -216,7 +222,9 @@ def test_update_issue_resolution_raises(
             )
 
     [message] = capturelogs.messages
-    assert message == "Updating resolution of Jira issue JBI-234 to DONEZO"
+    assert (
+        message == "Updating resolution of Jira issue JBI-234 to DONEZO for Bug 654321"
+    )
 
 
 def test_create_jira_issue(
@@ -291,11 +299,11 @@ def test_create_jira_issue_when_list_is_returned(
 
     before, after = capturelogs.records
     assert before.message == f"Creating new Jira issue for Bug {context.bug.id}"
-    assert before.levelno == logging.DEBUG
+    assert before.levelno == logging.INFO
     assert before.fields == issue_fields
 
     assert after.message == f"Jira issue JBI-234 created for Bug {context.bug.id}"
-    assert after.levelno == logging.DEBUG
+    assert after.levelno == logging.INFO
     assert after.response == [mocked_issue_data]
 
 
@@ -326,7 +334,7 @@ def test_create_jira_issue_returns_errors(
 
     before, after = capturelogs.records
     assert before.message == f"Creating new Jira issue for Bug {context.bug.id}"
-    assert before.levelno == logging.DEBUG
+    assert before.levelno == logging.INFO
     assert before.fields == issue_fields
 
     assert after.message == f"Failed to create issue for Bug {context.bug.id}"

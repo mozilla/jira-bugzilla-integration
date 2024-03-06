@@ -205,14 +205,14 @@ def test_read_version(anon_client):
 
 
 def test_read_heartbeat_all_services_fail(app, mocked_jira, mocked_bugzilla):
-    """/__heartbeat__ returns 500 when all the services are unavailable."""
+    """/__heartbeat__ returns 503 when all the services are unavailable."""
     mocked_bugzilla.logged_in.return_value = False
     mocked_jira.get_server_info.return_value = None
 
     with TestClient(app) as anon_client:
         resp = anon_client.get("/__heartbeat__")
 
-    assert resp.status_code == 500
+    assert resp.status_code == 503
     results = resp.json()
     assert results["status"] == "error"
     assert results["checks"]["bugzilla.up"] == "error"
@@ -220,13 +220,13 @@ def test_read_heartbeat_all_services_fail(app, mocked_jira, mocked_bugzilla):
 
 
 def test_read_heartbeat_jira_services_fails(app, mocked_jira):
-    """/__heartbeat__ returns 500 when one service is unavailable."""
+    """/__heartbeat__ returns 503 when one service is unavailable."""
     mocked_jira.get_server_info.return_value = None
 
     with TestClient(app) as anon_client:
         resp = anon_client.get("/__heartbeat__")
 
-    assert resp.status_code == 500
+    assert resp.status_code == 503
     results = resp.json()
     assert results["status"] == "error"
     assert results["checks"]["bugzilla.up"] == "ok"
@@ -259,9 +259,10 @@ def test_heartbeat_bugzilla_reports_webhooks_errors(
         webhook_factory(id=1, errors=0, product="Remote Settings"),
         webhook_factory(id=2, errors=3, name="Search Toolbar"),
     ]
-    with mock.patch("jbi.bugzilla.service.statsd") as mocked, TestClient(
-        app
-    ) as anon_client:
+    with (
+        mock.patch("jbi.bugzilla.service.statsd") as mocked,
+        TestClient(app) as anon_client,
+    ):
         anon_client.get("/__heartbeat__")
 
     mocked.gauge.assert_any_call(
@@ -273,13 +274,14 @@ def test_heartbeat_bugzilla_reports_webhooks_errors(
 
 
 def test_read_heartbeat_bugzilla_services_fails(app, mocked_bugzilla):
-    """/__heartbeat__ returns 500 when one service is unavailable."""
+    """/__heartbeat__ returns 503 when one service is unavailable."""
     mocked_bugzilla.logged_in.return_value = False
 
     with TestClient(app) as anon_client:
         resp = anon_client.get("/__heartbeat__")
 
     results = resp.json()
+    assert resp.status_code == 503
     assert results["checks"]["bugzilla.up"] == "error"
     assert results["details"]["bugzilla.up"] == {
         "level": 40,

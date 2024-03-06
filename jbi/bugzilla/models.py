@@ -74,6 +74,8 @@ class Bug(BaseModel, frozen=True):
     creator: Optional[str] = None
     assigned_to: Optional[str] = None
     comment: Optional[WebhookComment] = None
+    # Custom field Firefox for story points
+    cf_fx_points: Optional[str] = None
 
     @property
     def product_component(self) -> str:
@@ -98,7 +100,7 @@ class Bug(BaseModel, frozen=True):
                 parsed_url: ParseResult = urlparse(url=url)
                 host_parts = parsed_url.hostname.split(".")
             except (ValueError, AttributeError):
-                logger.debug(
+                logger.info(
                     "Bug %s `see_also` is not a URL: %s",
                     self.id,
                     url,

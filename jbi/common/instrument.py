@@ -3,6 +3,7 @@
 ServiceHealth: Return type that service health checks should use
 InstrumentedClient: wraps service clients so that we can track their usage
 """
+
 import logging
 from functools import wraps
 from typing import Sequence, Type

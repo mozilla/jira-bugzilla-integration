@@ -51,7 +51,7 @@ def create_comment(context: ActionContext, *, jira_service: JiraService) -> Step
     bug = context.bug
 
     if bug.comment is None:
-        logger.debug(
+        logger.info(
             "No matching comment found in payload",
             extra=context.model_dump(),
         )
@@ -92,7 +92,7 @@ def add_link_to_jira(
 ) -> StepResult:
     """Add the URL to the Jira issue in the `see_also` field on the Bugzilla ticket"""
     jira_url = f"{settings.jira_base_url}browse/{context.jira.issue}"
-    logger.debug(
+    logger.info(
         "Link %r on Bug %s",
         jira_url,
         context.bug.id,
@@ -178,7 +178,7 @@ def maybe_assign_jira_user(
             context.append_responses(resp)
             return (StepStatus.SUCCESS, context)
         except ValueError as exc:
-            logger.debug(str(exc), extra=context.model_dump())
+            logger.info(str(exc), extra=context.model_dump())
             return (StepStatus.INCOMPLETE, context)
 
     if context.operation == Operation.UPDATE:
@@ -191,13 +191,60 @@ def maybe_assign_jira_user(
             try:
                 resp = jira_service.assign_jira_user(context, bug.assigned_to)  # type: ignore
             except ValueError as exc:
-                logger.debug(str(exc), extra=context.model_dump())
+                logger.info(str(exc), extra=context.model_dump())
                 # If that failed then just fall back to clearing the assignee.
                 resp = jira_service.clear_assignee(context)
         context.append_responses(resp)
         return (StepStatus.SUCCESS, context)
 
     return (StepStatus.NOOP, context)
+
+
+def _maybe_update_issue_mapped_field(
+    source_field: str,
+    context: ActionContext,
+    parameters: ActionParams,
+    jira_service: JiraService,
+    wrap_value: Optional[str] = None,
+) -> StepResult:
+    source_value = getattr(context.bug, source_field, None) or ""
+    target_field = getattr(parameters, f"jira_{source_field}_field")
+    target_value = getattr(parameters, f"{source_field}_map").get(source_value)
+    if target_value is None:
+        logger.info(
+            f"Bug {source_field} %r was not in the {source_field} map.",
+            source_value,
+            extra=context.update(
+                operation=Operation.IGNORE,
+            ).model_dump(),
+        )
+        return (StepStatus.INCOMPLETE, context)
+
+    if (
+        context.operation == Operation.UPDATE
+        and source_field not in context.event.changed_fields()
+    ):
+        return (StepStatus.NOOP, context)
+
+    resp = jira_service.update_issue_field(
+        context,
+        target_field,
+        target_value,
+        wrap_value,
+    )
+    context.append_responses(resp)
+    return (StepStatus.SUCCESS, context)
+
+
+def maybe_update_issue_priority(
+    context: ActionContext, *, parameters: ActionParams, jira_service: JiraService
+) -> StepResult:
+    """
+    Update the Jira issue priority
+    """
+    return _maybe_update_issue_mapped_field(
+        "priority", context, parameters, jira_service, wrap_value="name"
+    )
 
 
 def maybe_update_issue_resolution(
@@ -207,32 +254,31 @@ def maybe_update_issue_resolution(
     Update the Jira issue status
     https://support.atlassian.com/jira-cloud-administration/docs/what-are-issue-statuses-priorities-and-resolutions/
     """
+    return _maybe_update_issue_mapped_field(
+        "resolution", context, parameters, jira_service, wrap_value="name"
+    )
 
-    bz_resolution = context.bug.resolution or ""
-    jira_resolution = parameters.resolution_map.get(bz_resolution)
 
-    if jira_resolution is None:
-        logger.debug(
-            "Bug resolution %r was not in the resolution map.",
-            bz_resolution,
-            extra=context.update(
-                operation=Operation.IGNORE,
-            ).model_dump(),
-        )
-        return (StepStatus.INCOMPLETE, context)
+def maybe_update_issue_severity(
+    context: ActionContext, *, parameters: ActionParams, jira_service: JiraService
+) -> StepResult:
+    """
+    Update the Jira issue severity
+    """
+    return _maybe_update_issue_mapped_field(
+        "severity", context, parameters, jira_service, wrap_value="value"
+    )
 
-    if context.operation == Operation.CREATE:
-        resp = jira_service.update_issue_resolution(context, jira_resolution)
-        context.append_responses(resp)
-        return (StepStatus.SUCCESS, context)
 
-    if context.operation == Operation.UPDATE:
-        if "resolution" in context.event.changed_fields():
-            resp = jira_service.update_issue_resolution(context, jira_resolution)
-            context.append_responses(resp)
-            return (StepStatus.SUCCESS, context)
-
-    return (StepStatus.NOOP, context)
+def maybe_update_issue_points(
+    context: ActionContext, *, parameters: ActionParams, jira_service: JiraService
+) -> StepResult:
+    """
+    Update the Jira issue story points
+    """
+    return _maybe_update_issue_mapped_field(
+        "cf_fx_points", context, parameters, jira_service
+    )
 
 
 def maybe_update_issue_status(
@@ -246,7 +292,7 @@ def maybe_update_issue_status(
     jira_status = parameters.status_map.get(bz_status or "")
 
     if jira_status is None:
-        logger.debug(
+        logger.info(
             "Bug status %r was not in the status map.",
             bz_status,
             extra=context.update(
@@ -301,8 +347,7 @@ def maybe_update_components(
 
     try:
         resp, missing_components = jira_service.update_issue_components(
-            issue_key=context.jira.issue,
-            project=parameters.jira_project_key,
+            context=context,
             components=candidate_components,
         )
     except requests_exceptions.HTTPError as exc:

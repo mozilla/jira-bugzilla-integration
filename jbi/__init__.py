@@ -3,6 +3,7 @@ Module domain specific code related to JBI.
 
 This part of the code is not aware of the HTTP context it runs in.
 """
+
 from enum import Enum
 
 
