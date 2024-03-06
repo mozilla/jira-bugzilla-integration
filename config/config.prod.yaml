@@ -28,12 +28,18 @@
         - maybe_assign_jira_user
         - maybe_update_issue_resolution
         - maybe_update_issue_status
+        - maybe_update_issue_priority
+        - maybe_update_issue_severity
+        - maybe_update_issue_points
         - sync_whiteboard_labels
       existing:
         - update_issue_summary
         - maybe_assign_jira_user
         - maybe_update_issue_resolution
         - maybe_update_issue_status
+        - maybe_update_issue_priority
+        - maybe_update_issue_severity
+        - maybe_update_issue_points
         - sync_whiteboard_labels
     labels_brackets: both
     status_map:
