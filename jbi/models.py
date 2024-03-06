@@ -81,6 +81,7 @@ class ActionParams(BaseModel, frozen=True):
     labels_brackets: Literal["yes", "no", "both"] = "no"
     status_map: dict[str, str] = {}
     priority_map: dict[str, str] = {
+        "": "(none)",
         "P1": "P1",
         "P2": "P2",
         "P3": "P3",
@@ -88,8 +89,15 @@ class ActionParams(BaseModel, frozen=True):
         "P5": "Lowest",
     }
     resolution_map: dict[str, str] = {}
-    severity_map: dict[str, str] = {}
+    severity_map: dict[str, str] = {
+        "": "N/A",
+        "S1": "S1",
+        "S2": "S2",
+        "S3": "S3",
+        "S4": "S4",
+    }
     cf_fx_points_map: dict[str, int] = {
+        "": 0,
         "?": 0,
         "1": 1,
         "2": 2,
