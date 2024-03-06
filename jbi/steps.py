@@ -270,6 +270,17 @@ def maybe_update_issue_severity(
     )
 
 
+def maybe_update_issue_points(
+    context: ActionContext, *, parameters: ActionParams, jira_service: JiraService
+) -> StepResult:
+    """
+    Update the Jira issue story points
+    """
+    return _maybe_update_issue_mapped_field(
+        "cf_fx_points", context, parameters, jira_service
+    )
+
+
 def maybe_update_issue_status(
     context: ActionContext, *, parameters: ActionParams, jira_service: JiraService
 ) -> StepResult:

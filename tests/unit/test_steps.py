@@ -866,6 +866,73 @@ def test_update_issue_unknown_severity(
     assert capturelogs.messages == ["Bug severity 'S3' was not in the severity map."]
 
 
+def test_update_issue_points(
+    action_context_factory,
+    mocked_jira,
+    action_params_factory,
+    webhook_event_change_factory,
+):
+    action_context = action_context_factory(
+        operation=Operation.UPDATE,
+        current_step="maybe_update_issue_points",
+        bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+        jira__issue="JBI-234",
+        bug__cf_fx_points="15",
+        event__action="modify",
+        event__changes=[
+            webhook_event_change_factory(field="cf_fx_points", removed="?", added="15")
+        ],
+    )
+
+    params = action_params_factory(
+        jira_project_key=action_context.jira.project,
+    )
+    steps.maybe_update_issue_points(
+        action_context, parameters=params, jira_service=JiraService(mocked_jira)
+    )
+
+    mocked_jira.create_issue.assert_not_called()
+    mocked_jira.update_issue_field.assert_called_with(
+        key="JBI-234", fields={"customfield_10037": 15}
+    )
+
+
+def test_update_issue_points_missing_in_map(
+    action_context_factory,
+    mocked_jira,
+    action_params_factory,
+    webhook_event_change_factory,
+    capturelogs,
+):
+    action_context = action_context_factory(
+        operation=Operation.UPDATE,
+        current_step="maybe_update_issue_points",
+        bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+        jira__issue="JBI-234",
+        bug__cf_fx_points="42",
+        event__action="modify",
+        event__changes=[
+            webhook_event_change_factory(field="cf_fx_points", removed="?", added="42")
+        ],
+    )
+
+    params = action_params_factory(
+        jira_project_key=action_context.jira.project,
+    )
+
+    with capturelogs.for_logger("jbi.steps").at_level(logging.DEBUG):
+        result, _ = steps.maybe_update_issue_points(
+            action_context, parameters=params, jira_service=JiraService(mocked_jira)
+        )
+
+    assert result == steps.StepStatus.INCOMPLETE
+    mocked_jira.create_issue.assert_not_called()
+    mocked_jira.update_issue_field.assert_not_called()
+    assert capturelogs.messages == [
+        "Bug cf_fx_points '42' was not in the cf_fx_points map."
+    ]
+
+
 @pytest.mark.parametrize(
     "project_components,bug_component,config_components,expected_jira_components,expected_logs",
     [

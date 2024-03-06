@@ -74,6 +74,8 @@ class Bug(BaseModel, frozen=True):
     creator: Optional[str] = None
     assigned_to: Optional[str] = None
     comment: Optional[WebhookComment] = None
+    # Custom field Firefox for story points
+    cf_fx_points: Optional[str] = None
 
     @property
     def product_component(self) -> str:
