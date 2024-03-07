@@ -210,6 +210,14 @@ def _maybe_update_issue_mapped_field(
     source_value = getattr(context.bug, source_field, None) or ""
     target_field = getattr(parameters, f"jira_{source_field}_field")
     target_value = getattr(parameters, f"{source_field}_map").get(source_value)
+
+    # If field is empty on create, or update is about another field, then nothing to do.
+    if (context.operation == Operation.CREATE and source_value == "") or (
+        context.operation == Operation.UPDATE
+        and source_field not in context.event.changed_fields()
+    ):
+        return (StepStatus.NOOP, context)
+
     if target_value is None:
         logger.info(
             f"Bug {source_field} %r was not in the {source_field} map.",
@@ -219,12 +227,6 @@ def _maybe_update_issue_mapped_field(
             ).model_dump(),
         )
         return (StepStatus.INCOMPLETE, context)
-
-    if (
-        context.operation == Operation.UPDATE
-        and source_field not in context.event.changed_fields()
-    ):
-        return (StepStatus.NOOP, context)
 
     resp = jira_service.update_issue_field(
         context,
