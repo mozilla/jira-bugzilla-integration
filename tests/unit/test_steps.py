@@ -728,6 +728,54 @@ def test_change_to_unknown_resolution_with_resolution_map(
     ]
 
 
+def test_create_issue_empty_priority(
+    action_context_factory,
+    mocked_jira,
+    action_params_factory,
+):
+    action_context = action_context_factory(
+        operation=Operation.CREATE, bug__priority=None
+    )
+    params = action_params_factory(
+        jira_project_key=action_context.jira.project,
+    )
+
+    result, _ = steps.maybe_update_issue_priority(
+        action_context, parameters=params, jira_service=JiraService(mocked_jira)
+    )
+
+    assert result == steps.StepStatus.NOOP
+
+
+def test_update_issue_remove_priority(
+    action_context_factory,
+    mocked_jira,
+    action_params_factory,
+    webhook_event_change_factory,
+):
+    action_context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="JBI-234",
+        bug__priority=None,
+        current_step="maybe_update_issue_priority",
+        event__changes=[
+            webhook_event_change_factory(field="priority", removed="P1", added="--")
+        ],
+    )
+    params = action_params_factory(
+        jira_project_key=action_context.jira.project,
+    )
+
+    result, _ = steps.maybe_update_issue_priority(
+        action_context, parameters=params, jira_service=JiraService(mocked_jira)
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.update_issue_field.assert_called_with(
+        key="JBI-234", fields={"priority": {"name": "(none)"}}
+    )
+
+
 def test_update_issue_priority(
     action_context_factory,
     mocked_jira,
