@@ -32,21 +32,18 @@ test = ["anyio[trio]", "coverage[toml] (>=4.5)", "hypothesis (>=4.0)", "mock (>=
 trio = ["trio (<0.22)"]
 
 [[package]]
-name = "asgi-correlation-id"
-version = "4.3.1"
-description = "Middleware correlating project logs to individual requests"
+name = "asgiref"
+version = "3.7.2"
+description = "ASGI specs, helper code, and adapters"
 optional = false
-python-versions = ">=3.8,<4.0"
+python-versions = ">=3.7"
 files = [
-    {file = "asgi_correlation_id-4.3.1-py3-none-any.whl", hash = "sha256:128509a822e87ac544662804b402761ee2d8fd9769f23339cff220d22d222546"},
-    {file = "asgi_correlation_id-4.3.1.tar.gz", hash = "sha256:3d7efa2c002fa909d6e1a452c1cf8088ff5ac186884b4d9aa5430ed00b036278"},
+    {file = "asgiref-3.7.2-py3-none-any.whl", hash = "sha256:89b2ef2247e3b562a16eef663bc0e2e703ec6468e2fa8a5cd61cd449786d4f6e"},
+    {file = "asgiref-3.7.2.tar.gz", hash = "sha256:9e0ce3aa93a819ba5b45120216b23878cf6e8525eb3848653452b4192b92afed"},
 ]
 
-[package.dependencies]
-starlette = ">=0.18"
-
 [package.extras]
-celery = ["celery"]
+tests = ["mypy (>=0.800)", "pytest", "pytest-asyncio"]
 
 [[package]]
 name = "atlassian-python-api"
@@ -412,6 +409,10 @@ files = [
     {file = "dockerflow-2024.3.0-py2.py3-none-any.whl", hash = "sha256:e8cea4df7f7342aa551c9bfa12b401adfd3e28f7f928fc545ae657fc5614ebda"},
     {file = "dockerflow-2024.3.0.tar.gz", hash = "sha256:96678b00636dfd61fccf08f5f4102d0444e43bec3f8850175a060d8e83559e4c"},
 ]
+
+[package.dependencies]
+asgiref = {version = "*", optional = true, markers = "extra == \"fastapi\""}
+fastapi = {version = "*", optional = true, markers = "extra == \"fastapi\""}
 
 [package.extras]
 django = ["django"]
@@ -2035,4 +2036,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.12, <3.13"
-content-hash = "52b95326c9887bae4e1add76b6afa70e0f1af3d479d60397500af7445e368dde"
+content-hash = "c6c747cec25985bcbd4a1ace1853684b83fa29a61ce0dd75fcf0f4fb1a082db7"

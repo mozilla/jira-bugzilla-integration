@@ -10,9 +10,9 @@ import responses
 from fastapi.testclient import TestClient
 from pytest_factoryboy import register
 
+import jbi.app
 import tests.fixtures.factories as factories
 from jbi import Operation, bugzilla, jira
-from jbi.app import app
 from jbi.environment import Settings
 from jbi.models import ActionContext
 
@@ -74,7 +74,12 @@ register(
 
 
 @pytest.fixture
-def anon_client():
+def app():
+    return jbi.app.app
+
+
+@pytest.fixture
+def anon_client(app):
     """A test client with no authorization."""
     return TestClient(app)
 
@@ -86,7 +91,7 @@ def test_api_key():
 
 
 @pytest.fixture
-def authenticated_client(test_api_key):
+def authenticated_client(app, test_api_key):
     """An test client with a valid API key."""
     return TestClient(app, headers={"X-Api-Key": test_api_key})
 
@@ -151,7 +156,7 @@ def sleepless(monkeypatch):
 
 
 @pytest.fixture
-def exclude_middleware():
+def exclude_middleware(app):
     # Hack to work around issue with Starlette issue on Jinja templates
     # https://github.com/encode/starlette/issues/472#issuecomment-704188037
     user_middleware = app.user_middleware.copy()
