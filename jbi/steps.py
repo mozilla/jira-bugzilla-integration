@@ -11,6 +11,7 @@ Each step takes an `ActionContext` and a list of arbitrary parameters.
 from __future__ import annotations
 
 import logging
+import re
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Iterable, Optional
 
@@ -198,6 +199,56 @@ def maybe_assign_jira_user(
         return (StepStatus.SUCCESS, context)
 
     return (StepStatus.NOOP, context)
+
+
+def maybe_update_issue_milestone(
+    context: ActionContext, *, parameters: ActionParams, jira_service: JiraService
+) -> StepResult:
+    """
+    Update the Jira issue 'Fix Version' field.
+    """
+    # Do not bother update the field if empty on create or if another field is updated.
+    if (context.operation == Operation.CREATE and not context.bug.milestone) or (
+        context.operation == Operation.UPDATE
+        and "milestone" not in context.event.changed_fields()
+    ):
+        return (StepStatus.NOOP, context)
+
+    if context.bug.milestone:
+        m = re.match(r"Branch (\d+)", context.bug.milestone)
+        if m is None:
+            # Milestone not supported (eg. "Future")
+            return (StepStatus.NOOP, context)
+
+        milestone_version = m.group(1)
+        jira_project_versions = {
+            v["name"]
+            for v in jira_service.client.get_project_versions(context.jira.project)
+        }
+        potential_fix_versions = {
+            f"Fx{milestone_version}",
+            f"Release {milestone_version}",
+        }
+        jira_fix_versions = list(
+            jira_project_versions.intersection(potential_fix_versions)
+        )
+        if not jira_fix_versions:
+            logger.info(
+                "Bug %s milestone %r has no matching version in project.",
+                context.bug.id,
+                context.bug.milestone,
+                extra=context.update(
+                    operation=Operation.IGNORE,
+                ).model_dump(),
+            )
+            return (StepStatus.INCOMPLETE, context)
+
+    else:
+        jira_fix_versions = []
+
+    resp = jira_service.update_issue_field(context, "fixVersions", jira_fix_versions)
+    context.append_responses(resp)
+    return (StepStatus.SUCCESS, context)
 
 
 def _maybe_update_issue_mapped_field(

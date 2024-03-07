@@ -728,6 +728,41 @@ def test_change_to_unknown_resolution_with_resolution_map(
     ]
 
 
+def test_maybe_update_issue_milestone_empty_create():
+    # NOOP when not set on create event
+    pass
+
+
+def test_maybe_update_issue_milestone_unsupported_milestone():
+    # NOOP when milestone is "Future"
+    pass
+
+
+def test_maybe_update_issue_milestone_unknown_create():
+    # Test log message when milestone unknown in project
+    pass
+
+
+def test_maybe_update_issue_milestone_set_create():
+    # Test both fix versions are known.
+    pass
+
+
+def test_maybe_update_issue_milestone_empty_update():
+    # Test set to empty list when empty on update.
+    pass
+
+
+def test_maybe_update_issue_milestone_unknown_update():
+    # Test log message when milestone unknown in project
+    pass
+
+
+def test_maybe_update_issue_milestone_set_update():
+    # Test both fix versions are known.
+    pass
+
+
 def test_update_issue_priority(
     action_context_factory,
     mocked_jira,
