@@ -3,6 +3,7 @@ Core FastAPI app (setup, middleware)
 """
 
 import secrets
+import sys
 from pathlib import Path
 from typing import Annotated, Optional
 
@@ -72,15 +73,20 @@ async def bugzilla_webhook(
     webhook_request: bugzilla.WebhookRequest = Body(..., embed=False),
 ):
     """API endpoint that Bugzilla Webhook Events request"""
-    async with queue.receive(webhook_request) as webhook_request:
-        if webhook_request is None:
-            # This payload should be blocked.
-            return {"blocked": True}
-        try:
-            result = execute_action(webhook_request, actions)
-            return result
-        except IgnoreInvalidRequestError as exception:
-            return {"error": str(exception)}
+    if await queue.is_blocked(webhook_request):
+        # If it's blocked, store it and wait for it to be processed later.
+        await queue.store(webhook_request, None)
+        return {"blocked": True}
+
+    try:
+        result = execute_action(webhook_request, actions)
+        return result
+    except IgnoreInvalidRequestError as exception:
+        return {"error": str(exception)}
+    except Exception as exc:
+        exc_info = sys.exc_info()
+        await queue.store(webhook_request, exc_info)
+        return {"failed": str(exc)}
 
 
 @router.get(

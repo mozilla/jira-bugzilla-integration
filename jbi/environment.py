@@ -48,6 +48,8 @@ class Settings(BaseSettings):
     sentry_dsn: Optional[AnyUrl] = None
     sentry_traces_sample_rate: float = 1.0
 
+    dl_queue_dsn: str = "memory://"
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
 

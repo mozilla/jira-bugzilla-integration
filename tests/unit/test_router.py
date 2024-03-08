@@ -8,6 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from jbi.environment import get_settings
+from jbi.queue import get_dl_queue
 
 
 def test_read_root(anon_client):
@@ -189,6 +190,53 @@ def test_webhook_is_422_if_bug_information_missing(
     )
     assert response.status_code == 422
     assert response.json()["detail"][0]["loc"] == ["body", "bug"]
+
+
+@pytest.mark.asyncio
+async def test_webhook_adds_to_queue_on_failure(
+    webhook_request_factory,
+    authenticated_client,
+):
+    webhook = webhook_request_factory.build()
+    dl_queue = get_dl_queue()
+    before = len(await dl_queue.backend.list())
+
+    with mock.patch("jbi.router.execute_action", side_effect=ValueError("Boom!")):
+        response = authenticated_client.post(
+            "/bugzilla_webhook",
+            data=webhook.model_dump_json(),
+        )
+
+        assert response.status_code == 200
+        assert response.json()["failed"]
+        assert len(await dl_queue.backend.list()) == before + 1
+
+
+@pytest.mark.asyncio
+async def test_webhook_skips_processing_if_blocking_in_queue(
+    webhook_request_factory,
+    authenticated_client,
+):
+    webhook = webhook_request_factory.build()
+    dl_queue = get_dl_queue()
+    await dl_queue.backend.put({"previous": "blocking"})
+    before = len(await dl_queue.backend.list())
+
+    with mock.patch("jbi.router.execute_action") as mocked_execution:
+        response = authenticated_client.post(
+            "/bugzilla_webhook",
+            data=webhook.model_dump_json(),
+        )
+
+        assert response.status_code == 200
+        assert response.json()["blocked"]
+        mocked_execution.assert_not_called()
+        assert len(await dl_queue.backend.list()) == before + 1
+
+
+#
+# Dockerflow
+#
 
 
 def test_read_version(anon_client):

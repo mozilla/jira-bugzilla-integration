@@ -6,6 +6,7 @@ import time
 from unittest import mock
 
 import pytest
+import pytest_asyncio
 import responses
 from fastapi.testclient import TestClient
 from pytest_factoryboy import register
@@ -55,10 +56,10 @@ def mocked_statsd():
         yield _mocked_statsd
 
 
-@pytest.fixture(autouse=True)
+@pytest_asyncio.fixture(autouse=True)
 async def purge_dl_queue():
     q = get_dl_queue()
-    await q.purge()
+    await q.clear()
 
 
 register(factories.ActionContextFactory)
