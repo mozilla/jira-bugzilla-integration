@@ -3,11 +3,12 @@ import logging
 import os
 import traceback
 from abc import ABC
+from datetime import datetime
 from functools import lru_cache
 from typing import Optional
 from urllib.parse import urlparse
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from jbi import bugzilla
 from jbi.environment import get_settings
@@ -33,6 +34,8 @@ class PythonException(BaseModel, frozen=True):
 class QueueItem(BaseModel, frozen=True):
     """Dead Letter Queue entry."""
 
+    timestamp: datetime = Field(default_factory=lambda: datetime.now())
+    retries: int = 0
     payload: bugzilla.WebhookRequest
     error: Optional[PythonException]
 
@@ -52,7 +55,7 @@ class QueueBackend(ABC):
     async def put(self, item: QueueItem):
         pass
 
-    async def list(self) -> list[QueueItem]:
+    async def get(self) -> list[QueueItem]:
         return []
 
 
@@ -64,9 +67,9 @@ class MemoryBackend(QueueBackend):
         self.existing = []
 
     async def put(self, item: QueueItem):
-        self.existing = [item] + self.existing
+        self.existing.append(item)
 
-    async def list(self) -> list[QueueItem]:
+    async def get(self) -> list[QueueItem]:
         return self.existing
 
 
@@ -78,17 +81,18 @@ class FileBackend(QueueBackend):
         os.path.remove(self.location)
 
     async def put(self, item: QueueItem):
-        existing = await self.list()
-        self._save([item] + existing)
+        existing = await self.get()
+        self._save(existing + [item])
 
-    async def list(self) -> list[QueueItem]:
+    async def get(self) -> list[QueueItem]:
         with open(self.location) as f:
             data: list[QueueItem] = json.load(f)
         return data
 
-    def _save(self, data):
+    def _save(self, data: list[QueueItem]):
         with open(self.location, "w") as f:
             json.dump([i.model_dump() for i in data], f)
+        logger.info("%s items in dead letter queue", len(data))
 
 
 class InvalidQueueDSNError(Exception):
@@ -107,13 +111,31 @@ class DeadLetterQueue:
         else:
             raise InvalidQueueDSNError(f"{parsed.scheme} is not supported")
 
-    async def store(self, payload: bugzilla.WebhookRequest, exc_info: Optional[tuple]):
+    async def receive(
+        self, payload: bugzilla.WebhookRequest
+    ) -> Optional[bugzilla.WebhookRequest]:
+        if self.is_blocked(payload):
+            # If it's blocked, store it and wait for it to be processed later.
+            await self.backend.put(QueueItem(payload=payload, error=None))
+            logger.info(
+                "%r event on Bug %s was put in queue for later processing.",
+                payload.event.action,
+                payload.bug.id,
+                extra={"payload": payload.model_dump()},
+            )
+            return None
+
+        # TODO: potentially merge it with other events.
+
+        return payload
+
+    async def store(self, payload: bugzilla.WebhookRequest, exc_info: tuple):
         """
-        Keep track of the process error for this payload.
+        Store the specified payload and exception information into the queue.
         """
         item = QueueItem(
             payload=payload,
-            error=PythonException.from_exc_info(exc_info) if exc_info else None,
+            error=PythonException.from_exc_info(exc_info),
         )
         await self.backend.put(item)
 
@@ -122,7 +144,7 @@ class DeadLetterQueue:
         Return `True` if the specified `payload` is blocked and should be
         queued instead of being processed.
         """
-        existing = await self.backend.list()
+        existing = await self.backend.get()
         return len(existing) > 0
 
     async def clear(self):

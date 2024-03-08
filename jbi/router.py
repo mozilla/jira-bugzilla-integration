@@ -70,23 +70,21 @@ async def bugzilla_webhook(
     request: Request,
     actions: ActionsDep,
     queue: Annotated[DeadLetterQueue, Depends(get_dl_queue)],
-    webhook_request: bugzilla.WebhookRequest = Body(..., embed=False),
+    payload: bugzilla.WebhookRequest = Body(..., embed=False),
 ):
     """API endpoint that Bugzilla Webhook Events request"""
-    if await queue.is_blocked(webhook_request):
-        # If it's blocked, store it and wait for it to be processed later.
-        await queue.store(webhook_request, None)
-        return {"blocked": True}
-
+    webhook_request = await queue.receive(payload)
+    if webhook_request is None:
+        return {"status": "skipped"}
     try:
         result = execute_action(webhook_request, actions)
         return result
     except IgnoreInvalidRequestError as exception:
-        return {"error": str(exception)}
+        return {"status": "invalid", "error": str(exception)}
     except Exception as exc:
         exc_info = sys.exc_info()
         await queue.store(webhook_request, exc_info)
-        return {"failed": str(exc)}
+        return {"status": "failed", "error": str(exc)}
 
 
 @router.get(
