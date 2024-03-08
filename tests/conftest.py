@@ -15,6 +15,7 @@ import tests.fixtures.factories as factories
 from jbi import Operation, bugzilla, jira
 from jbi.environment import Settings
 from jbi.models import ActionContext
+from jbi.queue import get_dl_queue
 
 
 class FilteredLogCaptureFixture(pytest.LogCaptureFixture):
@@ -52,6 +53,12 @@ def capturelogs(request):
 def mocked_statsd():
     with mock.patch("jbi.common.instrument.statsd") as _mocked_statsd:
         yield _mocked_statsd
+
+
+@pytest.fixture(autouse=True)
+async def purge_dl_queue():
+    q = get_dl_queue()
+    await q.purge()
 
 
 register(factories.ActionContextFactory)
