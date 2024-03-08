@@ -29,6 +29,10 @@ See the diagram below for a detailed flow of data. Note: This is designed to sho
 
 ![Flow chart detailing the data flow, see expandable below for full details](./003.drawio.jpg "Proposed Solution Flow Chart")
 
+
+![Image detailing the bucket data structure. DLQ bucket > folders with names like project-bug_id > json files with names like action-[id-]timestamp.json](./003-bucket.drawio.jpg "Proposed Solution Flow Chart")
+
+
 <details>
 
   <summary>Breakdown of flowchart</summary>
