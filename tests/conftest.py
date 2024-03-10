@@ -74,6 +74,7 @@ register(factories.WebhookEventFactory)
 register(factories.WebhookEventChangeFactory)
 register(factories.WebhookRequestFactory, "bugzilla_webhook_request")
 register(factories.WebhookUserFactory)
+register(factories.QueueItemFactory)
 
 
 register(

@@ -37,7 +37,7 @@ class QueueItem(BaseModel, frozen=True):
     timestamp: datetime = Field(default_factory=lambda: datetime.now())
     retries: int = 0
     payload: bugzilla.WebhookRequest
-    error: Optional[PythonException]
+    error: Optional[PythonException] = None
 
 
 @lru_cache(maxsize=1)

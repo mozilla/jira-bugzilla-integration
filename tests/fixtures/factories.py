@@ -1,7 +1,9 @@
+from datetime import datetime
+
 import factory
 
 import jbi.bugzilla.models as bugzilla_models
-from jbi import Operation, models
+from jbi import Operation, models, queue
 
 
 class PydanticFactory(factory.Factory):
@@ -172,3 +174,22 @@ class WebhookFactory(PydanticFactory):
     name = "Test Webhooks"
     product = "Firefox"
     url = "http://server.example.com/bugzilla_webhook"
+
+
+class PythonExceptionFactory(PydanticFactory):
+    class Meta:
+        model = queue.PythonException
+
+    type = "ValueError"
+    description = "boom!"
+    details = "Traceback: foo"
+
+
+class QueueItemFactory(PydanticFactory):
+    class Meta:
+        model = queue.QueueItem
+
+    timestamp = datetime.now()
+    retries = 0
+    payload = factory.SubFactory(WebhookRequestFactory)
+    error = factory.SubFactory(PythonExceptionFactory)
