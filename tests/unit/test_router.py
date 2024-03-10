@@ -1,6 +1,7 @@
 import base64
 import json
 import os
+import sys
 from datetime import datetime
 from unittest import mock
 
@@ -212,14 +213,22 @@ async def test_webhook_adds_to_queue_on_failure(
         assert len(await dl_queue.backend.get()) == before + 1
 
 
+@pytest.fixture
+def fake_exc_info():
+    try:
+        raise ValueError()
+    except ValueError:
+        exc_info = sys.exc_info()  # noqa: F821
+    return exc_info
+
+
 @pytest.mark.asyncio
 async def test_webhook_skips_processing_if_blocking_in_queue(
-    webhook_request_factory,
-    authenticated_client,
+    webhook_request_factory, authenticated_client, fake_exc_info
 ):
     webhook = webhook_request_factory.build()
     dl_queue = get_dl_queue()
-    await dl_queue.backend.put({"previous": "blocking"})
+    await dl_queue.store(webhook, fake_exc_info)
     before = len(await dl_queue.backend.get())
 
     with mock.patch("jbi.router.execute_action") as mocked_execution:
@@ -229,7 +238,7 @@ async def test_webhook_skips_processing_if_blocking_in_queue(
         )
 
         assert response.status_code == 200
-        assert response.json()["status"] == "blocked"
+        assert response.json()["status"] == "skipped"
         mocked_execution.assert_not_called()
         assert len(await dl_queue.backend.get()) == before + 1
 

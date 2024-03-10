@@ -111,10 +111,13 @@ class DeadLetterQueue:
         else:
             raise InvalidQueueDSNError(f"{parsed.scheme} is not supported")
 
+    async def size(self):
+        return len(await self.backend.get())
+
     async def receive(
         self, payload: bugzilla.WebhookRequest
     ) -> Optional[bugzilla.WebhookRequest]:
-        if self.is_blocked(payload):
+        if await self.is_blocked(payload):
             # If it's blocked, store it and wait for it to be processed later.
             await self.backend.put(QueueItem(payload=payload, error=None))
             logger.info(
@@ -145,7 +148,10 @@ class DeadLetterQueue:
         queued instead of being processed.
         """
         existing = await self.backend.get()
-        return len(existing) > 0
+        for item in existing:
+            if item.payload.bug.id == payload.bug.id:
+                return True
+        return False
 
     async def clear(self):
         """
