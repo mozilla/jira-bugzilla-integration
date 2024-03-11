@@ -43,7 +43,7 @@ class QueueItem(BaseModel, frozen=True):
 
     @property
     def identifier(self):
-        return f"{self.timestamp.timestamp():.0f}-{self.payload.event.action}-{"error" if self.error else "postponed"}"
+        return f"{self.timestamp.isoformat()}-{self.payload.bug.id}-{self.payload.event.action}-{"error" if self.error else "postponed"}"
 
 
 @lru_cache(maxsize=1)
