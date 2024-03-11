@@ -1,10 +1,14 @@
+import glob
 import json
 import logging
 import os
+import shutil
 import traceback
 from abc import ABC
-from datetime import datetime
+from collections import defaultdict
+from datetime import datetime, timezone
 from functools import lru_cache
+from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -33,10 +37,14 @@ class PythonException(BaseModel, frozen=True):
 class QueueItem(BaseModel, frozen=True):
     """Dead Letter Queue entry."""
 
-    timestamp: datetime = Field(default_factory=lambda: datetime.now())
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(tz=timezone.utc))
     retries: int = 0
     payload: bugzilla.WebhookRequest
     error: Optional[PythonException] = None
+
+    @property
+    def identifier(self):
+        return f"{self.timestamp.timestamp():.0f}-{self.payload.event.action}-{"error" if self.error else "postponed"}"
 
 
 @lru_cache(maxsize=1)
@@ -54,44 +62,59 @@ class QueueBackend(ABC):
     async def put(self, item: QueueItem):
         pass
 
-    async def get(self) -> list[QueueItem]:
+    async def get(self, bug_id: int) -> list[QueueItem]:
         return []
+
+    async def size(self) -> int:
+        return 0
 
 
 class MemoryBackend(QueueBackend):
     def __init__(self):
-        self.existing: list[QueueItem] = []
+        self.existing: dict[int, list[QueueItem]] = defaultdict(list)
 
     async def clear(self):
-        self.existing = []
+        self.existing.clear()
 
     async def put(self, item: QueueItem):
-        self.existing.append(item)
+        self.existing[item.payload.bug.id].append(item)
 
-    async def get(self) -> list[QueueItem]:
-        return self.existing
+    async def get(self, bug_id: int) -> list[QueueItem]:
+        return self.existing[bug_id]
+
+    async def size(self) -> int:
+        return sum(len(v) for v in self.existing.values())
 
 
 class FileBackend(QueueBackend):
     def __init__(self, location):
-        self.location = location
+        if not os.path.exists(location):
+            os.makedirs(location)
+        elif not os.path.isdir(location):
+            raise ValueError(f"{location} is not a directory")
+        self.location = Path(location)
 
     async def clear(self):
-        os.path.remove(self.location)
+        shutil.rmtree(self.location)
 
     async def put(self, item: QueueItem):
-        existing = await self.get()
-        self._save(existing + [item])
+        folder = self.location / f"{item.payload.bug.id}"
+        path = folder / (item.identifier + ".json")
+        os.makedirs(folder, exist_ok=True)
+        with open(path, "w") as f:
+            f.write(item.model_dump_json())
+        logger.info("%d items in dead letter queue", await self.size())
 
-    async def get(self) -> list[QueueItem]:
-        with open(self.location) as f:
-            data: list[QueueItem] = json.load(f)
-        return data
+    async def get(self, bug_id: int) -> list[QueueItem]:
+        folder = self.location / f"{bug_id}"
+        results = []
+        for filepath in glob.glob("*.json", root_dir=folder):
+            with open(folder / filepath) as f:
+                results.append(QueueItem(**json.load(f)))
+        return results
 
-    def _save(self, data: list[QueueItem]):
-        with open(self.location, "w") as f:
-            json.dump([i.model_dump() for i in data], f)
-        logger.info("%s items in dead letter queue", len(data))
+    async def size(self) -> int:
+        return sum(1 for _ in self.location.rglob("*.json"))
 
 
 class InvalidQueueDSNError(Exception):
@@ -109,9 +132,6 @@ class DeadLetterQueue:
             self.backend = FileBackend(parsed.path)
         else:
             raise InvalidQueueDSNError(f"{parsed.scheme} is not supported")
-
-    async def size(self):
-        return len(await self.backend.get())
 
     async def postpone(self, payload: bugzilla.WebhookRequest):
         """
@@ -135,14 +155,5 @@ class DeadLetterQueue:
         Return `True` if the specified `payload` is blocked and should be
         queued instead of being processed.
         """
-        existing = await self.backend.get()
-        for item in existing:
-            if item.payload.bug.id == payload.bug.id:
-                return True
-        return False
-
-    async def clear(self):
-        """
-        Clear the whole queue.
-        """
-        await self.backend.clear()
+        existing = await self.backend.get(payload.bug.id)
+        return len(existing) > 0
