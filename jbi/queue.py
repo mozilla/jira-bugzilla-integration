@@ -1,4 +1,4 @@
-import glob
+import itertools
 import json
 import logging
 import os
@@ -38,7 +38,6 @@ class QueueItem(BaseModel, frozen=True):
     """Dead Letter Queue entry."""
 
     timestamp: datetime = Field(default_factory=lambda: datetime.now(tz=timezone.utc))
-    retries: int = 0
     payload: bugzilla.WebhookRequest
     error: Optional[PythonException] = None
 
@@ -62,8 +61,14 @@ class QueueBackend(ABC):
     async def put(self, item: QueueItem):
         pass
 
+    async def remove(self, bug_id: int, identifier: str):
+        pass
+
     async def get(self, bug_id: int) -> list[QueueItem]:
         return []
+
+    async def get_all(self) -> dict[int, list[QueueItem]]:
+        return {}
 
     async def size(self) -> int:
         return 0
@@ -81,6 +86,14 @@ class MemoryBackend(QueueBackend):
 
     async def get(self, bug_id: int) -> list[QueueItem]:
         return self.existing[bug_id]
+
+    async def get_all(self) -> dict[int, list[QueueItem]]:
+        return self.existing
+
+    async def remove(self, bug_id: int, identifier: str):
+        self.existing[bug_id] = [
+            i for i in self.existing[bug_id] if i.identifier != identifier
+        ]
 
     async def size(self) -> int:
         return sum(len(v) for v in self.existing.values())
@@ -105,13 +118,25 @@ class FileBackend(QueueBackend):
             f.write(item.model_dump_json())
         logger.info("%d items in dead letter queue", await self.size())
 
+    async def remove(self, bug_id: int, identifier: str):
+        path = self.location / f"{bug_id}" / (identifier + ".json")
+        os.remove(path)
+
     async def get(self, bug_id: int) -> list[QueueItem]:
         folder = self.location / f"{bug_id}"
         results = []
-        for filepath in glob.glob("*.json", root_dir=folder):
+        for filepath in folder.glob("*.json"):
             with open(folder / filepath) as f:
                 results.append(QueueItem(**json.load(f)))
         return results
+
+    async def get_all(self) -> dict[int, list[QueueItem]]:
+        all_items = []
+        for filepath in self.location.rglob("*.json"):
+            with open(self.location / filepath) as f:
+                all_items.append(QueueItem(**json.load(f)))
+        by_bug = itertools.groupby(all_items, key=lambda i: i.payload.bug.id)
+        return {k: list(v) for k, v in by_bug}
 
     async def size(self) -> int:
         return sum(1 for _ in self.location.rglob("*.json"))
@@ -157,3 +182,26 @@ class DeadLetterQueue:
         """
         existing = await self.backend.get(payload.bug.id)
         return len(existing) > 0
+
+    async def retrieve(self) -> list[QueueItem]:
+        """
+        Returns the whole list of items in the queue, grouped by bug, and
+        sorted from oldest to newest.
+        """
+        existing = await self.backend.get_all()
+        # Sort by event datetime ascending.
+        sorted_existing = [
+            sorted(v, key=lambda i: i.payload.event.time)
+            for k, v in existing.items()
+            if len(v) > 0
+        ]
+        by_oldest_bug_events = sorted(
+            sorted_existing, key=lambda items: items[0].payload.event.time
+        )
+        return list(itertools.chain(*by_oldest_bug_events))
+
+    async def done(self, item: QueueItem):
+        """
+        Mark item as done, remove from queue.
+        """
+        return await self.backend.remove(item.payload.bug.id, item.identifier)
