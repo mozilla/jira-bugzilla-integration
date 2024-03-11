@@ -3,7 +3,6 @@ Core FastAPI app (setup, middleware)
 """
 
 import secrets
-import sys
 from pathlib import Path
 from typing import Annotated, Optional
 
@@ -18,7 +17,7 @@ from jbi.configuration import ACTIONS
 from jbi.environment import Settings, get_settings
 from jbi.models import Actions
 from jbi.queue import DeadLetterQueue, get_dl_queue
-from jbi.runner import IgnoreInvalidRequestError, execute_action
+from jbi.runner import execute_or_queue
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 ActionsDep = Annotated[Actions, Depends(lambda: ACTIONS)]
@@ -70,21 +69,10 @@ async def bugzilla_webhook(
     request: Request,
     actions: ActionsDep,
     queue: Annotated[DeadLetterQueue, Depends(get_dl_queue)],
-    payload: bugzilla.WebhookRequest = Body(..., embed=False),
+    webhook_request: bugzilla.WebhookRequest = Body(..., embed=False),
 ):
     """API endpoint that Bugzilla Webhook Events request"""
-    webhook_request = await queue.receive(payload)
-    if webhook_request is None:
-        return {"status": "skipped"}
-    try:
-        result = execute_action(webhook_request, actions)
-        return result
-    except IgnoreInvalidRequestError as exception:
-        return {"status": "invalid", "error": str(exception)}
-    except Exception as exc:
-        exc_info = sys.exc_info()
-        await queue.store(webhook_request, exc_info)
-        return {"status": "failed", "error": str(exc)}
+    return await execute_or_queue(webhook_request, queue, actions)
 
 
 @router.get(

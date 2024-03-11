@@ -22,12 +22,11 @@ class PythonException(BaseModel, frozen=True):
     details: str
 
     @classmethod
-    def from_exc_info(cls, exc_info: tuple):
-        exc_type, exc_value, _exc_context = exc_info
+    def from_exc(cls, exc: Exception):
         return PythonException(
-            type=exc_type.__name__,
-            description=str(exc_value),
-            details="".join(traceback.format_exception(*exc_info)),
+            type=exc.__class__.__name__,
+            description=str(exc),
+            details="".join(traceback.format_exception(exc)),
         )
 
 
@@ -114,31 +113,20 @@ class DeadLetterQueue:
     async def size(self):
         return len(await self.backend.get())
 
-    async def receive(
-        self, payload: bugzilla.WebhookRequest
-    ) -> Optional[bugzilla.WebhookRequest]:
-        if await self.is_blocked(payload):
-            # If it's blocked, store it and wait for it to be processed later.
-            await self.backend.put(QueueItem(payload=payload, error=None))
-            logger.info(
-                "%r event on Bug %s was put in queue for later processing.",
-                payload.event.action,
-                payload.bug.id,
-                extra={"payload": payload.model_dump()},
-            )
-            return None
+    async def postpone(self, payload: bugzilla.WebhookRequest):
+        """
+        Store the specified payload and exception information into the queue.
+        """
+        item = QueueItem(payload=payload)
+        await self.backend.put(item)
 
-        # TODO: potentially merge it with other events.
-
-        return payload
-
-    async def store(self, payload: bugzilla.WebhookRequest, exc_info: tuple):
+    async def track_failed(self, payload: bugzilla.WebhookRequest, exc: Exception):
         """
         Store the specified payload and exception information into the queue.
         """
         item = QueueItem(
             payload=payload,
-            error=PythonException.from_exc_info(exc_info),
+            error=PythonException.from_exc(exc),
         )
         await self.backend.put(item)
 
