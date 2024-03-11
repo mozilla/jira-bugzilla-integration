@@ -26,30 +26,31 @@ async def test_basic_queue_features(dsn, webhook_request_factory):
     assert not await queue.is_blocked(request_other_bug)
 
     # Postpone a request.
-    another_request = webhook_request_factory.build(bug__id=777)
+    bug_id = 777
+    another_request = webhook_request_factory.build(bug__id=bug_id)
     await queue.postpone(another_request)
     assert await queue.backend.size() == 2
 
     # Store an old event request.
     old_request = webhook_request_factory.build(
-        bug__id=another_request.bug.id, event__time="1982-05-05T13:20:17.495000+00:00"
+        bug__id=bug_id, event__time="1982-05-05T13:20:17.495000+00:00"
     )
     await queue.track_failed(old_request, ValueError("blah"))
 
-    # Check what was stored.
-    stored = await queue.backend.get(another_request.bug.id)
+    # Check what was stored for this bug.
+    stored = await queue.backend.get(bug_id)
     assert len(stored) == 2
     assert stored[0].payload.bug.summary == another_request.bug.summary
 
+    # Oldest event brought `bug_id` items first.
     all_items = await queue.retrieve()
-    assert len(all_items) == 3
-    assert all_items[0].payload.bug.id == another_request.bug.id
-    assert all_items[1].payload.bug.id == another_request.bug.id
+    assert [i.payload.bug.id for i in all_items] == [bug_id, bug_id, request.bug.id]
     assert all_items[0].payload.event.time < all_items[1].payload.event.time
-    assert all_items[2].payload.bug.id == request.bug.id
 
+    # Mark one as done
     await queue.done(all_items[0])
     assert await queue.backend.size() == 2
 
+    # Clear
     await queue.backend.clear()
     assert await queue.backend.size() == 0

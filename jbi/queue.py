@@ -191,12 +191,12 @@ class DeadLetterQueue:
         existing = await self.backend.get_all()
         # Sort by event datetime ascending.
         sorted_existing = [
-            sorted(v, key=lambda i: i.payload.event.time)
-            for k, v in existing.items()
+            sorted(v, key=lambda i: i.payload.event.time or 0)
+            for v in existing.values()
             if len(v) > 0
         ]
         by_oldest_bug_events = sorted(
-            sorted_existing, key=lambda items: items[0].payload.event.time
+            sorted_existing, key=lambda items: items[0].payload.event.time or 0
         )
         return list(itertools.chain(*by_oldest_bug_events))
 
