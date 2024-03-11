@@ -160,7 +160,7 @@ class DeadLetterQueue:
 
     async def postpone(self, payload: bugzilla.WebhookRequest):
         """
-        Store the specified payload and exception information into the queue.
+        Postpone the specified request for later.
         """
         item = QueueItem(payload=payload)
         await self.backend.put(item)
