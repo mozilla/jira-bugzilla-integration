@@ -263,6 +263,21 @@
   description: Firefox Messaging System whiteboard tag
   parameters:
     jira_project_key: OMC
+    steps:
+      new:
+        - create_issue
+        - maybe_delete_duplicate
+        - add_link_to_bugzilla
+        - add_link_to_jira
+        - sync_whiteboard_labels
+        - maybe_update_issue_points
+      existing:
+        - update_issue_summary
+        - sync_whiteboard_labels
+        - add_jira_comments_for_changes
+        - maybe_update_issue_points
+      changes:
+        - create_comment
     labels_brackets: both
     issue_type_map:
       defect: Task
