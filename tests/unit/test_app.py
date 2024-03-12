@@ -79,9 +79,10 @@ def test_traces_sampler(sampling_context, expected):
     assert traces_sampler(sampling_context) == expected
 
 
+@pytest.mark.asyncio
 async def test_errors_are_reported_to_sentry(anon_client, bugzilla_webhook_request):
     with patch("sentry_sdk.hub.Hub.capture_event") as mocked:
-        with patch("jbi.router.execute_action", side_effect=ValueError):
+        with patch("jbi.router.execute_or_queue", side_effect=ValueError):
             with pytest.raises(ValueError):
                 anon_client.post(
                     "/bugzilla_webhook",
@@ -92,6 +93,7 @@ async def test_errors_are_reported_to_sentry(anon_client, bugzilla_webhook_reque
     assert mocked.called, "Sentry captured the exception"
 
 
+@pytest.mark.asyncio
 async def test_request_id_is_passed_down_to_logger_contexts(
     caplog,
     bugzilla_webhook_request,

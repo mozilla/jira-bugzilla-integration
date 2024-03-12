@@ -142,6 +142,7 @@ def test_webhook_is_200_if_action_succeeds(
     assert response.status_code == 200
 
 
+@pytest.mark.asyncio
 async def test_webhook_is_200_if_action_raises_IgnoreInvalidRequestError(
     webhook_request_factory, mocked_bugzilla, authenticated_client
 ):
