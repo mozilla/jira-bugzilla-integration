@@ -4,7 +4,7 @@ import logging
 import os
 import shutil
 import traceback
-from abc import ABC
+from abc import ABC, abstractmethod
 from collections import defaultdict
 from datetime import datetime, timezone
 from functools import lru_cache
@@ -55,23 +55,29 @@ def get_dl_queue():
 class QueueBackend(ABC):
     """An interface for dead letter queues."""
 
+    @abstractmethod
     async def clear(self):
         pass
 
+    @abstractmethod
     async def put(self, item: QueueItem):
         pass
 
+    @abstractmethod
     async def remove(self, bug_id: int, identifier: str):
         pass
 
+    @abstractmethod
     async def get(self, bug_id: int) -> list[QueueItem]:
-        return []
+        pass
 
+    @abstractmethod
     async def get_all(self) -> dict[int, list[QueueItem]]:
-        return {}
+        pass
 
+    @abstractmethod
     async def size(self) -> int:
-        return 0
+        pass
 
 
 class MemoryBackend(QueueBackend):
