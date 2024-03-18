@@ -1,7 +1,5 @@
 import itertools
-import json
 import logging
-import os
 import shutil
 import traceback
 from abc import ABC, abstractmethod
@@ -107,40 +105,33 @@ class MemoryBackend(QueueBackend):
 
 class FileBackend(QueueBackend):
     def __init__(self, location):
-        if not os.path.exists(location):
-            os.makedirs(location)
-        elif not os.path.isdir(location):
-            raise ValueError(f"{location} is not a directory")
         self.location = Path(location)
+        self.location.mkdir(parents=True, exist_ok=True)
 
     async def clear(self):
         shutil.rmtree(self.location)
 
     async def put(self, item: QueueItem):
         folder = self.location / f"{item.payload.bug.id}"
+        folder.mkdir(exist_ok=True)
         path = folder / (item.identifier + ".json")
-        os.makedirs(folder, exist_ok=True)
-        with open(path, "w") as f:
-            f.write(item.model_dump_json())
+        path.write_text(item.model_dump_json())
         logger.info("%d items in dead letter queue", await self.size())
 
     async def remove(self, bug_id: int, identifier: str):
         path = self.location / f"{bug_id}" / (identifier + ".json")
-        os.remove(path)
+        path.unlink(missing_ok=True)
 
     async def get(self, bug_id: int) -> list[QueueItem]:
         folder = self.location / f"{bug_id}"
-        results = []
-        for filepath in folder.glob("*.json"):
-            with open(folder / filepath) as f:
-                results.append(QueueItem(**json.load(f)))
-        return results
+        if not folder.is_dir():
+            return []
+        return [QueueItem.parse_file(path) for path in folder.iterdir()]
 
     async def get_all(self) -> dict[int, list[QueueItem]]:
         all_items = []
         for filepath in self.location.rglob("*.json"):
-            with open(self.location / filepath) as f:
-                all_items.append(QueueItem(**json.load(f)))
+            all_items.append(QueueItem.parse_file(filepath))
         by_bug = itertools.groupby(all_items, key=lambda i: i.payload.bug.id)
         return {k: list(v) for k, v in by_bug}
 
