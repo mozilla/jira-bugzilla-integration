@@ -35,7 +35,7 @@ responses = "^0.25.0"
 httpx = "^0.27.0"
 factory-boy = "^3.3.0"
 pytest-factoryboy = "^2.7.0"
-ruff = "^0.3.2"
+ruff = "^0.3.3"
 pytest-mock = "^3.12.0"
 
 [build-system]
