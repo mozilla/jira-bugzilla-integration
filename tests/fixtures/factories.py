@@ -189,7 +189,7 @@ class QueueItemFactory(PydanticFactory):
     class Meta:
         model = queue.QueueItem
 
-    timestamp = datetime.now()
+    timestamp = factory.LazyFunction(datetime.now)
     retries = 0
     payload = factory.SubFactory(WebhookRequestFactory)
     error = factory.SubFactory(PythonExceptionFactory)
