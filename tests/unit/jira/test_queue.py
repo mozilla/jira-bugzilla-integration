@@ -78,19 +78,19 @@ async def test_done(queue: DeadLetterQueue, queue_item_factory):
     item = queue_item_factory()
 
     await queue.backend.put(item)
-    assert await queue.backend.size() == 1
+    assert queue.backend.size == 1
 
     await queue.done(item)
-    assert await queue.backend.size() == 0
+    assert queue.backend.size == 0
 
 
 async def test_basic_queue_features(queue, webhook_request_factory):
-    assert await queue.backend.size() == 0
+    assert queue.backend.size == 0
 
     # Track a failure.
     request = webhook_request_factory.build(bug__id=314)
     await queue.track_failed(request, ValueError("bam!"))
-    assert await queue.backend.size() == 1
+    assert queue.backend.size == 1
 
     request_same_bug = webhook_request_factory.build(bug__id=request.bug.id)
     assert await queue.is_blocked(request_same_bug)
@@ -102,7 +102,7 @@ async def test_basic_queue_features(queue, webhook_request_factory):
     bug_id = 777
     another_request = webhook_request_factory.build(bug__id=bug_id)
     await queue.postpone(another_request)
-    assert await queue.backend.size() == 2
+    assert queue.backend.size == 2
 
     # Store an old event request.
     old_request = webhook_request_factory.build(
@@ -122,8 +122,8 @@ async def test_basic_queue_features(queue, webhook_request_factory):
 
     # Mark one as done
     await queue.done(all_items[0])
-    assert await queue.backend.size() == 2
+    assert queue.backend.size == 2
 
     # Clear
     await queue.backend.clear()
-    assert await queue.backend.size() == 0
+    assert queue.backend.size == 0

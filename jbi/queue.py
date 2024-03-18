@@ -73,8 +73,9 @@ class QueueBackend(ABC):
     async def get_all(self) -> dict[int, list[QueueItem]]:
         pass
 
+    @property
     @abstractmethod
-    async def size(self) -> int:
+    def size(self) -> int:
         pass
 
 
@@ -99,7 +100,8 @@ class MemoryBackend(QueueBackend):
             i for i in self.existing[bug_id] if i.identifier != identifier
         ]
 
-    async def size(self) -> int:
+    @property
+    def size(self) -> int:
         return sum(len(v) for v in self.existing.values())
 
 
@@ -116,7 +118,7 @@ class FileBackend(QueueBackend):
         folder.mkdir(exist_ok=True)
         path = folder / (item.identifier + ".json")
         path.write_text(item.model_dump_json())
-        logger.info("%d items in dead letter queue", await self.size())
+        logger.info("%d items in dead letter queue", self.size)
 
     async def remove(self, bug_id: int, identifier: str):
         path = self.location / f"{bug_id}" / (identifier + ".json")
@@ -135,7 +137,8 @@ class FileBackend(QueueBackend):
         by_bug = itertools.groupby(all_items, key=lambda i: i.payload.bug.id)
         return {k: list(v) for k, v in by_bug}
 
-    async def size(self) -> int:
+    @property
+    def size(self) -> int:
         return sum(1 for _ in self.location.rglob("*.json"))
 
 

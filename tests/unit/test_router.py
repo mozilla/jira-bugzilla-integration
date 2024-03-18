@@ -200,7 +200,7 @@ async def test_webhook_adds_to_queue_on_failure(
 ):
     webhook = webhook_request_factory.build()
     dl_queue = get_dl_queue()
-    before = await dl_queue.backend.size()
+    before = dl_queue.backend.size
 
     with mock.patch("jbi.runner.execute_action", side_effect=ValueError("Boom!")):
         response = authenticated_client.post(
@@ -210,7 +210,7 @@ async def test_webhook_adds_to_queue_on_failure(
 
         assert response.status_code == 200
         assert response.json()["status"] == "failed"
-        assert await dl_queue.backend.size() == before + 1
+        assert dl_queue.backend.size == before + 1
 
 
 @pytest.mark.asyncio
@@ -221,7 +221,7 @@ async def test_webhook_skips_processing_if_blocking_in_queue(
     webhook = webhook_request_factory.build()
     dl_queue = get_dl_queue()
     await dl_queue.track_failed(webhook, ValueError("boom!"))
-    before = await dl_queue.backend.size()
+    before = dl_queue.backend.size
 
     with mock.patch("jbi.runner.execute_action") as mocked_execution:
         response = authenticated_client.post(
@@ -232,7 +232,7 @@ async def test_webhook_skips_processing_if_blocking_in_queue(
         assert response.status_code == 200
         assert response.json()["status"] == "skipped"
         mocked_execution.assert_not_called()
-        assert await dl_queue.backend.size() == before + 1
+        assert dl_queue.backend.size == before + 1
 
 
 #
