@@ -198,7 +198,7 @@ async def test_webhook_adds_to_queue_on_failure(
     webhook_request_factory,
     authenticated_client,
 ):
-    webhook = webhook_request_factory.build()
+    webhook = webhook_request_factory()
     dl_queue = get_dl_queue()
     before = dl_queue.backend.size
 
@@ -218,7 +218,7 @@ async def test_webhook_skips_processing_if_blocking_in_queue(
     webhook_request_factory,
     authenticated_client,
 ):
-    webhook = webhook_request_factory.build()
+    webhook = webhook_request_factory()
     dl_queue = get_dl_queue()
     await dl_queue.track_failed(webhook, ValueError("boom!"))
     before = dl_queue.backend.size
