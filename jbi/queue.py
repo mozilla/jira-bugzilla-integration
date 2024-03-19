@@ -90,6 +90,10 @@ class MemoryBackend(QueueBackend):
         self.existing[item.payload.bug.id].append(item)
 
     async def get(self, bug_id: int) -> list[QueueItem]:
+        # though we're using a defaultdict, check if the bug is in the queue
+        # this way so that we don't create a key for a bug with no items
+        if bug_id not in self.existing:
+            return []
         return self.existing[bug_id]
 
     async def get_all(self) -> dict[int, list[QueueItem]]:
