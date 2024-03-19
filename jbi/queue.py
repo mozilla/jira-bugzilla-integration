@@ -100,9 +100,16 @@ class MemoryBackend(QueueBackend):
         return self.existing
 
     async def remove(self, bug_id: int, identifier: str):
-        self.existing[bug_id] = [
+        """Remove an item from the target bug's queue. If the item is the last
+        one in the queue, delete the bug's key from the dict.
+        """
+        filtered_items = [
             i for i in self.existing[bug_id] if i.identifier != identifier
         ]
+        if not len(filtered_items):
+            del self.existing[bug_id]
+        else:
+            self.existing[bug_id] = filtered_items
 
     @property
     def size(self) -> int:
@@ -125,8 +132,14 @@ class FileBackend(QueueBackend):
         logger.info("%d items in dead letter queue", self.size)
 
     async def remove(self, bug_id: int, identifier: str):
-        path = self.location / f"{bug_id}" / (identifier + ".json")
-        path.unlink(missing_ok=True)
+        """Remove an item from the target bug's queue. If the item is the last
+        one in the queue, delete the directory.
+        """
+        bug_dir = self.location / f"{bug_id}"
+        item_path = bug_dir / (identifier + ".json")
+        item_path.unlink(missing_ok=True)
+        if not any(bug_dir.iterdir()):
+            bug_dir.rmdir()
 
     async def get(self, bug_id: int) -> list[QueueItem]:
         folder = self.location / f"{bug_id}"
