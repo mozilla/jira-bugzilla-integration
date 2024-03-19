@@ -1,3 +1,4 @@
+import bisect
 import itertools
 import logging
 import shutil
@@ -59,6 +60,9 @@ class QueueBackend(ABC):
 
     @abstractmethod
     async def put(self, item: QueueItem):
+        """Insert item into queued items for a bug, maintaining sorted order by
+        payload event time ascending
+        """
         pass
 
     @abstractmethod
@@ -67,10 +71,20 @@ class QueueBackend(ABC):
 
     @abstractmethod
     async def get(self, bug_id: int) -> list[QueueItem]:
+        """Retrieve all of the queue items for a specific bug, sorted in
+        ascending order by the timestamp of the payload event.
+        """
         pass
 
     @abstractmethod
     async def get_all(self) -> dict[int, list[QueueItem]]:
+        """Retrive all items in the queue, grouped by bug
+
+        Returns:
+            dict[int, list[QueueItem]]: Returns a dict of
+            {bug_id: list of events}. Each list of events sorted in ascending
+            order by the timestamp of the payload event.
+        """
         pass
 
     @property
@@ -87,7 +101,11 @@ class MemoryBackend(QueueBackend):
         self.existing.clear()
 
     async def put(self, item: QueueItem):
-        self.existing[item.payload.bug.id].append(item)
+        bisect.insort_right(
+            self.existing[item.payload.bug.id],
+            item,
+            key=lambda i: i.payload.event.time or 0,
+        )
 
     async def get(self, bug_id: int) -> list[QueueItem]:
         # though we're using a defaultdict, check if the bug is in the queue
@@ -145,14 +163,19 @@ class FileBackend(QueueBackend):
         folder = self.location / f"{bug_id}"
         if not folder.is_dir():
             return []
-        return [QueueItem.parse_file(path) for path in folder.iterdir()]
+        items = (QueueItem.parse_file(path) for path in folder.iterdir())
+        return list(sorted(items, key=lambda i: i.payload.event.time or 0))
 
     async def get_all(self) -> dict[int, list[QueueItem]]:
-        all_items = []
+        all_items: dict[int, list[QueueItem]] = defaultdict(list)
         for filepath in self.location.rglob("*.json"):
-            all_items.append(QueueItem.parse_file(filepath))
-        by_bug = itertools.groupby(all_items, key=lambda i: i.payload.bug.id)
-        return {k: list(v) for k, v in by_bug}
+            item = QueueItem.parse_file(filepath)
+            bisect.insort_right(
+                all_items[item.payload.bug.id],
+                item,
+                key=lambda i: i.payload.event.time or 0,
+            )
+        return all_items
 
     @property
     def size(self) -> int:
@@ -207,13 +230,8 @@ class DeadLetterQueue:
         """
         existing = await self.backend.get_all()
         # Sort by event datetime ascending.
-        sorted_existing = [
-            sorted(v, key=lambda i: i.payload.event.time or 0)
-            for v in existing.values()
-            if len(v) > 0
-        ]
         by_oldest_bug_events = sorted(
-            sorted_existing, key=lambda items: items[0].payload.event.time or 0
+            existing.values(), key=lambda items: items[0].payload.event.time or 0
         )
         return list(itertools.chain(*by_oldest_bug_events))
 
