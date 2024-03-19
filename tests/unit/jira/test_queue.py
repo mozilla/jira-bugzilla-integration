@@ -2,25 +2,113 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from jbi.queue import DeadLetterQueue
+from jbi.queue import DeadLetterQueue, FileBackend, MemoryBackend, QueueBackend
+import operator
 
 pytestmark = [pytest.mark.asyncio]
 
 
 @pytest.fixture
-def memory_dlq():
+def _memory_backend():
+    return MemoryBackend()
+
+
+@pytest.fixture
+def _file_backend(tmp_path):
+    return FileBackend(tmp_path)
+
+
+@pytest.fixture(params=["_memory_backend", "_file_backend"])
+def backend(request):
+    backend = request.getfixturevalue(request.param)
+    return backend
+
+
+@pytest.fixture
+def _memory_dlq():
     return DeadLetterQueue("memory://")
 
 
 @pytest.fixture
-def filesystem_dlq(tmp_path):
+def _filesystem_dlq(tmp_path):
     return DeadLetterQueue("file://" + str(tmp_path))
 
 
-@pytest.fixture(params=["memory_dlq", "filesystem_dlq"])
+@pytest.fixture(params=["_memory_dlq", "_filesystem_dlq"])
 def queue(request):
     queue = request.getfixturevalue(request.param)
     return queue
+
+
+async def test_remove_last_item(backend: QueueBackend, queue_item_factory):
+    """When we remove the last item for a bug, we also remove it's key from the
+    backend"""
+
+    item = queue_item_factory()
+
+    await backend.put(item)
+    assert backend.size == 1
+    assert len(await backend.get_all()) == 1
+
+    await backend.remove(item.payload.bug.id, item.identifier)
+    assert backend.size == 0
+    assert len(await backend.get_all()) == 0
+
+
+async def test_clear(backend: QueueBackend, queue_item_factory):
+    item_1 = queue_item_factory(payload__bug__id=123)
+    item_2 = queue_item_factory(payload__bug__id=456)
+
+    await backend.put(item_1)
+    await backend.put(item_2)
+    assert backend.size == 2
+    assert len(await backend.get_all()) == 2
+
+    await backend.clear()
+    assert backend.size == 0
+    assert len(await backend.get_all()) == 0
+
+
+async def test_put_maintains_sorted_order(backend: QueueBackend, queue_item_factory):
+    now = datetime.now()
+    item_1 = queue_item_factory(payload__event__time=now + timedelta(minutes=1))
+    item_2 = queue_item_factory(payload__event__time=now + timedelta(minutes=2))
+    item_3 = queue_item_factory(payload__event__time=now + timedelta(minutes=3))
+    item_4 = queue_item_factory(payload__event__time=now + timedelta(minutes=4))
+
+    await backend.put(item_2)
+    await backend.put(item_1)
+    await backend.put(item_3)
+    await backend.put(item_4)
+
+    items = await backend.get(item_1.payload.bug.id)
+    assert items == [item_1, item_2, item_3, item_4]
+
+
+async def test_get_all(backend: QueueBackend, queue_item_factory):
+    now = datetime.now()
+    item_1 = queue_item_factory(
+        payload__bug__id=123, payload__event__time=now + timedelta(minutes=1)
+    )
+    item_2 = queue_item_factory(
+        payload__bug__id=456, payload__event__time=now + timedelta(minutes=2)
+    )
+    item_3 = queue_item_factory(
+        payload__bug__id=123, payload__event__time=now + timedelta(minutes=3)
+    )
+    item_4 = queue_item_factory(
+        payload__bug__id=456, payload__event__time=now + timedelta(minutes=4)
+    )
+
+    await backend.put(item_3)
+    await backend.put(item_4)
+    await backend.put(item_1)
+    await backend.put(item_2)
+
+    items = await backend.get_all()
+    assert len(items) == 2
+    assert items[123] == [item_1, item_3]
+    assert items[456] == [item_2, item_4]
 
 
 async def test_postpone(queue: DeadLetterQueue, webhook_request_factory):
