@@ -24,3 +24,14 @@ def test_sentry_dsn():
 def test_sentry_dsn_no_url_string_raises():
     with pytest.raises(pydantic.ValidationError):
         Settings(sentry_dsn="foobar")
+
+
+@pytest.mark.parametrize("dsn", ["memory://", "file://tmp"])
+def dl_queue_dsn_allowed_schemes(dsn):
+    Settings(dl_queue_dsn=dsn)
+
+
+@pytest.mark.parametrize("dsn", ["http://www.example.com", "foobar"])
+def invalid_dl_queue_dsn_raises():
+    with pytest.raises(pydantic.ValidationError):
+        Settings(sentry_dsn="foobar")

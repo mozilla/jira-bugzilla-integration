@@ -5,9 +5,9 @@ Module dedicated to interacting with the environment (variables, version.json)
 # https://github.com/python/mypy/issues/12841
 from enum import StrEnum, auto  # type: ignore
 from functools import lru_cache
-from typing import Optional
+from typing import Annotated, Optional
 
-from pydantic import AnyUrl
+from pydantic import AnyUrl, UrlConstraints
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -17,6 +17,9 @@ class Environment(StrEnum):
     LOCAL = auto()
     NONPROD = auto()
     PROD = auto()
+
+
+DLQUrl = Annotated[AnyUrl, UrlConstraints(allowed_schemes=["memory", "file"])]
 
 
 class Settings(BaseSettings):
@@ -47,6 +50,8 @@ class Settings(BaseSettings):
     # Sentry
     sentry_dsn: Optional[AnyUrl] = None
     sentry_traces_sample_rate: float = 1.0
+
+    dl_queue_dsn: DLQUrl
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
