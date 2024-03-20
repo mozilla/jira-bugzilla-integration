@@ -21,7 +21,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-import jbi.jira
+import jbi
+import jbi.queue
 from jbi.configuration import ACTIONS
 from jbi.environment import get_settings
 from jbi.log import CONFIG
@@ -60,6 +61,7 @@ sentry_sdk.init(
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     jira_service = jbi.jira.get_service()
     bugzilla_service = jbi.bugzilla.get_service()
+    queue = jbi.queue.get_dl_queue()
 
     checks.register(bugzilla_service.check_bugzilla_connection, name="bugzilla.up")
     checks.register(
@@ -89,6 +91,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         name="jira.all_project_issue_types_exist",
     )
     checks.register(jira_service.check_jira_pandoc_install, name="jira.pandoc_install")
+    checks.register(queue.ready, name="queue.ready")
 
     yield
 

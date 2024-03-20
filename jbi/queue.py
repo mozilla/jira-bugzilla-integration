@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Optional
 from urllib.parse import ParseResult, urlparse
 
+from dockerflow import checks
 from pydantic import BaseModel, Field
 
 from jbi import bugzilla
@@ -218,6 +219,16 @@ class DeadLetterQueue:
             self.backend = FileBackend(dsn.path)
         else:
             raise InvalidQueueDSNError(f"{dsn.scheme} is not supported")
+
+    def ready(self):
+        """Heartbeat check to assert we can write items to queue"""
+
+        ping_result = self.backend.ping()
+        if ping_result is False:
+            return [
+                checks.Error(f"queue with f{str(self.backend)} backend unavailable")
+            ]
+        return []
 
     async def postpone(self, payload: bugzilla.WebhookRequest):
         """
