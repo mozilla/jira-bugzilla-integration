@@ -192,7 +192,7 @@ class FileBackend(QueueBackend):
         folder.mkdir(exist_ok=True)
         path = folder / (item.identifier + ".json")
         path.write_text(item.model_dump_json())
-        logger.info("%d items in dead letter queue", self.size)
+        logger.debug("%d items in dead letter queue", self.size)
 
     async def remove(self, bug_id: int, identifier: str):
         bug_dir = self.location / f"{bug_id}"
