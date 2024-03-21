@@ -56,6 +56,12 @@ def test_ping(backend: QueueBackend):
     assert backend.ping() is True
 
 
+def test_filebackend_ping_fails(caplog, tmp_path):
+    tmp_path.chmod(0o400)  # set to readonly
+    backend = FileBackend(tmp_path)
+    assert backend.ping() is False
+
+
 @pytest.mark.asyncio
 async def test_remove_last_item(backend: QueueBackend, queue_item_factory):
     """When we remove the last item for a bug, we also remove it's key from the
