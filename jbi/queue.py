@@ -136,6 +136,7 @@ class MemoryBackend(QueueBackend):
         return True
 
     async def clear(self):
+        logger.debug("Clearing queue")
         self.existing.clear()
 
     async def put(self, item: QueueItem):
@@ -150,9 +151,17 @@ class MemoryBackend(QueueBackend):
         # this way so that we don't create a key for a bug with no items
         if bug_id not in self.existing:
             return []
-        return self.existing[bug_id]
+        items = self.existing[bug_id]
+        if not items:
+            logger.warn("No items for bug %s, but present in queue", bug_id)
+        return items
 
     async def get_all(self) -> dict[int, list[QueueItem]]:
+        empty_entries = [not items for items in self.existing.values]
+        if empty_entries:
+            logger.warn(
+                "No items for bugs %s, but present in queue", ",".join(empty_entries)
+            )
         return self.existing
 
     async def remove(self, bug_id: int, identifier: str):
@@ -161,8 +170,12 @@ class MemoryBackend(QueueBackend):
         ]
         if not len(filtered_items):
             del self.existing[bug_id]
+            logger.debug(
+                "Removed %s and entry for bug %s from queue", identifier, bug_id
+            )
         else:
             self.existing[bug_id] = filtered_items
+            logger.debug("Removed %s from queue for bug %s", identifier, bug_id)
 
     @property
     def size(self) -> int:
@@ -198,8 +211,10 @@ class FileBackend(QueueBackend):
         bug_dir = self.location / f"{bug_id}"
         item_path = bug_dir / (identifier + ".json")
         item_path.unlink(missing_ok=True)
+        logger.debug("Removed %s from queue for bug %s", identifier, bug_id)
         if not any(bug_dir.iterdir()):
             bug_dir.rmdir()
+            logger.debug("Removed directory for bug %s", bug_id)
 
     async def get(self, bug_id: int) -> list[QueueItem]:
         folder = self.location / f"{bug_id}"
