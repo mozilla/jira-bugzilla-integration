@@ -1,3 +1,27 @@
+"""This `queue` module stores Bugzilla webhook messages that we failed to sync
+to Jira.
+
+As Bugzilla sends us webhook messages, we want to eagerly accept them and
+return a `200` response so that we don't prevent it from sending new messages.
+But if we fail to sync a bug, we want to keep the message so we can retry it
+later. We also want to store any messages that might be successfuly synced, but
+were preceded by a message that wasn't synced.
+
+Classes:
+    - QueueItem: An entry in the dead letter queue, containing information
+      about the payload, timestamp, and any associated errors when attempting
+      to sync the bug.
+    - PythonException: Information about any exception that occured when
+      syncing a bug, stored along with the item.
+    - DeadLetterQueue: Class representing the dead letter queue system, providing methods
+      for adding, retrieving, and managing queue items. Supports pluggable backends.
+    - QueueBackend: Abstract base class defining the interface for a DeadLetterQueue backend.
+    - MemoryBackend: Implementation of a QueueBackend that stores messages in memory.
+    - FileBackend: Implementation of a QueueBackend that stores messages in files.
+    - InvalidQueueDSNError: Exception raised when an invalid queue DSN is provided.
+
+"""
+
 import bisect
 import itertools
 import logging
@@ -63,6 +87,7 @@ class QueueBackend(ABC):
 
     @abstractmethod
     async def clear(self):
+        """Remove all bugs and their items from the queue"""
         pass
 
     @abstractmethod
@@ -74,6 +99,9 @@ class QueueBackend(ABC):
 
     @abstractmethod
     async def remove(self, bug_id: int, identifier: str):
+        """Remove an item from the target bug's queue. If the item is the last
+        one for the bug, remove the bug from the queue entirely.
+        """
         pass
 
     @abstractmethod
@@ -128,9 +156,6 @@ class MemoryBackend(QueueBackend):
         return self.existing
 
     async def remove(self, bug_id: int, identifier: str):
-        """Remove an item from the target bug's queue. If the item is the last
-        one in the queue, delete the bug's key from the dict.
-        """
         filtered_items = [
             i for i in self.existing[bug_id] if i.identifier != identifier
         ]
@@ -170,9 +195,6 @@ class FileBackend(QueueBackend):
         logger.info("%d items in dead letter queue", self.size)
 
     async def remove(self, bug_id: int, identifier: str):
-        """Remove an item from the target bug's queue. If the item is the last
-        one in the queue, delete the directory.
-        """
         bug_dir = self.location / f"{bug_id}"
         item_path = bug_dir / (identifier + ".json")
         item_path.unlink(missing_ok=True)
@@ -221,7 +243,11 @@ class DeadLetterQueue:
             raise InvalidQueueDSNError(f"{dsn.scheme} is not supported")
 
     def ready(self):
-        """Heartbeat check to assert we can write items to queue"""
+        """Heartbeat check to assert we can write items to queue
+
+        TODO: Convert to an async method when Dockerflow's FastAPI integration
+        can run check asynchronously
+        """
 
         ping_result = self.backend.ping()
         if ping_result is False:
