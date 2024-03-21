@@ -32,6 +32,6 @@ def dl_queue_dsn_allowed_schemes(dsn):
 
 
 @pytest.mark.parametrize("dsn", ["http://www.example.com", "foobar"])
-def invalid_dl_queue_dsn_raises():
+def invalid_dl_queue_dsn_raises(dsn):
     with pytest.raises(pydantic.ValidationError):
-        Settings(sentry_dsn="foobar")
+        Settings(dl_queue_dsn=dsn)
