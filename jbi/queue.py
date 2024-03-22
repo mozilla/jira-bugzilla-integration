@@ -157,10 +157,12 @@ class MemoryBackend(QueueBackend):
         return items
 
     async def get_all(self) -> dict[int, list[QueueItem]]:
-        empty_entries = [not items for items in self.existing.values]
-        if empty_entries:
+        if bugs_with_no_entries := [
+            str(bug_id) for bug_id, items in self.existing.items() if items
+        ]:
             logger.warn(
-                "No items for bugs %s, but present in queue", ",".join(empty_entries)
+                "No items for bugs %s, but present in queue",
+                ",".join(bugs_with_no_entries),
             )
         return self.existing
 
