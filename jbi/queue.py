@@ -113,7 +113,7 @@ class QueueBackend(ABC):
 
     @abstractmethod
     async def get_all(self) -> dict[int, list[QueueItem]]:
-        """Retrive all items in the queue, grouped by bug
+        """Retrieve all items in the queue, grouped by bug
 
         Returns:
             dict[int, list[QueueItem]]: Returns a dict of
