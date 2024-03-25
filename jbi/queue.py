@@ -16,7 +16,6 @@ Classes:
     - DeadLetterQueue: Class representing the dead letter queue system, providing methods
       for adding, retrieving, and managing queue items. Supports pluggable backends.
     - QueueBackend: Abstract base class defining the interface for a DeadLetterQueue backend.
-    - MemoryBackend: Implementation of a QueueBackend that stores messages in memory.
     - FileBackend: Implementation of a QueueBackend that stores messages in files.
     - InvalidQueueDSNError: Exception raised when an invalid queue DSN is provided.
 
@@ -37,10 +36,10 @@ from typing import Optional
 from urllib.parse import ParseResult, urlparse
 
 from dockerflow import checks
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, FileUrl
 
 from jbi import bugzilla
-from jbi.environment import DLQUrl, get_settings
+from jbi.environment import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -128,62 +127,6 @@ class QueueBackend(ABC):
         pass
 
 
-class MemoryBackend(QueueBackend):
-    def __init__(self):
-        self.existing: dict[int, list[QueueItem]] = defaultdict(list)
-
-    def ping(self):
-        return True
-
-    async def clear(self):
-        logger.debug("Clearing queue")
-        self.existing.clear()
-
-    async def put(self, item: QueueItem):
-        bisect.insort_right(
-            self.existing[item.payload.bug.id],
-            item,
-            key=lambda i: i.payload.event.time or 0,
-        )
-
-    async def get(self, bug_id: int) -> list[QueueItem]:
-        # though we're using a defaultdict, check if the bug is in the queue
-        # this way so that we don't create a key for a bug with no items
-        if bug_id not in self.existing:
-            return []
-        items = self.existing[bug_id]
-        if not items:
-            logger.warn("No items for bug %s, but present in queue", bug_id)
-        return items
-
-    async def get_all(self) -> dict[int, list[QueueItem]]:
-        if bugs_with_no_entries := [
-            str(bug_id) for bug_id, items in self.existing.items() if items
-        ]:
-            logger.warn(
-                "No items for bugs %s, but present in queue",
-                ",".join(bugs_with_no_entries),
-            )
-        return self.existing
-
-    async def remove(self, bug_id: int, identifier: str):
-        filtered_items = [
-            i for i in self.existing[bug_id] if i.identifier != identifier
-        ]
-        if not len(filtered_items):
-            del self.existing[bug_id]
-            logger.debug(
-                "Removed %s and entry for bug %s from queue", identifier, bug_id
-            )
-        else:
-            self.existing[bug_id] = filtered_items
-            logger.debug("Removed %s from queue for bug %s", identifier, bug_id)
-
-    @property
-    def size(self) -> int:
-        return sum(len(v) for v in self.existing.values())
-
-
 class FileBackend(QueueBackend):
     def __init__(self, location):
         self.location = Path(location)
@@ -254,16 +197,12 @@ class InvalidQueueDSNError(Exception):
 class DeadLetterQueue:
     backend: QueueBackend
 
-    def __init__(self, dsn: DLQUrl | str | ParseResult):
-        if isinstance(dsn, str):
-            dsn = urlparse(url=dsn)
+    def __init__(self, dsn: FileUrl | str | ParseResult):
+        dsn = urlparse(url=dsn) if isinstance(dsn, str) else dsn
 
-        if dsn.scheme == "memory":
-            self.backend = MemoryBackend()
-        elif dsn.scheme == "file":
-            self.backend = FileBackend(dsn.path)
-        else:
+        if dsn.scheme != "file":
             raise InvalidQueueDSNError(f"{dsn.scheme} is not supported")
+        self.backend = FileBackend(dsn.path)
 
     def ready(self):
         """Heartbeat check to assert we can write items to queue

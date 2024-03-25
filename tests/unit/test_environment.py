@@ -26,9 +26,8 @@ def test_sentry_dsn_no_url_string_raises():
         Settings(sentry_dsn="foobar")
 
 
-@pytest.mark.parametrize("dsn", ["memory://", "file://tmp"])
-def dl_queue_dsn_allowed_schemes(dsn):
-    Settings(dl_queue_dsn=dsn)
+def dl_queue_dsn_allowed_schema(dsn):
+    Settings(dl_queue_dsn="file://tmp")
 
 
 @pytest.mark.parametrize("dsn", ["http://www.example.com", "foobar"])

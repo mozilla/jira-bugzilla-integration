@@ -7,45 +7,22 @@ from jbi.queue import (
     DeadLetterQueue,
     FileBackend,
     InvalidQueueDSNError,
-    MemoryBackend,
     QueueBackend,
 )
 
 
 @pytest.fixture
-def _memory_backend():
-    return MemoryBackend()
-
-
-@pytest.fixture
-def _file_backend(tmp_path):
+def backend(tmp_path):
     return FileBackend(tmp_path)
 
 
-@pytest.fixture(params=["_memory_backend", "_file_backend"])
-def backend(request):
-    backend = request.getfixturevalue(request.param)
-    return backend
-
-
 @pytest.fixture
-def _memory_dlq():
-    return DeadLetterQueue("memory://")
-
-
-@pytest.fixture
-def _filesystem_dlq(tmp_path):
+def queue(tmp_path):
     return DeadLetterQueue("file://" + str(tmp_path))
 
 
-@pytest.fixture(params=["_memory_dlq", "_filesystem_dlq"])
-def queue(request):
-    queue = request.getfixturevalue(request.param)
-    return queue
-
-
 @pytest.mark.parametrize(
-    "dsn", ["http://www.example.com", HttpUrl("http://www.example.com")]
+    "dsn", ["memory://", "http://www.example.com", HttpUrl("http://www.example.com")]
 )
 def test_invalid_queue_url(dsn):
     with pytest.raises(InvalidQueueDSNError):
