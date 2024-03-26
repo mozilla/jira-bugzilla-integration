@@ -244,8 +244,8 @@ class DeadLetterQueue:
         Return `True` if the specified `payload` is blocked and should be
         queued instead of being processed.
         """
-        existing = await self.backend.get(payload.bug.id)
-        return len(existing) > 0
+        existing = await self.backend.size(payload.bug.id)
+        return existing > 0
 
     async def retrieve(self) -> list[QueueItem]:
         """
