@@ -25,11 +25,12 @@ async def retry_failed():
         prev_failed = False
         async for item in items:
             bug = item.payload.bug
-            
+
             # skip if any previous retries for this bug have already failed
             if prev_failed:
                 logger.info(
-                    "skipping event %s - previous events have failed for this bug", item.identifier
+                    "skipping event %s - previous events have failed for this bug",
+                    item.identifier,
                 )
                 continue
 
@@ -44,7 +45,9 @@ async def retry_failed():
                 await queue.done(item)
             except Exception as ex:
                 # write well formed log that could be alerted on
-                logger.error("failed to reprocess event %s. error: %s", item.identifier, ex)
+                logger.error(
+                    "failed to reprocess event %s. error: %s", item.identifier, ex
+                )
                 prev_failed = True
 
 

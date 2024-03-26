@@ -54,28 +54,30 @@ async def test_retry_success(logger, execute_action):
     queue = get_dl_queue()
     queue.retrieve = AsyncMock(
         return_value={
-            1: add_iter([
-                QueueItem(
-                    timestamp=datetime.now(),
-                    payload=WebhookRequest(
-                        webhook_id=1,
-                        webhook_name="test",
-                        bug=Bug(id=1),
-                        event=WebhookEvent(action="test"),
-                    ),
-                )
-            ])
+            1: add_iter(
+                [
+                    QueueItem(
+                        timestamp=datetime.now(),
+                        payload=WebhookRequest(
+                            webhook_id=1,
+                            webhook_name="test",
+                            bug=Bug(id=1),
+                            event=WebhookEvent(action="test"),
+                        ),
+                    )
+                ]
+            )
         }
     )
     queue.done = AsyncMock()
 
     await retry_failed()
     queue.retrieve.assert_called_once()
-    queue.done.assert_called_once() # item should be marked as complete
-    logger.info.assert_not_called() # no items should have been skipped or failed
+    queue.done.assert_called_once()  # item should be marked as complete
+    logger.info.assert_not_called()  # no items should have been skipped or failed
     logger.warn.assert_not_called()
     logger.error.assert_not_called()
-    execute_action.assert_called_once() # item should have been processed
+    execute_action.assert_called_once()  # item should have been processed
 
 
 @pytest.mark.asyncio
@@ -83,26 +85,28 @@ async def test_retry_fail_and_skip(logger, execute_action):
     queue = get_dl_queue()
     queue.retrieve = AsyncMock(
         return_value={
-            1: add_iter([
-                QueueItem(
-                    timestamp=datetime.now(),
-                    payload=WebhookRequest(
-                        webhook_id=1,
-                        webhook_name="test1",
-                        bug=Bug(id=1),
-                        event=WebhookEvent(action="test1"),
+            1: add_iter(
+                [
+                    QueueItem(
+                        timestamp=datetime.now(),
+                        payload=WebhookRequest(
+                            webhook_id=1,
+                            webhook_name="test1",
+                            bug=Bug(id=1),
+                            event=WebhookEvent(action="test1"),
+                        ),
                     ),
-                ),
-                QueueItem(
-                    timestamp=datetime.now(),
-                    payload=WebhookRequest(
-                        webhook_id=2,
-                        webhook_name="test2",
-                        bug=Bug(id=1),
-                        event=WebhookEvent(action="test2"),
+                    QueueItem(
+                        timestamp=datetime.now(),
+                        payload=WebhookRequest(
+                            webhook_id=2,
+                            webhook_name="test2",
+                            bug=Bug(id=1),
+                            event=WebhookEvent(action="test2"),
+                        ),
                     ),
-                ),
-            ])
+                ]
+            )
         }
     )
 
@@ -122,27 +126,29 @@ async def test_retry_fail_and_skip(logger, execute_action):
 async def test_retry_remove_expired(logger, execute_action):
     queue = get_dl_queue()
     mock_data: dict[int, AsyncIterator[QueueItem]] = {
-            1: add_iter([
+        1: add_iter(
+            [
                 QueueItem(
-                timestamp=datetime.now()
-                - timedelta(days=int(RETRY_TIMEOUT_DAYS), seconds=1),
-                payload=WebhookRequest(
-                    webhook_id=1,
-                    webhook_name="test1",
-                    bug=Bug(id=1),
-                    event=WebhookEvent(action="test1"),
+                    timestamp=datetime.now()
+                    - timedelta(days=int(RETRY_TIMEOUT_DAYS), seconds=1),
+                    payload=WebhookRequest(
+                        webhook_id=1,
+                        webhook_name="test1",
+                        bug=Bug(id=1),
+                        event=WebhookEvent(action="test1"),
+                    ),
                 ),
-            ),
-            QueueItem(
-                timestamp=datetime.now(),
-                payload=WebhookRequest(
-                    webhook_id=2,
-                    webhook_name="test2",
-                    bug=Bug(id=1),
-                    event=WebhookEvent(action="test2"),
+                QueueItem(
+                    timestamp=datetime.now(),
+                    payload=WebhookRequest(
+                        webhook_id=2,
+                        webhook_name="test2",
+                        bug=Bug(id=1),
+                        event=WebhookEvent(action="test2"),
+                    ),
                 ),
-            ),
-        ])
+            ]
+        )
     }
     queue.retrieve = AsyncMock(return_value=mock_data)
 
