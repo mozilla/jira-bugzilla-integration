@@ -27,7 +27,7 @@ async def retry_failed():
         "events_processed": 0,
         "events_skipped": 0,
         "events_failed": 0,
-        "bugs_failed": 0
+        "bugs_failed": 0,
     }
 
     for bugid, items in bugs.items():
@@ -62,15 +62,14 @@ async def retry_failed():
                     prev_failed = True
                     metrics["events_failed"] += 1
         except Exception as ex:
-            logger.error(
-                "failed to parse events for bug %d", bugid
-            )
+            logger.error("failed to parse events for bug %d. error: %s", bugid, ex)
             metrics["bugs_failed"] += 1
 
     return metrics
 
 
 async def main():
+    logger = logging.getLogger(__name__)
     while True:
         metrics = await retry_failed()
         logger.info("event queue processing complete", extra=metrics)

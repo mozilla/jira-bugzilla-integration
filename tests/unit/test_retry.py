@@ -59,7 +59,7 @@ async def test_retry_empty_list(logger):
         "events_processed": 0,
         "events_skipped": 0,
         "events_failed": 0,
-        "bugs_failed": 0
+        "bugs_failed": 0,
     }
 
 
@@ -97,7 +97,7 @@ async def test_retry_success(logger, execute_action):
         "events_processed": 1,
         "events_skipped": 0,
         "events_failed": 0,
-        "bugs_failed": 0
+        "bugs_failed": 0,
     }
 
 
@@ -146,7 +146,7 @@ async def test_retry_fail_and_skip(logger, execute_action):
         "events_processed": 0,
         "events_skipped": 1,
         "events_failed": 1,
-        "bugs_failed": 0
+        "bugs_failed": 0,
     }
 
 
@@ -195,7 +195,7 @@ async def test_retry_remove_expired(logger, execute_action):
         "events_processed": 1,
         "events_skipped": 1,
         "events_failed": 0,
-        "bugs_failed": 0
+        "bugs_failed": 0,
     }
 
 
@@ -214,15 +214,16 @@ async def test_retry_bug_failed(logger, execute_action):
                         event=WebhookEvent(action="test1"),
                     ),
                 )
-            ]),
-        2: iter_error()
+            ]
+        ),
+        2: iter_error(),
     }
     queue.retrieve = AsyncMock(return_value=mock_data)
 
     queue.done = AsyncMock()
     metrics = await retry_failed()
     queue.retrieve.assert_called_once()
-    queue.done.assert_called_once() # one item should have been marked as done
+    queue.done.assert_called_once()  # one item should have been marked as done
     logger.info.assert_not_called()  # no items should be logged as skipped
     logger.warn.assert_not_called()  # no items should have been marked as expired
     logger.error.assert_called_once()  # one bug should have caused an exception
@@ -232,5 +233,5 @@ async def test_retry_bug_failed(logger, execute_action):
         "events_processed": 1,
         "events_skipped": 0,
         "events_failed": 0,
-        "bugs_failed": 1
+        "bugs_failed": 1,
     }
