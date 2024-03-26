@@ -21,18 +21,14 @@ Classes:
 
 """
 
-import bisect
-import itertools
 import logging
-import shutil
 import tempfile
 import traceback
 from abc import ABC, abstractmethod
-from collections import defaultdict
 from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
-from typing import Optional
+from typing import AsyncIterator, Optional
 from urllib.parse import ParseResult, urlparse
 
 from dockerflow import checks
@@ -104,14 +100,14 @@ class QueueBackend(ABC):
         pass
 
     @abstractmethod
-    async def get(self, bug_id: int) -> list[QueueItem]:
+    def get(self, bug_id: int) -> AsyncIterator[QueueItem]:
         """Retrieve all of the queue items for a specific bug, sorted in
         ascending order by the timestamp of the payload event.
         """
         pass
 
     @abstractmethod
-    async def get_all(self) -> dict[int, list[QueueItem]]:
+    async def get_all(self) -> dict[int, AsyncIterator[QueueItem]]:
         """Retrieve all items in the queue, grouped by bug
 
         Returns:
@@ -171,22 +167,19 @@ class FileBackend(QueueBackend):
             bug_dir.rmdir()
             logger.debug("Removed directory for bug %s", bug_id)
 
-    async def get(self, bug_id: int) -> list[QueueItem]:
-        folder = self.location / f"{bug_id}"
+    async def get(self, bug_id: int) -> AsyncIterator[QueueItem]:
+        folder = self.location / str(bug_id)
         if not folder.is_dir():
-            return []
-        items = (QueueItem.parse_file(path) for path in folder.iterdir())
-        return list(sorted(items, key=lambda i: i.payload.event.time or 0))
+            return
+            yield
+        for path in sorted(folder.iterdir()):
+            yield QueueItem.parse_file(path)
 
-    async def get_all(self) -> dict[int, list[QueueItem]]:
-        all_items: dict[int, list[QueueItem]] = defaultdict(list)
-        for filepath in self.location.rglob("*.json"):
-            item = QueueItem.parse_file(filepath)
-            bisect.insort_right(
-                all_items[item.payload.bug.id],
-                item,
-                key=lambda i: i.payload.event.time or 0,
-            )
+    async def get_all(self) -> dict[int, AsyncIterator[QueueItem]]:
+        all_items: dict[int, AsyncIterator[QueueItem]] = {}
+        for filesystem_object in self.location.iterdir():
+            if filesystem_object.is_dir():
+                all_items[int(filesystem_object.name)] = self.get(filesystem_object)
         return all_items
 
     async def size(self, bug_id=None) -> int:
@@ -247,17 +240,12 @@ class DeadLetterQueue:
         existing = await self.backend.size(payload.bug.id)
         return existing > 0
 
-    async def retrieve(self) -> list[QueueItem]:
+    async def retrieve(self) -> dict[int, AsyncIterator[QueueItem]]:
         """
-        Returns the whole list of items in the queue, grouped by bug, and
-        sorted from oldest to newest.
+        Returns the whole queue -- a dict of bug_id and a generator for the
+        items for that bug
         """
-        existing = await self.backend.get_all()
-        # Sort by event datetime ascending.
-        by_oldest_bug_events = sorted(
-            existing.values(), key=lambda items: items[0].payload.event.time or 0
-        )
-        return list(itertools.chain(*by_oldest_bug_events))
+        return await self.backend.get_all()
 
     async def done(self, item: QueueItem):
         """
