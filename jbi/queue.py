@@ -143,7 +143,11 @@ class FileBackend(QueueBackend):
             return False
 
     async def clear(self):
-        shutil.rmtree(self.location)
+        for root, dirs, files in self.location.walk(top_down=False):
+            for name in files:
+                (root / name).unlink()
+            for name in dirs:
+                (root / name).rmdir()
 
     async def put(self, item: QueueItem):
         folder = self.location / f"{item.payload.bug.id}"
