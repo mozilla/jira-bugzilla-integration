@@ -24,8 +24,6 @@ async def retry_failed():
     for bugid, items in bugs.items():
         prev_failed = False
         async for item in items:
-            bug = item.payload.bug
-
             # skip if any previous retries for this bug have already failed
             if prev_failed:
                 logger.info(
