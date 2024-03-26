@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     sentry_dsn: Optional[AnyUrl] = None
     sentry_traces_sample_rate: float = 1.0
 
+    # Retry queue
+    constant_retry: str = "false"
+    retry_timeout: int = 7
     dl_queue_dsn: FileUrl
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
