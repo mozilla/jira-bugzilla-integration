@@ -121,9 +121,9 @@ class QueueBackend(ABC):
         """
         pass
 
-    @property
     @abstractmethod
-    def size(self) -> int:
+    async def size(self, bug_id: Optional[int] = None) -> int:
+        """Report the number of items in the queue, optionally filtered by bug id"""
         pass
 
 
@@ -160,7 +160,7 @@ class FileBackend(QueueBackend):
             item.payload.bug.id,
             path,
         )
-        logger.debug("%d items in dead letter queue", self.size)
+        logger.debug("%d items in dead letter queue", await self.size())
 
     async def remove(self, bug_id: int, identifier: str):
         bug_dir = self.location / f"{bug_id}"
@@ -189,9 +189,9 @@ class FileBackend(QueueBackend):
             )
         return all_items
 
-    @property
-    def size(self) -> int:
-        return sum(1 for _ in self.location.rglob("*.json"))
+    async def size(self, bug_id=None) -> int:
+        location = self.location / str(bug_id) if bug_id else self.location
+        return sum(1 for _ in location.rglob("*.json"))
 
 
 class InvalidQueueDSNError(Exception):

@@ -47,11 +47,11 @@ async def test_remove_last_item(backend: QueueBackend, queue_item_factory):
     item = queue_item_factory()
 
     await backend.put(item)
-    assert backend.size == 1
+    assert await backend.size() == 1
     assert len(await backend.get_all()) == 1
 
     await backend.remove(item.payload.bug.id, item.identifier)
-    assert backend.size == 0
+    assert await backend.size() == 0
     assert len(await backend.get_all()) == 0
 
 
@@ -62,11 +62,11 @@ async def test_clear(backend: QueueBackend, queue_item_factory):
 
     await backend.put(item_1)
     await backend.put(item_2)
-    assert backend.size == 2
+    assert await backend.size() == 2
     assert len(await backend.get_all()) == 2
 
     await backend.clear()
-    assert backend.size == 0
+    assert await backend.size() == 0
     assert len(await backend.get_all()) == 0
 
 
@@ -151,6 +151,23 @@ async def test_is_blocked(
 
 
 @pytest.mark.asyncio
+async def test_size(backend, queue_item_factory):
+    item = queue_item_factory(payload__bug__id=1)
+    another_item = queue_item_factory(payload__bug__id=2)
+
+    await backend.put(item)
+    await backend.put(another_item)
+
+    assert await backend.size() == 2
+    assert await backend.size(bug_id=1) == 1
+
+
+@pytest.mark.asyncio
+async def test_size_empty(backend, queue_item_factory):
+    assert await backend.size() == 0
+    assert await backend.size(bug_id=999) == 0
+
+@pytest.mark.asyncio
 async def test_retrieve(queue: DeadLetterQueue, queue_item_factory):
     bug_ids = (1, 2, 1, 3)
     now = datetime.now()
@@ -174,20 +191,20 @@ async def test_done(queue: DeadLetterQueue, queue_item_factory):
     item = queue_item_factory()
 
     await queue.backend.put(item)
-    assert queue.backend.size == 1
+    assert await queue.backend.size() == 1
 
     await queue.done(item)
-    assert queue.backend.size == 0
+    assert await queue.backend.size() == 0
 
 
 @pytest.mark.asyncio
 async def test_basic_queue_features(queue, webhook_request_factory):
-    assert queue.backend.size == 0
+    assert await queue.backend.size() == 0
 
     # Track a failure.
     request = webhook_request_factory(bug__id=314)
     await queue.track_failed(request, ValueError("bam!"))
-    assert queue.backend.size == 1
+    assert await queue.backend.size() == 1
 
     request_same_bug = webhook_request_factory(bug__id=request.bug.id)
     assert await queue.is_blocked(request_same_bug)
@@ -199,7 +216,7 @@ async def test_basic_queue_features(queue, webhook_request_factory):
     bug_id = 777
     another_request = webhook_request_factory(bug__id=bug_id)
     await queue.postpone(another_request)
-    assert queue.backend.size == 2
+    assert await queue.backend.size() == 2
 
     # Store an old event request.
     old_request = webhook_request_factory(
@@ -219,8 +236,8 @@ async def test_basic_queue_features(queue, webhook_request_factory):
 
     # Mark one as done
     await queue.done(all_items[0])
-    assert queue.backend.size == 2
+    assert await queue.backend.size() == 2
 
     # Clear
     await queue.backend.clear()
-    assert queue.backend.size == 0
+    assert await queue.backend.size() == 0
