@@ -31,7 +31,7 @@ from pathlib import Path
 from typing import AsyncIterator, Optional
 from urllib.parse import ParseResult, urlparse
 
-from dockerflow import checks
+import dockerflow.checks
 from pydantic import BaseModel, Field, FileUrl
 
 from jbi import bugzilla
@@ -63,7 +63,7 @@ class QueueItem(BaseModel, frozen=True):
 
     @property
     def identifier(self):
-        return f"{self.timestamp.isoformat()}-{self.payload.bug.id}-{self.payload.event.action}-{"error" if self.error else "postponed"}"
+        return f"{self.payload.event.time()}-{self.payload.bug.id}-{self.payload.event.action}-{"error" if self.error else "postponed"}"
 
 
 @lru_cache(maxsize=1)
@@ -76,24 +76,24 @@ class QueueBackend(ABC):
     """An interface for dead letter queues."""
 
     @abstractmethod
-    def ping(self):
+    def ping(self) -> bool:
         """Report if the queue backend is available and ready to be written to"""
         pass
 
     @abstractmethod
-    async def clear(self):
+    async def clear(self) -> None:
         """Remove all bugs and their items from the queue"""
         pass
 
     @abstractmethod
-    async def put(self, item: QueueItem):
+    async def put(self, item: QueueItem) -> None:
         """Insert item into queued items for a bug, maintaining sorted order by
         payload event time ascending
         """
         pass
 
     @abstractmethod
-    async def remove(self, bug_id: int, identifier: str):
+    async def remove(self, bug_id: int, identifier: str) -> None:
         """Remove an item from the target bug's queue. If the item is the last
         one for the bug, remove the bug from the queue entirely.
         """
@@ -201,7 +201,7 @@ class DeadLetterQueue:
             raise InvalidQueueDSNError(f"{dsn.scheme} is not supported")
         self.backend = FileBackend(dsn.path)
 
-    def ready(self):
+    def ready(self) -> list[dockerflow.checks.CheckMessage]:
         """Heartbeat check to assert we can write items to queue
 
         TODO: Convert to an async method when Dockerflow's FastAPI integration
@@ -211,18 +211,22 @@ class DeadLetterQueue:
         ping_result = self.backend.ping()
         if ping_result is False:
             return [
-                checks.Error(f"queue with f{str(self.backend)} backend unavailable")
+                dockerflow.checks.Error(
+                    f"queue with f{str(self.backend)} backend unavailable"
+                )
             ]
         return []
 
-    async def postpone(self, payload: bugzilla.WebhookRequest):
+    async def postpone(self, payload: bugzilla.WebhookRequest) -> None:
         """
         Postpone the specified request for later.
         """
         item = QueueItem(payload=payload)
         await self.backend.put(item)
 
-    async def track_failed(self, payload: bugzilla.WebhookRequest, exc: Exception):
+    async def track_failed(
+        self, payload: bugzilla.WebhookRequest, exc: Exception
+    ) -> None:
         """
         Store the specified payload and exception information into the queue.
         """
@@ -247,7 +251,7 @@ class DeadLetterQueue:
         """
         return await self.backend.get_all()
 
-    async def done(self, item: QueueItem):
+    async def done(self, item: QueueItem) -> None:
         """
         Mark item as done, remove from queue.
         """
