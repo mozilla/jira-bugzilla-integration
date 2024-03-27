@@ -9,8 +9,8 @@ import jbi.runner as runner
 from jbi.configuration import ACTIONS
 from jbi.queue import QueueItem, get_dl_queue
 
-CONSTANT_RETRY = getenv("CONSTANT_RETRY", "false") == "true"
-RETRY_TIMEOUT_DAYS = getenv("RETRY_TIMEOUT_DAYS", 7)
+CONSTANT_RETRY = getenv("DL_QUEUE_CONSTANT_RETRY", "false") == "true"
+RETRY_TIMEOUT_DAYS = getenv("DL_QUEUE_RETRY_TIMEOUT_DAYS", 7)
 
 
 async def retry_failed(item_executor=runner.execute_action):
