@@ -27,17 +27,22 @@ import traceback
 from abc import ABC, abstractmethod
 from datetime import datetime
 from functools import lru_cache
+from json import JSONDecodeError
 from pathlib import Path
 from typing import AsyncIterator, List, Optional
 from urllib.parse import ParseResult, urlparse
 
 import dockerflow.checks
-from pydantic import BaseModel, FileUrl
+from pydantic import BaseModel, FileUrl, ValidationError
 
 from jbi import bugzilla
 from jbi.environment import get_settings
 
 logger = logging.getLogger(__name__)
+
+
+class QueueItemRetrievalError(Exception):
+    pass
 
 
 class PythonException(BaseModel, frozen=True):
@@ -207,7 +212,12 @@ class FileBackend(QueueBackend):
             return
             yield
         for path in sorted(folder.iterdir()):
-            yield QueueItem.parse_file(path)
+            try:
+                yield QueueItem.parse_file(path)
+            except (JSONDecodeError, ValidationError) as e:
+                raise QueueItemRetrievalError(
+                    "Unable to load item at path %s from queue", str(path)
+                ) from e
 
     async def get_all(self) -> dict[int, AsyncIterator[QueueItem]]:
         all_items: dict[int, AsyncIterator[QueueItem]] = {}

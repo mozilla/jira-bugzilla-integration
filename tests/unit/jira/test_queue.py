@@ -1,14 +1,14 @@
 from datetime import datetime, timedelta
-from json import JSONDecodeError
 
 import pytest
-from pydantic import HttpUrl, ValidationError
+from pydantic import HttpUrl
 
 from jbi.queue import (
     DeadLetterQueue,
     FileBackend,
     InvalidQueueDSNError,
     QueueBackend,
+    QueueItemRetrievalError,
 )
 
 
@@ -193,7 +193,7 @@ async def test_get_invalid_json(backend: QueueBackend, queue_item_factory):
 
     items = backend.get(999)
 
-    with pytest.raises(JSONDecodeError):
+    with pytest.raises(QueueItemRetrievalError):
         await anext(items)
 
 
@@ -209,7 +209,7 @@ async def test_get_payload_doesnt_match_schema(
 
     items = backend.get(999)
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(QueueItemRetrievalError):
         await anext(items)
 
 
