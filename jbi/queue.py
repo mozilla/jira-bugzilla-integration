@@ -18,7 +18,8 @@ Classes:
     - QueueBackend: Abstract base class defining the interface for a DeadLetterQueue backend.
     - FileBackend: Implementation of a QueueBackend that stores messages in files.
     - InvalidQueueDSNError: Exception raised when an invalid queue DSN is provided.
-
+    - QueueItemRetrievalError: Exception raised when the queue is unable to retreive a failed
+      item and parse it as an item
 """
 
 import logging
@@ -44,6 +45,8 @@ logger = logging.getLogger(__name__)
 class QueueItemRetrievalError(Exception):
     pass
 
+class InvalidQueueDSNError(Exception):
+    pass
 
 class PythonException(BaseModel, frozen=True):
     type: str
@@ -229,10 +232,6 @@ class FileBackend(QueueBackend):
     async def size(self, bug_id=None) -> int:
         location = self.location / str(bug_id) if bug_id else self.location
         return sum(1 for _ in location.rglob("*.json"))
-
-
-class InvalidQueueDSNError(Exception):
-    pass
 
 
 class DeadLetterQueue:
