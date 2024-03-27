@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 import factory
 
@@ -115,7 +115,7 @@ class WebhookEventFactory(PydanticFactory):
     changes = None
     routing_key = "bug.create"
     target = "bug"
-    time = "2022-03-23T20:10:17.495000+00:00"
+    time = factory.LazyFunction(lambda: datetime.now(UTC))
     user = factory.SubFactory(WebhookUserFactory)
 
 
@@ -189,6 +189,5 @@ class QueueItemFactory(PydanticFactory):
     class Meta:
         model = queue.QueueItem
 
-    timestamp = factory.LazyFunction(datetime.now)
     payload = factory.SubFactory(WebhookRequestFactory)
     error = factory.SubFactory(PythonExceptionFactory)

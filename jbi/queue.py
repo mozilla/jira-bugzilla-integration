@@ -25,14 +25,14 @@ import logging
 import tempfile
 import traceback
 from abc import ABC, abstractmethod
-from datetime import datetime, timezone
+from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
 from typing import AsyncIterator, Optional
 from urllib.parse import ParseResult, urlparse
 
 import dockerflow.checks
-from pydantic import BaseModel, Field, FileUrl
+from pydantic import BaseModel, FileUrl
 
 from jbi import bugzilla
 from jbi.environment import get_settings
@@ -57,9 +57,12 @@ class PythonException(BaseModel, frozen=True):
 class QueueItem(BaseModel, frozen=True):
     """Dead Letter Queue entry."""
 
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(tz=timezone.utc))
     payload: bugzilla.WebhookRequest
     error: Optional[PythonException] = None
+
+    @property
+    def timestamp(self) -> datetime:
+        return self.payload.event.time
 
     @property
     def identifier(self):
