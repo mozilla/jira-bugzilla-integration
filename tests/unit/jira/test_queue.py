@@ -8,6 +8,7 @@ from jbi.queue import (
     FileBackend,
     InvalidQueueDSNError,
     QueueBackend,
+    QueueItemRetrievalError,
 )
 
 
@@ -84,6 +85,47 @@ async def test_put_maintains_sorted_order(backend: QueueBackend, queue_item_fact
 
 
 @pytest.mark.asyncio
+async def test_list_all(backend: QueueBackend, queue_item_factory):
+    for bug_id in (123, 123, 456, 456):
+        await backend.put(queue_item_factory(payload__bug__id=bug_id))
+
+    all_items = await backend.list_all()
+    assert len(all_items) == 2
+
+    for items in all_items.values():
+        assert len(items) == 2
+
+
+@pytest.mark.asyncio
+async def test_list_by_bug(backend: QueueBackend, queue_item_factory):
+    item_1 = queue_item_factory(payload__bug__id=123)
+    item_2 = queue_item_factory(payload__bug__id=456)
+
+    await backend.put(item_1)
+    await backend.put(item_2)
+    [identifier] = await backend.list(bug_id=123)
+    assert identifier == item_1.identifier
+
+
+@pytest.mark.asyncio
+async def test_list_ordering(backend: QueueBackend, queue_item_factory):
+    now = datetime.now()
+    item_1 = queue_item_factory(payload__event__time=now + timedelta(minutes=1))
+    item_2 = queue_item_factory(payload__event__time=now + timedelta(minutes=2))
+    item_3 = queue_item_factory(payload__event__time=now + timedelta(minutes=3))
+    item_4 = queue_item_factory(payload__event__time=now + timedelta(minutes=4))
+
+    await backend.put(item_2)
+    await backend.put(item_1)
+    await backend.put(item_3)
+    await backend.put(item_4)
+
+    item_metadata = await backend.list(bug_id=item_1.payload.bug.id)
+    exptected_id_order = [item.identifier for item in [item_1, item_2, item_3, item_4]]
+    assert exptected_id_order == item_metadata
+
+
+@pytest.mark.asyncio
 async def test_get_all(backend: QueueBackend, queue_item_factory):
     now = datetime.now()
     item_1 = queue_item_factory(
@@ -108,6 +150,67 @@ async def test_get_all(backend: QueueBackend, queue_item_factory):
     assert len(items) == 2
     assert [item async for item in items[123]] == [item_1, item_3]
     assert [item async for item in items[456]] == [item_2, item_4]
+
+
+@pytest.mark.asyncio
+async def test_get_all_invalid_json(backend: QueueBackend, queue_item_factory):
+    item_1 = queue_item_factory()
+    await backend.put(item_1)
+
+    corrupt_file_dir = backend.location / "999"
+    corrupt_file_dir.mkdir()
+
+    corrupt_file_path = corrupt_file_dir / "xxx.json"
+    corrupt_file_path.write_text("BOOM")
+
+    items = await backend.get_all()
+    assert len(items) == 2
+
+
+@pytest.mark.asyncio
+async def test_get_all_payload_doesnt_match_schema(
+    backend: QueueBackend, queue_item_factory
+):
+    item_1 = queue_item_factory()
+    await backend.put(item_1)
+
+    # this is invalid, as whiteboard should be a string
+    item_2 = queue_item_factory.build(
+        payload__bug__id=999, payload__bug__whiteboard=False
+    )
+    await backend.put(item_2)
+
+    items = await backend.get_all()
+    assert len(items) == 2
+
+
+@pytest.mark.asyncio
+async def test_get_invalid_json(backend: QueueBackend, queue_item_factory):
+    corrupt_file_dir = backend.location / "999"
+    corrupt_file_dir.mkdir()
+    corrupt_file_path = corrupt_file_dir / "xxx.json"
+    corrupt_file_path.write_text("BOOM")
+
+    items = backend.get(999)
+
+    with pytest.raises(QueueItemRetrievalError):
+        await anext(items)
+
+
+@pytest.mark.asyncio
+async def test_get_payload_doesnt_match_schema(
+    backend: QueueBackend, queue_item_factory
+):
+    # this is invalid, as whiteboard should be a string
+    item = queue_item_factory.build(
+        payload__bug__id=999, payload__bug__whiteboard=False
+    )
+    await backend.put(item)
+
+    items = backend.get(999)
+
+    with pytest.raises(QueueItemRetrievalError):
+        await anext(items)
 
 
 @pytest.mark.asyncio

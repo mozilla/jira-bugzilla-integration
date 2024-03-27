@@ -18,27 +18,35 @@ Classes:
     - QueueBackend: Abstract base class defining the interface for a DeadLetterQueue backend.
     - FileBackend: Implementation of a QueueBackend that stores messages in files.
     - InvalidQueueDSNError: Exception raised when an invalid queue DSN is provided.
-
+    - QueueItemRetrievalError: Exception raised when the queue is unable to retreive a failed
+      item and parse it as an item
 """
 
 import logging
 import tempfile
 import traceback
 from abc import ABC, abstractmethod
-from datetime import datetime, timezone
+from datetime import datetime
 from functools import lru_cache
+from json import JSONDecodeError
 from pathlib import Path
-from typing import AsyncIterator, Optional
+from typing import AsyncIterator, List, Optional
 from urllib.parse import ParseResult, urlparse
 
 import dockerflow.checks
-from pydantic import BaseModel, Field, FileUrl
+from pydantic import BaseModel, FileUrl, ValidationError
 
 from jbi import bugzilla
 from jbi.environment import get_settings
 
 logger = logging.getLogger(__name__)
 
+
+class QueueItemRetrievalError(Exception):
+    pass
+
+class InvalidQueueDSNError(Exception):
+    pass
 
 class PythonException(BaseModel, frozen=True):
     type: str
@@ -57,9 +65,12 @@ class PythonException(BaseModel, frozen=True):
 class QueueItem(BaseModel, frozen=True):
     """Dead Letter Queue entry."""
 
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(tz=timezone.utc))
     payload: bugzilla.WebhookRequest
     error: Optional[PythonException] = None
+
+    @property
+    def timestamp(self) -> datetime:
+        return self.payload.event.time
 
     @property
     def identifier(self):
@@ -107,11 +118,29 @@ class QueueBackend(ABC):
         pass
 
     @abstractmethod
+    async def list(self, bug_id: int) -> List[str]:
+        """Report a summary of all of the items in the queue for a bug
+
+        Returns:
+            a dict bug id, list of item identifier
+        """
+        pass
+
+    @abstractmethod
+    async def list_all(self) -> dict[int, List[str]]:
+        """Report a summary of all of the items in the queue
+
+        Returns:
+            a dict bug id, list of item identifiers
+        """
+        pass
+
+    @abstractmethod
     async def get_all(self) -> dict[int, AsyncIterator[QueueItem]]:
         """Retrieve all items in the queue, grouped by bug
 
         Returns:
-            dict[int, list[QueueItem]]: Returns a dict of
+            dict[int, List[QueueItem]]: Returns a dict of
             {bug_id: list of events}. Each list of events sorted in ascending
             order by the timestamp of the payload event.
         """
@@ -167,13 +196,31 @@ class FileBackend(QueueBackend):
             bug_dir.rmdir()
             logger.debug("Removed directory for bug %s", bug_id)
 
+    async def list(self, bug_id: int) -> List[str]:
+        bug_dir = self.location / str(bug_id)
+        return [path.stem for path in sorted(bug_dir.glob("*.json"))]
+
+    async def list_all(self) -> dict[int, List[str]]:
+        item_data: dict[int, List[str]] = {}
+        for filesystem_object in self.location.iterdir():
+            if filesystem_object.is_dir():
+                bug_id = int(filesystem_object.name)
+                item_ids = await self.list(bug_id=bug_id)
+                item_data[bug_id] = item_ids
+        return item_data
+
     async def get(self, bug_id: int) -> AsyncIterator[QueueItem]:
         folder = self.location / str(bug_id)
         if not folder.is_dir():
             return
             yield
         for path in sorted(folder.iterdir()):
-            yield QueueItem.parse_file(path)
+            try:
+                yield QueueItem.parse_file(path)
+            except (JSONDecodeError, ValidationError) as e:
+                raise QueueItemRetrievalError(
+                    "Unable to load item at path %s from queue", str(path)
+                ) from e
 
     async def get_all(self) -> dict[int, AsyncIterator[QueueItem]]:
         all_items: dict[int, AsyncIterator[QueueItem]] = {}
@@ -185,10 +232,6 @@ class FileBackend(QueueBackend):
     async def size(self, bug_id=None) -> int:
         location = self.location / str(bug_id) if bug_id else self.location
         return sum(1 for _ in location.rglob("*.json"))
-
-
-class InvalidQueueDSNError(Exception):
-    pass
 
 
 class DeadLetterQueue:
