@@ -1,7 +1,8 @@
 from datetime import datetime, timedelta
+from json import JSONDecodeError
 
 import pytest
-from pydantic import HttpUrl
+from pydantic import HttpUrl, ValidationError
 
 from jbi.queue import (
     DeadLetterQueue,
@@ -108,6 +109,67 @@ async def test_get_all(backend: QueueBackend, queue_item_factory):
     assert len(items) == 2
     assert [item async for item in items[123]] == [item_1, item_3]
     assert [item async for item in items[456]] == [item_2, item_4]
+
+
+@pytest.mark.asyncio
+async def test_get_all_invalid_json(backend: QueueBackend, queue_item_factory):
+    item_1 = queue_item_factory()
+    await backend.put(item_1)
+
+    corrupt_file_dir = backend.location / "999"
+    corrupt_file_dir.mkdir()
+
+    corrupt_file_path = corrupt_file_dir / "xxx.json"
+    corrupt_file_path.write_text("BOOM")
+
+    items = await backend.get_all()
+    assert len(items) == 2
+
+
+@pytest.mark.asyncio
+async def test_get_all_payload_doesnt_match_schema(
+    backend: QueueBackend, queue_item_factory
+):
+    item_1 = queue_item_factory()
+    await backend.put(item_1)
+
+    # this is invalid, as whiteboard should be a string
+    item_2 = queue_item_factory.build(
+        payload__bug__id=999, payload__bug__whiteboard=False
+    )
+    await backend.put(item_2)
+
+    items = await backend.get_all()
+    assert len(items) == 2
+
+
+@pytest.mark.asyncio
+async def test_get_invalid_json(backend: QueueBackend, queue_item_factory):
+    corrupt_file_dir = backend.location / "999"
+    corrupt_file_dir.mkdir()
+    corrupt_file_path = corrupt_file_dir / "xxx.json"
+    corrupt_file_path.write_text("BOOM")
+
+    items = backend.get(999)
+
+    with pytest.raises(JSONDecodeError):
+        await anext(items)
+
+
+@pytest.mark.asyncio
+async def test_get_payload_doesnt_match_schema(
+    backend: QueueBackend, queue_item_factory
+):
+    # this is invalid, as whiteboard should be a string
+    item = queue_item_factory.build(
+        payload__bug__id=999, payload__bug__whiteboard=False
+    )
+    await backend.put(item)
+
+    items = backend.get(999)
+
+    with pytest.raises(ValidationError):
+        await anext(items)
 
 
 @pytest.mark.asyncio
