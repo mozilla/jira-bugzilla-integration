@@ -13,7 +13,7 @@ CONSTANT_RETRY = getenv("CONSTANT_RETRY", "false") == "true"
 RETRY_TIMEOUT_DAYS = getenv("RETRY_TIMEOUT_DAYS", 7)
 
 
-async def retry_failed():
+async def retry_failed(item_executor=runner.execute_action):
     queue = get_dl_queue()
     logger = logging.getLogger(__name__)
     min_event_timestamp = datetime.now() - timedelta(days=int(RETRY_TIMEOUT_DAYS))
@@ -30,28 +30,18 @@ async def retry_failed():
         "bugs_failed": 0,
     }
 
-    for bugid, items in bugs.items():
-        prev_failed = False
+    for bug_id, items in bugs.items():
         try:
             async for item in items:
-                # skip if any previous retries for this bug have already failed
-                if prev_failed:
-                    logger.info(
-                        "skipping event %s - previous events have failed for this bug",
-                        item.identifier,
-                    )
-                    metrics["events_skipped"] += 1
-                    continue
-
                 # skip and delete item if we have exceeded max_timeout
                 if item.timestamp < min_event_timestamp:
-                    logger.warn("removing expired event %s", item.identifier)
+                    logger.warning("removing expired event %s", item.identifier)
                     await queue.done(item)
                     metrics["events_skipped"] += 1
                     continue
 
                 try:
-                    runner.execute_action(item.payload, ACTIONS)
+                    item_executor(item.payload, ACTIONS)
                     await queue.done(item)
                     metrics["events_processed"] += 1
                 except Exception as ex:
@@ -59,10 +49,22 @@ async def retry_failed():
                     logger.error(
                         "failed to reprocess event %s. error: %s", item.identifier, ex
                     )
-                    prev_failed = True
                     metrics["events_failed"] += 1
+
+                    # check for other events that will be skipped
+                    skipped_events = await queue.list(bug_id)
+                    if (
+                        len(skipped_events) > 1
+                    ):  # if this isn't the only event for the bug
+                        logger.info(
+                            "skipping events %s - previous event %s failed for this bug",
+                            ",".join(skipped_events),
+                            item.identifier,
+                        )
+                        metrics["events_skipped"] += len(skipped_events) - 1
+                        break
         except Exception as ex:
-            logger.error("failed to parse events for bug %d. error: %s", bugid, ex)
+            logger.error("failed to parse events for bug %d. error: %s", bug_id, ex)
             metrics["bugs_failed"] += 1
 
     return metrics

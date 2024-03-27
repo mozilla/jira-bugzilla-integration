@@ -45,8 +45,10 @@ logger = logging.getLogger(__name__)
 class QueueItemRetrievalError(Exception):
     pass
 
+
 class InvalidQueueDSNError(Exception):
     pass
+
 
 class PythonException(BaseModel, frozen=True):
     type: str
