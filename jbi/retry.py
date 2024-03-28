@@ -33,7 +33,7 @@ async def retry_failed(item_executor=runner.execute_action):
     for bug_id, items in bugs.items():
         try:
             async for item in items:
-                # skip and delete item if we have exceeded max_timeout
+                # skip and delete item if we have exceeded RETRY_TIMEOUT_DAYS
                 if item.timestamp < min_event_timestamp:
                     logger.warning("removing expired event %s", item.identifier)
                     await queue.done(item)
