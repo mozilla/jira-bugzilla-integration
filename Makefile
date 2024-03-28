@@ -65,11 +65,11 @@ $(DOTENV_FILE):
 
 .PHONY: docker-shell
 docker-shell: $(DOTENV_FILE)
-	docker-compose run --rm web /bin/sh
+	docker compose run --rm web /bin/sh
 
 .PHONY: docker-start
 docker-start: $(DOTENV_FILE)
-	docker-compose up
+	docker compose up
 
 .PHONY: test
 test: $(INSTALL_STAMP)

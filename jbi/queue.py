@@ -302,6 +302,9 @@ class DeadLetterQueue:
     async def list_all(self) -> dict[int, List[str]]:
         return await self.backend.list_all()
 
+    async def size(self, bug_id=None):
+        return await self.backend.size(bug_id=bug_id)
+
     async def done(self, item: QueueItem) -> None:
         """
         Mark item as done, remove from queue.
