@@ -31,7 +31,7 @@ class WebhookEvent(BaseModel, frozen=True):
     """Bugzilla Event Object"""
 
     action: str
-    time: Optional[datetime.datetime] = None
+    time: datetime.datetime
     user: Optional[WebhookUser] = None
     changes: Optional[list[WebhookEventChange]] = None
     target: Optional[str] = None

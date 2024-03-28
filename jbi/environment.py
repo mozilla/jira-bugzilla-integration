@@ -7,7 +7,7 @@ from enum import StrEnum, auto  # type: ignore
 from functools import lru_cache
 from typing import Optional
 
-from pydantic import AnyUrl
+from pydantic import AnyUrl, FileUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -47,6 +47,8 @@ class Settings(BaseSettings):
     # Sentry
     sentry_dsn: Optional[AnyUrl] = None
     sentry_traces_sample_rate: float = 1.0
+
+    dl_queue_dsn: FileUrl
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
