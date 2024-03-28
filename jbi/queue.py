@@ -45,8 +45,10 @@ logger = logging.getLogger(__name__)
 class QueueItemRetrievalError(Exception):
     pass
 
+
 class InvalidQueueDSNError(Exception):
     pass
+
 
 class PythonException(BaseModel, frozen=True):
     type: str
@@ -293,6 +295,12 @@ class DeadLetterQueue:
         items for that bug
         """
         return await self.backend.get_all()
+
+    async def list(self, bug_id: int) -> List[str]:
+        return await self.backend.list(bug_id=bug_id)
+
+    async def list_all(self) -> dict[int, List[str]]:
+        return await self.backend.list_all()
 
     async def done(self, item: QueueItem) -> None:
         """
