@@ -177,6 +177,7 @@ Example: We could create a simple DLQ (a table in postgres) external queue for r
 ### Miscellaneous options that we thought about
 - Using a postgres or redis server to store data. This would mean another server to maintain and coordinate maintenance downtime.
 - Using a sqlite (or similar) file to store data. This doesn't work well in a scalable solution that will have multiple pods and threads running.
+- Using a queue (kafka, pub/sub, etc) but only as the DLQ and not as a work queue. There is a chance for data to be processed out of order with this approach if events come in too quickly.
 
 
 ## Links 
