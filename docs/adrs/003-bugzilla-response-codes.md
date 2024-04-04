@@ -174,9 +174,10 @@ There are plenty of existing solutions we could use to solve this problem from a
 ### Option 6: A combination of the above
 Example: We could create a simple DLQ (a table in postgres) external queue for re-processing and then alert users if the DLQ grows too quickly.
 
-## Decision Outcome
+### Miscellaneous options that we thought about
+- Using a postgres or redis server to store data. This would mean another server to maintain and coordinate maintenance downtime.
+- Using a sqlite (or similar) file to store data. This doesn't work well in a scalable solution that will have multiple pods and threads running.
 
-Discussing proposed solution
 
 ## Links 
 - [What is event streaming?](https://kafka.apache.org/documentation/#intro_streaming) - Documentation from Apache Kafka
