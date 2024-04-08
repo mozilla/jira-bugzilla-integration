@@ -555,7 +555,7 @@
   parameters:
     jira_project_key: JB
 
-whiteboard_tag: genai
+- whiteboard_tag: genai
   bugzilla_user_id: tbd
   description: Firefox GenAI
   parameters:
@@ -590,3 +590,4 @@ whiteboard_tag: genai
       FIXED: Done
       DUPLICATE: Duplicate
       WONTFIX: "Won't Do"
+      
