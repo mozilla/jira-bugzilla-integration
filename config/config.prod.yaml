@@ -72,6 +72,7 @@
         - add_link_to_bugzilla
         - add_link_to_jira
         - maybe_assign_jira_user
+        - maybe_update_issue_priority
         - maybe_update_issue_resolution
         - maybe_update_issue_severity
         - maybe_update_issue_status
@@ -79,6 +80,7 @@
       existing:
         - update_issue_summary
         - maybe_assign_jira_user
+        - maybe_update_issue_priority
         - maybe_update_issue_resolution
         - maybe_update_issue_severity
         - maybe_update_issue_status
