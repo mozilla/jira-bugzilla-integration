@@ -554,3 +554,39 @@
   description: Prod testing whiteboard tag (JBI Bin Project)
   parameters:
     jira_project_key: JB
+
+whiteboard_tag: genai
+  bugzilla_user_id: tbd
+  description: Firefox GenAI
+  parameters:
+    jira_project_key: GENAI
+    steps:
+      new:
+      - create_issue
+      - maybe_delete_duplicate
+      - add_link_to_bugzilla
+      - add_link_to_jira
+      - maybe_assign_jira_user
+      - maybe_update_issue_resolution
+      - maybe_update_issue_status
+      existing:
+      - update_issue
+      - add_jira_comments_for_changes
+      - maybe_assign_jira_user
+      - maybe_update_issue_resolution
+      - maybe_update_issue_status
+      comment:
+      - create_comment
+    status_map:
+      ASSIGNED: In Progress
+      FIXED: Closed
+      WONTFIX: Closed
+      DUPLICATE: Closed
+      INVALID: Closed
+      INCOMPLETE: Closed
+      WORKSFORME: Closed
+      REOPENED: In Progress
+    resolution_map:
+      FIXED: Done
+      DUPLICATE: Duplicate
+      WONTFIX: "Won't Do"
