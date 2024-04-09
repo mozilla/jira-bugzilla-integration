@@ -4,7 +4,14 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
+    groups:
+      minor-patch:
+        update-types: ["minor", "patch"]
   - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
