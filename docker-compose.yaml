@@ -12,3 +12,10 @@ services:
       - ${PORT:-8000}:${PORT:-8000}
     volumes:
       - .:/app
+  retry:
+    build: .
+    command: python -m jbi.retry
+    env_file:
+      - .env
+    volumes:
+      - .:/app
