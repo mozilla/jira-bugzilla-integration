@@ -1,9 +1,9 @@
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 
-from jbi.queue import DeadLetterQueue, get_dl_queue
+from jbi.queue import DeadLetterQueue
 from jbi.retry import RETRY_TIMEOUT_DAYS, retry_failed
 from jbi.runner import execute_action
 
