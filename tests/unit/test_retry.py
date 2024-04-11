@@ -31,12 +31,11 @@ def mock_executor():
 
 
 @pytest.mark.asyncio
-async def test_retry_empty_list(caplog):
-    retrieve = AsyncMock(return_value={})
-    get_dl_queue().retrieve = retrieve
+async def test_retry_empty_list(caplog, mock_queue):
+    mock_queue.retrieve.return_value = {}
 
-    metrics = await retry_failed()
-    retrieve.assert_called_once()
+    metrics = await retry_failed(queue=mock_queue)
+    mock_queue.retrieve.assert_called_once()
     assert len(caplog.messages) == 0
     assert metrics == {
         "bug_count": 0,
