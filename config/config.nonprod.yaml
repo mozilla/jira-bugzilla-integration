@@ -42,7 +42,6 @@
         - maybe_assign_jira_user
         - maybe_update_issue_priority
         - maybe_update_issue_resolution
-        - maybe_update_issue_severity
         - maybe_update_issue_status
         - sync_whiteboard_labels
       existing:
@@ -50,7 +49,6 @@
         - maybe_assign_jira_user
         - maybe_update_issue_priority
         - maybe_update_issue_resolution
-        - maybe_update_issue_severity
         - maybe_update_issue_status
         - sync_whiteboard_labels
     labels_brackets: both

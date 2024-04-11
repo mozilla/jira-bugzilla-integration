@@ -9,12 +9,12 @@ license = "MPL"
 python = ">=3.12, <3.13"
 fastapi = "^0.110.1"
 pydantic = {version = "^2.6.4", extras = ["email"]}
-uvicorn = {extras = ["standard"], version = "^0.28.1"}
+uvicorn = {extras = ["standard"], version = "^0.29.0"}
 atlassian-python-api = "^3.41.11"
 dockerflow = {extras = ["fastapi"], version = "2024.4.1"}
 Jinja2 = "^3.1.3"
-sentry-sdk = {extras = ["fastapi"], version = "^1.42.0"}
-pydantic-yaml = "^1.2.1"
+sentry-sdk = {extras = ["fastapi"], version = "^1.44.1"}
+pydantic-yaml = "^1.3.0"
 backoff = "^2.2.1"
 statsd = "^4.0.1"
 requests = "^2.31.0"
@@ -37,6 +37,8 @@ factory-boy = "^3.3.0"
 pytest-factoryboy = "^2.7.0"
 ruff = "^0.3.5"
 pytest-mock = "^3.14.0"
+pytest-asyncio = "^0.23.5"
+
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
