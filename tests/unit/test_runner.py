@@ -266,7 +266,6 @@ async def test_execute_or_queue_happy_path(
         queue=mock_queue,
         actions=mock.MagicMock(spec=Actions),
     )
-    print(res)
     mock_queue.is_blocked.assert_called_once()
     mock_queue.postpone.assert_not_called()
     mock_queue.track_failed.assert_not_called()
@@ -284,7 +283,6 @@ async def test_execute_or_queue_blocked(
         queue=mock_queue,
         actions=mock.MagicMock(spec=Actions),
     )
-    print(res)
     mock_queue.is_blocked.assert_called_once()
     mock_queue.postpone.assert_called_once()
     mock_queue.track_failed.assert_not_called()
@@ -301,9 +299,6 @@ async def test_execute_or_queue_exception(
     res = await execute_or_queue(
         request=bugzilla_webhook_request, queue=mock_queue, actions=actions
     )
-    print("###############################")
-    print(res)
-    print("###############################")
     mock_queue.is_blocked.assert_called_once()
     mock_queue.postpone.assert_not_called()
     mock_queue.track_failed.assert_called_once()
