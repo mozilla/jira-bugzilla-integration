@@ -6,14 +6,14 @@ jobs:
   run_lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         id: setup-python
         with:
           python-version: "3.12"
       - name: Install poetry
         run: pipx install poetry
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: .venv
           key: poetry-${{ steps.setup-python.outputs.python-version}}-${{ hashFiles('poetry.lock') }}
@@ -23,7 +23,7 @@ jobs:
   run_test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         id: setup-python
         with:
@@ -32,7 +32,7 @@ jobs:
         run: sudo apt-get install -y pandoc
       - name: Install poetry
         run: pipx install poetry
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: .venv
           key: poetry-${{ steps.setup-python.outputs.python-version}}-${{ hashFiles('poetry.lock') }}
