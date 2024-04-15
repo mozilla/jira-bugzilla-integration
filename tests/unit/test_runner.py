@@ -261,7 +261,7 @@ async def test_execute_or_queue_happy_path(
     bugzilla_webhook_request,
 ):
     mock_queue.is_blocked.return_value = False
-    res = await execute_or_queue(
+    await execute_or_queue(
         request=bugzilla_webhook_request,
         queue=mock_queue,
         actions=mock.MagicMock(spec=Actions),
@@ -278,7 +278,7 @@ async def test_execute_or_queue_blocked(
     bugzilla_webhook_request,
 ):
     mock_queue.is_blocked.return_value = True
-    res = await execute_or_queue(
+    await execute_or_queue(
         request=bugzilla_webhook_request,
         queue=mock_queue,
         actions=mock.MagicMock(spec=Actions),
@@ -296,7 +296,7 @@ async def test_execute_or_queue_exception(
 ):
     mock_queue.is_blocked.return_value = False
     # should trigger an exception for this scenario
-    res = await execute_or_queue(
+    await execute_or_queue(
         request=bugzilla_webhook_request, queue=mock_queue, actions=actions
     )
     mock_queue.is_blocked.assert_called_once()
