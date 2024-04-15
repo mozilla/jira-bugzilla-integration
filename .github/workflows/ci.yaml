@@ -6,7 +6,7 @@ jobs:
   run_lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         id: setup-python
         with:
@@ -23,7 +23,7 @@ jobs:
   run_test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         id: setup-python
         with:
