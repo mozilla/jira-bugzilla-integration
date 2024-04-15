@@ -8,6 +8,7 @@ import logging
 import re
 from typing import Optional
 
+from fastapi import HTTPException, status
 from statsd.defaults.env import statsd
 
 from jbi import ActionResult, Operation, bugzilla, jira
@@ -161,24 +162,31 @@ class Executor:
 async def execute_or_queue(
     request: bugzilla.WebhookRequest, queue: DeadLetterQueue, actions: Actions
 ):
-    if await queue.is_blocked(request):
-        # If it's blocked, store it and wait for it to be processed later.
-        await queue.postpone(request)
-        logger.info(
-            "%r event on Bug %s was put in queue for later processing.",
-            request.event.action,
-            request.bug.id,
-            extra={"payload": request.model_dump()},
-        )
-        return {"status": "skipped"}
-
     try:
-        return execute_action(request, actions)
-    except IgnoreInvalidRequestError as exc:
-        return {"status": "invalid", "error": str(exc)}
+        if await queue.is_blocked(request):
+            # If it's blocked, store it and wait for it to be processed later.
+            await queue.postpone(request)
+            logger.info(
+                "%r event on Bug %s was put in queue for later processing.",
+                request.event.action,
+                request.bug.id,
+                extra={"payload": request.model_dump()},
+            )
+            return {"status": "skipped"}
+
+        try:
+            return execute_action(request, actions)
+        except IgnoreInvalidRequestError as exc:
+            return {"status": "invalid", "error": str(exc)}
+        except Exception as exc:
+            await queue.track_failed(request, exc)
+            return {"status": "failed", "error": str(exc)}
     except Exception as exc:
-        await queue.track_failed(request, exc)
-        return {"status": "failed", "error": str(exc)}
+        logger.exception("Queue exception", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Queue Error",
+        )
 
 
 @statsd.timer("jbi.action.execution.timer")
