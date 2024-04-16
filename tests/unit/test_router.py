@@ -172,14 +172,11 @@ def test_webhook_is_200_if_action_raises_Exception(
 
 
 def test_webhook_is_500_if_queue_raises_Exception(
-    webhook_request_factory, mocked_bugzilla, authenticated_client
+    webhook_request_factory, mocked_bugzilla, authenticated_client, mock_queue
 ):
-    # queue =
-    # is_blocked = queue.is_blocked
     webhook = webhook_request_factory()
-    get_dl_queue().is_blocked = mock.AsyncMock(
-        side_effect=Exception("Throwing an exception")
-    )
+    authenticated_client.app.dependency_overrides[get_dl_queue] = lambda: mock_queue
+    mock_queue.is_blocked.side_effect = Exception("Throwing an exception")
 
     response = authenticated_client.post(
         "/bugzilla_webhook",
