@@ -1,7 +1,5 @@
 configuration:
-- changed-files:
-  - any-glob-to-any-file: config/*
+- config/*
 
 documentation:
-- changed-files:
-  - any-glob-to-any-file: '**/*.md'
+- '**/*.md'
