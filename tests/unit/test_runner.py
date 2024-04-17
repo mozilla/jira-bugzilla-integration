@@ -9,7 +9,13 @@ from jbi import Operation
 from jbi.environment import get_settings
 from jbi.errors import ActionNotFoundError, IgnoreInvalidRequestError
 from jbi.models import ActionContext
-from jbi.runner import Executor, execute_action, lookup_action
+from jbi.runner import (
+    Actions,
+    Executor,
+    execute_action,
+    execute_or_queue,
+    lookup_action,
+)
 
 
 def test_bugzilla_object_is_always_fetched(
@@ -247,6 +253,55 @@ def test_runner_ignores_request_if_jira_is_linked_but_without_whiteboard(
         execute_action(request=webhook, actions=actions)
 
     assert str(exc_info.value) == "no bug whiteboard matching action tags: devtest"
+
+
+@pytest.mark.asyncio
+async def test_execute_or_queue_happy_path(
+    mock_queue,
+    bugzilla_webhook_request,
+):
+    mock_queue.is_blocked.return_value = False
+    await execute_or_queue(
+        request=bugzilla_webhook_request,
+        queue=mock_queue,
+        actions=mock.MagicMock(spec=Actions),
+    )
+    mock_queue.is_blocked.assert_called_once()
+    mock_queue.postpone.assert_not_called()
+    mock_queue.track_failed.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_execute_or_queue_blocked(
+    actions,
+    mock_queue,
+    bugzilla_webhook_request,
+):
+    mock_queue.is_blocked.return_value = True
+    await execute_or_queue(
+        request=bugzilla_webhook_request,
+        queue=mock_queue,
+        actions=mock.MagicMock(spec=Actions),
+    )
+    mock_queue.is_blocked.assert_called_once()
+    mock_queue.postpone.assert_called_once()
+    mock_queue.track_failed.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_execute_or_queue_exception(
+    actions,
+    mock_queue,
+    bugzilla_webhook_request,
+):
+    mock_queue.is_blocked.return_value = False
+    # should trigger an exception for this scenario
+    await execute_or_queue(
+        request=bugzilla_webhook_request, queue=mock_queue, actions=actions
+    )
+    mock_queue.is_blocked.assert_called_once()
+    mock_queue.postpone.assert_not_called()
+    mock_queue.track_failed.assert_called_once()
 
 
 def test_default_invalid_init():

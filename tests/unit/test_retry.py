@@ -3,7 +3,6 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from jbi.queue import DeadLetterQueue
 from jbi.retry import RETRY_TIMEOUT_DAYS, retry_failed
 from jbi.runner import execute_action
 
@@ -18,11 +17,6 @@ def iter_error():
 async def aiter_sync(iterable):
     for i in iterable:
         yield i
-
-
-@pytest.fixture
-def mock_queue():
-    return MagicMock(spec=DeadLetterQueue)
 
 
 @pytest.fixture

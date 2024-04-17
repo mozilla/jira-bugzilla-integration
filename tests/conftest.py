@@ -15,6 +15,7 @@ import tests.fixtures.factories as factories
 from jbi import Operation, bugzilla, jira
 from jbi.environment import Settings
 from jbi.models import ActionContext
+from jbi.queue import DeadLetterQueue
 
 
 class FilteredLogCaptureFixture(pytest.LogCaptureFixture):
@@ -94,7 +95,9 @@ def test_api_key():
 @pytest.fixture
 def authenticated_client(app, test_api_key):
     """An test client with a valid API key."""
-    return TestClient(app, headers={"X-Api-Key": test_api_key})
+    return TestClient(
+        app, headers={"X-Api-Key": test_api_key}, raise_server_exceptions=False
+    )
 
 
 @pytest.fixture
@@ -106,6 +109,11 @@ def settings():
 @pytest.fixture()
 def actions(actions_factory):
     return actions_factory()
+
+
+@pytest.fixture
+def mock_queue():
+    return mock.MagicMock(spec=DeadLetterQueue)
 
 
 @pytest.fixture(autouse=True)
