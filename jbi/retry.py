@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import sys
 from datetime import UTC, datetime, timedelta
 from os import getenv
 from time import sleep
@@ -16,7 +17,7 @@ CONSTANT_RETRY_SLEEP = getenv("DL_QUEUE_CONSTANT_RETRY_SLEEP", 5)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-lsh = logging.StreamHandler()
+lsh = logging.StreamHandler(sys.stdout)
 lsh.setFormatter(JsonLogFormatter(logger_name=__name__))
 logger.addHandler(lsh)
 
