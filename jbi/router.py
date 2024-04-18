@@ -16,7 +16,8 @@ from jbi import bugzilla, jira
 from jbi.configuration import ACTIONS
 from jbi.environment import Settings, get_settings
 from jbi.models import Actions
-from jbi.runner import IgnoreInvalidRequestError, execute_action
+from jbi.queue import DeadLetterQueue, get_dl_queue
+from jbi.runner import execute_or_queue
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 ActionsDep = Annotated[Actions, Depends(lambda: ACTIONS)]
@@ -64,17 +65,14 @@ def api_key_auth(
     "/bugzilla_webhook",
     dependencies=[Depends(api_key_auth)],
 )
-def bugzilla_webhook(
+async def bugzilla_webhook(
     request: Request,
     actions: ActionsDep,
+    queue: Annotated[DeadLetterQueue, Depends(get_dl_queue)],
     webhook_request: bugzilla.WebhookRequest = Body(..., embed=False),
 ):
     """API endpoint that Bugzilla Webhook Events request"""
-    try:
-        result = execute_action(webhook_request, actions)
-        return result
-    except IgnoreInvalidRequestError as exception:
-        return {"error": str(exception)}
+    return await execute_or_queue(webhook_request, queue, actions)
 
 
 @router.get(
