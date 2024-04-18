@@ -4,6 +4,8 @@ from datetime import UTC, datetime, timedelta
 from os import getenv
 from time import sleep
 
+from dockerflow.logging import JsonLogFormatter
+
 import jbi.runner as runner
 from jbi.configuration import ACTIONS
 from jbi.queue import get_dl_queue
@@ -13,6 +15,10 @@ RETRY_TIMEOUT_DAYS = getenv("DL_QUEUE_RETRY_TIMEOUT_DAYS", 7)
 CONSTANT_RETRY_SLEEP = getenv("DL_QUEUE_CONSTANT_RETRY_SLEEP", 5)
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+lsh = logging.StreamHandler()
+lsh.setFormatter(JsonLogFormatter(logger_name=__name__))
+logger.addHandler(lsh)
 
 
 async def retry_failed(item_executor=runner.execute_action, queue=get_dl_queue()):
