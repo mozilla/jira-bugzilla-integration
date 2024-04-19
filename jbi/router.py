@@ -3,6 +3,7 @@ Core FastAPI app (setup, middleware)
 """
 
 import secrets
+from collections import defaultdict
 from pathlib import Path
 from typing import Annotated, Optional
 
@@ -73,6 +74,20 @@ async def bugzilla_webhook(
 ):
     """API endpoint that Bugzilla Webhook Events request"""
     return await execute_or_queue(webhook_request, queue, actions)
+
+
+@router.get(
+    "/dl_queue/",
+    dependencies=[Depends(api_key_auth)],
+)
+async def inspect_dl_queue(queue: Annotated[DeadLetterQueue, Depends(get_dl_queue)]):
+    """API for viewing queue content"""
+    bugs = await queue.retrieve()
+    results = defaultdict(list)
+    for bug_id, items in bugs.items():
+        async for item in items:
+            results[bug_id].append(item.model_dump())
+    return results
 
 
 @router.get(

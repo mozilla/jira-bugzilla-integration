@@ -23,6 +23,7 @@ def test_read_root(anon_client):
     "endpoint",
     [
         "/whiteboard_tags",
+        "/dl_queue/",
         "/jira_projects/",
         "/powered_by_jbi/",
         "/bugzilla_webhooks/",
@@ -72,6 +73,17 @@ def test_whiteboard_tags_filtered(authenticated_client):
     resp = authenticated_client.get("/whiteboard_tags/?whiteboard_tag=foo")
     infos = resp.json()
     assert sorted(infos.keys()) == ["devtest"]
+
+
+@pytest.mark.asyncio
+async def test_dl_queue_endpoint(authenticated_client, webhook_request_factory):
+    item = webhook_request_factory()
+    await get_dl_queue().postpone(item)
+
+    resp = authenticated_client.get("/dl_queue/")
+    results = resp.json()
+
+    assert results["654321"][0]["payload"]["event"]["action"] == "create"
 
 
 def test_powered_by_jbi(exclude_middleware, authenticated_client):
