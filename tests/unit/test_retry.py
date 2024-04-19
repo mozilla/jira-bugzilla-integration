@@ -1,10 +1,12 @@
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock
 
+import os
 import pytest
 
 from jbi.retry import RETRY_TIMEOUT_DAYS, retry_failed
 from jbi.runner import execute_action
+from jbi.queue import QueueItem
 
 
 def iter_error():
@@ -101,7 +103,7 @@ async def test_retry_remove_expired(
             [
                 queue_item_factory(
                     payload__bug__id=1,
-                    payload__event__time=datetime.now(UTC)
+                    payload__event__time=datetime.now()
                     - timedelta(days=int(RETRY_TIMEOUT_DAYS), seconds=1),
                 ),
                 queue_item_factory(payload__bug__id=1),
@@ -148,4 +150,19 @@ async def test_retry_bug_failed(caplog, mock_queue, mock_executor, queue_item_fa
         "events_skipped": 0,
         "events_failed": 0,
         "bugs_failed": 1,
+    }
+
+
+@pytest.mark.asyncio
+async def test_with_file(caplog, mock_queue, mock_executor):
+    mock_queue.retrieve.return_value = {
+        1: aiter_sync([QueueItem.parse_file("tests/fixtures/test_retry_file.json")])
+    }
+    metrics = await retry_failed(item_executor=mock_executor, queue=mock_queue)
+    assert metrics == {
+        "bug_count": 1,
+        "events_processed": 1,
+        "events_skipped": 0,
+        "events_failed": 0,
+        "bugs_failed": 0,
     }

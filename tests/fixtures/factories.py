@@ -115,7 +115,7 @@ class WebhookEventFactory(PydanticFactory):
     changes = None
     routing_key = "bug.create"
     target = "bug"
-    time = factory.LazyFunction(lambda: datetime.now(UTC))
+    time = factory.LazyFunction(lambda: datetime.now())
     user = factory.SubFactory(WebhookUserFactory)
 
 

@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import sys
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from os import getenv
 from time import sleep
 
@@ -23,7 +23,7 @@ logger.addHandler(lsh)
 
 
 async def retry_failed(item_executor=runner.execute_action, queue=get_dl_queue()):
-    min_event_timestamp = datetime.now(UTC) - timedelta(days=int(RETRY_TIMEOUT_DAYS))
+    min_event_timestamp = datetime.now() - timedelta(days=int(RETRY_TIMEOUT_DAYS))
 
     # load all bugs from DLQ
     bugs = await queue.retrieve()

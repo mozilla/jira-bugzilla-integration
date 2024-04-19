@@ -1,0 +1,55 @@
+{
+  "payload": {
+    "webhook_id": 1,
+    "webhook_name": "JBI-test",
+    "event": {
+      "action": "modify",
+      "time": "2024-04-18T12:46:54",
+      "user": {
+        "id": 1,
+        "login": "test@foo.tld",
+        "real_name": "Nobody"
+      },
+      "changes": [
+        {
+          "field": "status",
+          "removed": "NEW",
+          "added": "RESOLVED"
+        },
+        {
+          "field": "resolution",
+          "removed": "",
+          "added": "FIXED"
+        }
+      ],
+      "target": "bug",
+      "routing_key": "bug.modify:status,resolution"
+    },
+    "bug": {
+      "id": 1,
+      "is_private": false,
+      "type": "enhancement",
+      "product": "Test",
+      "component": "Test",
+      "whiteboard": "[test]",
+      "keywords": [],
+      "flags": [],
+      "groups": null,
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "see_also": [],
+      "summary": "",
+      "severity": "--",
+      "priority": "",
+      "creator": "test@foo.tld",
+      "assigned_to": "test@foo.tld",
+      "comment": null,
+      "cf_fx_points": ""
+    }
+  },
+  "error": {
+    "type": "HTTPError",
+    "description": "",
+    "details": "Error details..."
+  }
+}
