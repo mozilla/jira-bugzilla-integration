@@ -265,14 +265,6 @@ class DeadLetterQueue:
         """
         return await self.backend.get_all()
 
-    async def list(self, bug_id: int) -> List[str]:
-        """Report a summary of all of the items identifiers in the queue for a bug
-
-        Returns:
-            a dict bug id, list of item identifier
-        """
-        return [item.identifier async for item in self.backend.get(bug_id=bug_id)]
-
     async def list_all(self) -> dict[int, List[str]]:
         """Report a summary of all of the items identifiers in the queue
 

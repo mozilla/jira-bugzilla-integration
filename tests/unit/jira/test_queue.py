@@ -281,16 +281,6 @@ async def test_done(queue: DeadLetterQueue, queue_item_factory):
 
 
 @pytest.mark.asyncio
-async def test_list(queue: DeadLetterQueue, queue_item_factory):
-    item = queue_item_factory(payload__bug__id=123)
-    await queue.backend.put(item)
-    await queue.backend.put(queue_item_factory(payload__bug__id=456))
-
-    [identifier] = await queue.list(123)
-    assert item.identifier == identifier
-
-
-@pytest.mark.asyncio
 async def test_list_all(queue: DeadLetterQueue, queue_item_factory):
     for bug_id in (123, 123, 456, 456):
         await queue.backend.put(queue_item_factory(payload__bug__id=bug_id))
