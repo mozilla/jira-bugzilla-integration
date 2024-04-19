@@ -41,7 +41,7 @@ def test_filebackend_ping_fails(caplog, tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_remove_last_item(backend: QueueBackend, queue_item_factory):
+async def test_backend_remove_last_item(backend: QueueBackend, queue_item_factory):
     """When we remove the last item for a bug, we also remove it's key from the
     backend"""
 
@@ -55,7 +55,7 @@ async def test_remove_last_item(backend: QueueBackend, queue_item_factory):
 
 
 @pytest.mark.asyncio
-async def test_clear(backend: QueueBackend, queue_item_factory):
+async def test_backend_clear(backend: QueueBackend, queue_item_factory):
     item_1 = queue_item_factory(payload__bug__id=123)
     item_2 = queue_item_factory(payload__bug__id=456)
 
@@ -68,7 +68,9 @@ async def test_clear(backend: QueueBackend, queue_item_factory):
 
 
 @pytest.mark.asyncio
-async def test_put_maintains_sorted_order(backend: QueueBackend, queue_item_factory):
+async def test_backend_put_maintains_sorted_order(
+    backend: QueueBackend, queue_item_factory
+):
     now = datetime.now()
     item_1 = queue_item_factory(payload__event__time=now + timedelta(minutes=1))
     item_2 = queue_item_factory(payload__event__time=now + timedelta(minutes=2))
@@ -85,40 +87,7 @@ async def test_put_maintains_sorted_order(backend: QueueBackend, queue_item_fact
 
 
 @pytest.mark.asyncio
-async def test_backend_list(backend: QueueBackend, queue_item_factory):
-    item = queue_item_factory(payload__bug__id=123)
-    await backend.put(item)
-    await backend.put(queue_item_factory(payload__bug__id=456))
-
-    [identifier] = await backend.list(123)
-    assert item.identifier == identifier
-
-
-@pytest.mark.asyncio
-async def test_backend_list_all(backend: QueueBackend, queue_item_factory):
-    for bug_id in (123, 123, 456, 456):
-        await backend.put(queue_item_factory(payload__bug__id=bug_id))
-
-    all_items = await backend.list_all()
-    assert len(all_items) == 2
-
-    for items in all_items.values():
-        assert len(items) == 2
-
-
-@pytest.mark.asyncio
-async def test_list_by_bug(backend: QueueBackend, queue_item_factory):
-    item_1 = queue_item_factory(payload__bug__id=123)
-    item_2 = queue_item_factory(payload__bug__id=456)
-
-    await backend.put(item_1)
-    await backend.put(item_2)
-    [identifier] = await backend.list(bug_id=123)
-    assert identifier == item_1.identifier
-
-
-@pytest.mark.asyncio
-async def test_list_ordering(backend: QueueBackend, queue_item_factory):
+async def test_backend_get_ordering(backend: QueueBackend, queue_item_factory):
     now = datetime.now()
     item_1 = queue_item_factory(payload__event__time=now + timedelta(minutes=1))
     item_2 = queue_item_factory(payload__event__time=now + timedelta(minutes=2))
@@ -130,13 +99,15 @@ async def test_list_ordering(backend: QueueBackend, queue_item_factory):
     await backend.put(item_3)
     await backend.put(item_4)
 
-    item_metadata = await backend.list(bug_id=item_1.payload.bug.id)
+    item_metadata = [
+        item.identifier async for item in backend.get(bug_id=item_1.payload.bug.id)
+    ]
     exptected_id_order = [item.identifier for item in [item_1, item_2, item_3, item_4]]
     assert exptected_id_order == item_metadata
 
 
 @pytest.mark.asyncio
-async def test_get_all(backend: QueueBackend, queue_item_factory):
+async def test_backend_get_all(backend: QueueBackend, queue_item_factory):
     now = datetime.now()
     item_1 = queue_item_factory(
         payload__bug__id=123, payload__event__time=now + timedelta(minutes=1)
@@ -163,7 +134,7 @@ async def test_get_all(backend: QueueBackend, queue_item_factory):
 
 
 @pytest.mark.asyncio
-async def test_get_all_invalid_json(backend: QueueBackend, queue_item_factory):
+async def test_backend_get_all_invalid_json(backend: QueueBackend, queue_item_factory):
     item_1 = queue_item_factory()
     await backend.put(item_1)
 
@@ -178,7 +149,7 @@ async def test_get_all_invalid_json(backend: QueueBackend, queue_item_factory):
 
 
 @pytest.mark.asyncio
-async def test_get_all_payload_doesnt_match_schema(
+async def test_backend_get_all_payload_doesnt_match_schema(
     backend: QueueBackend, queue_item_factory
 ):
     item_1 = queue_item_factory()
@@ -195,7 +166,7 @@ async def test_get_all_payload_doesnt_match_schema(
 
 
 @pytest.mark.asyncio
-async def test_get_invalid_json(backend: QueueBackend, queue_item_factory):
+async def test_backend_get_invalid_json(backend: QueueBackend, queue_item_factory):
     corrupt_file_dir = backend.location / "999"
     corrupt_file_dir.mkdir()
     corrupt_file_path = corrupt_file_dir / "xxx.json"
@@ -208,7 +179,7 @@ async def test_get_invalid_json(backend: QueueBackend, queue_item_factory):
 
 
 @pytest.mark.asyncio
-async def test_get_payload_doesnt_match_schema(
+async def test_backend_get_payload_doesnt_match_schema(
     backend: QueueBackend, queue_item_factory
 ):
     # this is invalid, as whiteboard should be a string
@@ -310,7 +281,7 @@ async def test_done(queue: DeadLetterQueue, queue_item_factory):
 
 
 @pytest.mark.asyncio
-async def test_queue_list(queue: DeadLetterQueue, queue_item_factory):
+async def test_list(queue: DeadLetterQueue, queue_item_factory):
     item = queue_item_factory(payload__bug__id=123)
     await queue.backend.put(item)
     await queue.backend.put(queue_item_factory(payload__bug__id=456))
@@ -320,7 +291,7 @@ async def test_queue_list(queue: DeadLetterQueue, queue_item_factory):
 
 
 @pytest.mark.asyncio
-async def test_queue_list_all(queue: DeadLetterQueue, queue_item_factory):
+async def test_list_all(queue: DeadLetterQueue, queue_item_factory):
     for bug_id in (123, 123, 456, 456):
         await queue.backend.put(queue_item_factory(payload__bug__id=bug_id))
 
