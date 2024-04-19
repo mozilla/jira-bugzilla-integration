@@ -76,14 +76,18 @@ def test_whiteboard_tags_filtered(authenticated_client):
 
 
 @pytest.mark.asyncio
-async def test_dl_queue_endpoint(authenticated_client, webhook_request_factory):
-    item = webhook_request_factory()
+async def test_dl_queue_endpoint(
+    authenticated_client, webhook_request_factory
+):
+    item = webhook_request_factory(bug__id=314)
     await get_dl_queue().postpone(item)
 
     resp = authenticated_client.get("/dl_queue/")
     results = resp.json()
 
-    assert results["654321"][0]["payload"]["event"]["action"] == "create"
+    assert (
+        results[str(item.bug.id)][0]["payload"]["event"]["action"] == item.event.action
+    )
 
 
 def test_powered_by_jbi(exclude_middleware, authenticated_client):
