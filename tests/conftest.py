@@ -6,6 +6,7 @@ import time
 from unittest import mock
 
 import pytest
+import pytest_asyncio
 import responses
 from fastapi.testclient import TestClient
 from pytest_factoryboy import register
@@ -15,7 +16,7 @@ import tests.fixtures.factories as factories
 from jbi import Operation, bugzilla, jira
 from jbi.environment import Settings
 from jbi.models import ActionContext
-from jbi.queue import DeadLetterQueue
+from jbi.queue import DeadLetterQueue, get_dl_queue
 
 
 class FilteredLogCaptureFixture(pytest.LogCaptureFixture):
@@ -162,6 +163,12 @@ def context_comment_example(action_context_factory) -> ActionContext:
 def sleepless(monkeypatch):
     # https://stackoverflow.com/a/54829577
     monkeypatch.setattr(time, "sleep", lambda s: None)
+
+
+@pytest_asyncio.fixture()
+async def clear_dl_queue():
+    await get_dl_queue().backend.clear()
+    yield
 
 
 @pytest.fixture
