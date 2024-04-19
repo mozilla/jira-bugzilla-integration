@@ -1,12 +1,11 @@
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock
 
-import os
 import pytest
 
+from jbi.queue import QueueItem
 from jbi.retry import RETRY_TIMEOUT_DAYS, retry_failed
 from jbi.runner import execute_action
-from jbi.queue import QueueItem
 
 
 def iter_error():
