@@ -52,8 +52,16 @@ async def retry_failed(item_executor=runner.execute_action, queue=get_dl_queue()
                     await queue.done(item)
                     metrics["events_processed"] += 1
                 except Exception:
-                    logger.exception("failed to reprocess event %s.", item.identifier)
                     metrics["events_failed"] += 1
+                    logger.exception(
+                        "failed to reprocess event %s.",
+                        item.identifier,
+                        extra={
+                            "metrics": metrics,
+                            "item": item.model_dump(),
+                            "bug": {"id": bug_id},
+                        },
+                    )
 
                     # check for other events that will be skipped
                     pending_events = await queue.size(bug_id)
@@ -67,8 +75,12 @@ async def retry_failed(item_executor=runner.execute_action, queue=get_dl_queue()
                         metrics["events_skipped"] += pending_events - 1
                         break
         except Exception:
-            logger.exception("failed to parse events for bug %d.", bug_id)
             metrics["bugs_failed"] += 1
+            logger.exception(
+                "failed to parse events for bug %d.",
+                bug_id,
+                extra={"metrics": metrics, "bug": {"id": bug_id}},
+            )
 
     return metrics
 
