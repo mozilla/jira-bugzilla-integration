@@ -1,14 +1,39 @@
 import datetime
 import logging
-from typing import Optional, TypedDict
+from typing import Any, Optional, TypedDict
 from urllib.parse import ParseResult, urlparse
 
-from pydantic import BaseModel, TypeAdapter
+from pydantic import (
+    AwareDatetime,
+    BaseModel,
+    TypeAdapter,
+    ValidationError,
+    ValidationInfo,
+    ValidatorFunctionWrapHandler,
+)
+from pydantic.functional_validators import WrapValidator
+from typing_extensions import Annotated
 
 logger = logging.getLogger(__name__)
 JIRA_HOSTNAMES = ("jira", "atlassian")
 
 BugId = TypedDict("BugId", {"id": Optional[int]})
+
+
+def maybe_add_timezone(
+    v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo
+):
+    if isinstance(v, str):
+        try:
+            return handler(v)
+        except ValidationError:
+            return handler(v + "+00:00")
+    assert isinstance(v, datetime.datetime), "must be a datetime here"
+    v = v.replace(tzinfo=datetime.timezone.utc)
+    return v
+
+
+SmartAwareDatetime = Annotated[AwareDatetime, WrapValidator(maybe_add_timezone)]
 
 
 class WebhookUser(BaseModel, frozen=True):
@@ -31,7 +56,7 @@ class WebhookEvent(BaseModel, frozen=True):
     """Bugzilla Event Object"""
 
     action: str
-    time: datetime.datetime
+    time: SmartAwareDatetime
     user: Optional[WebhookUser] = None
     changes: Optional[list[WebhookEventChange]] = None
     target: Optional[str] = None
@@ -50,7 +75,7 @@ class WebhookComment(BaseModel, frozen=True):
     id: Optional[int] = None
     number: Optional[int] = None
     is_private: Optional[bool] = None
-    creation_time: Optional[datetime.datetime] = None
+    creation_time: Optional[SmartAwareDatetime] = None
 
 
 class Bug(BaseModel, frozen=True):
