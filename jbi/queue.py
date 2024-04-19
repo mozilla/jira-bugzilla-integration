@@ -30,7 +30,7 @@ from datetime import datetime
 from functools import lru_cache
 from json import JSONDecodeError
 from pathlib import Path
-from typing import AsyncIterator, List, Optional
+from typing import AsyncIterator, Optional
 from urllib.parse import ParseResult, urlparse
 
 import dockerflow.checks
@@ -264,18 +264,6 @@ class DeadLetterQueue:
         items for that bug
         """
         return await self.backend.get_all()
-
-    async def list_all(self) -> dict[int, List[str]]:
-        """Report a summary of all of the items identifiers in the queue
-
-        Returns:
-            a dict bug id, list of item identifiers
-        """
-        dict_gen = await self.backend.get_all()
-        items = {}
-        for bug_id, gen in dict_gen.items():
-            items[bug_id] = [item.identifier async for item in gen]
-        return items
 
     async def size(self, bug_id=None):
         return await self.backend.size(bug_id=bug_id)

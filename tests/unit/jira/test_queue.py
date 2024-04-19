@@ -278,15 +278,3 @@ async def test_done(queue: DeadLetterQueue, queue_item_factory):
 
     await queue.done(item)
     assert await queue.backend.size() == 0
-
-
-@pytest.mark.asyncio
-async def test_list_all(queue: DeadLetterQueue, queue_item_factory):
-    for bug_id in (123, 123, 456, 456):
-        await queue.backend.put(queue_item_factory(payload__bug__id=bug_id))
-
-    all_items = await queue.list_all()
-    assert len(all_items) == 2
-
-    for items in all_items.values():
-        assert len(items) == 2
