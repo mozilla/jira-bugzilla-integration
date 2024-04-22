@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timedelta
 
 import pytest
@@ -205,6 +206,24 @@ async def test_get_invalid_json(backend: QueueBackend, queue_item_factory):
 
     with pytest.raises(QueueItemRetrievalError):
         await anext(items)
+
+
+@pytest.mark.asyncio
+async def test_get_missing_timezone(backend: QueueBackend, queue_item_factory):
+    item = queue_item_factory.build(payload__bug__id=666)
+    dump = item.model_dump()
+    dump["payload"]["event"]["time"] = "2024-04-18T12:46:54"
+
+    queue_dir = backend.location / "666"
+    queue_dir.mkdir()
+    corrupt_file_path = queue_dir / f"{item.identifier}.json"
+    corrupt_file_path.write_text(json.dumps(dump))
+
+    items = backend.get(666)
+    item = await anext(items)
+
+    assert item.timestamp.tzname() == "UTC", "default timezone added"
+    assert "2024-04-18T12:46:54Z" in item.model_dump_json(), "timezone put in dump"
 
 
 @pytest.mark.asyncio

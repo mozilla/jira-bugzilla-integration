@@ -1,8 +1,11 @@
 import asyncio
 import logging
+import sys
 from datetime import UTC, datetime, timedelta
 from os import getenv
 from time import sleep
+
+from dockerflow.logging import JsonLogFormatter
 
 import jbi.runner as runner
 from jbi.configuration import ACTIONS
@@ -13,6 +16,10 @@ RETRY_TIMEOUT_DAYS = getenv("DL_QUEUE_RETRY_TIMEOUT_DAYS", 7)
 CONSTANT_RETRY_SLEEP = getenv("DL_QUEUE_CONSTANT_RETRY_SLEEP", 5)
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+lsh = logging.StreamHandler(sys.stdout)
+lsh.setFormatter(JsonLogFormatter(logger_name=__name__))
+logger.addHandler(lsh)
 
 
 async def retry_failed(item_executor=runner.execute_action, queue=get_dl_queue()):
@@ -45,8 +52,15 @@ async def retry_failed(item_executor=runner.execute_action, queue=get_dl_queue()
                     await queue.done(item)
                     metrics["events_processed"] += 1
                 except Exception:
-                    logger.exception("failed to reprocess event %s.", item.identifier)
                     metrics["events_failed"] += 1
+                    logger.exception(
+                        "failed to reprocess event %s.",
+                        item.identifier,
+                        extra={
+                            "item": item.model_dump(),
+                            "bug": {"id": bug_id},
+                        },
+                    )
 
                     # check for other events that will be skipped
                     pending_events = await queue.size(bug_id)
@@ -60,8 +74,12 @@ async def retry_failed(item_executor=runner.execute_action, queue=get_dl_queue()
                         metrics["events_skipped"] += pending_events - 1
                         break
         except Exception:
-            logger.exception("failed to parse events for bug %d.", bug_id)
             metrics["bugs_failed"] += 1
+            logger.exception(
+                "failed to parse events for bug %d.",
+                bug_id,
+                extra={"bug": {"id": bug_id}},
+            )
 
     return metrics
 
