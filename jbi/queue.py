@@ -273,7 +273,7 @@ class DeadLetterQueue:
 
     async def track_failed(
         self, payload: bugzilla.WebhookRequest, exc: Exception
-    ) -> None:
+    ) -> QueueItem:
         """
         Store the specified payload and exception information into the queue.
         """
@@ -282,6 +282,7 @@ class DeadLetterQueue:
             error=PythonException.from_exc(exc),
         )
         await self.backend.put(item)
+        return item
 
     async def is_blocked(self, payload: bugzilla.WebhookRequest) -> bool:
         """
