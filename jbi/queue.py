@@ -70,7 +70,6 @@ class QueueItem(BaseModel, frozen=True):
     payload: bugzilla.WebhookRequest
     error: Optional[PythonException] = None
 
-    @computed_field  # type: ignore
     @property
     def timestamp(self) -> datetime:
         return self.payload.event.time
