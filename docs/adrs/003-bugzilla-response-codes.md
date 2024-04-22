@@ -1,6 +1,6 @@
 # Bugzilla disables webhooks after too many errors
 
-- Status: accepted
+- Status: implemented
 - Date: 2023-11-27
 
 Tracking issues: 
