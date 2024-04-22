@@ -577,7 +577,6 @@
         - maybe_update_issue_status
         - add_jira_comments_for_changes
         - maybe_assign_jira_user
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
       comment:
         - create_comment
