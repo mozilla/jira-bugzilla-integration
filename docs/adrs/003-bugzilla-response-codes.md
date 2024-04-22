@@ -125,7 +125,7 @@ Create a persistence layer within the JBI containers that will queue and retry j
 
 **Cons:**
 - Increases complexity of the containers
-- Data will not persist container restarts
+- Data will not persist container restarts (ie. redeploy)
 - High effort for engineers to build and maintain
 - Less intuitive to users and engineers, we would need to report on cache/queue metrics to logs
 - Data could be processed out of order, causing newer updates to get lost
