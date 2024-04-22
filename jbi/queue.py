@@ -34,7 +34,7 @@ from typing import AsyncIterator, List, Optional
 from urllib.parse import ParseResult, urlparse
 
 import dockerflow.checks
-from pydantic import BaseModel, FileUrl, ValidationError
+from pydantic import BaseModel, FileUrl, ValidationError, computed_field
 
 from jbi import bugzilla
 from jbi.environment import get_settings
@@ -70,12 +70,14 @@ class QueueItem(BaseModel, frozen=True):
     payload: bugzilla.WebhookRequest
     error: Optional[PythonException] = None
 
+    @computed_field  # type: ignore
     @property
     def timestamp(self) -> datetime:
         return self.payload.event.time
 
+    @computed_field  # type: ignore
     @property
-    def identifier(self):
+    def identifier(self) -> str:
         return f"{self.payload.event.time}-{self.payload.bug.id}-{self.payload.event.action}-{"error" if self.error else "postponed"}"
 
 
