@@ -77,10 +77,10 @@ def test_whiteboard_tags_filtered(authenticated_client):
 
 @pytest.mark.asyncio
 async def test_dl_queue_endpoint(
-    clear_dl_queue, authenticated_client, webhook_request_factory
+    dl_queue, authenticated_client, webhook_request_factory
 ):
     item = webhook_request_factory()
-    await get_dl_queue().postpone(item)
+    await dl_queue.postpone(item)
 
     resp = authenticated_client.get("/dl_queue/")
     results = resp.json()
@@ -159,7 +159,7 @@ def test_webhook_is_200_if_action_succeeds(
 
 
 def test_webhook_is_200_if_action_raises_IgnoreInvalidRequestError(
-    clear_dl_queue, webhook_request_factory, mocked_bugzilla, authenticated_client
+    webhook_request_factory, mocked_bugzilla, authenticated_client
 ):
     webhook = webhook_request_factory(bug__whiteboard="unmatched")
     mocked_bugzilla.get_bug.return_value = webhook.bug

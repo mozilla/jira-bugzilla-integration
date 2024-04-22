@@ -6,7 +6,6 @@ import time
 from unittest import mock
 
 import pytest
-import pytest_asyncio
 import responses
 from fastapi.testclient import TestClient
 from pytest_factoryboy import register
@@ -77,8 +76,10 @@ register(
 
 
 @pytest.fixture
-def app():
-    return jbi.app.app
+def app(dl_queue):
+    app = jbi.app.app
+    app.dependency_overrides[get_dl_queue] = lambda: dl_queue
+    return app
 
 
 @pytest.fixture
@@ -115,6 +116,11 @@ def actions(actions_factory):
 @pytest.fixture
 def mock_queue():
     return mock.MagicMock(spec=DeadLetterQueue)
+
+
+@pytest.fixture
+def dl_queue(tmp_path):
+    return DeadLetterQueue("file://" + str(tmp_path))
 
 
 @pytest.fixture(autouse=True)
@@ -163,12 +169,6 @@ def context_comment_example(action_context_factory) -> ActionContext:
 def sleepless(monkeypatch):
     # https://stackoverflow.com/a/54829577
     monkeypatch.setattr(time, "sleep", lambda s: None)
-
-
-@pytest_asyncio.fixture()
-async def clear_dl_queue():
-    await get_dl_queue().backend.clear()
-    yield
 
 
 @pytest.fixture
