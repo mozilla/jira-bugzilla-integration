@@ -79,15 +79,34 @@ def test_whiteboard_tags_filtered(authenticated_client):
 async def test_dl_queue_endpoint(
     dl_queue, authenticated_client, webhook_request_factory
 ):
-    item = webhook_request_factory()
-    await dl_queue.postpone(item)
+    item = webhook_request_factory(event__time=datetime(1982, 5, 8, 9, 10))
+    exc = Exception("boom")
+    await dl_queue.track_failed(item, exc)
 
     resp = authenticated_client.get("/dl_queue/")
     results = resp.json()
 
-    assert (
-        results[str(item.bug.id)][0]["payload"]["event"]["action"] == item.event.action
-    )
+    [infos] = results
+    assert infos == {
+        "error": {
+            "description": "boom",
+            "details": "Exception: boom\n",
+            "type": "Exception",
+        },
+        "identifier": "1982-05-08 09:10:00+00:00-654321-create-error",
+        "payload": {
+            "bug": {
+                "component": "General",
+                "id": 654321,
+                "product": "JBI",
+                "whiteboard": "[devtest]",
+            },
+            "event": {
+                "action": "create",
+                "time": "1982-05-08T09:10:00+00:00",
+            },
+        },
+    }
 
 
 def test_powered_by_jbi(exclude_middleware, authenticated_client):

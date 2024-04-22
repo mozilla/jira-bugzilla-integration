@@ -3,7 +3,6 @@ Core FastAPI app (setup, middleware)
 """
 
 import secrets
-from collections import defaultdict
 from pathlib import Path
 from typing import Annotated, Optional
 
@@ -83,10 +82,21 @@ async def bugzilla_webhook(
 async def inspect_dl_queue(queue: Annotated[DeadLetterQueue, Depends(get_dl_queue)]):
     """API for viewing queue content"""
     bugs = await queue.retrieve()
-    results = defaultdict(list)
-    for bug_id, items in bugs.items():
+    results = []
+    for items in bugs.values():
         async for item in items:
-            results[bug_id].append(item.model_dump())
+            results.append(
+                item.model_dump(
+                    include={
+                        "identifier": True,
+                        "error": True,
+                        "payload": {
+                            "bug": {"id", "whiteboard", "product", "component"},
+                            "event": {"action", "time"},
+                        },
+                    }
+                )
+            )
     return results
 
 
