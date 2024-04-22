@@ -57,7 +57,6 @@ async def retry_failed(item_executor=runner.execute_action, queue=get_dl_queue()
                         "failed to reprocess event %s.",
                         item.identifier,
                         extra={
-                            "metrics": metrics,
                             "item": item.model_dump(),
                             "bug": {"id": bug_id},
                         },
@@ -79,7 +78,7 @@ async def retry_failed(item_executor=runner.execute_action, queue=get_dl_queue()
             logger.exception(
                 "failed to parse events for bug %d.",
                 bug_id,
-                extra={"metrics": metrics, "bug": {"id": bug_id}},
+                extra={"bug": {"id": bug_id}},
             )
 
     return metrics
