@@ -76,6 +76,31 @@ async def bugzilla_webhook(
 
 
 @router.get(
+    "/dl_queue/",
+    dependencies=[Depends(api_key_auth)],
+)
+async def inspect_dl_queue(queue: Annotated[DeadLetterQueue, Depends(get_dl_queue)]):
+    """API for viewing queue content"""
+    bugs = await queue.retrieve()
+    results = []
+    for items in bugs.values():
+        async for item in items:
+            results.append(
+                item.model_dump(
+                    include={
+                        "identifier": True,
+                        "error": True,
+                        "payload": {
+                            "bug": {"id", "whiteboard", "product", "component"},
+                            "event": {"action", "time"},
+                        },
+                    }
+                )
+            )
+    return results
+
+
+@router.get(
     "/whiteboard_tags/",
     dependencies=[Depends(api_key_auth)],
 )
