@@ -23,6 +23,7 @@ def test_read_root(anon_client):
     "endpoint",
     [
         "/whiteboard_tags",
+        "/dl_queue/",
         "/jira_projects/",
         "/powered_by_jbi/",
         "/bugzilla_webhooks/",
@@ -72,6 +73,40 @@ def test_whiteboard_tags_filtered(authenticated_client):
     resp = authenticated_client.get("/whiteboard_tags/?whiteboard_tag=foo")
     infos = resp.json()
     assert sorted(infos.keys()) == ["devtest"]
+
+
+@pytest.mark.asyncio
+async def test_dl_queue_endpoint(
+    dl_queue, authenticated_client, webhook_request_factory
+):
+    item = webhook_request_factory(event__time=datetime(1982, 5, 8, 9, 10))
+    exc = Exception("boom")
+    await dl_queue.track_failed(item, exc)
+
+    resp = authenticated_client.get("/dl_queue/")
+    results = resp.json()
+
+    [infos] = results
+    assert infos == {
+        "error": {
+            "description": "boom",
+            "details": "Exception: boom\n",
+            "type": "Exception",
+        },
+        "identifier": "1982-05-08 09:10:00+00:00-654321-create-error",
+        "payload": {
+            "bug": {
+                "component": "General",
+                "id": 654321,
+                "product": "JBI",
+                "whiteboard": "[devtest]",
+            },
+            "event": {
+                "action": "create",
+                "time": "1982-05-08T09:10:00+00:00",
+            },
+        },
+    }
 
 
 def test_powered_by_jbi(exclude_middleware, authenticated_client):

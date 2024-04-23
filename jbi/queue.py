@@ -22,6 +22,7 @@ Classes:
       item and parse it as an item
 """
 
+import asyncio
 import logging
 import tempfile
 import traceback
@@ -30,7 +31,7 @@ from datetime import datetime
 from functools import lru_cache
 from json import JSONDecodeError
 from pathlib import Path
-from typing import AsyncIterator, Optional
+from typing import Any, AsyncIterator, Optional
 from urllib.parse import ParseResult, urlparse
 
 import dockerflow.checks
@@ -40,6 +41,10 @@ from jbi import bugzilla
 from jbi.environment import get_settings
 
 logger = logging.getLogger(__name__)
+
+
+async def async_iter(iter: AsyncIterator[Any]) -> list[Any]:
+    return [item async for item in iter]
 
 
 class QueueItemRetrievalError(Exception):
@@ -142,6 +147,9 @@ class FileBackend(QueueBackend):
         self.location = Path(location)
         self.location.mkdir(parents=True, exist_ok=True)
 
+    def __repr__(self) -> str:
+        return f"FileBackend({self.location})"
+
     def ping(self):
         try:
             with tempfile.TemporaryDirectory(dir=self.location) as temp_dir:
@@ -191,7 +199,7 @@ class FileBackend(QueueBackend):
                 yield QueueItem.parse_file(path)
             except (JSONDecodeError, ValidationError) as e:
                 raise QueueItemRetrievalError(
-                    "Unable to load item at path %s from queue", str(path)
+                    f"Unable to load item at path {path} from queue"
                 ) from e
 
     async def get_all(self) -> dict[int, AsyncIterator[QueueItem]]:
@@ -222,15 +230,31 @@ class DeadLetterQueue:
         TODO: Convert to an async method when Dockerflow's FastAPI integration
         can run check asynchronously
         """
-
+        results = []
         ping_result = self.backend.ping()
         if ping_result is False:
-            return [
+            results.append(
                 dockerflow.checks.Error(
-                    f"queue with f{str(self.backend)} backend unavailable"
+                    f"queue with {str(self.backend)} unavailable",
+                    hint="with FileBackend, check that folder is writable",
+                    id="queue.backend.ping",
                 )
-            ]
-        return []
+            )
+
+        try:
+            bugs_items = asyncio.run(self.retrieve())
+            for items in bugs_items.values():
+                asyncio.run(async_iter(items))
+        except Exception as exc:
+            results.append(
+                dockerflow.checks.Error(
+                    f"queue with {str(self.backend)} cannot be retrieved",
+                    hint=f"invalid data: {exc}",
+                    id="queue.backend.retrieve",
+                )
+            )
+
+        return results
 
     async def postpone(self, payload: bugzilla.WebhookRequest) -> None:
         """

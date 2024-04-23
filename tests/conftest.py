@@ -15,7 +15,7 @@ import tests.fixtures.factories as factories
 from jbi import Operation, bugzilla, jira
 from jbi.environment import Settings
 from jbi.models import ActionContext
-from jbi.queue import DeadLetterQueue
+from jbi.queue import DeadLetterQueue, get_dl_queue
 
 
 class FilteredLogCaptureFixture(pytest.LogCaptureFixture):
@@ -76,8 +76,10 @@ register(
 
 
 @pytest.fixture
-def app():
-    return jbi.app.app
+def app(dl_queue):
+    app = jbi.app.app
+    app.dependency_overrides[get_dl_queue] = lambda: dl_queue
+    return app
 
 
 @pytest.fixture
@@ -114,6 +116,11 @@ def actions(actions_factory):
 @pytest.fixture
 def mock_queue():
     return mock.MagicMock(spec=DeadLetterQueue)
+
+
+@pytest.fixture
+def dl_queue(tmp_path):
+    return DeadLetterQueue("file://" + str(tmp_path))
 
 
 @pytest.fixture(autouse=True)
