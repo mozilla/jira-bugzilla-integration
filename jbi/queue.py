@@ -34,7 +34,7 @@ from typing import AsyncIterator, Optional
 from urllib.parse import ParseResult, urlparse
 
 import dockerflow.checks
-from pydantic import BaseModel, FileUrl, ValidationError
+from pydantic import BaseModel, FileUrl, ValidationError, computed_field
 
 from jbi import bugzilla
 from jbi.environment import get_settings
@@ -74,8 +74,9 @@ class QueueItem(BaseModel, frozen=True):
     def timestamp(self) -> datetime:
         return self.payload.event.time
 
+    @computed_field  # type: ignore
     @property
-    def identifier(self):
+    def identifier(self) -> str:
         return f"{self.payload.event.time}-{self.payload.bug.id}-{self.payload.event.action}-{"error" if self.error else "postponed"}"
 
 
@@ -240,7 +241,7 @@ class DeadLetterQueue:
 
     async def track_failed(
         self, payload: bugzilla.WebhookRequest, exc: Exception
-    ) -> None:
+    ) -> QueueItem:
         """
         Store the specified payload and exception information into the queue.
         """
@@ -249,6 +250,7 @@ class DeadLetterQueue:
             error=PythonException.from_exc(exc),
         )
         await self.backend.put(item)
+        return item
 
     async def is_blocked(self, payload: bugzilla.WebhookRequest) -> bool:
         """

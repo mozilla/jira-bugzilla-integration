@@ -177,7 +177,17 @@ async def execute_or_queue(
     except IgnoreInvalidRequestError as exc:
         return {"status": "invalid", "error": str(exc)}
     except Exception as exc:
-        await queue.track_failed(request, exc)
+        item = await queue.track_failed(request, exc)
+        logger.exception(
+            "Failed to process %r event on Bug %s. %s was put in queue.",
+            request.event.action,
+            request.bug.id,
+            item.identifier,
+            extra={
+                "payload": request.model_dump(),
+                "item": item.model_dump(),
+            },
+        )
         return {"status": "failed", "error": str(exc)}
 
 
