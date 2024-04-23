@@ -242,6 +242,28 @@ async def test_get_payload_doesnt_match_schema(
         await anext(items)
 
 
+def test_ready_ok(queue: DeadLetterQueue):
+    assert queue.ready() == []
+
+
+def test_ready_not_writable(queue: DeadLetterQueue, tmp_path):
+    queue.backend = FileBackend(tmp_path)
+    tmp_path.chmod(0o400)  # set to readonly
+    [failure] = queue.ready()
+    assert failure.id == "queue.backend.ping"
+
+
+def test_ready_not_parseable(queue: DeadLetterQueue):
+    corrupt_file_dir = queue.backend.location / "999"
+    corrupt_file_dir.mkdir()
+    corrupt_file_path = corrupt_file_dir / "xxx.json"
+    corrupt_file_path.write_text("BOOM")
+
+    [failure] = queue.ready()
+    assert failure.id == "queue.backend.retrieve"
+    assert failure.hint.startswith("invalid data: Unable to load item at path /")
+
+
 @pytest.mark.asyncio
 async def test_postpone(queue: DeadLetterQueue, webhook_request_factory):
     webhook_payload = webhook_request_factory()
