@@ -31,7 +31,7 @@ from datetime import datetime
 from functools import lru_cache
 from json import JSONDecodeError
 from pathlib import Path
-from typing import Any, AsyncIterator, List, Optional
+from typing import Any, AsyncIterator, Optional
 from urllib.parse import ParseResult, urlparse
 
 import dockerflow.checks
@@ -126,24 +126,6 @@ class QueueBackend(ABC):
         pass
 
     @abstractmethod
-    async def list(self, bug_id: int) -> List[str]:
-        """Report a summary of all of the items in the queue for a bug
-
-        Returns:
-            a dict bug id, list of item identifier
-        """
-        pass
-
-    @abstractmethod
-    async def list_all(self) -> dict[int, List[str]]:
-        """Report a summary of all of the items in the queue
-
-        Returns:
-            a dict bug id, list of item identifiers
-        """
-        pass
-
-    @abstractmethod
     async def get_all(self) -> dict[int, AsyncIterator[QueueItem]]:
         """Retrieve all items in the queue, grouped by bug
 
@@ -206,19 +188,6 @@ class FileBackend(QueueBackend):
         if not any(bug_dir.iterdir()):
             bug_dir.rmdir()
             logger.debug("Removed directory for bug %s", bug_id)
-
-    async def list(self, bug_id: int) -> List[str]:
-        bug_dir = self.location / str(bug_id)
-        return [path.stem for path in sorted(bug_dir.glob("*.json"))]
-
-    async def list_all(self) -> dict[int, List[str]]:
-        item_data: dict[int, List[str]] = {}
-        for filesystem_object in self.location.iterdir():
-            if filesystem_object.is_dir():
-                bug_id = int(filesystem_object.name)
-                item_ids = await self.list(bug_id=bug_id)
-                item_data[bug_id] = item_ids
-        return item_data
 
     async def get(self, bug_id: int) -> AsyncIterator[QueueItem]:
         folder = self.location / str(bug_id)
@@ -321,12 +290,6 @@ class DeadLetterQueue:
         items for that bug
         """
         return await self.backend.get_all()
-
-    async def list(self, bug_id: int) -> List[str]:
-        return await self.backend.list(bug_id=bug_id)
-
-    async def list_all(self) -> dict[int, List[str]]:
-        return await self.backend.list_all()
 
     async def size(self, bug_id=None):
         return await self.backend.size(bug_id=bug_id)
