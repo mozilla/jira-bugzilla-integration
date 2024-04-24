@@ -246,6 +246,7 @@ class DeadLetterQueue:
             for items in bugs_items.values():
                 asyncio.run(async_iter(items))
         except Exception as exc:
+            logger.exception(exc)
             results.append(
                 dockerflow.checks.Error(
                     f"queue with {str(self.backend)} cannot be retrieved",
