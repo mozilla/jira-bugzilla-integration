@@ -304,6 +304,55 @@ async def test_execute_or_queue_exception(
     mock_queue.track_failed.assert_called_once()
 
 
+@pytest.mark.asyncio
+@pytest.mark.no_mocked_bugzilla
+@pytest.mark.no_mocked_jira
+async def test_execute_or_queue_http_error_details(
+    actions,
+    dl_queue,
+    bugzilla_webhook_request,
+    context_comment_example,
+    mocked_responses,
+):
+    bug = bugzilla_webhook_request.bug
+    settings = get_settings()
+    mocked_responses.add(
+        responses.GET,
+        f"{settings.bugzilla_base_url}/rest/bug/{bug.id}",
+        json={"bugs": [bug.model_dump()]},
+    )
+    mocked_responses.add(
+        responses.GET,
+        f"{settings.bugzilla_base_url}/rest/bug/{bug.id}/comment",
+        json={"bugs": {str(bug.id): {"comments": []}}},
+    )
+    mocked_responses.add(
+        responses.POST,
+        f"{settings.jira_base_url}rest/api/2/issue",
+        json={"key": "TEST-1"},
+    )
+    mocked_responses.add(
+        responses.POST,
+        f"{settings.jira_base_url}rest/api/2/issue/TEST-1/remotelink",
+        status=400,
+        json={
+            "errorMessages": [],
+            "errors": {"resolution": "Field 'resolution' cannot be set."},
+        },
+    )
+
+    await execute_or_queue(
+        request=bugzilla_webhook_request, queue=dl_queue, actions=actions
+    )
+
+    items = (await dl_queue.retrieve())[bug.id]
+    [item] = [i async for i in items]
+    assert (
+        item.error.description
+        == "HTTP 400: resolution: Field 'resolution' cannot be set."
+    )
+
+
 def test_default_invalid_init():
     with pytest.raises(TypeError):
         Executor()

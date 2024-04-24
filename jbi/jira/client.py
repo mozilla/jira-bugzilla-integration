@@ -1,3 +1,4 @@
+import json
 import logging
 from typing import Collection, Iterable, Optional
 
@@ -54,6 +55,7 @@ class JiraClient(Jira):
         except requests.HTTPError as exc:
             request = exc.request
             response = exc.response
+            assert response is not None, f"HTTPError {exc} has no attached response"
             atlassian_logger.error(
                 "HTTP: %s %s -> %s %s",
                 request.method,
@@ -62,6 +64,18 @@ class JiraClient(Jira):
                 response.reason,
                 extra={"body": response.text},
             )
+            if str(exc) == "":
+                # Some Jira errors are raised as `HTTPError('')`.
+                # We are trying to turn them into insightful errors here.
+                try:
+                    content = exc.response.json()
+                    errors = content.get("errors", {})
+                    response_details = ",".join(f"{k}: {v}" for k, v in errors.items())
+                except json.JSONDecodeError:
+                    response_details = exc.response.text
+                # Set the exception message so that its str version contains details.
+                msg = f"HTTP {exc.response.status_code}: {response_details}"
+                exc.args = (msg,) + exc.args[1:]
             raise
 
     get_server_info = instrumented_method(Jira.get_server_info)
