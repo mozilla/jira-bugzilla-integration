@@ -346,7 +346,7 @@ async def test_execute_or_queue_http_error_details(
     )
 
     items = (await dl_queue.retrieve())[bug.id]
-    item = [i async for i in items][0]
+    [item] = [i async for i in items]
     assert (
         item.error.description
         == "HTTP 400: resolution: Field 'resolution' cannot be set."
