@@ -178,7 +178,7 @@ async def test_backend_get_invalid_json(backend: QueueBackend, queue_item_factor
     with pytest.raises(QueueItemRetrievalError):
         await anext(items)
 
-        
+
 async def test_get_missing_timezone(backend: QueueBackend, queue_item_factory):
     item = queue_item_factory.build(payload__bug__id=666)
     dump = item.model_dump()
