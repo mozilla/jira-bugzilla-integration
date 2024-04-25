@@ -150,6 +150,20 @@ async def test_backend_get_all_invalid_json(backend: QueueBackend, queue_item_fa
 
 
 @pytest.mark.asyncio
+async def test_backend_get_all_ignores_bad_folders(
+    backend: QueueBackend, queue_item_factory
+):
+    item_1 = queue_item_factory()
+    await backend.put(item_1)
+
+    corrupt_file_dir = backend.location / "abc"
+    corrupt_file_dir.mkdir()
+
+    items = await backend.get_all()
+    assert len(items) == 1
+
+
+@pytest.mark.asyncio
 async def test_backend_get_all_payload_doesnt_match_schema(
     backend: QueueBackend, queue_item_factory
 ):

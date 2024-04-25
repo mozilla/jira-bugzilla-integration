@@ -24,6 +24,7 @@ Classes:
 
 import asyncio
 import logging
+import re
 import tempfile
 import traceback
 from abc import ABC, abstractmethod
@@ -205,7 +206,7 @@ class FileBackend(QueueBackend):
     async def get_all(self) -> dict[int, AsyncIterator[QueueItem]]:
         all_items: dict[int, AsyncIterator[QueueItem]] = {}
         for filesystem_object in self.location.iterdir():
-            if filesystem_object.is_dir():
+            if filesystem_object.is_dir() and re.match("\d", filesystem_object.name):
                 all_items[int(filesystem_object.name)] = self.get(filesystem_object)
         return all_items
 
