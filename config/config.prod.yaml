@@ -27,7 +27,6 @@
         - add_link_to_bugzilla
         - add_link_to_jira
         - maybe_assign_jira_user
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
         - maybe_update_issue_priority
         - maybe_update_issue_severity
@@ -36,7 +35,6 @@
       existing:
         - update_issue_summary
         - maybe_assign_jira_user
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
         - maybe_update_issue_priority
         - maybe_update_issue_severity
@@ -73,14 +71,12 @@
         - add_link_to_jira
         - maybe_assign_jira_user
         - maybe_update_issue_priority
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_whiteboard_labels
       existing:
         - update_issue_summary
         - maybe_assign_jira_user
         - maybe_update_issue_priority
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_whiteboard_labels
     labels_brackets: both
@@ -193,6 +189,7 @@
       WORKSFORME: "Cannot Reproduce"
       INCOMPLETE: Incomplete
       MOVED: Moved
+
 - whiteboard_tag: fxsync
   bugzilla_user_id: 624105
   description: Firefox Sync Team whiteboard tag
@@ -226,13 +223,11 @@
         - add_link_to_bugzilla
         - add_link_to_jira
         - maybe_assign_jira_user
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_whiteboard_labels
       existing:
         - update_issue_summary
         - maybe_assign_jira_user
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_whiteboard_labels
     labels_brackets: both
@@ -356,13 +351,11 @@
         - add_link_to_bugzilla
         - add_link_to_jira
         - maybe_assign_jira_user
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_whiteboard_labels
       existing:
         - update_issue_summary
         - maybe_assign_jira_user
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_whiteboard_labels
     labels_brackets: both
@@ -485,12 +478,10 @@
         - add_link_to_bugzilla
         - add_link_to_jira
         - maybe_assign_jira_user
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
       existing:
         - update_issue_summary
         - maybe_assign_jira_user
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
       comment:
         - create_comment
