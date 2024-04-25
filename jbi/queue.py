@@ -44,7 +44,12 @@ logger = logging.getLogger(__name__)
 
 
 class QueueItemRetrievalError(Exception):
-    pass
+    def __init__(self, message=None, path=None):
+        self.message = message or "Error reading or parsing queue item"
+        self.path = path
+
+    def __str__(self):
+        return f"QueueItemRetrievalError: {self.message} - path: {self.path}."
 
 
 class InvalidQueueDSNError(Exception):
@@ -195,7 +200,8 @@ class FileBackend(QueueBackend):
                 yield QueueItem.parse_file(path)
             except (JSONDecodeError, ValidationError) as e:
                 raise QueueItemRetrievalError(
-                    f"Unable to load item at path {path} from queue"
+                    f"Unable to load item at path {path} from queue",
+                    path=path
                 ) from e
 
     async def get_all(self) -> dict[int, AsyncIterator[QueueItem]]:
@@ -243,13 +249,12 @@ class DeadLetterQueue:
 
             for bug_id, items in bugs.items():
                 try:
-                    async for item in items:
-                        pass
+                    bug_items = (await self.retrieve()).values()
+                    [[i async for i in items] for items in bug_items]
                 except QueueItemRetrievalError as exc:
-                    logger.exception(exc)
                     results.append(
                         dockerflow.checks.Error(
-                            f"failed to parse events for bug {str(bug_id)}",
+                            f"failed to parse file {str(exc.path)}",
                             hint="check that parked event files are not corrupt",
                             id="queue.backend.read",
                         )
