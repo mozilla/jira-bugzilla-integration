@@ -22,8 +22,8 @@ Classes:
       item and parse it as an item
 """
 
-import asyncio
 import logging
+import re
 import tempfile
 import traceback
 from abc import ABC, abstractmethod
@@ -205,7 +205,7 @@ class FileBackend(QueueBackend):
     async def get_all(self) -> dict[int, AsyncIterator[QueueItem]]:
         all_items: dict[int, AsyncIterator[QueueItem]] = {}
         for filesystem_object in self.location.iterdir():
-            if filesystem_object.is_dir():
+            if filesystem_object.is_dir() and re.match("\d", filesystem_object.name):
                 all_items[int(filesystem_object.name)] = self.get(filesystem_object)
         return all_items
 
@@ -224,12 +224,8 @@ class DeadLetterQueue:
             raise InvalidQueueDSNError(f"{dsn.scheme} is not supported")
         self.backend = FileBackend(dsn.path)
 
-    def ready(self) -> list[dockerflow.checks.CheckMessage]:
-        """Heartbeat check to assert we can write items to queue
-
-        TODO: Convert to an async method when Dockerflow's FastAPI integration
-        can run check asynchronously
-        """
+    def check_ready(self) -> list[dockerflow.checks.CheckMessage]:
+        """Heartbeat check to assert we can write items to queue"""
         results = []
         ping_result = self.backend.ping()
         if ping_result is False:
@@ -240,11 +236,29 @@ class DeadLetterQueue:
                     id="queue.backend.ping",
                 )
             )
+        return results
 
+    async def check_readable(self) -> list[dockerflow.checks.CheckMessage]:
+        results = []
         try:
-            bugs_items = asyncio.run(self.retrieve())
-            for items in bugs_items.values():
-                asyncio.run(async_iter(items))
+            bugs = await self.retrieve()
+            bug_failed = 0
+            parse_success = 0
+
+            for bug_id, items in bugs.items():
+                try:
+                    async for item in items:
+                        parse_success += 1
+                except Exception as exc:
+                    logger.exception(exc)
+                    bug_failed += 1
+                    results.append(
+                        dockerflow.checks.Error(
+                            f"failed to parse events for bug {str(bug_id)}",
+                            hint="check that parked event files are not corrupt",
+                            id="queue.backend.read",
+                        )
+                    )
         except Exception as exc:
             logger.exception(exc)
             results.append(
@@ -254,7 +268,6 @@ class DeadLetterQueue:
                     id="queue.backend.retrieve",
                 )
             )
-
         return results
 
     async def postpone(self, payload: bugzilla.WebhookRequest) -> None:

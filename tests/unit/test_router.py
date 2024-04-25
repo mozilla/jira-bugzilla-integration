@@ -480,6 +480,7 @@ def test_read_heartbeat_success(
                 "jira.all_projects_have_permissions": "ok",
                 "jira.pandoc_install": "ok",
                 "queue.ready": "ok",
+                "queue.readable": "ok",
             },
             "details": {},
             "status": "ok",

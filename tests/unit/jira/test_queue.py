@@ -179,6 +179,7 @@ async def test_backend_get_invalid_json(backend: QueueBackend, queue_item_factor
         await anext(items)
 
 
+@pytest.mark.asyncio
 async def test_get_missing_timezone(backend: QueueBackend, queue_item_factory):
     item = queue_item_factory.build(payload__bug__id=666)
     dump = item.model_dump()
@@ -196,6 +197,7 @@ async def test_get_missing_timezone(backend: QueueBackend, queue_item_factory):
     assert "2024-04-18T12:46:54Z" in item.model_dump_json(), "timezone put in dump"
 
 
+@pytest.mark.asyncio
 async def test_backend_get_payload_doesnt_match_schema(
     backend: QueueBackend, queue_item_factory
 ):
@@ -211,26 +213,32 @@ async def test_backend_get_payload_doesnt_match_schema(
         await anext(items)
 
 
-def test_ready_ok(queue: DeadLetterQueue):
-    assert queue.ready() == []
+def test_check_ready_ok(queue: DeadLetterQueue):
+    assert queue.check_ready() == []
 
 
-def test_ready_not_writable(queue: DeadLetterQueue, tmp_path):
+def test_check_ready_not_writable(queue: DeadLetterQueue, tmp_path):
     queue.backend = FileBackend(tmp_path)
     tmp_path.chmod(0o400)  # set to readonly
-    [failure] = queue.ready()
+    [failure] = queue.check_ready()
     assert failure.id == "queue.backend.ping"
 
 
-def test_ready_not_parseable(queue: DeadLetterQueue):
+@pytest.mark.asyncio
+async def test_check_readable_ok(queue: DeadLetterQueue):
+    assert await queue.check_readable() == []
+
+
+@pytest.mark.asyncio
+async def test_check_readable_not_parseable(queue: DeadLetterQueue):
     corrupt_file_dir = queue.backend.location / "999"
     corrupt_file_dir.mkdir()
     corrupt_file_path = corrupt_file_dir / "xxx.json"
     corrupt_file_path.write_text("BOOM")
 
-    [failure] = queue.ready()
-    assert failure.id == "queue.backend.retrieve"
-    assert failure.hint.startswith("invalid data: Unable to load item at path /")
+    [failure] = await queue.check_readable()
+    assert failure.id == "queue.backend.read"
+    assert failure.hint.startswith("check that parked event files are not corrupt")
 
 
 @pytest.mark.asyncio
