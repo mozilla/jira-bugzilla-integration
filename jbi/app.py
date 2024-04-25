@@ -91,7 +91,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         name="jira.all_project_issue_types_exist",
     )
     checks.register(jira_service.check_jira_pandoc_install, name="jira.pandoc_install")
-    checks.register(queue.check_ready, name="queue.ready")
+    checks.register(queue.check_writable, name="queue.writable")
     checks.register(queue.check_readable, name="queue.readable")
 
     yield

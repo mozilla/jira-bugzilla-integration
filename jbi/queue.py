@@ -43,10 +43,6 @@ from jbi.environment import get_settings
 logger = logging.getLogger(__name__)
 
 
-async def async_iter(iter: AsyncIterator[Any]) -> list[Any]:
-    return [item async for item in iter]
-
-
 class QueueItemRetrievalError(Exception):
     pass
 
@@ -224,7 +220,7 @@ class DeadLetterQueue:
             raise InvalidQueueDSNError(f"{dsn.scheme} is not supported")
         self.backend = FileBackend(dsn.path)
 
-    def check_ready(self) -> list[dockerflow.checks.CheckMessage]:
+    def check_writable(self) -> list[dockerflow.checks.CheckMessage]:
         """Heartbeat check to assert we can write items to queue"""
         results = []
         ping_result = self.backend.ping()
@@ -242,16 +238,13 @@ class DeadLetterQueue:
         results = []
         try:
             bugs = await self.retrieve()
-            bug_failed = 0
-            parse_success = 0
-
+            
             for bug_id, items in bugs.items():
                 try:
                     async for item in items:
-                        parse_success += 1
-                except Exception as exc:
+                        pass
+                except QueueItemRetrievalError as exc:
                     logger.exception(exc)
-                    bug_failed += 1
                     results.append(
                         dockerflow.checks.Error(
                             f"failed to parse events for bug {str(bug_id)}",
