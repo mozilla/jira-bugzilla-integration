@@ -31,7 +31,7 @@ from datetime import datetime
 from functools import lru_cache
 from json import JSONDecodeError
 from pathlib import Path
-from typing import Any, AsyncIterator, Optional
+from typing import AsyncIterator, Optional
 from urllib.parse import ParseResult, urlparse
 
 import dockerflow.checks
@@ -201,7 +201,9 @@ class FileBackend(QueueBackend):
     async def get_all(self) -> dict[int, AsyncIterator[QueueItem]]:
         all_items: dict[int, AsyncIterator[QueueItem]] = {}
         for filesystem_object in self.location.iterdir():
-            if filesystem_object.is_dir() and re.match("\d", filesystem_object.name): # filtering out temp files from checks
+            if filesystem_object.is_dir() and re.match(
+                "\d", filesystem_object.name
+            ):  # filtering out temp files from checks
                 all_items[int(filesystem_object.name)] = self.get(filesystem_object)
         return all_items
 
@@ -238,7 +240,7 @@ class DeadLetterQueue:
         results = []
         try:
             bugs = await self.retrieve()
-            
+
             for bug_id, items in bugs.items():
                 try:
                     async for item in items:
