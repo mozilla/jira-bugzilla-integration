@@ -14,14 +14,12 @@
         - add_link_to_bugzilla
         - add_link_to_jira
         - maybe_assign_jira_user
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_whiteboard_labels
         - sync_keywords_labels
       existing:
         - update_issue_summary
         - maybe_assign_jira_user
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_whiteboard_labels
         - sync_keywords_labels
@@ -41,14 +39,12 @@
         - add_link_to_jira
         - maybe_assign_jira_user
         - maybe_update_issue_priority
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_whiteboard_labels
       existing:
         - update_issue_summary
         - maybe_assign_jira_user
         - maybe_update_issue_priority
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_whiteboard_labels
     labels_brackets: both
@@ -115,7 +111,6 @@
         - add_link_to_jira
         - maybe_assign_jira_user
         - maybe_update_components
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_whiteboard_labels
         - sync_keywords_labels
@@ -123,7 +118,6 @@
         - update_issue_summary
         - maybe_assign_jira_user
         - maybe_update_components
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_whiteboard_labels
         - sync_keywords_labels
@@ -159,7 +153,6 @@
         - add_link_to_jira
         - maybe_assign_jira_user
         - maybe_update_components
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_whiteboard_labels
         - sync_keywords_labels
@@ -167,7 +160,6 @@
         - update_issue_summary
         - maybe_assign_jira_user
         - maybe_update_components
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_whiteboard_labels
         - sync_keywords_labels
@@ -206,12 +198,10 @@
         - add_link_to_bugzilla
         - add_link_to_jira
         - maybe_assign_jira_user
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
       existing:
         - update_issue_summary
         - maybe_assign_jira_user
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
       comment:
         - create_comment
@@ -248,12 +238,10 @@
         - add_link_to_bugzilla
         - add_link_to_jira
         - maybe_assign_jira_user
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
       existing:
         - update_issue_summary
         - maybe_assign_jira_user
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
       comment:
         - create_comment
