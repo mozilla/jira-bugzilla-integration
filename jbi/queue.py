@@ -200,7 +200,7 @@ class FileBackend(QueueBackend):
                 yield QueueItem.parse_file(path)
             except (JSONDecodeError, ValidationError) as e:
                 raise QueueItemRetrievalError(
-                    f"Unable to load item at path {path} from queue",
+                    f"Unable to load item from queue",
                     path=path
                 ) from e
 
