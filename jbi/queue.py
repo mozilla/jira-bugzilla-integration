@@ -200,8 +200,7 @@ class FileBackend(QueueBackend):
                 yield QueueItem.parse_file(path)
             except (JSONDecodeError, ValidationError) as e:
                 raise QueueItemRetrievalError(
-                    f"Unable to load item from queue",
-                    path=path
+                    "Unable to load item from queue", path=path
                 ) from e
 
     async def get_all(self) -> dict[int, AsyncIterator[QueueItem]]:
