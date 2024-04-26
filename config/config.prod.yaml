@@ -560,12 +560,9 @@
         - add_link_to_bugzilla
         - add_link_to_jira
         - maybe_assign_jira_user
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
       existing:
         - update_issue_summary
-        - maybe_update_issue_resolution
-        - maybe_update_issue_status
         - add_jira_comments_for_changes
         - maybe_assign_jira_user
         - maybe_update_issue_status
@@ -580,7 +577,3 @@
       INCOMPLETE: Closed
       WORKSFORME: Closed
       REOPENED: In Progress
-    resolution_map:
-      FIXED: Done
-      DUPLICATE: Duplicate
-      WONTFIX: "Won't Do"
