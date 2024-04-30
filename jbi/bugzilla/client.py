@@ -22,6 +22,10 @@ class BugzillaClientError(Exception):
     """Errors raised by `BugzillaClient`."""
 
 
+class BugNotAccessibleError(BugzillaClientError):
+    """Bug is private or not accessible."""
+
+
 instrumented_method = instrument(
     prefix="bugzilla",
     exceptions=(
@@ -72,7 +76,17 @@ class BugzillaClient:
         """Retrieve details about the specified bug id."""
         # https://bugzilla.readthedocs.io/en/latest/api/core/v1/bug.html#rest-single-bug
         url = f"{self.base_url}/rest/bug/{bugid}"
-        bug_info = self._call("GET", url)
+
+        try:
+            bug_info = self._call("GET", url)
+        except requests.HTTPError as err:
+            if err.response is not None and err.response.status_code in (401, 403, 404):
+                if self.logged_in():
+                    # If bug returns 401 and credentials are valid.
+                    msg = err.response.json().get("message", "bug not accessible")
+                    raise BugNotAccessibleError(msg)
+            raise
+
         parsed = ApiResponse.model_validate(bug_info)
         if not parsed.bugs:
             raise BugzillaClientError(

@@ -1,8 +1,13 @@
 import pytest
+import requests
 import responses
 from responses import matchers
 
-from jbi.bugzilla.client import BugzillaClient, BugzillaClientError
+from jbi.bugzilla.client import (
+    BugNotAccessibleError,
+    BugzillaClient,
+    BugzillaClientError,
+)
 
 
 @pytest.fixture
@@ -93,6 +98,65 @@ def test_bugzilla_raises_if_response_has_error(
         bugzilla_client.get_bug(42)
 
     assert "not happy" in str(exc)
+
+
+@pytest.mark.no_mocked_bugzilla
+def test_bugzilla_get_bug_raises_if_response_is_401_and_credentials_invalid(
+    bugzilla_client, settings, mocked_responses
+):
+    url = f"{settings.bugzilla_base_url}/rest/bug/42"
+    mocked_responses.add(
+        responses.GET,
+        url,
+        status=401,
+        json={
+            "code": 102,
+            "documentation": "https://bmo.readthedocs.io/en/latest/api/",
+            "error": True,
+            "message": "You are not authorized to access bug 42.",
+        },
+    )
+    mocked_responses.add(
+        responses.GET,
+        f"{settings.bugzilla_base_url}/rest/whoami",
+        status=401,
+    )
+
+    with pytest.raises(requests.HTTPError) as exc:
+        bugzilla_client.get_bug(42)
+
+    assert (
+        "401 Client Error: Unauthorized for url: https://bugzilla.mozilla.org/rest/bug/42"
+        in str(exc)
+    )
+
+
+@pytest.mark.no_mocked_bugzilla
+def test_bugzilla_get_bug_raises_if_response_is_401_and_credentials_valid(
+    bugzilla_client, settings, mocked_responses
+):
+    url = f"{settings.bugzilla_base_url}/rest/bug/42"
+    mocked_responses.add(
+        responses.GET,
+        url,
+        status=401,
+        json={
+            "code": 102,
+            "documentation": "https://bmo.readthedocs.io/en/latest/api/",
+            "error": True,
+            "message": "You are not authorized to access bug 42.",
+        },
+    )
+    mocked_responses.add(
+        responses.GET,
+        f"{settings.bugzilla_base_url}/rest/whoami",
+        json={"id": "you"},
+    )
+
+    with pytest.raises(BugNotAccessibleError) as exc:
+        bugzilla_client.get_bug(42)
+
+    assert "You are not authorized to access bug 42" in str(exc)
 
 
 @pytest.mark.no_mocked_bugzilla

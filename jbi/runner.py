@@ -12,6 +12,7 @@ from statsd.defaults.env import statsd
 
 from jbi import ActionResult, Operation, bugzilla, jira
 from jbi import steps as steps_module
+from jbi.bugzilla.client import BugNotAccessibleError
 from jbi.environment import get_settings
 from jbi.errors import ActionNotFoundError, IgnoreInvalidRequestError
 from jbi.models import (
@@ -219,13 +220,10 @@ def execute_action(
         )
         try:
             bug = bugzilla.get_service().refresh_bug_data(bug)
-        except Exception as err:
-            logger.exception(
-                "Failed to get bug: %s", err, extra=runner_context.model_dump()
-            )
-            raise IgnoreInvalidRequestError(
-                "bug not accessible or bugzilla down"
-            ) from err
+        except BugNotAccessibleError as err:
+            # This can happen if the bug is made private after the webhook
+            # is processed (eg. if it spent some time in the DL queue)
+            raise IgnoreInvalidRequestError(str(err)) from err
 
         runner_context = runner_context.update(bug=bug)
         try:

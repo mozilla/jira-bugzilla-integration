@@ -6,6 +6,7 @@ import requests
 import responses
 
 from jbi import Operation
+from jbi.bugzilla.client import BugNotAccessibleError
 from jbi.environment import get_settings
 from jbi.errors import ActionNotFoundError, IgnoreInvalidRequestError
 from jbi.models import ActionContext
@@ -52,6 +53,34 @@ def test_request_is_ignored_because_project_mismatch(
         execute_action(request=webhook, actions=actions)
 
     assert str(exc_info.value) == "ignore linked project 'FXDROID' (!='JBI')"
+
+
+def test_request_is_ignored_because_bug_cannot_be_fetched(
+    webhook_request_factory,
+    actions,
+    mocked_bugzilla,
+):
+    webhook = webhook_request_factory()
+    mocked_bugzilla.get_bug.side_effect = BugNotAccessibleError(
+        "not authorized to access bug 12345"
+    )
+
+    with pytest.raises(IgnoreInvalidRequestError) as exc_info:
+        execute_action(request=webhook, actions=actions)
+
+    assert str(exc_info.value) == "not authorized to access bug 12345"
+
+
+def test_request_if_bugzilla_is_down_and_bug_cannot_be_fetched(
+    webhook_request_factory,
+    actions,
+    mocked_bugzilla,
+):
+    webhook = webhook_request_factory()
+    mocked_bugzilla.get_bug.side_effect = requests.ConnectTimeout()
+
+    with pytest.raises(requests.ConnectTimeout):
+        execute_action(request=webhook, actions=actions)
 
 
 def test_request_is_ignored_because_private(
