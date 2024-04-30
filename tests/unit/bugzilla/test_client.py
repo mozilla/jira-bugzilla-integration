@@ -126,7 +126,7 @@ def test_bugzilla_get_bug_raises_if_response_is_401_and_credentials_invalid(
         bugzilla_client.get_bug(42)
 
     assert (
-        "401 Client Error: Unauthorized for url: https://bugzilla.mozilla.org/rest/bug/42"
+        f"401 Client Error: Unauthorized for url: {settings.bugzilla_base_url}/rest/bug/42"
         in str(exc)
     )
 
