@@ -256,7 +256,8 @@ def execute_action(
         else:
             # Check that issue exists (and is readable)
             jira_issue = jira.get_service().get_issue(
-                action_context, action_context.jira.issue
+                action_context.update(operation=Operation.HANDLE),
+                action_context.jira.issue,
             )
             if not jira_issue:
                 raise IgnoreInvalidRequestError(
