@@ -12,4 +12,4 @@ def markdown_to_jira(markdown: str, max_length: int = 0) -> str:
     if max_length > 0 and len(markdown) > max_length:
         # Truncate on last word.
         markdown = markdown[:max_length].rsplit(maxsplit=1)[0]
-    return pypandoc.convert_text(markdown, "jira", format="md").strip()  # type: ignore
+    return pypandoc.convert_text(markdown, "jira", format="gfm").strip()  # type: ignore

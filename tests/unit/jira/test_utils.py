@@ -18,6 +18,10 @@ def test_markdown_to_jira():
       - numbered
     * list
 
+    List without newline:
+    * one
+    * two
+
     this was `inline` value ``that`` is turned into ```monospace``` tag.
 
     this sentence __has__ **bold** and _has_ *italic*.
@@ -37,6 +41,11 @@ def test_markdown_to_jira():
     **# nested-nested
     ** numbered
     * list
+
+    List without newline:
+
+    * one
+    * two
 
     this was {{inline}} value {{that}} is turned into {{monospace}} tag.
 
