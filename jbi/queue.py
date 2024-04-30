@@ -184,8 +184,12 @@ class FileBackend(QueueBackend):
     async def remove(self, bug_id: int, identifier: str):
         bug_dir = self.location / f"{bug_id}"
         item_path = bug_dir / (identifier + ".json")
-        item_path.unlink(missing_ok=True)
-        logger.debug("Removed %s from queue for bug %s", identifier, bug_id)
+        try:
+            logger.debug("Removing %s from queue for bug %s", identifier, bug_id)
+            item_path.unlink()
+        except FileNotFoundError as exc:
+            logger.warning("Item at not found at path %s", str(item_path), exc)
+
         if not any(bug_dir.iterdir()):
             bug_dir.rmdir()
             logger.debug("Removed directory for bug %s", bug_id)
