@@ -188,7 +188,7 @@ class FileBackend(QueueBackend):
             logger.debug("Removing %s from queue for bug %s", identifier, bug_id)
             item_path.unlink()
         except FileNotFoundError as exc:
-            logger.warning("Item at not found at path %s", str(item_path), exc)
+            logger.warning("Could not delete missing item at path %s", str(item_path), exc)
 
         if not any(bug_dir.iterdir()):
             bug_dir.rmdir()
