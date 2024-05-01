@@ -292,9 +292,14 @@ class JiraService:
 
     def update_issue_summary(self, context: ActionContext):
         """Update's an issue's summary with the description of an incoming bug"""
-        truncated_summary = markdown_to_jira(
-            context.bug.summary or "", max_length=JIRA_DESCRIPTION_CHAR_LIMIT
-        )
+        truncated_summary = context.bug.summary
+
+        if len(truncated_summary) > JIRA_DESCRIPTION_CHAR_LIMIT:
+            # Truncate on last word.
+            truncated_summary = truncated_summary[:JIRA_DESCRIPTION_CHAR_LIMIT].rsplit(
+                maxsplit=1
+            )[0]
+
         return self.update_issue_field(
             context, field="summary", value=truncated_summary
         )
