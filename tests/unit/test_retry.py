@@ -47,7 +47,8 @@ async def test_retry_success(caplog, mock_queue, mock_executor, queue_item_facto
     }
 
     metrics = await retry_failed(item_executor=mock_executor, queue=mock_queue)
-    assert len(caplog.messages) == 0  # no logs should have been generated
+    assert len(caplog.messages) == 1  # only one log been generated
+    assert caplog.text.count("retry event") == 1
     mock_queue.retrieve.assert_called_once()
     mock_queue.done.assert_called_once()  # item should be marked as complete
     mock_executor.assert_called_once()  # item should have been processed
