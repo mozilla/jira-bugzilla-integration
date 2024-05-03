@@ -51,6 +51,13 @@ async def retry_failed(item_executor=runner.execute_action, queue=get_dl_queue()
                 if item.rid is not None:
                     request_id_context.set(item.rid)
 
+                logger.info(
+                    "retry event %s",
+                    item.identifier,
+                    extra={
+                        "item": item.model_dump(),
+                    },
+                )
                 try:
                     item_executor(item.payload, ACTIONS)
                     await queue.done(item)
