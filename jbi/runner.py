@@ -230,7 +230,6 @@ def execute_action(
 
         runner_context = runner_context.update(bug=bug)
         try:
-            print(bug, actions)
             action = lookup_action(bug, actions)
         except ActionNotFoundError as err:
             raise IgnoreInvalidRequestError(
