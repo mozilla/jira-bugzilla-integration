@@ -149,3 +149,32 @@ async def test_retry_bug_failed(caplog, mock_queue, mock_executor, queue_item_fa
         "events_failed": 0,
         "bugs_failed": 1,
     }
+
+
+@pytest.mark.asyncio
+async def test_original_rid_is_put_in_retry_logs(
+    caplog, authenticated_client, bugzilla_webhook_request, dl_queue, mocked_bugzilla
+):
+    mocked_bugzilla.get_bug.side_effect = ValueError("Boom!")
+
+    # Post an event that will fail.
+    assert (await dl_queue.size()) == 0
+    authenticated_client.post(
+        "/bugzilla_webhook",
+        data=bugzilla_webhook_request.model_dump_json(),
+    )
+    logged = [r for r in caplog.records if r.name == "jbi.runner"]
+    original_rid = logged[0].rid
+    assert original_rid, "rid was set in logs when webhook is received"
+    assert (await dl_queue.size()) == 1, "an event was put in queue"
+
+    # Reset log capture and retry the queue.
+    caplog.clear()
+    assert len(caplog.records) == 0
+    metrics = await retry_failed(queue=dl_queue)
+
+    # Inspect retry logs.
+    assert metrics["events_failed"] == 1, "event failed again"
+    assert (await dl_queue.size()) == 1, "an event still in queue"
+    logged = [r for r in caplog.records if r.name == "jbi.runner"]
+    assert logged[0].rid == original_rid, "logs of retry have original request id"

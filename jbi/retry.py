@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 from os import getenv
 from time import sleep
 
-from dockerflow.logging import JsonLogFormatter
+from dockerflow.logging import JsonLogFormatter, request_id_context
 
 import jbi.runner as runner
 from jbi.configuration import ACTIONS
@@ -46,6 +46,10 @@ async def retry_failed(item_executor=runner.execute_action, queue=get_dl_queue()
                     await queue.done(item)
                     metrics["events_skipped"] += 1
                     continue
+
+                # Put original request id in logging context for better tracking.
+                if item.rid is not None:
+                    request_id_context.set(item.rid)
 
                 try:
                     item_executor(item.payload, ACTIONS)

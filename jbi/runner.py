@@ -8,6 +8,7 @@ import logging
 import re
 from typing import Optional
 
+from dockerflow.logging import request_id_context
 from statsd.defaults.env import statsd
 
 from jbi import ActionResult, Operation, bugzilla, jira
@@ -162,9 +163,11 @@ class Executor:
 async def execute_or_queue(
     request: bugzilla.WebhookRequest, queue: DeadLetterQueue, actions: Actions
 ):
+    request_id = request_id_context.get()
+
     if await queue.is_blocked(request):
         # If it's blocked, store it and wait for it to be processed later.
-        await queue.postpone(request)
+        await queue.postpone(request, rid=request_id)
         logger.info(
             "%r event on Bug %s was put in queue for later processing.",
             request.event.action,
@@ -178,7 +181,7 @@ async def execute_or_queue(
     except IgnoreInvalidRequestError as exc:
         return {"status": "invalid", "error": str(exc)}
     except Exception as exc:
-        item = await queue.track_failed(request, exc)
+        item = await queue.track_failed(request, exc, rid=request_id)
         logger.exception(
             "Failed to process %r event on Bug %s. %s was put in queue.",
             request.event.action,
@@ -227,6 +230,7 @@ def execute_action(
 
         runner_context = runner_context.update(bug=bug)
         try:
+            print(bug, actions)
             action = lookup_action(bug, actions)
         except ActionNotFoundError as err:
             raise IgnoreInvalidRequestError(
