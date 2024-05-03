@@ -81,7 +81,7 @@ async def test_dl_queue_endpoint(
 ):
     item = webhook_request_factory(event__time=datetime(1982, 5, 8, 9, 10))
     exc = Exception("boom")
-    await dl_queue.track_failed(item, exc)
+    await dl_queue.track_failed(item, exc, rid="rid")
 
     resp = authenticated_client.get("/dl_queue/")
     results = resp.json()
@@ -94,6 +94,7 @@ async def test_dl_queue_endpoint(
             "type": "Exception",
         },
         "identifier": "1982-05-08 09:10:00+00:00-654321-create-error",
+        "rid": "rid",
         "payload": {
             "bug": {
                 "component": "General",

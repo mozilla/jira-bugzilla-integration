@@ -258,10 +258,11 @@ async def test_check_readable_not_parseable(queue: DeadLetterQueue):
 @pytest.mark.asyncio
 async def test_postpone(queue: DeadLetterQueue, webhook_request_factory):
     webhook_payload = webhook_request_factory()
-    await queue.postpone(webhook_payload)
+    await queue.postpone(webhook_payload, rid="rid")
 
     [item] = [_ async for _ in queue.backend.get(webhook_payload.bug.id)]
     assert item.payload == webhook_payload
+    assert item.rid == "rid"
 
 
 @pytest.mark.asyncio
@@ -269,12 +270,13 @@ async def test_track_failed(queue: DeadLetterQueue, webhook_request_factory):
     webhook_payload = webhook_request_factory()
     exc = Exception("boom")
 
-    await queue.track_failed(webhook_payload, exc)
+    await queue.track_failed(webhook_payload, exc, rid="rid")
     [item] = [_ async for _ in queue.backend.get(webhook_payload.bug.id)]
     assert item.payload == webhook_payload
 
     assert item.payload == webhook_payload
     assert item.error.description == str(exc)
+    assert item.rid == "rid"
 
 
 @pytest.mark.asyncio

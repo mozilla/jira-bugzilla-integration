@@ -75,6 +75,7 @@ class QueueItem(BaseModel, frozen=True):
 
     payload: bugzilla.WebhookRequest
     error: Optional[PythonException] = None
+    rid: Optional[str] = None
 
     @property
     def timestamp(self) -> datetime:
@@ -275,15 +276,15 @@ class DeadLetterQueue:
             )
         return results
 
-    async def postpone(self, payload: bugzilla.WebhookRequest) -> None:
+    async def postpone(self, payload: bugzilla.WebhookRequest, rid: str) -> None:
         """
         Postpone the specified request for later.
         """
-        item = QueueItem(payload=payload)
+        item = QueueItem(payload=payload, rid=rid)
         await self.backend.put(item)
 
     async def track_failed(
-        self, payload: bugzilla.WebhookRequest, exc: Exception
+        self, payload: bugzilla.WebhookRequest, exc: Exception, rid: str
     ) -> QueueItem:
         """
         Store the specified payload and exception information into the queue.
@@ -291,6 +292,7 @@ class DeadLetterQueue:
         item = QueueItem(
             payload=payload,
             error=PythonException.from_exc(exc),
+            rid=rid,
         )
         await self.backend.put(item)
         return item
