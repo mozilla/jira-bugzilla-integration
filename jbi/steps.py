@@ -57,6 +57,13 @@ def create_comment(context: ActionContext, *, jira_service: JiraService) -> Step
         )
         return (StepStatus.NOOP, context)
 
+    if not bug.comment.body:
+        logger.info(
+            "Comment message is empty",
+            extra=context.model_dump(),
+        )
+        return (StepStatus.NOOP, context)
+
     jira_response = jira_service.add_jira_comment(context)
     context = context.append_responses(jira_response)
     return (StepStatus.SUCCESS, context)

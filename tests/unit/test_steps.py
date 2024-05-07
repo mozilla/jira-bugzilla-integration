@@ -234,6 +234,30 @@ def test_added_comment(
     )
 
 
+def test_empty_comment_not_added(
+    action_context_factory, mocked_jira, action_params_factory
+):
+    empty_comment_context = action_context_factory(
+        operation=Operation.COMMENT,
+        bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+        bug__with_comment=True,
+        bug__comment__number=2,
+        bug__comment__body="",
+        bug__comment__is_private=False,
+        event__target="comment",
+        event__user__login="mathieu@mozilla.org",
+        jira__issue="JBI-234",
+    )
+
+    callable_object = Executor(
+        action_params_factory(jira_project_key=empty_comment_context.jira.project)
+    )
+
+    callable_object(context=empty_comment_context)
+
+    mocked_jira.issue_add_comment.assert_not_called()
+
+
 def test_jira_returns_an_error(
     context_create_example: ActionContext, mocked_jira, action_params_factory
 ):
