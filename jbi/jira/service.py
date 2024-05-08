@@ -120,10 +120,11 @@ class JiraService:
         commenter = context.event.user.login if context.event.user else "unknown"
         comment = context.bug.comment
         assert comment  # See jbi.steps.create_comment()
+        assert comment.body  # Also see jbi.steps.create_comment()
 
         issue_key = context.jira.issue
         formatted_comment = (
-            f"*{commenter}* commented: \n{markdown_to_jira(comment.body or "")}"
+            f"*{commenter}* commented: \n{markdown_to_jira(comment.body)}"
         )
         jira_response = self.client.issue_add_comment(
             issue_key=issue_key,
