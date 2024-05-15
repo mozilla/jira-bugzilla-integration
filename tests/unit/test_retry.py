@@ -1,5 +1,5 @@
 from datetime import UTC, datetime, timedelta
-from unittest.mock import MagicMock
+from unittest import mock
 
 import pytest
 
@@ -7,11 +7,11 @@ from jbi.retry import RETRY_TIMEOUT_DAYS, retry_failed
 from jbi.runner import execute_action
 
 
-def iter_error():
-    mock = MagicMock()
-    mock.__aiter__.return_value = None
-    mock.__aiter__.side_effect = Exception("Throwing an exception")
-    return mock
+def mock_aiter_error():
+    _mock = mock.MagicMock()
+    _mock.__aiter__.return_value = None
+    _mock.__aiter__.side_effect = Exception("Throwing an exception")
+    return _mock
 
 
 async def aiter_sync(iterable):
@@ -20,8 +20,8 @@ async def aiter_sync(iterable):
 
 
 @pytest.fixture
-def mock_executor():
-    return MagicMock(spec=execute_action)
+def mock_executor(mocker):
+    return mocker.MagicMock(spec=execute_action)
 
 
 @pytest.mark.asyncio
@@ -131,7 +131,7 @@ async def test_retry_remove_expired(
 async def test_retry_bug_failed(caplog, mock_queue, mock_executor, queue_item_factory):
     mock_queue.retrieve.return_value = {
         1: aiter_sync([queue_item_factory(payload__bug__id=1)]),
-        2: iter_error(),
+        2: mock_aiter_error(),
     }
 
     metrics = await retry_failed(item_executor=mock_executor, queue=mock_queue)
