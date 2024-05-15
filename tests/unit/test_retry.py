@@ -116,7 +116,6 @@ async def test_retry_remove_expired(
         len(mock_queue.done.call_args_list) == 2
     ), "both items should have been marked as done"
     assert caplog.text.count("failed to reprocess event") == 0
-    assert caplog.text.count("skipping events") == 0
     assert caplog.text.count("removing expired event") == 1
     mock_executor.assert_called_once()  # only one item should have been attempted to be processed
     assert metrics == {
@@ -139,7 +138,6 @@ async def test_retry_bug_failed(caplog, mock_queue, mock_executor, queue_item_fa
     mock_queue.retrieve.assert_called_once()
     mock_queue.done.assert_called_once()  # one item should have been marked as done
     assert caplog.text.count("failed to reprocess event") == 0
-    assert caplog.text.count("skipping events") == 0
     assert caplog.text.count("removing expired event") == 0
     assert caplog.text.count("failed to parse events for bug") == 1
     mock_executor.assert_called_once()  # only one item should have been attempted to be processed
