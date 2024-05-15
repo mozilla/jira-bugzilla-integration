@@ -3,6 +3,7 @@ from unittest import mock
 
 import pytest
 
+from jbi.errors import IgnoreInvalidRequestError
 from jbi.retry import RETRY_TIMEOUT_DAYS, retry_failed
 from jbi.runner import execute_action
 
@@ -122,6 +123,31 @@ async def test_retry_remove_expired(
         "bug_count": 1,
         "events_processed": 1,
         "events_skipped": 1,
+        "events_failed": 0,
+        "bugs_failed": 0,
+    }
+
+
+@pytest.mark.asyncio
+async def test_retry_remove_invalid(
+    caplog, mock_queue, mock_executor, queue_item_factory
+):
+    mock_queue.retrieve.return_value = {
+        1: aiter_sync(queue_item_factory.create_batch(2))
+    }
+    mock_executor.side_effect = [
+        IgnoreInvalidRequestError("How did this get in here"),
+        mock.DEFAULT,
+    ]
+    metrics = await retry_failed(item_executor=mock_executor, queue=mock_queue)
+    assert (
+        len(mock_queue.done.call_args_list) == 2
+    ), "both items should have been marked as done"
+    assert caplog.text.count("removing invalid event") == 1
+    assert metrics == {
+        "bug_count": 1,
+        "events_processed": 2,
+        "events_skipped": 0,
         "events_failed": 0,
         "bugs_failed": 0,
     }

@@ -9,6 +9,7 @@ from dockerflow.logging import JsonLogFormatter, request_id_context
 
 import jbi.runner as runner
 from jbi.configuration import ACTIONS
+from jbi.errors import IgnoreInvalidRequestError
 from jbi.queue import get_dl_queue
 
 CONSTANT_RETRY = getenv("DL_QUEUE_CONSTANT_RETRY", "false") == "true"
@@ -60,6 +61,10 @@ async def retry_failed(item_executor=runner.execute_action, queue=get_dl_queue()
                 )
                 try:
                     item_executor(item.payload, ACTIONS)
+                    await queue.done(item)
+                    metrics["events_processed"] += 1
+                except IgnoreInvalidRequestError:
+                    logger.warning("removing invalid event %s", item.identifier)
                     await queue.done(item)
                     metrics["events_processed"] += 1
                 except Exception:
