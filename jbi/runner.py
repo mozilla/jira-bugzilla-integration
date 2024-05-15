@@ -217,6 +217,13 @@ def execute_action(
         if bug.is_private:
             raise IgnoreInvalidRequestError("private bugs are not supported")
 
+        try:
+            action = lookup_action(bug, actions)
+        except ActionNotFoundError as err:
+            raise IgnoreInvalidRequestError(
+                f"no bug whiteboard matching action tags: {err}"
+            ) from err
+
         logger.info(
             "Handling incoming request",
             extra=runner_context.model_dump(),
@@ -229,12 +236,7 @@ def execute_action(
             raise IgnoreInvalidRequestError(str(err)) from err
 
         runner_context = runner_context.update(bug=bug)
-        try:
-            action = lookup_action(bug, actions)
-        except ActionNotFoundError as err:
-            raise IgnoreInvalidRequestError(
-                f"no bug whiteboard matching action tags: {err}"
-            ) from err
+
         runner_context = runner_context.update(action=action)
 
         linked_issue_key: Optional[str] = bug.extract_from_see_also(

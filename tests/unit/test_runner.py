@@ -160,7 +160,6 @@ def test_execution_logging_for_ignored_requests(
             execute_action(request=webhook, actions=actions)
 
     assert capturelogs.messages == [
-        "Handling incoming request",
         "Ignore incoming request: no bug whiteboard matching action tags: devtest",
     ]
 
