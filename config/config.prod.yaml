@@ -629,3 +629,5 @@
         - create_comment
     issue_type_map:
       enhancement: Story
+      task: Task
+      defect: Bug
