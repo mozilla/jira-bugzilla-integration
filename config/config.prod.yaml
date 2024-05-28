@@ -608,3 +608,26 @@
       INCOMPLETE: Closed
       WORKSFORME: Closed
       REOPENED: In Progress
+
+- whiteboard_tag: jbi-aut
+  bugzilla_user_id: 429623
+  description: Autograph
+  parameters:
+    jira_project_key: AUT
+    steps:
+      new:
+        - create_issue
+        - maybe_delete_duplicate
+        - add_link_to_bugzilla
+        - add_link_to_jira
+        - maybe_assign_jira_user
+      existing:
+        - update_issue_summary
+        - add_jira_comments_for_changes
+        - maybe_assign_jira_user
+      comment:
+        - create_comment
+    issue_type_map:
+      enhancement: Story
+      task: Task
+      defect: Bug
