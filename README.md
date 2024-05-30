@@ -9,8 +9,10 @@ System to sync Bugzilla bugs to Jira issues.
 ## Caveats
 - The system accepts webhook events from Bugzilla
 - Bugs' `whiteboard` tags are used to determine if they should be synchronized or ignored
+  - Only public bugs are eligible for sychronization.
 - The events are transformed into Jira issues
 - The system sets the `see_also` field of the Bugzilla bug with the URL to the Jira issue
+  - No other information is sychronized from Jira to Bugzilla.
 
 > **Note:** whiteboard tags are string between brackets, and can have prefixes/suffixes using
 > dashes (eg. ``[project]``, ``[project-fx-h2]``, ``[backlog-project]``).
