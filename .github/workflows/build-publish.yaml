@@ -40,7 +40,7 @@ jobs:
           tags: |
             type=semver,pattern={{raw}}
             type=raw,value=latest,enable={{is_default_branch}}
-            type=sha,enable={{is_default_branch}}
+            type=sha,prefix=,enable={{is_default_branch}}
 
       - name: Login to Docker Hub
         if: github.event_name != 'pull_request'
