@@ -118,14 +118,22 @@ class JiraService:
         """Publish a comment on the specified Jira issue"""
         context = context.update(operation=Operation.COMMENT)
         commenter = context.event.user.login if context.event.user else "unknown"
-        comment = context.bug.comment
-        assert comment  # See jbi.steps.create_comment()
-        assert comment.body  # Also see jbi.steps.create_comment()
+
+        if context.event.target == "attachment":
+            routing_key = (
+                context.event.routing_key or ".modified"
+            )  # only for type checking.
+            _, verb = routing_key.rsplit(".", 1)
+            formatted_comment = f"*{commenter}* {verb}d an attachment"
+        else:
+            comment = context.bug.comment
+            assert comment  # See jbi.steps.create_comment()
+            assert comment.body  # Also see jbi.steps.create_comment()
+            formatted_comment = (
+                f"*{commenter}* commented: \n{markdown_to_jira(comment.body)}"
+            )
 
         issue_key = context.jira.issue
-        formatted_comment = (
-            f"*{commenter}* commented: \n{markdown_to_jira(comment.body)}"
-        )
         jira_response = self.client.issue_add_comment(
             issue_key=issue_key,
             comment=formatted_comment,

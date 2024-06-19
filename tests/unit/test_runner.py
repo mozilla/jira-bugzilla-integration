@@ -588,6 +588,20 @@ def test_counter_is_incremented_for_comment(
     mocked.incr.assert_any_call("jbi.operation.comment.count")
 
 
+def test_counter_is_incremented_for_attachment(
+    actions, webhook_request_factory, mocked_bugzilla, mocked_jira
+):
+    webhook_payload = webhook_request_factory(
+        event__target="attachment",
+        bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+    )
+    mocked_bugzilla.get_bug.return_value = webhook_payload.bug
+    mocked_jira.get_issue.return_value = {"fields": {"project": {"key": "JBI"}}}
+    with mock.patch("jbi.runner.statsd") as mocked:
+        execute_action(request=webhook_payload, actions=actions)
+    mocked.incr.assert_any_call("jbi.operation.attachment.count")
+
+
 @pytest.mark.parametrize(
     "whiteboard",
     [

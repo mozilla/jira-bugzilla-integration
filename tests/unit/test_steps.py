@@ -234,6 +234,21 @@ def test_added_comment(
     )
 
 
+def test_added_attachment(
+    context_attachment_example: ActionContext, mocked_jira, action_params_factory
+):
+    callable_object = Executor(
+        action_params_factory(jira_project_key=context_attachment_example.jira.project)
+    )
+
+    callable_object(context=context_attachment_example)
+
+    mocked_jira.issue_add_comment.assert_called_once_with(
+        issue_key="JBI-234",
+        comment="*phab-bot@bmo.tld* created an attachment",
+    )
+
+
 def test_empty_comment_not_added(
     action_context_factory, mocked_jira, action_params_factory
 ):
