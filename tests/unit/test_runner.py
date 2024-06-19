@@ -386,8 +386,7 @@ def test_default_invalid_init():
 def test_unspecified_groups_come_from_default_steps(action_params_factory):
     action = Executor(action_params_factory(steps={"comment": ["create_comment"]}))
 
-    assert len(action.steps) == 3
-    assert action.steps
+    assert len(action.steps) == 4
 
 
 def test_default_returns_callable_without_data(action_params):
