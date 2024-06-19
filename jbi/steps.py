@@ -50,19 +50,20 @@ def create_comment(context: ActionContext, *, jira_service: JiraService) -> Step
     """Create a Jira comment using `context.bug.comment`"""
     bug = context.bug
 
-    if bug.comment is None:
-        logger.info(
-            "No matching comment found in payload",
-            extra=context.model_dump(),
-        )
-        return (StepStatus.NOOP, context)
+    if context.event.target == "comment":
+        if bug.comment is None:
+            logger.info(
+                "No matching comment found in payload",
+                extra=context.model_dump(),
+            )
+            return (StepStatus.NOOP, context)
 
-    if not bug.comment.body:
-        logger.info(
-            "Comment message is empty",
-            extra=context.model_dump(),
-        )
-        return (StepStatus.NOOP, context)
+        if not bug.comment.body:
+            logger.info(
+                "Comment message is empty",
+                extra=context.model_dump(),
+            )
+            return (StepStatus.NOOP, context)
 
     jira_response = jira_service.add_jira_comment(context)
     context = context.append_responses(jira_response)
