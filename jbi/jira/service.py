@@ -121,10 +121,11 @@ class JiraService:
 
         if context.event.target == "attachment":
             routing_key = (
-                context.event.routing_key or ".modified"
-            )  # only for type checking.
+                context.event.routing_key or ".modify"  # only to please type checking.
+            )
             _, verb = routing_key.rsplit(".", 1)
-            formatted_comment = f"*{commenter}* {verb}d an attachment"
+            past_verb = {"modify": "modified"}.get(verb, f"{verb}d")
+            formatted_comment = f"*{commenter}* {past_verb} an attachment"
         else:
             comment = context.bug.comment
             assert comment  # See jbi.steps.create_comment()
