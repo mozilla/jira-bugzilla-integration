@@ -37,6 +37,7 @@ GROUP_TO_OPERATION = {
     "new": Operation.CREATE,
     "existing": Operation.UPDATE,
     "comment": Operation.COMMENT,
+    "attachment": Operation.ATTACHMENT,
 }
 
 
@@ -287,6 +288,9 @@ def execute_action(
 
             elif event.target == "comment":
                 action_context = action_context.update(operation=Operation.COMMENT)
+
+            elif event.target == "attachment":
+                action_context = action_context.update(operation=Operation.ATTACHMENT)
 
         if action_context.operation == Operation.IGNORE:
             raise IgnoreInvalidRequestError(

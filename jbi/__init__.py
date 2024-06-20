@@ -19,6 +19,7 @@ class Operation(str, Enum):
     UPDATE = "update"
     DELETE = "delete"
     COMMENT = "comment"
+    ATTACHMENT = "attachment"
     LINK = "link"
 
 

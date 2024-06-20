@@ -43,6 +43,9 @@ class ActionSteps(BaseModel, frozen=True):
     comment: list[str] = [
         "create_comment",
     ]
+    attachment: list[str] = [
+        "create_comment",
+    ]
 
     @field_validator("*")
     @classmethod
