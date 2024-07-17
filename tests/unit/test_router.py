@@ -110,6 +110,30 @@ async def test_dl_queue_endpoint(
     }
 
 
+@pytest.mark.asyncio
+async def test_delete_queue_item_by_id(
+    dl_queue, authenticated_client, webhook_request_factory
+):
+    item = webhook_request_factory(event__time=datetime(1982, 5, 8, 9, 10))
+    await dl_queue.track_failed(item, Exception("boom"), rid="rid")
+
+    resp = authenticated_client.delete(
+        "/dl_queue/1982-05-08%2009:10:00+00:00-654321-create-error"
+    )
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_delete_queue_item_by_id_item_doesnt_exist(
+    dl_queue, authenticated_client, webhook_request_factory
+):
+    item = webhook_request_factory(event__time=datetime(1982, 5, 8, 9, 10))
+    await dl_queue.track_failed(item, Exception("boom"), rid="rid")
+
+    resp = authenticated_client.delete("/dl_queue/return-a-404-4-me")
+    assert resp.status_code == 404
+
+
 def test_powered_by_jbi(exclude_middleware, authenticated_client):
     resp = authenticated_client.get("/powered_by_jbi/")
     html = resp.text

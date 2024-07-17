@@ -43,6 +43,19 @@ from jbi.environment import get_settings
 logger = logging.getLogger(__name__)
 
 
+ITEM_ID_PATTERN = re.compile(
+    r"(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\+\d{2}:\d{2})-(?P<bug_id>\d+)-(?P<action>\w*)-(?P<status>error|postponed)"
+)
+
+
+def extract_bug_id_from_item_id(item_id: str) -> int:
+    if match := re.search(ITEM_ID_PATTERN, item_id):
+        return match.group("bug_id")
+    raise ValueError(
+        "item_id %s did not match expected format: %s", item_id, ITEM_ID_PATTERN.pattern
+    )
+
+
 class QueueItemRetrievalError(Exception):
     def __init__(self, message=None, path=None):
         self.message = message or "Error reading or parsing queue item"
@@ -128,6 +141,13 @@ class QueueBackend(ABC):
         pass
 
     @abstractmethod
+    async def exists(self, item_id: int) -> bool:
+        """
+        Report whether an item with id `item_id` exists in the queue
+        """
+        pass
+
+    @abstractmethod
     async def get_all(self) -> dict[int, AsyncIterator[QueueItem]]:
         """Retrieve all items in the queue, grouped by bug
 
@@ -196,6 +216,21 @@ class FileBackend(QueueBackend):
         if not any(bug_dir.iterdir()):
             bug_dir.rmdir()
             logger.debug("Removed directory for bug %s", bug_id)
+
+    async def exists(self, item_id: str) -> bool:
+        """
+        Report whether an item with id `item_id` exists in the queue
+        """
+        try:
+            bug_id = extract_bug_id_from_item_id(item_id)
+        except ValueError as e:
+            logger.warning(
+                "provided item_id %s did not match expected format", item_id, exc_info=e
+            )
+            return False
+
+        item_path = (self.location / bug_id / item_id).with_suffix(".json")
+        return item_path.exists()
 
     async def get(self, bug_id: int) -> AsyncIterator[QueueItem]:
         folder = self.location / str(bug_id)
@@ -320,3 +355,16 @@ class DeadLetterQueue:
         Mark item as done, remove from queue.
         """
         return await self.backend.remove(item.payload.bug.id, item.identifier)
+
+    async def exists(self, item_id) -> bool:
+        """
+        Report whether an item with id `item_id` exists in the queue
+        """
+        return await self.backend.exists(item_id)
+
+    async def delete(self, item_id) -> None:
+        """
+        Remove an item from the queue by item_id
+        """
+        bug_id = extract_bug_id_from_item_id(item_id)
+        await self.backend.remove(bug_id=bug_id, identifier=item_id)
