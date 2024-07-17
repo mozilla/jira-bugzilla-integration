@@ -218,9 +218,6 @@ class FileBackend(QueueBackend):
             logger.debug("Removed directory for bug %s", bug_id)
 
     async def exists(self, item_id: str) -> bool:
-        """
-        Report whether an item with id `item_id` exists in the queue
-        """
         try:
             bug_id = extract_bug_id_from_item_id(item_id)
         except ValueError as e:
