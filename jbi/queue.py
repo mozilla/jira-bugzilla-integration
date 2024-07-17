@@ -48,7 +48,7 @@ ITEM_ID_PATTERN = re.compile(
 )
 
 
-def extract_bug_id_from_item_id(item_id: str) -> int:
+def extract_bug_id_from_item_id(item_id: str) -> str:
     if match := re.search(ITEM_ID_PATTERN, item_id):
         return match.group("bug_id")
     raise ValueError(
@@ -141,7 +141,7 @@ class QueueBackend(ABC):
         pass
 
     @abstractmethod
-    async def exists(self, item_id: int) -> bool:
+    async def exists(self, item_id: str) -> bool:
         """
         Report whether an item with id `item_id` exists in the queue
         """
@@ -227,7 +227,8 @@ class FileBackend(QueueBackend):
             return False
 
         item_path = (self.location / bug_id / item_id).with_suffix(".json")
-        return item_path.exists()
+        # even though pathlib.Path.exists() returns a bool, mypy doesn't seem to get it
+        return bool(item_path.exists())
 
     async def get(self, bug_id: int) -> AsyncIterator[QueueItem]:
         folder = self.location / str(bug_id)
@@ -364,4 +365,4 @@ class DeadLetterQueue:
         Remove an item from the queue by item_id
         """
         bug_id = extract_bug_id_from_item_id(item_id)
-        await self.backend.remove(bug_id=bug_id, identifier=item_id)
+        await self.backend.remove(bug_id=int(bug_id), identifier=item_id)
