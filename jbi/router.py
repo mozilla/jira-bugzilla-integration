@@ -101,6 +101,19 @@ async def inspect_dl_queue(queue: Annotated[DeadLetterQueue, Depends(get_dl_queu
     return results
 
 
+@router.delete("/dl_queue/{item_id}", dependencies=[Depends(api_key_auth)])
+async def delete_queue_item_by_id(
+    item_id: str, queue: Annotated[DeadLetterQueue, Depends(get_dl_queue)]
+):
+    item_exists = await queue.exists(item_id)
+    if item_exists:
+        await queue.delete(item_id)
+    else:
+        raise HTTPException(
+            status_code=404, detail=f"Item {item_id} not found in queue"
+        )
+
+
 @router.get(
     "/whiteboard_tags/",
     dependencies=[Depends(api_key_auth)],

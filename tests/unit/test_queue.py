@@ -341,3 +341,22 @@ async def test_done(queue: DeadLetterQueue, queue_item_factory):
 
     await queue.done(item)
     assert await queue.backend.size() == 0
+
+
+@pytest.mark.asyncio
+async def test_delete(queue: DeadLetterQueue, queue_item_factory):
+    item = queue_item_factory()
+
+    await queue.backend.put(item)
+    assert await queue.backend.size() == 1
+
+    await queue.delete(item.identifier)
+    assert await queue.backend.size() == 0
+
+
+@pytest.mark.asyncio
+async def test_exists(queue: DeadLetterQueue, queue_item_factory):
+    item = queue_item_factory()
+
+    await queue.backend.put(item)
+    assert await queue.exists(item.identifier) is True
