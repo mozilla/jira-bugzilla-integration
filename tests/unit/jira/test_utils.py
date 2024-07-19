@@ -71,6 +71,7 @@ def test_markdown_to_jira_with_malformed_input():
         ("aa\taaa", "aa", 5),
         ("aaaaaa", "aaaaa", 5),
         ("aaaaa ", "aaaaa", 5),
+        ("`fo` `fo`", "{{fo}}", 9),
     ],
 )
 def test_markdown_to_jira_with_max_chars(markdown, expected, max_length):
