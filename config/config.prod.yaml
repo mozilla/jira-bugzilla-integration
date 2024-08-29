@@ -437,6 +437,21 @@
   parameters:
     jira_project_key: SNG
     labels_brackets: both
+    status_map:
+      UNCONFIRMED: Backlog
+      NEW: To Do
+      ASSIGNED: In Progress
+      REOPENED: In Progress
+      RESOLVED: Done
+      VERIFIED: Done
+      FIXED: Done
+      INVALID: Cancelled
+      WONTFIX: Cancelled
+      INACTIVE: Cancelled
+      DUPLICATE: Cancelled
+      WORKSFORME: Cancelled
+      INCOMPLETE: Cancelled
+      MOVED: Cancelled
 
 - whiteboard_tag: sp3
   bugzilla_user_id: 396948
