@@ -599,6 +599,7 @@
   description: Firefox GenAI
   parameters:
     jira_project_key: GENAI
+    jira_severity_field: customfield_10319
     steps:
       new:
         - create_issue
