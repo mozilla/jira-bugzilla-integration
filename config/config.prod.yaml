@@ -592,11 +592,18 @@
         - add_link_to_jira
         - maybe_assign_jira_user
         - maybe_update_issue_status
+        - maybe_update_issue_priority
+        - maybe_update_issue_severity
+        - maybe_update_issue_points
+        - sync_whiteboard_labels
       existing:
         - update_issue_summary
-        - add_jira_comments_for_changes
         - maybe_assign_jira_user
         - maybe_update_issue_status
+        - maybe_update_issue_priority
+        - maybe_update_issue_severity
+        - maybe_update_issue_points
+        - sync_whiteboard_labels
       comment:
         - create_comment
     status_map:
