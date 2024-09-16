@@ -87,7 +87,7 @@ async def inspect_dl_queue(queue: Annotated[DeadLetterQueue, Depends(get_dl_queu
         async for item in items:
             results.append(
                 item.model_dump(
-                    include={
+                    include={  # type: ignore
                         "identifier": True,
                         "rid": True,
                         "error": True,
