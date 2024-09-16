@@ -4,7 +4,7 @@ Core FastAPI app (setup, middleware)
 
 import secrets
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated, Any, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from fastapi.encoders import jsonable_encoder
@@ -83,21 +83,18 @@ async def inspect_dl_queue(queue: Annotated[DeadLetterQueue, Depends(get_dl_queu
     """API for viewing queue content"""
     bugs = await queue.retrieve()
     results = []
+    fields: dict[str, Any] = {
+        "identifier": True,
+        "rid": True,
+        "error": True,
+        "payload": {
+            "bug": {"id", "whiteboard", "product", "component"},
+            "event": {"action", "time"},
+        },
+    }
     for items in bugs.values():
         async for item in items:
-            results.append(
-                item.model_dump(
-                    include={
-                        "identifier": True,
-                        "rid": True,
-                        "error": True,
-                        "payload": {
-                            "bug": {"id", "whiteboard", "product", "component"},
-                            "event": {"action", "time"},
-                        },
-                    }
-                )
-            )
+            results.append(item.model_dump(include=fields))
     return results
 
 
