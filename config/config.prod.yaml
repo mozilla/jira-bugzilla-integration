@@ -19,7 +19,6 @@
   description: Firefox Front End whiteboard tag
   parameters:
     jira_project_key: FIDEFE
-    jira_severity_field: customfield_10319
     steps:
       new:
         - create_issue
@@ -619,7 +618,6 @@
   description: Firefox GenAI
   parameters:
     jira_project_key: GENAI
-    jira_severity_field: customfield_10319
     steps:
       new:
         - create_issue
