@@ -914,7 +914,7 @@ def test_update_issue_severity(
 
     mocked_jira.create_issue.assert_not_called()
     mocked_jira.update_issue_field.assert_called_with(
-        key="JBI-234", fields={"customfield_10716": {"value": "Moderate"}}
+        key="JBI-234", fields={"customfield_10319": {"value": "Moderate"}}
     )
 
 
