@@ -445,7 +445,6 @@
         - maybe_assign_jira_user
         - maybe_update_issue_status
         - maybe_update_issue_priority
-        - maybe_update_issue_severity
         - maybe_update_issue_points
         - sync_whiteboard_labels
       existing:
@@ -453,7 +452,6 @@
         - maybe_assign_jira_user
         - maybe_update_issue_status
         - maybe_update_issue_priority
-        - maybe_update_issue_severity
         - maybe_update_issue_points
         - sync_whiteboard_labels
     status_map:
