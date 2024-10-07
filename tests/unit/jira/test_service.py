@@ -174,6 +174,36 @@ def test_get_issue_reraises_other_erroring_status_codes(
     assert record.message == "Getting issue JBI-234"
 
 
+def test_update_issue_status_adds_comment_and_resolution_when_cancelled(
+    jira_service, settings, mocked_responses, action_context_factory, capturelogs
+):
+    context = action_context_factory(jira__issue="JBI-234")
+    url = f"{settings.jira_base_url}rest/api/2/issue/JBI-234/transitions"
+
+    mocked_responses.add(
+        responses.GET,
+        url,
+        json={"transitions": [{"name": "foo", "id": 42, "to": {"name": "Cancelled"}}]},
+    )
+    mocked_responses.add(
+        responses.POST,
+        url,
+        match=[
+            responses.matchers.json_params_matcher(
+                {
+                    "transition": {"id": 42},
+                    "fields": {
+                        "comment": "Issue was cancelled.",
+                        "resolution": {"name": "Invalid"},
+                    },
+                }
+            )
+        ],
+    )
+
+    jira_service.update_issue_status(context=context, jira_status="Cancelled")
+
+
 def test_update_issue_resolution(
     jira_service, settings, mocked_responses, action_context_factory, capturelogs
 ):
