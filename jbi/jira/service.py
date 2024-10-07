@@ -290,6 +290,13 @@ class JiraService:
         issue_key = context.jira.issue
         assert issue_key  # Until we have more fine-grained typing of contexts
 
+        kwargs = {}
+        if jira_status == "Cancelled":
+            kwargs["fields"] = {
+                "comment": "Issue was cancelled.",
+                "resolution": {"name": "Invalid"},
+            }
+
         logger.info(
             "Updating Jira status to %s",
             jira_status,
@@ -298,6 +305,7 @@ class JiraService:
         return self.client.set_issue_status(
             issue_key,
             jira_status,
+            **kwargs,
         )
 
     def update_issue_summary(self, context: ActionContext):
