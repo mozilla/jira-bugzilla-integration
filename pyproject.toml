@@ -22,7 +22,7 @@ pydantic-settings = "^2.5.2"
 pypandoc = "^1.13"
 
 [tool.poetry.group.dev.dependencies]
-pre-commit = "^3.8.0"
+pre-commit = "^4.0.0"
 coverage = {extras = ["toml"], version = "^7.6"}
 mypy = "^1.11"
 detect-secrets = "^1.5.0"
