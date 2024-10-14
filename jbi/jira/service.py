@@ -293,8 +293,10 @@ class JiraService:
         kwargs = {}
         if jira_status == "Cancelled":
             kwargs["fields"] = {
-                "comment": "Issue was cancelled.",
                 "resolution": {"name": "Invalid"},
+            }
+            kwargs["update"] = {
+                "comment": [{"add": {"body": "Issue was cancelled."}}],
             }
 
         logger.info(

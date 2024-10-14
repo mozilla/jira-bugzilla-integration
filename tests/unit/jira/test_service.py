@@ -193,8 +193,10 @@ def test_update_issue_status_adds_comment_and_resolution_when_cancelled(
                 {
                     "transition": {"id": 42},
                     "fields": {
-                        "comment": "Issue was cancelled.",
                         "resolution": {"name": "Invalid"},
+                    },
+                    "update": {
+                        "comment": [{"add": {"body": "Issue was cancelled."}}],
                     },
                 }
             )
