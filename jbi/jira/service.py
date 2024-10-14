@@ -290,7 +290,7 @@ class JiraService:
         issue_key = context.jira.issue
         assert issue_key  # Until we have more fine-grained typing of contexts
 
-        kwargs = {}
+        kwargs: dict[str, Any] = {}
         if jira_status == "Cancelled":
             kwargs["fields"] = {
                 "resolution": {"name": "Invalid"},
