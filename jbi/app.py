@@ -33,7 +33,7 @@ APP_DIR = Path(__file__).parents[1]
 
 settings = get_settings()
 version_info = get_version(APP_DIR)
-VERSION = version_info["version"]
+VERSION: str = version_info["version"]
 
 logging.config.dictConfig(CONFIG)
 
