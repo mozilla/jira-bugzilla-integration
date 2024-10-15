@@ -87,6 +87,7 @@ async def inspect_dl_queue(queue: Annotated[DeadLetterQueue, Depends(get_dl_queu
         "identifier": True,
         "rid": True,
         "error": True,
+        "version": True,
         "payload": {
             "bug": {"id", "whiteboard", "product", "component"},
             "event": {"action", "time"},

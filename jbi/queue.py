@@ -37,11 +37,10 @@ from urllib.parse import ParseResult, urlparse
 import dockerflow.checks
 from pydantic import BaseModel, FileUrl, ValidationError, computed_field
 
-from jbi import bugzilla
+from jbi import app, bugzilla
 from jbi.environment import get_settings
 
 logger = logging.getLogger(__name__)
-
 
 ITEM_ID_PATTERN = re.compile(
     r"(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\+\d{2}:\d{2})-(?P<bug_id>\d+)-(?P<action>\w*)-(?P<status>error|postponed)"
@@ -89,6 +88,12 @@ class QueueItem(BaseModel, frozen=True):
     payload: bugzilla.WebhookRequest
     error: Optional[PythonException] = None
     rid: Optional[str] = None
+
+    @computed_field  # type: ignore
+    @property
+    def version(self) -> str:
+        # Prevents circular imports.
+        return app.VERSION
 
     @property
     def timestamp(self) -> datetime:

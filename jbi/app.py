@@ -33,6 +33,7 @@ APP_DIR = Path(__file__).parents[1]
 
 settings = get_settings()
 version_info = get_version(APP_DIR)
+VERSION: str = version_info["version"]
 
 logging.config.dictConfig(CONFIG)
 
@@ -52,7 +53,7 @@ def traces_sampler(sampling_context: dict[str, Any]) -> float:
 sentry_sdk.init(
     dsn=str(settings.sentry_dsn) if settings.sentry_dsn else None,
     traces_sampler=traces_sampler,
-    release=version_info["version"],
+    release=VERSION,
 )
 
 
@@ -100,7 +101,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(
     title="Jira Bugzilla Integration (JBI)",
     description="Platform providing synchronization of Bugzilla bugs to Jira issues.",
-    version=version_info["version"],
+    version=VERSION,
     debug=settings.app_debug,
     lifespan=lifespan,
 )

@@ -191,3 +191,4 @@ class QueueItemFactory(PydanticFactory):
 
     payload = factory.SubFactory(WebhookRequestFactory)
     error = factory.SubFactory(PythonExceptionFactory)
+    version = "42.0.1"
