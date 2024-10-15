@@ -7,6 +7,7 @@ from unittest import mock
 import pytest
 from fastapi.testclient import TestClient
 
+from jbi import app
 from jbi.environment import get_settings
 from jbi.queue import get_dl_queue
 
@@ -93,6 +94,7 @@ async def test_dl_queue_endpoint(
             "details": "Exception: boom\n",
             "type": "Exception",
         },
+        "version": app.VERSION,
         "identifier": "1982-05-08 09:10:00+00:00-654321-create-error",
         "rid": "rid",
         "payload": {
