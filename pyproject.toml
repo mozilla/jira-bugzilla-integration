@@ -6,7 +6,7 @@ authors = ["@mozilla/jbi-core"]
 license = "MPL"
 
 [tool.poetry.dependencies]
-python = ">=3.12, <3.13"
+python = ">=3.12, <3.14"
 fastapi = "^0.115.4"
 pydantic = {version = "^2.9.2", extras = ["email"]}
 uvicorn = {extras = ["standard"], version = "^0.32.0"}
@@ -65,7 +65,7 @@ markers = [
 ]
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.13"
 # Warn when returning Any from function with non-Any return
 warn_return_any = true
 plugins = "pydantic.mypy"
