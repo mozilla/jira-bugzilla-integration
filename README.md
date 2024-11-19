@@ -9,10 +9,10 @@ System to sync Bugzilla bugs to Jira issues.
 ## Caveats
 - The system accepts webhook events from Bugzilla
 - Bugs' `whiteboard` tags are used to determine if they should be synchronized or ignored
-  - Only public bugs are eligible for sychronization.
+  - **Only public bugs** are eligible for synchronization.
 - The events are transformed into Jira issues
 - The system sets the `see_also` field of the Bugzilla bug with the URL to the Jira issue
-  - No other information is sychronized from Jira to Bugzilla.
+  - No other information is synchronized from Jira to Bugzilla.
 
 > **Note:** whiteboard tags are string between brackets, and can have prefixes/suffixes using
 > dashes (eg. ``[project]``, ``[project-fx-h2]``, ``[backlog-project]``).
@@ -67,6 +67,7 @@ graph TD
 
    - If you are not an admin of the Jira project, contact the admin or reach out to `#jira-support` in Slack to determine how best to request the changes described above
 
+1. Some actions require specific fields on the create and update screens in Jira. Double check the [actions documentation](docs/actions.md)
 1. Once your configuration is merged and a JBI release is deployed, create a bug in Bugzilla and add your whiteboard tag to the bug. Note that the tag must be enclosed in square brackets (eg. `[famous-project]`). You should see an issue appear in Jira
    - If you want to start syncing a bug to a Jira issue that already exists, add the issue's link to the `See Also` section of the Bugzilla bug before you add the whiteboard tag
 
