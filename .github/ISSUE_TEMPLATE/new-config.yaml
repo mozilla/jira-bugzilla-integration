@@ -53,6 +53,11 @@ body:
         - label: Issue Type (please provide mapping, eg. `enhancement` -> `Story`)
         - label: Status (please provide mapping, eg. `RESOLVED` -> `Done`)
         - label: Resolution (please provide mapping, eg. `WONTFIX` -> `Won't do`)
+        - label: Priority
+        - label: Severity
+        - label: Issue points
+        - label: Comments
+        - label: Keywords (as labels)
         - label: Whiteboard tags (as labels)
         - label: Assignee (Bugzilla and Jira user must use the same email address)
         - label: Field changes (recorded as comments on the issue)

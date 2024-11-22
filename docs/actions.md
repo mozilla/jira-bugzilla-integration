@@ -138,23 +138,25 @@ linked Jira issue status to "Closed". If the bug changes to a status not listed 
 - `maybe_assign_jira_user`:
   It will attempt to assign the Jira issue the same person as the bug is assigned to. This relies on
   the user using the same email address in both Bugzilla and Jira. If the user does not exist in Jira
-  then the assignee is cleared from the Jira issue. The Jira account that JBI uses requires the "Browse
-  users and groups" global permission in order to set the assignee.
+  then the assignee is cleared from the Jira issue.
+  **Requirements**: The Jira account that JBI uses requires the "Browse users and groups" global permission in order to set the assignee.
 - `maybe_update_issue_resolution`:
   If the Bugzilla ticket resolution field is specified in the `resolution_map` parameter, it will set the
   Jira issue resolution.
+  **Requirements**: ``resolution`` field must be present on issue forms (or configure `jira_resolution_field`).
 - `maybe_update_issue_status`:
   If the Bugzilla ticket status field is specified in the `status_map` parameter, it will set the
   Jira issue status.
-- `update_issue`
 - `add_jira_comments_for_changes`
-- `maybe_assign_jira_user`
 - `maybe_update_issue_priority`
+  **Requirements**: ``priority`` field must be present on issue forms (or configure `jira_priority_field`).
 - `maybe_update_issue_resolution`
 - `maybe_update_issue_severity`
+  **Requirements**: ``customfield_10319`` field must be present on issue forms (or configure `jira_severity_field`).
 - `maybe_update_issue_status`
+- `maybe_update_issue_points`
+   **Requirements**: ``customfield_10037`` field must be present on issue forms (or configure `jira_cf_fx_points_field`).
 - `create_comment`
 - `sync_keywords_labels`
 - `sync_whiteboard_labels`
 - `maybe_update_components`: looks at the component that's set on the bug (if any) and any components added to the project configuration with the `jira_components` parameter (see above). If those components are available on the Jira side as well, they're added to the Jira issue
-
