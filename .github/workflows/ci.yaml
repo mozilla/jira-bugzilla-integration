@@ -41,7 +41,13 @@ jobs:
       - name: Run tests
         run: bin/test.sh
       - name: Run retry
-        run: DL_QUEUE_CONSTANT_RETRY=false poetry run python -m jbi.retry.py
+        env:
+          JIRA_API_KEY: key
+          JIRA_USERNAME: foo@bar
+          BUGZILLA_API_KEY: key
+          DL_QUEUE_CONSTANT_RETRY: false
+          DL_QUEUE_DSN: "file:///tmp/dlqueue"
+        run: .venv/bin/python -m jbi.retry.py
   review-dependabot-pr:
     permissions:
       contents: write
