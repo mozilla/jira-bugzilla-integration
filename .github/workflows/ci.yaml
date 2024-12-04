@@ -48,7 +48,7 @@ jobs:
           BUGZILLA_API_KEY: key  # pragma: allowlist secret
           DL_QUEUE_CONSTANT_RETRY: false
           DL_QUEUE_DSN: "file:///tmp/dlqueue"
-        run: .venv/bin/python -m jbi.retry.py
+        run: .venv/bin/python -m jbi.retry
   review-dependabot-pr:
     permissions:
       contents: write
