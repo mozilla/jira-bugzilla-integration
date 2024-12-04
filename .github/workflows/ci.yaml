@@ -40,6 +40,8 @@ jobs:
         run: make install
       - name: Run tests
         run: bin/test.sh
+      - name: Run retry
+        run: DL_QUEUE_CONSTANT_RETRY=false poetry run python -m jbi.retry.py
   review-dependabot-pr:
     permissions:
       contents: write
