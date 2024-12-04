@@ -42,9 +42,10 @@ jobs:
         run: bin/test.sh
       - name: Run retry
         env:
-          JIRA_API_KEY: key
+          JBI_API_KEY: key  # pragma: allowlist secret
+          JIRA_API_KEY: key  # pragma: allowlist secret
           JIRA_USERNAME: foo@bar
-          BUGZILLA_API_KEY: key
+          BUGZILLA_API_KEY: key  # pragma: allowlist secret
           DL_QUEUE_CONSTANT_RETRY: false
           DL_QUEUE_DSN: "file:///tmp/dlqueue"
         run: .venv/bin/python -m jbi.retry.py
