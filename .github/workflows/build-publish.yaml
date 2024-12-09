@@ -13,6 +13,9 @@ on:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
     env:
       TEST_TAG: ${{ github.repository }}:test
       TEST_CONTAINER_NAME: jbi-healthcheck
