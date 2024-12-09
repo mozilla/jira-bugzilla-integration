@@ -28,7 +28,7 @@ import tempfile
 import traceback
 from abc import ABC, abstractmethod
 from datetime import datetime
-from functools import lru_cache
+from functools import cached_property, lru_cache
 from json import JSONDecodeError
 from pathlib import Path
 from typing import AsyncIterator, Optional
@@ -37,7 +37,7 @@ from urllib.parse import ParseResult, urlparse
 import dockerflow.checks
 from pydantic import BaseModel, FileUrl, ValidationError, computed_field
 
-from jbi import app, bugzilla
+from jbi import bugzilla
 from jbi.environment import get_settings
 
 logger = logging.getLogger(__name__)
@@ -90,9 +90,11 @@ class QueueItem(BaseModel, frozen=True):
     rid: Optional[str] = None
 
     @computed_field  # type: ignore
-    @property
+    @cached_property
     def version(self) -> str:
         # Prevents circular imports.
+        from jbi import app
+
         return app.VERSION
 
     @property
