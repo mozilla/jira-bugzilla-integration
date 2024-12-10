@@ -40,6 +40,15 @@ jobs:
         run: make install
       - name: Run tests
         run: bin/test.sh
+      - name: Run retry
+        env:
+          JBI_API_KEY: key  # pragma: allowlist secret
+          JIRA_API_KEY: key  # pragma: allowlist secret
+          JIRA_USERNAME: foo@bar
+          BUGZILLA_API_KEY: key  # pragma: allowlist secret
+          DL_QUEUE_CONSTANT_RETRY: false
+          DL_QUEUE_DSN: "file:///tmp/dlqueue"
+        run: .venv/bin/python -m jbi.retry
   review-dependabot-pr:
     permissions:
       contents: write

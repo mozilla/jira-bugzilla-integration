@@ -32,7 +32,7 @@ SRC_DIR = Path(__file__).parent
 APP_DIR = Path(__file__).parents[1]
 
 settings = get_settings()
-version_info = get_version(APP_DIR)
+version_info: dict[str, str] = get_version(APP_DIR)
 VERSION: str = version_info["version"]
 
 logging.config.dictConfig(CONFIG)
