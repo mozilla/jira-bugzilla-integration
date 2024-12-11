@@ -130,8 +130,10 @@ class JiraService:
             comment = context.bug.comment
             assert comment  # See jbi.steps.create_comment()
             assert comment.body  # Also see jbi.steps.create_comment()
-            formatted_comment = (
-                f"*{commenter}* commented: \n{markdown_to_jira(comment.body)}"
+            prefix = f"*{commenter}* commented: \n"
+            formatted_comment = prefix + markdown_to_jira(
+                comment.body,
+                max_length=JIRA_DESCRIPTION_CHAR_LIMIT - len(prefix),
             )
 
         issue_key = context.jira.issue
