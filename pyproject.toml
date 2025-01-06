@@ -18,7 +18,7 @@ pydantic-yaml = "^1.4.0"
 backoff = "^2.2.1"
 statsd = "^4.0.1"
 requests = "^2.32.3"
-pydantic-settings = "^2.7.0"
+pydantic-settings = "^2.7.1"
 pypandoc = "^1.14"
 
 [tool.poetry.group.dev.dependencies]
@@ -35,9 +35,9 @@ responses = "^0.25.3"
 httpx = "^0.28.1"
 factory-boy = "^3.3.1"
 pytest-factoryboy = "^2.7.0"
-ruff = "^0.8.4"
+ruff = "^0.8.6"
 pytest-mock = "^3.14.0"
-pytest-asyncio = "^0.25.0"
+pytest-asyncio = "^0.25.1"
 
 
 [build-system]
