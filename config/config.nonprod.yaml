@@ -6,6 +6,7 @@
   parameters:
     jira_project_key: JB
     labels_brackets: both
+    jira_severity_field: bad_customfield_10319
     steps:
       new:
         - create_issue
