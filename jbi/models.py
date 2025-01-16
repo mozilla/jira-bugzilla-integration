@@ -100,6 +100,7 @@ class ActionParams(BaseModel, frozen=True):
         "S4": "S4",
     }
     cf_fx_points_map: dict[str, int] = {
+        "---": 0,
         "": 0,
         "?": 0,
         "1": 1,

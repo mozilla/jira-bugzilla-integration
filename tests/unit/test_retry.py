@@ -113,9 +113,9 @@ async def test_retry_remove_expired(
 
     metrics = await retry_failed(item_executor=mock_executor, queue=mock_queue)
     mock_queue.retrieve.assert_called_once()
-    assert (
-        len(mock_queue.done.call_args_list) == 2
-    ), "both items should have been marked as done"
+    assert len(mock_queue.done.call_args_list) == 2, (
+        "both items should have been marked as done"
+    )
     assert caplog.text.count("failed to reprocess event") == 0
     assert caplog.text.count("removing expired event") == 1
     mock_executor.assert_called_once()  # only one item should have been attempted to be processed
@@ -140,9 +140,9 @@ async def test_retry_remove_invalid(
         mock.DEFAULT,
     ]
     metrics = await retry_failed(item_executor=mock_executor, queue=mock_queue)
-    assert (
-        len(mock_queue.done.call_args_list) == 2
-    ), "both items should have been marked as done"
+    assert len(mock_queue.done.call_args_list) == 2, (
+        "both items should have been marked as done"
+    )
     assert caplog.text.count("removing invalid event") == 1
     assert metrics == {
         "bug_count": 1,
