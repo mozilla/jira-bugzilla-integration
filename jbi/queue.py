@@ -104,7 +104,7 @@ class QueueItem(BaseModel, frozen=True):
     @computed_field  # type: ignore
     @property
     def identifier(self) -> str:
-        return f"{self.payload.event.time}-{self.payload.bug.id}-{self.payload.event.action}-{"error" if self.error else "postponed"}"
+        return f"{self.payload.event.time}-{self.payload.bug.id}-{self.payload.event.action}-{'error' if self.error else 'postponed'}"
 
 
 @lru_cache(maxsize=1)
