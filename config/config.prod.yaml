@@ -678,6 +678,9 @@
   description: FOG Migration
   parameters:
     jira_project_key: DENG
+    jira_components:
+      set_custom_components:
+        - "FOG Migration"
     steps:
       new:
         - create_issue
