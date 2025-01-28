@@ -694,6 +694,7 @@
         - update_issue_summary
         - add_jira_comments_for_changes
         - maybe_assign_jira_user
+        - maybe_update_components
         - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_keywords_labels
