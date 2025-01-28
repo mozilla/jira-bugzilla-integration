@@ -1015,7 +1015,7 @@ def test_update_issue_points_removed(
     )
 
 
-def test_emptyupdate_issue_points_ignored(
+def test_empty_issue_points_ignored_on_create(
     action_context_factory,
     mocked_jira,
     action_params_factory,
