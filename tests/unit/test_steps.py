@@ -1015,6 +1015,30 @@ def test_update_issue_points_removed(
     )
 
 
+def test_empty_issue_points_ignored_on_create(
+    action_context_factory,
+    mocked_jira,
+    action_params_factory,
+    webhook_event_change_factory,
+):
+    action_context = action_context_factory(
+        operation=Operation.CREATE,
+        current_step="maybe_update_issue_points",
+        bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+        jira__issue="JBI-234",
+        bug__cf_fx_points="---",
+    )
+
+    params = action_params_factory(
+        jira_project_key=action_context.jira.project,
+    )
+    steps.maybe_update_issue_points(
+        action_context, parameters=params, jira_service=JiraService(mocked_jira)
+    )
+
+    mocked_jira.update_issue_field.assert_not_called()
+
+
 def test_update_issue_points_missing_in_map(
     action_context_factory,
     mocked_jira,

@@ -220,7 +220,7 @@ def _maybe_update_issue_mapped_field(
     target_value = getattr(parameters, f"{source_field}_map").get(source_value)
 
     # If field is empty on create, or update is about another field, then nothing to do.
-    if (context.operation == Operation.CREATE and source_value == "") or (
+    if (context.operation == Operation.CREATE and source_value in ["", "---"]) or (
         context.operation == Operation.UPDATE
         and source_field not in context.event.changed_fields()
     ):
