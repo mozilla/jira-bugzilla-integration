@@ -689,10 +689,10 @@
         - add_link_to_bugzilla
         - add_link_to_jira
         - maybe_assign_jira_user
+        - maybe_update_issue_resolution
         - maybe_update_issue_status
       existing:
         - update_issue_summary
-        - add_jira_comments_for_changes
         - maybe_assign_jira_user
         - maybe_update_components
         - maybe_update_issue_resolution
@@ -705,3 +705,27 @@
       enhancement: Story
       task: Task
       defect: Bug
+    status_map:
+      UNCONFIRMED: Backlog
+      NEW: Backlog
+      ASSIGNED: In Progress
+      REOPENED: In Progress
+      RESOLVED: Done
+      VERIFIED: Done
+      FIXED: Done
+      INVALID: Done
+      WONTFIX: Done
+      INACTIVE: Done
+      DUPLICATE: Done
+      WORKSFORME: Done
+      INCOMPLETE: Done
+      MOVED: Done
+    resolution_map:
+      FIXED: Done
+      INVALID: Invalid
+      WONTFIX: "Won't Do"
+      INACTIVE: Inactive
+      DUPLICATE: Duplicate
+      WORKSFORME: "Cannot Reproduce"
+      INCOMPLETE: Incomplete
+      MOVED: Moved
