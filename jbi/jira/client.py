@@ -64,7 +64,7 @@ class JiraClient(Jira):
                 extra={"body": response.text},
             )
             # Set the exception message so that its str version contains details.
-            msg = f"HTTP {exc.response.status_code}: {exc}"
+            msg = f"{request.method} {request.path_url} -> HTTP {response.status_code}: {exc}"
             exc.args = (msg,) + exc.args[1:]
             raise
 
