@@ -689,13 +689,11 @@
         - add_link_to_bugzilla
         - add_link_to_jira
         - maybe_assign_jira_user
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
       existing:
         - update_issue_summary
         - maybe_assign_jira_user
         - maybe_update_components
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
         - sync_keywords_labels
         - sync_whiteboard_labels
@@ -720,12 +718,3 @@
       WORKSFORME: Done
       INCOMPLETE: Done
       MOVED: Done
-    resolution_map:
-      FIXED: Done
-      INVALID: Invalid
-      WONTFIX: "Won't Do"
-      INACTIVE: Inactive
-      DUPLICATE: Duplicate
-      WORKSFORME: "Cannot Reproduce"
-      INCOMPLETE: Incomplete
-      MOVED: Moved
