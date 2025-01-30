@@ -12,16 +12,20 @@ from fastapi.responses import HTMLResponse
 from fastapi.security import APIKeyHeader, HTTPBasic, HTTPBasicCredentials
 from fastapi.templating import Jinja2Templates
 
-from jbi import bugzilla, jira
-from jbi.configuration import ACTIONS
+from jbi import jira
+from jbi.bugzilla import models as bugzilla_models
+from jbi.bugzilla import service as bugzilla_service
+from jbi.configuration import get_actions
 from jbi.environment import Settings, get_settings
 from jbi.models import Actions
 from jbi.queue import DeadLetterQueue, get_dl_queue
 from jbi.runner import execute_or_queue
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
-ActionsDep = Annotated[Actions, Depends(lambda: ACTIONS)]
-BugzillaServiceDep = Annotated[bugzilla.BugzillaService, Depends(bugzilla.get_service)]
+ActionsDep = Annotated[Actions, Depends(get_actions)]
+BugzillaServiceDep = Annotated[
+    bugzilla_service.BugzillaService, Depends(bugzilla_service.get_service)
+]
 JiraServiceDep = Annotated[jira.JiraService, Depends(jira.get_service)]
 
 router = APIRouter()
@@ -69,7 +73,7 @@ async def bugzilla_webhook(
     request: Request,
     actions: ActionsDep,
     queue: Annotated[DeadLetterQueue, Depends(get_dl_queue)],
-    webhook_request: bugzilla.WebhookRequest = Body(..., embed=False),
+    webhook_request: bugzilla_models.WebhookRequest = Body(..., embed=False),
 ):
     """API endpoint that Bugzilla Webhook Events request"""
     return await execute_or_queue(webhook_request, queue, actions)

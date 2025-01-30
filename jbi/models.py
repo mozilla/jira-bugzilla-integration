@@ -18,7 +18,7 @@ from pydantic import (
 )
 
 from jbi import Operation, steps
-from jbi.bugzilla import Bug, BugId, WebhookEvent
+from jbi.bugzilla.models import Bug, BugId, WebhookEvent
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +51,6 @@ class ActionSteps(BaseModel, frozen=True):
     @classmethod
     def validate_steps(cls, function_names: list[str]):
         """Validate that all configure step functions exist in the steps module"""
-
         invalid_functions = [
             func_name for func_name in function_names if not hasattr(steps, func_name)
         ]

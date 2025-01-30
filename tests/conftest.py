@@ -127,11 +127,11 @@ def dl_queue(tmp_path):
 def mocked_bugzilla(request):
     if "no_mocked_bugzilla" in request.keywords:
         yield None
-        bugzilla.get_service.cache_clear()
+        bugzilla.service.get_service.cache_clear()
     else:
         with mock.patch("jbi.bugzilla.service.BugzillaClient") as mocked_bz:
             yield mocked_bz()
-            bugzilla.get_service.cache_clear()
+            bugzilla.service.get_service.cache_clear()
 
 
 @pytest.fixture(autouse=True)

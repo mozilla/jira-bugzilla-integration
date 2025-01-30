@@ -11,9 +11,11 @@ from typing import Optional
 from dockerflow.logging import request_id_context
 from statsd.defaults.env import statsd
 
-from jbi import ActionResult, Operation, bugzilla, jira
+from jbi import ActionResult, Operation, jira
 from jbi import steps as steps_module
+from jbi.bugzilla import models as bugzilla_models
 from jbi.bugzilla.client import BugNotAccessibleError
+from jbi.bugzilla.service import get_service as get_bugzilla_service
 from jbi.environment import get_settings
 from jbi.errors import ActionNotFoundError, IgnoreInvalidRequestError
 from jbi.models import (
@@ -56,7 +58,7 @@ def groups2operation(steps: ActionSteps):
     return by_operation
 
 
-def lookup_action(bug: bugzilla.Bug, actions: Actions) -> Action:
+def lookup_action(bug: bugzilla_models.Bug, actions: Actions) -> Action:
     """
     Find first matching action from bug's whiteboard field.
 
@@ -82,7 +84,7 @@ class Executor:
     ):
         self.parameters = parameters
         if not bugzilla_service:
-            self.bugzilla_service = bugzilla.get_service()
+            self.bugzilla_service = get_bugzilla_service()
         if not jira_service:
             self.jira_service = jira.get_service()
         self.steps = self._initialize_steps(parameters.steps)
@@ -162,7 +164,7 @@ class Executor:
 
 
 async def execute_or_queue(
-    request: bugzilla.WebhookRequest, queue: DeadLetterQueue, actions: Actions
+    request: bugzilla_models.WebhookRequest, queue: DeadLetterQueue, actions: Actions
 ):
     request_id = request_id_context.get()
 
@@ -198,7 +200,7 @@ async def execute_or_queue(
 
 @statsd.timer("jbi.action.execution.timer")
 def execute_action(
-    request: bugzilla.WebhookRequest,
+    request: bugzilla_models.WebhookRequest,
     actions: Actions,
 ):
     """Execute the configured action for the specified `request`.
@@ -230,7 +232,7 @@ def execute_action(
             extra=runner_context.model_dump(),
         )
         try:
-            bug = bugzilla.get_service().refresh_bug_data(bug)
+            bug = get_bugzilla_service().refresh_bug_data(bug)
         except BugNotAccessibleError as err:
             # This can happen if the bug is made private after the webhook
             # is processed (eg. if it spent some time in the DL queue)
