@@ -150,16 +150,16 @@
         - add_link_to_jira
         - maybe_assign_jira_user
         - maybe_update_components
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
+        - maybe_update_issue_resolution
         - sync_whiteboard_labels
         - sync_keywords_labels
       existing:
         - update_issue_summary
         - maybe_update_components
         - maybe_assign_jira_user
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
+        - maybe_update_issue_resolution
         - sync_whiteboard_labels
         - sync_keywords_labels
       comment:
@@ -488,16 +488,16 @@
         - add_link_to_jira
         - maybe_assign_jira_user
         - maybe_update_components
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
+        - maybe_update_issue_resolution
         - sync_whiteboard_labels
         - sync_keywords_labels
       existing:
         - update_issue_summary
         - maybe_assign_jira_user
         - maybe_update_components
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
+        - maybe_update_issue_resolution
         - sync_whiteboard_labels
         - sync_keywords_labels
       comment:
@@ -582,13 +582,13 @@
         - add_link_to_bugzilla
         - add_link_to_jira
         - maybe_assign_jira_user
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
+        - maybe_update_issue_resolution
       existing:
         - update_issue_summary
         - maybe_assign_jira_user
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
+        - maybe_update_issue_resolution
       comment:
         - create_comment
     status_map:

@@ -59,6 +59,18 @@ class ActionSteps(BaseModel, frozen=True):
             raise ValueError(
                 f"The following functions are not available in the `steps` module: {', '.join(invalid_functions)}"
             )
+
+        # Make sure `maybe_update_resolution` comes after `maybe_update_status`.
+        try:
+            idx_resolution = function_names.index("maybe_update_issue_resolution")
+            idx_status = function_names.index("maybe_update_issue_status")
+            assert idx_resolution > idx_status, (
+                "Step `maybe_update_resolution` should be put after `maybe_update_issue_status`"
+            )
+        except ValueError:
+            # One of these 2 steps not listed.
+            pass
+
         return function_names
 
 
