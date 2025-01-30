@@ -203,6 +203,16 @@ class Actions(RootModel):
                     f"Provide bugzilla_user_id data for `{action.whiteboard_tag}` action."
                 )
 
+            assert action.parameters.status_map or (
+                "maybe_update_issue_status" not in action.parameters.steps.new
+                and "maybe_update_issue_status" not in action.parameters.steps.existing
+            ), "`maybe_update_issue_status` was used without `status_map`"
+            assert action.parameters.resolution_map or (
+                "maybe_update_issue_resolution" not in action.parameters.steps.new
+                and "maybe_update_issue_resolution"
+                not in action.parameters.steps.existing
+            ), "`maybe_update_issue_resolution` was used without `resolution_map`"
+
         return actions
 
     model_config = ConfigDict(ignored_types=(functools.cached_property,))
