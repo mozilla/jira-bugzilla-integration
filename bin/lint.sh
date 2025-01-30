@@ -18,7 +18,7 @@ MYPY_CMD="$POETRY_RUN mypy jbi"
 
 YAMLLINT_CMD="$POETRY_RUN yamllint -c .yamllint config/*.yaml"
 
-ACTIONS_LINT_CMD="$POETRY_RUN jbi lint local && $POETRY_RUN jbi lint nonprod && $POETRY_RUN jbi lint prod"
+ACTIONS_LINT_CMD="$POETRY_RUN jbi lint"
 
 all () {
   echo "running bandit"
