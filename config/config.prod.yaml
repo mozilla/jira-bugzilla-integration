@@ -164,7 +164,7 @@
         - sync_keywords_labels
       comment:
         - create_comment
-    status_map:
+    status_map: &basic-status-map
       UNCONFIRMED: Backlog
       NEW: Backlog
       ASSIGNED: In Progress
@@ -179,7 +179,7 @@
       WORKSFORME: Done
       INCOMPLETE: Done
       MOVED: Done
-    resolution_map:
+    resolution_map: &basic-resolution-map
       FIXED: Done
       INVALID: Invalid
       WONTFIX: "Won't Do"
@@ -337,30 +337,8 @@
         - sync_keywords_labels
       comment:
         - create_comment
-    status_map:
-      UNCONFIRMED: Backlog
-      NEW: Backlog
-      ASSIGNED: In Progress
-      REOPENED: In Progress
-      RESOLVED: Done
-      VERIFIED: Done
-      FIXED: Done
-      INVALID: Done
-      WONTFIX: Done
-      INACTIVE: Done
-      DUPLICATE: Done
-      WORKSFORME: Done
-      INCOMPLETE: Done
-      MOVED: Done
-    resolution_map:
-      FIXED: Done
-      INVALID: Invalid
-      WONTFIX: "Won't Do"
-      INACTIVE: Inactive
-      DUPLICATE: Duplicate
-      WORKSFORME: "Cannot Reproduce"
-      INCOMPLETE: Incomplete
-      MOVED: Moved
+    status_map: *basic-status-map
+    resolution_map: *basic-resolution-map
 
 - whiteboard_tag: proton
   bugzilla_user_id: tbd
@@ -517,15 +495,7 @@
       WORKSFORME: Done
       INCOMPLETE: Done
       MOVED: Done
-    resolution_map:
-      FIXED: Done
-      INVALID: Invalid
-      WONTFIX: "Won't Do"
-      INACTIVE: Inactive
-      DUPLICATE: Duplicate
-      WORKSFORME: "Cannot Reproduce"
-      INCOMPLETE: Incomplete
-      MOVED: Moved
+    resolution_map: *basic-resolution-map
 
 - whiteboard_tag: dataplatform
   bugzilla_user_id: tbd
@@ -550,21 +520,7 @@
         - maybe_update_issue_status
       comment:
         - create_comment
-    status_map:
-      UNCONFIRMED: Backlog
-      NEW: Backlog
-      ASSIGNED: In Progress
-      REOPENED: In Progress
-      RESOLVED: Done
-      VERIFIED: Done
-      FIXED: Done
-      INVALID: Done
-      WONTFIX: Done
-      INACTIVE: Done
-      DUPLICATE: Done
-      WORKSFORME: Done
-      INCOMPLETE: Done
-      MOVED: Done
+    status_map: *basic-status-map
 
 - whiteboard_tag: dataquality
   bugzilla_user_id: tbd
@@ -703,18 +659,4 @@
       enhancement: Story
       task: Task
       defect: Bug
-    status_map:
-      UNCONFIRMED: Backlog
-      NEW: Backlog
-      ASSIGNED: In Progress
-      REOPENED: In Progress
-      RESOLVED: Done
-      VERIFIED: Done
-      FIXED: Done
-      INVALID: Done
-      WONTFIX: Done
-      INACTIVE: Done
-      DUPLICATE: Done
-      WORKSFORME: Done
-      INCOMPLETE: Done
-      MOVED: Done
+    status_map: *basic-status-map
