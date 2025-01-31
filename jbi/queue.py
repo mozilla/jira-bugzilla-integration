@@ -37,7 +37,7 @@ from urllib.parse import ParseResult, urlparse
 import dockerflow.checks
 from pydantic import BaseModel, FileUrl, ValidationError, computed_field
 
-from jbi import bugzilla
+from jbi.bugzilla import models as bugzilla_models
 from jbi.environment import get_settings
 
 logger = logging.getLogger(__name__)
@@ -85,7 +85,7 @@ class PythonException(BaseModel, frozen=True):
 class QueueItem(BaseModel, frozen=True):
     """Dead Letter Queue entry."""
 
-    payload: bugzilla.WebhookRequest
+    payload: bugzilla_models.WebhookRequest
     error: Optional[PythonException] = None
     rid: Optional[str] = None
 
@@ -316,7 +316,7 @@ class DeadLetterQueue:
             )
         return results
 
-    async def postpone(self, payload: bugzilla.WebhookRequest, rid: str) -> None:
+    async def postpone(self, payload: bugzilla_models.WebhookRequest, rid: str) -> None:
         """
         Postpone the specified request for later.
         """
@@ -324,7 +324,7 @@ class DeadLetterQueue:
         await self.backend.put(item)
 
     async def track_failed(
-        self, payload: bugzilla.WebhookRequest, exc: Exception, rid: str
+        self, payload: bugzilla_models.WebhookRequest, exc: Exception, rid: str
     ) -> QueueItem:
         """
         Store the specified payload and exception information into the queue.
@@ -337,7 +337,7 @@ class DeadLetterQueue:
         await self.backend.put(item)
         return item
 
-    async def is_blocked(self, payload: bugzilla.WebhookRequest) -> bool:
+    async def is_blocked(self, payload: bugzilla_models.WebhookRequest) -> bool:
         """
         Return `True` if the specified `payload` is blocked and should be
         queued instead of being processed.

@@ -14,7 +14,8 @@ import requests
 from dockerflow import checks
 from requests import exceptions as requests_exceptions
 
-from jbi import Operation, bugzilla, environment
+from jbi import Operation, environment
+from jbi.bugzilla import models as bugzilla_models
 from jbi.jira.utils import markdown_to_jira
 from jbi.models import ActionContext
 
@@ -184,7 +185,7 @@ class JiraService:
         return jira_response_comments
 
     def delete_jira_issue_if_duplicate(
-        self, context: ActionContext, latest_bug: bugzilla.Bug
+        self, context: ActionContext, latest_bug: bugzilla_models.Bug
     ):
         """Rollback the Jira issue creation if there is already a linked Jira issue
         on the Bugzilla ticket"""

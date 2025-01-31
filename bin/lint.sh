@@ -18,6 +18,8 @@ MYPY_CMD="$POETRY_RUN mypy jbi"
 
 YAMLLINT_CMD="$POETRY_RUN yamllint -c .yamllint config/*.yaml"
 
+ACTIONS_LINT_CMD="$POETRY_RUN jbi lint"
+
 all () {
   echo "running bandit"
   $BANDIT_CMD
@@ -31,6 +33,8 @@ all () {
   $MYPY_CMD
   echo "running yamllint"
   $YAMLLINT_CMD
+  echo "running actions lint"
+  $ACTIONS_LINT_CMD
 }
 
 usage () {
@@ -43,6 +47,7 @@ usage () {
   echo "  lint"
   echo "  mypy"
   echo "  yamllint"
+  echo "  actions"
 }
 
 if [ -z "$1" ]; then
@@ -77,6 +82,9 @@ else
       ;;
     "detect-secrets")
       $DETECT_SECRETS_CMD
+      ;;
+    "actions")
+      $ACTIONS_LINT_CMD
       ;;
     *)
       usage

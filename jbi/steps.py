@@ -4,7 +4,7 @@ Collection of reusable action steps.
 Each step takes an `ActionContext` and a list of arbitrary parameters.
 """
 
-# This import is needed (as of Pyhon 3.11) to enable type checking with modules
+# This import is needed (as of Python 3.11) to enable type checking with modules
 # imported under `TYPE_CHECKING`
 # https://docs.python.org/3/whatsnew/3.7.html#pep-563-postponed-evaluation-of-annotations
 # https://docs.python.org/3/whatsnew/3.11.html#pep-563-may-not-be-the-future
@@ -18,8 +18,6 @@ from requests import exceptions as requests_exceptions
 
 from jbi import Operation
 from jbi.environment import get_settings
-
-settings = get_settings()
 
 
 class StepStatus(Enum):
@@ -99,6 +97,7 @@ def add_link_to_jira(
     context: ActionContext, *, bugzilla_service: BugzillaService
 ) -> StepResult:
     """Add the URL to the Jira issue in the `see_also` field on the Bugzilla ticket"""
+    settings = get_settings()
     jira_url = f"{settings.jira_base_url}browse/{context.jira.issue}"
     logger.info(
         "Link %r on Bug %s",

@@ -23,7 +23,7 @@ from fastapi.staticfiles import StaticFiles
 
 import jbi
 import jbi.queue
-from jbi.configuration import ACTIONS
+from jbi.configuration import get_actions
 from jbi.environment import get_settings
 from jbi.log import CONFIG
 from jbi.router import router
@@ -31,6 +31,7 @@ from jbi.router import router
 SRC_DIR = Path(__file__).parent
 APP_DIR = Path(__file__).parents[1]
 
+ACTIONS = get_actions()
 settings = get_settings()
 version_info: dict[str, str] = get_version(APP_DIR)
 VERSION: str = version_info["version"]
@@ -60,8 +61,8 @@ sentry_sdk.init(
 # https://github.com/tiangolo/fastapi/discussions/9241
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    jira_service = jbi.jira.get_service()
-    bugzilla_service = jbi.bugzilla.get_service()
+    jira_service = jbi.jira.service.get_service()
+    bugzilla_service = jbi.bugzilla.service.get_service()
     queue = jbi.queue.get_dl_queue()
 
     checks.register(bugzilla_service.check_bugzilla_connection, name="bugzilla.up")

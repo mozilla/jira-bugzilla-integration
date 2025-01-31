@@ -8,7 +8,7 @@ from time import sleep
 from dockerflow.logging import JsonLogFormatter, request_id_context
 
 import jbi.runner as runner
-from jbi.configuration import ACTIONS
+from jbi.configuration import get_actions
 from jbi.errors import IgnoreInvalidRequestError
 from jbi.queue import get_dl_queue
 
@@ -21,6 +21,8 @@ logger.setLevel(logging.INFO)
 lsh = logging.StreamHandler(sys.stdout)
 lsh.setFormatter(JsonLogFormatter(logger_name=__name__))
 logger.addHandler(lsh)
+
+ACTIONS = get_actions()
 
 
 async def retry_failed(item_executor=runner.execute_action, queue=get_dl_queue()):
