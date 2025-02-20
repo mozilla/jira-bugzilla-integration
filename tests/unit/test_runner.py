@@ -15,7 +15,7 @@ from jbi.runner import (
     Executor,
     execute_action,
     execute_or_queue,
-    lookup_action,
+    lookup_actions,
 )
 
 
@@ -187,7 +187,7 @@ def test_action_is_logged_as_success_if_returns_true(
         ("Action 'devtest' executed successfully for Bug 654321", Operation.SUCCESS),
     ]
     assert capturelogs.records[-1].bug["id"] == 654321
-    assert capturelogs.records[-1].action["whiteboard_tag"] == "devtest"
+    assert capturelogs.records[-1].actions[0]["whiteboard_tag"] == "devtest"
 
 
 def test_action_is_logged_as_ignore_if_returns_false(
@@ -619,7 +619,7 @@ def test_counter_is_incremented_for_attachment(
 )
 def test_lookup_action_found(whiteboard, actions, bug_factory):
     bug = bug_factory(id=1234, whiteboard=whiteboard)
-    action = lookup_action(bug, actions)
+    action = lookup_actions(bug, actions)[0]
     assert action.whiteboard_tag == "devtest"
     assert "test config" in action.description
 
@@ -649,5 +649,5 @@ def test_lookup_action_found(whiteboard, actions, bug_factory):
 def test_lookup_action_not_found(whiteboard, actions, bug_factory):
     bug = bug_factory(id=1234, whiteboard=whiteboard)
     with pytest.raises(ActionNotFoundError) as exc_info:
-        lookup_action(bug, actions)
+        lookup_actions(bug, actions)[0]
     assert str(exc_info.value) == "devtest"
