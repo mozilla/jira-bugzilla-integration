@@ -67,11 +67,14 @@ def lookup_actions(bug: bugzilla_models.Bug, actions: Actions) -> list[Action]:
     """
 
     if bug.whiteboard:
+        relevant_actions = []
         for tag, action in actions.by_tag.items():
             # [tag-word], [tag-], [tag], but not [word-tag] or [tagword]
             search_string = r"\[" + tag + r"(-[^\]]*)*\]"
             if re.search(search_string, bug.whiteboard, flags=re.IGNORECASE):
-                return [action]
+                relevant_actions.append(action)
+        if len(relevant_actions):
+            return relevant_actions
 
     raise ActionNotFoundError(", ".join(actions.by_tag.keys()))
 

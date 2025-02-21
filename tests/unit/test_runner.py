@@ -4,6 +4,7 @@ from unittest import mock
 import pytest
 import requests
 import responses
+import tests.fixtures.factories as factories
 
 from jbi import Operation
 from jbi.bugzilla.client import BugNotAccessibleError
@@ -622,6 +623,35 @@ def test_lookup_action_found(whiteboard, actions, bug_factory):
     action = lookup_actions(bug, actions)[0]
     assert action.whiteboard_tag == "devtest"
     assert "test config" in action.description
+
+
+@pytest.mark.parametrize(
+    "whiteboard,expected_tags",
+    [
+        ("[example][DevTest]", ["devtest"]),
+        ("[DevTest][example]", ["devtest"]),
+        ("[example][DevTest][other]", ["devtest", "other"]),
+    ],
+)
+def test_multiple_lookup_actions_found(whiteboard, expected_tags, bug_factory):
+    actions = factories.ActionsFactory(root=[
+        factories.ActionFactory(
+            whiteboard_tag="devtest",
+            bugzilla_user_id="tbd",
+            description="test config",
+        ),
+        factories.ActionFactory(
+            whiteboard_tag="other",
+            bugzilla_user_id="tbd",
+            description="test config",
+        ),
+    ])
+    bug = bug_factory(id=1234, whiteboard=whiteboard)
+    acts = lookup_actions(bug, actions)
+    assert len(acts) == len(expected_tags)
+    looked_up_tags = [a.whiteboard_tag for a in acts]
+    assert sorted(looked_up_tags) == sorted(expected_tags)
+    assert all(["test config" == a.description for a in acts])
 
 
 @pytest.mark.parametrize(
