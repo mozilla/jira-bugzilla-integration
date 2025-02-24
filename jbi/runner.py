@@ -58,20 +58,23 @@ def groups2operation(steps: ActionSteps):
     return by_operation
 
 
-def lookup_action(bug: bugzilla_models.Bug, actions: Actions) -> Action:
+def lookup_actions(bug: bugzilla_models.Bug, actions: Actions) -> list[Action]:
     """
-    Find first matching action from bug's whiteboard field.
+    Find matching actions from bug's whiteboard field.
 
     Tags are strings between brackets and can have prefixes/suffixes
     using dashes (eg. ``[project]``, ``[project-moco]``, ``[project-moco-sprint1]``).
     """
 
     if bug.whiteboard:
+        relevant_actions = []
         for tag, action in actions.by_tag.items():
             # [tag-word], [tag-], [tag], but not [word-tag] or [tagword]
             search_string = r"\[" + tag + r"(-[^\]]*)*\]"
             if re.search(search_string, bug.whiteboard, flags=re.IGNORECASE):
-                return action
+                relevant_actions.append(action)
+        if len(relevant_actions):
+            return relevant_actions
 
     raise ActionNotFoundError(", ".join(actions.by_tag.keys()))
 
@@ -221,7 +224,7 @@ def execute_action(
             raise IgnoreInvalidRequestError("private bugs are not supported")
 
         try:
-            action = lookup_action(bug, actions)
+            action = lookup_actions(bug, actions)[0]
         except ActionNotFoundError as err:
             raise IgnoreInvalidRequestError(
                 f"no bug whiteboard matching action tags: {err}"
@@ -240,7 +243,7 @@ def execute_action(
 
         runner_context = runner_context.update(bug=bug)
 
-        runner_context = runner_context.update(action=action)
+        runner_context = runner_context.update(actions=[action])
 
         linked_issue_key: Optional[str] = bug.extract_from_see_also(
             project_key=action.jira_project_key
