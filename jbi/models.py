@@ -238,7 +238,7 @@ class RunnerContext(Context, extra="forbid"):
 
     operation: Operation
     event: WebhookEvent
-    action: Optional[Action] = None
+    actions: Optional[list[Action]] = None
     bug: BugId | Bug
 
 
