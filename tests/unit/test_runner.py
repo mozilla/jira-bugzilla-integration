@@ -4,8 +4,8 @@ from unittest import mock
 import pytest
 import requests
 import responses
-import tests.fixtures.factories as factories
 
+import tests.fixtures.factories as factories
 from jbi import Operation
 from jbi.bugzilla.client import BugNotAccessibleError
 from jbi.environment import get_settings
@@ -634,18 +634,20 @@ def test_lookup_action_found(whiteboard, actions, bug_factory):
     ],
 )
 def test_multiple_lookup_actions_found(whiteboard, expected_tags, bug_factory):
-    actions = factories.ActionsFactory(root=[
-        factories.ActionFactory(
-            whiteboard_tag="devtest",
-            bugzilla_user_id="tbd",
-            description="test config",
-        ),
-        factories.ActionFactory(
-            whiteboard_tag="other",
-            bugzilla_user_id="tbd",
-            description="test config",
-        ),
-    ])
+    actions = factories.ActionsFactory(
+        root=[
+            factories.ActionFactory(
+                whiteboard_tag="devtest",
+                bugzilla_user_id="tbd",
+                description="test config",
+            ),
+            factories.ActionFactory(
+                whiteboard_tag="other",
+                bugzilla_user_id="tbd",
+                description="test config",
+            ),
+        ]
+    )
     bug = bug_factory(id=1234, whiteboard=whiteboard)
     acts = lookup_actions(bug, actions)
     assert len(acts) == len(expected_tags)
@@ -681,3 +683,34 @@ def test_lookup_action_not_found(whiteboard, actions, bug_factory):
     with pytest.raises(ActionNotFoundError) as exc_info:
         lookup_actions(bug, actions)[0]
     assert str(exc_info.value) == "devtest"
+
+
+def test_request_triggers_multiple_actions(
+    webhook_request_factory,
+    mocked_bugzilla,
+):
+    actions = factories.ActionsFactory(
+        root=[
+            factories.ActionFactory(
+                whiteboard_tag="devtest",
+                bugzilla_user_id="tbd",
+                description="test config",
+            ),
+            factories.ActionFactory(
+                whiteboard_tag="other",
+                bugzilla_user_id="tbd",
+                description="test config",
+            ),
+        ]
+    )
+
+    webhook = webhook_request_factory(bug__whiteboard="[devtest][other]")
+    mocked_bugzilla.get_bug.return_value = webhook.bug
+
+    details = execute_action(request=webhook, actions=actions)
+
+    # Details has the following shape:
+    # {'devtest': {'responses': [..]}, 'other': {'responses': [...]}}
+    assert len(actions) == len(details)
+    assert "devtest" in details
+    assert "other" in details
