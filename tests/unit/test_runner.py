@@ -720,6 +720,7 @@ def test_request_triggers_multiple_update_actions(
     webhook_request_factory,
     mocked_bugzilla,
     mocked_jira,
+    webhook_event_change_factory,
 ):
     actions = factories.ActionsFactory(
         root=[
@@ -728,12 +729,20 @@ def test_request_triggers_multiple_update_actions(
                 bugzilla_user_id="tbd",
                 description="test config",
                 parameters__jira_project_key="JBI",
+                parameters__steps__existing=["maybe_update_issue_resolution"],
+                parameters__resolution_map={
+                    "FIXED": "Closed",
+                },
             ),
             factories.ActionFactory(
                 whiteboard_tag="other",
                 bugzilla_user_id="tbd",
                 description="test config",
                 parameters__jira_project_key="DE",
+                parameters__steps__existing=["maybe_update_issue_resolution"],
+                parameters__resolution_map={
+                    "FIXED": "Done",
+                },
             ),
         ]
     )
@@ -743,6 +752,12 @@ def test_request_triggers_multiple_update_actions(
         bug__see_also=[
             "https://mozilla.atlassian.net/browse/JBI-234",
             "https://mozilla.atlassian.net/browse/DE-567",
+        ],
+        bug__resolution="FIXED",
+        event__changes=[
+            webhook_event_change_factory(
+                field="resolution", removed="OPEN", added="FIXED"
+            )
         ],
     )
     mocked_bugzilla.get_bug.return_value = webhook.bug
@@ -759,9 +774,21 @@ def test_request_triggers_multiple_update_actions(
 
     details = execute_action(request=webhook, actions=actions)
 
+    mocked_jira.update_issue_field.assert_any_call(
+        key="JBI-234",
+        fields={
+            "resolution": {"name": "Closed"},
+        },
+    )
+    mocked_jira.update_issue_field.assert_any_call(
+        key="DE-567",
+        fields={
+            "resolution": {"name": "Done"},
+        },
+    )
+
     # Details has the following shape:
     # {'devtest': {'responses': [..]}, 'other': {'responses': [...]}}
     assert len(actions) == len(details)
     assert "devtest" in details
     assert "other" in details
-    print(details)

@@ -23,10 +23,16 @@ class PydanticFactory(factory.Factory):
         return model_class.model_construct(**kwargs)
 
 
+class ActionStepsFactory(PydanticFactory):
+    class Meta:
+        model = models.ActionSteps
+
+
 class ActionParamsFactory(PydanticFactory):
     class Meta:
         model = models.ActionParams
 
+    steps = factory.SubFactory(ActionStepsFactory)
     jira_project_key = "JBI"
     jira_components = {}
     labels_brackets = "no"
