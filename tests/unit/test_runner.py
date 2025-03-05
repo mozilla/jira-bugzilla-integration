@@ -714,3 +714,54 @@ def test_request_triggers_multiple_actions(
     assert len(actions) == len(details)
     assert "devtest" in details
     assert "other" in details
+
+
+def test_request_triggers_multiple_update_actions(
+    webhook_request_factory,
+    mocked_bugzilla,
+    mocked_jira,
+):
+    actions = factories.ActionsFactory(
+        root=[
+            factories.ActionFactory(
+                whiteboard_tag="devtest",
+                bugzilla_user_id="tbd",
+                description="test config",
+                parameters__jira_project_key="JBI",
+            ),
+            factories.ActionFactory(
+                whiteboard_tag="other",
+                bugzilla_user_id="tbd",
+                description="test config",
+                parameters__jira_project_key="DE",
+            ),
+        ]
+    )
+
+    webhook = webhook_request_factory(
+        bug__whiteboard="[devtest][other]",
+        bug__see_also=[
+            "https://mozilla.atlassian.net/browse/JBI-234",
+            "https://mozilla.atlassian.net/browse/DE-567",
+        ],
+    )
+    mocked_bugzilla.get_bug.return_value = webhook.bug
+
+    def side_effect_for_get_issue(issue_key):
+        if issue_key.startswith("JBI-"):
+            return {"fields": {"project": {"key": "JBI"}}}
+        elif issue_key.startswith("DE-"):
+            return {"fields": {"project": {"key": "DE"}}}
+
+        return None
+
+    mocked_jira.get_issue.side_effect = side_effect_for_get_issue
+
+    details = execute_action(request=webhook, actions=actions)
+
+    # Details has the following shape:
+    # {'devtest': {'responses': [..]}, 'other': {'responses': [...]}}
+    assert len(actions) == len(details)
+    assert "devtest" in details
+    assert "other" in details
+    print(details)

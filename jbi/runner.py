@@ -246,9 +246,7 @@ def execute_action(
             # is processed (eg. if it spent some time in the DL queue)
             raise IgnoreInvalidRequestError(str(err)) from err
 
-        runner_context = runner_context.update(bug=bug)
-
-        runner_context = runner_context.update(actions=relevant_actions)
+        runner_context = runner_context.update(bug=bug, actions=relevant_actions)
 
         return do_execute_actions(runner_context, bug, relevant_actions)
     except IgnoreInvalidRequestError as exception:
@@ -317,6 +315,10 @@ def do_execute_actions(
             if (
                 project_key := jira_issue["fields"]["project"]["key"]
             ) != action_context.jira.project:
+                # TODO: We're now executing multiple actions for a given bug, we
+                # should probably either not fail and instead report which actions
+                # failed to apply, or execute all the changes as a "transaction" and
+                # roll them back if one of them fails.
                 raise IgnoreInvalidRequestError(
                     f"ignore linked project {project_key!r} (!={action_context.jira.project!r})"
                 )
