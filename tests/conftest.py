@@ -55,6 +55,7 @@ def mocked_statsd():
         yield _mocked_statsd
 
 
+register(factories.ActionStepsFactory)
 register(factories.ActionContextFactory)
 register(factories.ActionFactory)
 register(factories.ActionsFactory, "_actions")

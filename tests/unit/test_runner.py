@@ -5,6 +5,7 @@ import pytest
 import requests
 import responses
 
+import tests.fixtures.factories as factories
 from jbi import Operation
 from jbi.bugzilla.client import BugNotAccessibleError
 from jbi.environment import get_settings
@@ -15,7 +16,7 @@ from jbi.runner import (
     Executor,
     execute_action,
     execute_or_queue,
-    lookup_action,
+    lookup_actions,
 )
 
 
@@ -187,7 +188,7 @@ def test_action_is_logged_as_success_if_returns_true(
         ("Action 'devtest' executed successfully for Bug 654321", Operation.SUCCESS),
     ]
     assert capturelogs.records[-1].bug["id"] == 654321
-    assert capturelogs.records[-1].action["whiteboard_tag"] == "devtest"
+    assert capturelogs.records[-1].actions[0]["whiteboard_tag"] == "devtest"
 
 
 def test_action_is_logged_as_ignore_if_returns_false(
@@ -619,9 +620,40 @@ def test_counter_is_incremented_for_attachment(
 )
 def test_lookup_action_found(whiteboard, actions, bug_factory):
     bug = bug_factory(id=1234, whiteboard=whiteboard)
-    action = lookup_action(bug, actions)
+    action = lookup_actions(bug, actions)[0]
     assert action.whiteboard_tag == "devtest"
     assert "test config" in action.description
+
+
+@pytest.mark.parametrize(
+    "whiteboard,expected_tags",
+    [
+        ("[example][DevTest]", ["devtest"]),
+        ("[DevTest][example]", ["devtest"]),
+        ("[example][DevTest][other]", ["devtest", "other"]),
+    ],
+)
+def test_multiple_lookup_actions_found(whiteboard, expected_tags, bug_factory):
+    actions = factories.ActionsFactory(
+        root=[
+            factories.ActionFactory(
+                whiteboard_tag="devtest",
+                bugzilla_user_id="tbd",
+                description="test config",
+            ),
+            factories.ActionFactory(
+                whiteboard_tag="other",
+                bugzilla_user_id="tbd",
+                description="test config",
+            ),
+        ]
+    )
+    bug = bug_factory(id=1234, whiteboard=whiteboard)
+    acts = lookup_actions(bug, actions)
+    assert len(acts) == len(expected_tags)
+    looked_up_tags = [a.whiteboard_tag for a in acts]
+    assert sorted(looked_up_tags) == sorted(expected_tags)
+    assert all(["test config" == a.description for a in acts])
 
 
 @pytest.mark.parametrize(
@@ -649,5 +681,114 @@ def test_lookup_action_found(whiteboard, actions, bug_factory):
 def test_lookup_action_not_found(whiteboard, actions, bug_factory):
     bug = bug_factory(id=1234, whiteboard=whiteboard)
     with pytest.raises(ActionNotFoundError) as exc_info:
-        lookup_action(bug, actions)
+        lookup_actions(bug, actions)[0]
     assert str(exc_info.value) == "devtest"
+
+
+def test_request_triggers_multiple_actions(
+    webhook_request_factory,
+    mocked_bugzilla,
+):
+    actions = factories.ActionsFactory(
+        root=[
+            factories.ActionFactory(
+                whiteboard_tag="devtest",
+                bugzilla_user_id="tbd",
+                description="test config",
+            ),
+            factories.ActionFactory(
+                whiteboard_tag="other",
+                bugzilla_user_id="tbd",
+                description="test config",
+            ),
+        ]
+    )
+
+    webhook = webhook_request_factory(bug__whiteboard="[devtest][other]")
+    mocked_bugzilla.get_bug.return_value = webhook.bug
+
+    details = execute_action(request=webhook, actions=actions)
+
+    # Details has the following shape:
+    # {'devtest': {'responses': [..]}, 'other': {'responses': [...]}}
+    assert len(actions) == len(details)
+    assert "devtest" in details
+    assert "other" in details
+
+
+def test_request_triggers_multiple_update_actions(
+    webhook_request_factory,
+    mocked_bugzilla,
+    mocked_jira,
+    webhook_event_change_factory,
+):
+    actions = factories.ActionsFactory(
+        root=[
+            factories.ActionFactory(
+                whiteboard_tag="devtest",
+                bugzilla_user_id="tbd",
+                description="test config",
+                parameters__jira_project_key="JBI",
+                parameters__steps__existing=["maybe_update_issue_resolution"],
+                parameters__resolution_map={
+                    "FIXED": "Closed",
+                },
+            ),
+            factories.ActionFactory(
+                whiteboard_tag="other",
+                bugzilla_user_id="tbd",
+                description="test config",
+                parameters__jira_project_key="DE",
+                parameters__steps__existing=["maybe_update_issue_resolution"],
+                parameters__resolution_map={
+                    "FIXED": "Done",
+                },
+            ),
+        ]
+    )
+
+    webhook = webhook_request_factory(
+        bug__whiteboard="[devtest][other]",
+        bug__see_also=[
+            "https://mozilla.atlassian.net/browse/JBI-234",
+            "https://mozilla.atlassian.net/browse/DE-567",
+        ],
+        bug__resolution="FIXED",
+        event__changes=[
+            webhook_event_change_factory(
+                field="resolution", removed="OPEN", added="FIXED"
+            )
+        ],
+    )
+    mocked_bugzilla.get_bug.return_value = webhook.bug
+
+    def side_effect_for_get_issue(issue_key):
+        if issue_key.startswith("JBI-"):
+            return {"fields": {"project": {"key": "JBI"}}}
+        elif issue_key.startswith("DE-"):
+            return {"fields": {"project": {"key": "DE"}}}
+
+        return None
+
+    mocked_jira.get_issue.side_effect = side_effect_for_get_issue
+
+    details = execute_action(request=webhook, actions=actions)
+
+    mocked_jira.update_issue_field.assert_any_call(
+        key="JBI-234",
+        fields={
+            "resolution": {"name": "Closed"},
+        },
+    )
+    mocked_jira.update_issue_field.assert_any_call(
+        key="DE-567",
+        fields={
+            "resolution": {"name": "Done"},
+        },
+    )
+
+    # Details has the following shape:
+    # {'devtest': {'responses': [..]}, 'other': {'responses': [...]}}
+    assert len(actions) == len(details)
+    assert "devtest" in details
+    assert "other" in details

@@ -58,20 +58,23 @@ def groups2operation(steps: ActionSteps):
     return by_operation
 
 
-def lookup_action(bug: bugzilla_models.Bug, actions: Actions) -> Action:
+def lookup_actions(bug: bugzilla_models.Bug, actions: Actions) -> list[Action]:
     """
-    Find first matching action from bug's whiteboard field.
+    Find matching actions from bug's whiteboard field.
 
     Tags are strings between brackets and can have prefixes/suffixes
     using dashes (eg. ``[project]``, ``[project-moco]``, ``[project-moco-sprint1]``).
     """
 
     if bug.whiteboard:
+        relevant_actions = []
         for tag, action in actions.by_tag.items():
             # [tag-word], [tag-], [tag], but not [word-tag] or [tagword]
             search_string = r"\[" + tag + r"(-[^\]]*)*\]"
             if re.search(search_string, bug.whiteboard, flags=re.IGNORECASE):
-                return action
+                relevant_actions.append(action)
+        if len(relevant_actions):
+            return relevant_actions
 
     raise ActionNotFoundError(", ".join(actions.by_tag.keys()))
 
@@ -203,12 +206,17 @@ def execute_action(
     request: bugzilla_models.WebhookRequest,
     actions: Actions,
 ):
-    """Execute the configured action for the specified `request`.
+    """Execute the configured actions for the specified `request`.
+
+    If multiple actions are configured for a given request, all of them
+    are executed.
 
     This will raise an `IgnoreInvalidRequestError` error if the request
     does not contain bug data or does not match any action.
 
-    The value returned by the action call is returned.
+    A dictionary containing the values returned by the actions calls
+    is returned. The action tag is used to index the responses in the
+    dictionary.
     """
     bug, event = request.bug, request.event
     runner_context = RunnerContext(
@@ -221,7 +229,7 @@ def execute_action(
             raise IgnoreInvalidRequestError("private bugs are not supported")
 
         try:
-            action = lookup_action(bug, actions)
+            relevant_actions = lookup_actions(bug, actions)
         except ActionNotFoundError as err:
             raise IgnoreInvalidRequestError(
                 f"no bug whiteboard matching action tags: {err}"
@@ -238,10 +246,42 @@ def execute_action(
             # is processed (eg. if it spent some time in the DL queue)
             raise IgnoreInvalidRequestError(str(err)) from err
 
-        runner_context = runner_context.update(bug=bug)
+        runner_context = runner_context.update(bug=bug, actions=relevant_actions)
 
-        runner_context = runner_context.update(action=action)
+        return do_execute_actions(runner_context, bug, relevant_actions)
+    except IgnoreInvalidRequestError as exception:
+        logger.info(
+            "Ignore incoming request: %s",
+            exception,
+            extra=runner_context.update(operation=Operation.IGNORE).model_dump(),
+        )
+        statsd.incr("jbi.bugzilla.ignored.count")
+        raise
 
+
+@statsd.timer("jbi.action.execution.timer")
+def do_execute_actions(
+    runner_context: RunnerContext,
+    bug: bugzilla_models.Bug,
+    actions: Actions,
+):
+    """Execute the provided actions on the bug, within the provided context.
+
+    This will raise an `IgnoreInvalidRequestError` error if the request
+    does not contain bug data or does not match any action.
+
+    A dictionary containing the values returned by the actions calls
+    is returned. The action tag is used to index the responses in the
+    dictionary.
+    """
+    runner_context = runner_context.update(bug=bug)
+
+    runner_context = runner_context.update(actions=actions)
+
+    event = runner_context.event
+
+    details = {}
+    for action in actions:
         linked_issue_key: Optional[str] = bug.extract_from_see_also(
             project_key=action.jira_project_key
         )
@@ -275,6 +315,10 @@ def execute_action(
             if (
                 project_key := jira_issue["fields"]["project"]["key"]
             ) != action_context.jira.project:
+                # TODO: We're now executing multiple actions for a given bug, we
+                # should probably either not fail and instead report which actions
+                # failed to apply, or execute all the changes as a "transaction" and
+                # roll them back if one of them fails.
                 raise IgnoreInvalidRequestError(
                     f"ignore linked project {project_key!r} (!={action_context.jira.project!r})"
                 )
@@ -306,7 +350,8 @@ def execute_action(
             extra=runner_context.update(operation=Operation.EXECUTE).model_dump(),
         )
         executor = Executor(parameters=action.parameters)
-        handled, details = executor(context=action_context)
+        handled, action_details = executor(context=action_context)
+        details[action.whiteboard_tag] = action_details
         statsd.incr(f"jbi.operation.{action_context.operation.lower()}.count")
         logger.info(
             "Action %r executed successfully for Bug %s",
@@ -317,12 +362,4 @@ def execute_action(
             ).model_dump(),
         )
         statsd.incr("jbi.bugzilla.processed.count")
-        return details
-    except IgnoreInvalidRequestError as exception:
-        logger.info(
-            "Ignore incoming request: %s",
-            exception,
-            extra=runner_context.update(operation=Operation.IGNORE).model_dump(),
-        )
-        statsd.incr("jbi.bugzilla.ignored.count")
-        raise
+    return details
