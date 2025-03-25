@@ -162,6 +162,7 @@
         - maybe_update_issue_resolution
         - sync_whiteboard_labels
         - sync_keywords_labels
+        - add_jira_comments_for_changes
       comment:
         - create_comment
     status_map: &basic-status-map
@@ -335,6 +336,7 @@
         - maybe_update_issue_resolution
         - sync_whiteboard_labels
         - sync_keywords_labels
+        - add_jira_comments_for_changes
       comment:
         - create_comment
     status_map: *basic-status-map
