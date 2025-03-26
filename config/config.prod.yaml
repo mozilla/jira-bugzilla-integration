@@ -388,12 +388,9 @@
 
 - whiteboard_tag: remote-settings
   bugzilla_user_id: 576226
-  description: Remote Settings Server issues
+  description: Remote Settings issues
   parameters:
-    jira_project_key: SE
-    jira_components:
-      set_custom_components:
-        - "remote-settings"
+    jira_project_key: RMST
     steps:
       new:
         - create_issue
