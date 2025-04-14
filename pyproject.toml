@@ -8,8 +8,8 @@ license = "MPL"
 [tool.poetry.dependencies]
 python = ">=3.12, <3.14"
 fastapi = "^0.115.12"
-pydantic = {version = "^2.11.2", extras = ["email"]}
-uvicorn = {extras = ["standard"], version = "^0.34.0"}
+pydantic = {version = "^2.11.3", extras = ["email"]}
+uvicorn = {extras = ["standard"], version = "^0.34.1"}
 atlassian-python-api = "^3.41.21"
 dockerflow = {extras = ["fastapi"], version = "2024.4.2"}
 Jinja2 = "^3.1.6"
@@ -36,7 +36,7 @@ responses = "^0.25.7"
 httpx = "^0.28.1"
 factory-boy = "^3.3.3"
 pytest-factoryboy = "^2.7.0"
-ruff = "^0.11.4"
+ruff = "^0.11.5"
 pytest-mock = "^3.14.0"
 pytest-asyncio = "^0.26.0"
 
