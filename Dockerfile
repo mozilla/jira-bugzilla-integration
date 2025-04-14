@@ -1,5 +1,5 @@
 # Creating a python base with shared environment variables
-FROM python:3.13.2 AS base
+FROM python:3.13.3 AS base
 ENV PIP_NO_CACHE_DIR=off \
     PIP_DEFAULT_TIMEOUT=100 \
     PIP_DISABLE_PIP_VERSION_CHECK=on \
@@ -22,7 +22,7 @@ COPY ./poetry.lock ./pyproject.toml ./
 RUN $POETRY_HOME/bin/poetry install --without dev --no-root
 
 # `production` stage uses the dependencies downloaded in the `base` stage
-FROM python:3.13.2-slim AS production
+FROM python:3.13.3-slim AS production
 
 # Install pandoc for markdown to Jira conversions.
 RUN apt-get -y update && \
