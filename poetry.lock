@@ -50,14 +50,14 @@ tests = ["mypy (>=0.800)", "pytest", "pytest-asyncio"]
 
 [[package]]
 name = "atlassian-python-api"
-version = "3.41.21"
+version = "4.0.3"
 description = "Python Atlassian REST API Wrapper"
 optional = false
 python-versions = "*"
 groups = ["main"]
 files = [
-    {file = "atlassian_python_api-3.41.21-py3-none-any.whl", hash = "sha256:6397bfa08d19acf08a766d3db5dd782348e8a3efca49cbf4ada870290a7fcf07"},
-    {file = "atlassian_python_api-3.41.21.tar.gz", hash = "sha256:30117504ebdcbe229c6a15f7a6b89076e7f20e5feeb425fbce2b4b0b18b0e639"},
+    {file = "atlassian_python_api-4.0.3-py3-none-any.whl", hash = "sha256:23d9f0d33af260bbe7cec7edde125ce40b370183da7bf2f1c012ff5cfe721fa0"},
+    {file = "atlassian_python_api-4.0.3.tar.gz", hash = "sha256:c5347e15c5a0a2ce987767c3428d112680fb5c4228f2f309009d9b01b5bea22e"},
 ]
 
 [package.dependencies]
@@ -68,6 +68,7 @@ oauthlib = "*"
 requests = "*"
 requests_oauthlib = "*"
 six = "*"
+typing-extensions = "*"
 
 [package.extras]
 kerberos = ["requests-kerberos"]
@@ -2198,4 +2199,4 @@ dev = ["doc8", "flake8", "flake8-import-order", "rstcheck[sphinx]", "sphinx"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12, <3.14"
-content-hash = "a51972eac1bbb26bac17804883becf799f7a234a0a28c7ff9734d240da66befc"
+content-hash = "fe6ffed9c9abdcd97e661283ce95984bc5f14f4e445244a9fb0fc0c12b82e073"
