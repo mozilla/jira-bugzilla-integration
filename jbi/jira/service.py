@@ -26,7 +26,7 @@ settings = environment.get_settings()
 logger = logging.getLogger(__name__)
 
 
-JIRA_DESCRIPTION_CHAR_LIMIT = 32767
+JIRA_DESCRIPTION_CHAR_LIMIT = 32667
 
 JIRA_REQUIRED_PERMISSIONS = {
     "ADD_COMMENTS",
