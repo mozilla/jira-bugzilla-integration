@@ -1,5 +1,5 @@
 import logging
-from typing import Collection, Iterable, Optional
+from typing import Any, Collection, Iterable, Optional, Union
 
 import requests
 from atlassian import Jira
@@ -84,7 +84,7 @@ class JiraClient(Jira):
         expand=None,
         url=None,
         keys: Optional[Collection[str]] = None,
-    ):
+    ) -> dict:
         """Returns a paginated list of projects visible to the user.
 
         https://developer.atlassian.com/cloud/jira/platform/rest/v2/api-group-projects/#api-rest-api-2-project-search-get
@@ -97,20 +97,23 @@ class JiraClient(Jira):
                 "``projects_from_cloud`` method is only available for Jira Cloud platform"
             )
 
-        params = []
+        params_dict: dict[str, Any] = {}
 
         if keys is not None:
             if len(keys) > 50:
                 raise ValueError("Up to 50 project keys can be provided.")
-            params = [("keys", key) for key in keys]
+            params_dict["keys"] = list(keys)
 
         if included_archived:
-            params.append(("includeArchived", included_archived))
+            params_dict["includeArchived"] = included_archived
         if expand:
-            params.append(("expand", expand))
+            params_dict["expand"] = expand
         page_url = url or self.resource_url("project/search")
         is_url_absolute = bool(page_url.lower().startswith("http"))
-        return self.get(page_url, params=params, absolute=is_url_absolute)
+        projects: Union[dict, None] = self.get(
+            page_url, params=params_dict, absolute=is_url_absolute
+        )
+        return projects if projects else {"values": []}
 
     @instrumented_method
     def permitted_projects(self, permissions: Optional[Iterable] = None) -> list[dict]:
@@ -125,5 +128,5 @@ class JiraClient(Jira):
             "/rest/api/2/permissions/project",
             json={"permissions": list(permissions)},
         )
-        projects: list[dict] = response["projects"]
+        projects: list[dict] = response["projects"] if response else []
         return projects
