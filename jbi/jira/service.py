@@ -25,9 +25,6 @@ settings = environment.get_settings()
 
 logger = logging.getLogger(__name__)
 
-
-JIRA_DESCRIPTION_CHAR_LIMIT = 32667
-
 JIRA_REQUIRED_PERMISSIONS = {
     "ADD_COMMENTS",
     "CREATE_ISSUES",
@@ -79,7 +76,7 @@ class JiraService:
             "summary": bug.summary,
             "issuetype": {"name": issue_type},
             "description": markdown_to_jira(
-                description, max_length=JIRA_DESCRIPTION_CHAR_LIMIT
+                description, max_length=context.action.parameters.jira_char_limit
             ),
             "project": {"key": context.jira.project},
         }
@@ -134,7 +131,7 @@ class JiraService:
             prefix = f"*{commenter}* commented: \n"
             formatted_comment = prefix + markdown_to_jira(
                 comment.body,
-                max_length=JIRA_DESCRIPTION_CHAR_LIMIT - len(prefix),
+                max_length=context.action.parameters.jira_char_limit - len(prefix),
             )
 
         issue_key = context.jira.issue
@@ -317,11 +314,11 @@ class JiraService:
         """Update's an issue's summary with the description of an incoming bug"""
         truncated_summary = context.bug.summary or ""
 
-        if len(truncated_summary) > JIRA_DESCRIPTION_CHAR_LIMIT:
+        if len(truncated_summary) > context.action.parameters.jira_char_limit:
             # Truncate on last word.
-            truncated_summary = truncated_summary[:JIRA_DESCRIPTION_CHAR_LIMIT].rsplit(
-                maxsplit=1
-            )[0]
+            truncated_summary = truncated_summary[
+                : context.action.parameters.jira_char_limit
+            ].rsplit(maxsplit=1)[0]
 
         return self.update_issue_field(
             context, field="summary", value=truncated_summary

@@ -6,6 +6,7 @@
   parameters:
     jira_project_key: WEBEXT
     labels_brackets: both
+    jira_char_limit: 10000
 
 - whiteboard_tag: fidedi
   bugzilla_user_id: tbd

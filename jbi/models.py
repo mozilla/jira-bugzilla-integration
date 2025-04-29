@@ -87,6 +87,7 @@ class ActionParams(BaseModel, frozen=True):
 
     jira_project_key: str
     steps: ActionSteps = ActionSteps()
+    jira_char_limit: int = 32667
     jira_components: JiraComponents = JiraComponents()
     jira_cf_fx_points_field: str = "customfield_10037"
     jira_severity_field: str = "customfield_10319"
