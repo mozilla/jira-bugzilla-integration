@@ -422,8 +422,8 @@ def test_all_project_issue_types_exist(
         status=200,
         match=[
             responses.matchers.query_string_matcher(
-                "keys=ABC&keys=DEF&expand=issueTypes"
-            )
+                "keys=['ABC', 'DEF']&expand=issueTypes"
+            ),
         ],
         json={"values": project_data},
     )
