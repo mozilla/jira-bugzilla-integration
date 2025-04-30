@@ -522,7 +522,7 @@ class JiraService:
 
         try:
             paginated_project_response = self.client.paginated_projects(
-                expand="issueTypes", keys=actions.configured_jira_projects_keys
+                expand="issueTypes", keys=sorted(actions.configured_jira_projects_keys)
             )
         except requests.RequestException:
             return [

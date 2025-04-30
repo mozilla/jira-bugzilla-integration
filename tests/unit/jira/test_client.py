@@ -86,7 +86,7 @@ def test_paginated_projects_with_keys(settings, jira_client, mocked_responses):
         responses.GET,
         url,
         status=200,
-        match=[responses.matchers.query_string_matcher("keys=ABC&keys=DEF")],
+        match=[responses.matchers.query_string_matcher("keys=['ABC', 'DEF']")],
         json=mocked_response_data,
     )
     resp = jira_client.paginated_projects(keys=["ABC", "DEF"])
