@@ -8,7 +8,7 @@ license = "MPL"
 [tool.poetry.dependencies]
 python = ">=3.12, <3.14"
 fastapi = "^0.115.12"
-pydantic = {version = "^2.11.3", extras = ["email"]}
+pydantic = {version = "^2.11.4", extras = ["email"]}
 uvicorn = {extras = ["standard"], version = "^0.34.2"}
 atlassian-python-api = "^4.0.3"
 dockerflow = {extras = ["fastapi"], version = "2024.4.2"}
@@ -29,14 +29,14 @@ mypy = "^1.15"
 detect-secrets = "^1.5.0"
 bandit = "^1.8.3"
 pytest = "^8.3.5"
-yamllint = "^1.37.0"
+yamllint = "^1.37.1"
 pytest-dotenv = "^0.5.2"
 types-requests = "^2.32.0"
 responses = "^0.25.7"
 httpx = "^0.28.1"
 factory-boy = "^3.3.3"
 pytest-factoryboy = "^2.7.0"
-ruff = "^0.11.7"
+ruff = "^0.11.8"
 pytest-mock = "^3.14.0"
 pytest-asyncio = "^0.26.0"
 
