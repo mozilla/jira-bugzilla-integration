@@ -247,7 +247,7 @@
   bugzilla_user_id: 462407
   description: Homepage New Tab Engineering
   parameters:
-    jira_project_key: HNTENG
+    jira_project_key: HNT
     steps:
       new:
         - create_issue
