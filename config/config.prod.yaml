@@ -261,6 +261,10 @@
         - maybe_assign_jira_user
         - sync_whiteboard_labels
     labels_brackets: both
+    issue_type_map:
+      enhancement: Task
+      task: Task
+      defect: Task
 
 - whiteboard_tag: mv3
   bugzilla_user_id: tbd
