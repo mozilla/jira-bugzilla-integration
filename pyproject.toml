@@ -9,7 +9,7 @@ license = "MPL"
 python = ">=3.12, <3.14"
 fastapi = "^0.115.12"
 pydantic = {version = "^2.11.5", extras = ["email"]}
-uvicorn = {extras = ["standard"], version = "^0.34.2"}
+uvicorn = {extras = ["standard"], version = "^0.34.3"}
 atlassian-python-api = "^4.0.4"
 dockerflow = {extras = ["fastapi"], version = "2024.4.2"}
 Jinja2 = "^3.1.6"
@@ -25,7 +25,7 @@ pypandoc = "^1.15"
 click = "^8.2.1"
 pre-commit = "^4.2.0"
 coverage = {extras = ["toml"], version = "^7.8"}
-mypy = "^1.15"
+mypy = "^1.16"
 detect-secrets = "^1.5.0"
 bandit = "^1.8.3"
 pytest = "^8.3.5"
@@ -36,8 +36,8 @@ responses = "^0.25.7"
 httpx = "^0.28.1"
 factory-boy = "^3.3.3"
 pytest-factoryboy = "^2.7.0"
-ruff = "^0.11.11"
-pytest-mock = "^3.14.0"
+ruff = "^0.11.12"
+pytest-mock = "^3.14.1"
 pytest-asyncio = "^0.26.0"
 
 [tool.poetry.scripts]
