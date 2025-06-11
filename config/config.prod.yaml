@@ -229,6 +229,44 @@
       INCOMPLETE: Cancelled
       MOVED: Cancelled
 
+- whiteboard_tag: uniffi
+  bugzilla_user_id: 624105
+  description: UniFFI project whiteboard tag
+  parameters:
+    jira_project_key: UNIFFI
+    labels_brackets: both
+    steps:
+      new:
+        - create_issue
+        - add_link_to_bugzilla
+        - add_link_to_jira
+        - sync_whiteboard_labels
+        - sync_keywords_labels
+        - maybe_assign_jira_user
+        - maybe_delete_duplicate
+        - maybe_update_issue_status
+      existing:
+        - update_issue_summary
+        - maybe_assign_jira_user
+        - maybe_update_issue_status
+      comment:
+        - create_comment
+    status_map:
+      UNCONFIRMED: New
+      NEW: New
+      ASSIGNED: In Progress
+      REOPENED: In Progress
+      RESOLVED: Done
+      VERIFIED: Done
+      FIXED: Done
+      INVALID: Cancelled
+      WONTFIX: Cancelled
+      INACTIVE: Cancelled
+      DUPLICATE: Cancelled
+      WORKSFORME: Cancelled
+      INCOMPLETE: Cancelled
+      MOVED: Cancelled
+
 - whiteboard_tag: disco
   bugzilla_user_id: 624105
   description: DISCO whiteboard tag
