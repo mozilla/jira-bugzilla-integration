@@ -689,3 +689,19 @@
       task: Task
       defect: Bug
     status_map: *basic-status-map
+
+- whiteboard_tag: fx-vpn
+  bugzilla_user_id: 711867
+  description: VPN Integration in Firefox
+  parameters:
+    jira_project_key: FXVPN2
+    labels_brackets: both
+    status_map:
+      ASSIGNED: In Progress
+      FIXED: Done
+      WONTFIX: Cancelled
+      DUPLICATE: Cancelled
+      INVALID: Cancelled
+      INCOMPLETE: Done
+      WORKSFORME: Cancelled
+      REOPENED: In Progress
