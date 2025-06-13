@@ -696,7 +696,7 @@
   parameters:
     jira_project_key: FXVPN2
     labels_brackets: both
-  status_map:
+    status_map:
       ASSIGNED: In Progress
       FIXED: Done
       WONTFIX: Cancelled
