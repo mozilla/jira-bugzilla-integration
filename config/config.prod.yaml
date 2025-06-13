@@ -690,7 +690,7 @@
       defect: Bug
     status_map: *basic-status-map
 
-- whiteboard_tag: jirasync
+- whiteboard_tag: fx-vpn
   bugzilla_user_id: 711867
   description: VPN Integration in Firefox
   parameters:
