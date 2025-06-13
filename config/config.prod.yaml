@@ -692,7 +692,7 @@
 
 - whiteboard_tag: jirasync
   bugzilla_user_id: 711867
-  description: VPN INtegration in Firefox 
+  description: VPN INtegration in Firefox
   parameters:
     jira_project_key: FXVPN2
     labels_brackets: both
