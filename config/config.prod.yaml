@@ -635,6 +635,43 @@
       WORKSFORME: Closed
       REOPENED: In Progress
 
+- whiteboard_tag: ai-runtime
+  bugzilla_user_id: tbd
+  description: Firefox GenAI - ai-runtime
+  parameters:
+    jira_project_key: GENAI
+    steps:
+      new:
+        - create_issue
+        - maybe_delete_duplicate
+        - add_link_to_bugzilla
+        - add_link_to_jira
+        - maybe_assign_jira_user
+        - maybe_update_issue_status
+        - maybe_update_issue_priority
+        - maybe_update_issue_severity
+        - maybe_update_issue_points
+        - sync_whiteboard_labels
+      existing:
+        - update_issue_summary
+        - maybe_assign_jira_user
+        - maybe_update_issue_status
+        - maybe_update_issue_priority
+        - maybe_update_issue_severity
+        - maybe_update_issue_points
+        - sync_whiteboard_labels
+      comment:
+        - create_comment
+    status_map:
+      ASSIGNED: In Progress
+      FIXED: Closed
+      WONTFIX: Closed
+      DUPLICATE: Closed
+      INVALID: Closed
+      INCOMPLETE: Closed
+      WORKSFORME: Closed
+      REOPENED: In Progress
+
 - whiteboard_tag: jbi-aut
   bugzilla_user_id: 429623
   description: Autograph
