@@ -38,7 +38,7 @@ factory-boy = "^3.3.3"
 pytest-factoryboy = "^2.8.1"
 ruff = "^0.12.2"
 pytest-mock = "^3.14.1"
-pytest-asyncio = "^0.26.0"
+pytest-asyncio = "^1.0.0"
 
 [tool.poetry.scripts]
 jbi = "jbi.__main__:cli"
