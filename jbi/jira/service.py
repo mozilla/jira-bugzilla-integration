@@ -123,7 +123,16 @@ class JiraService:
             )
             _, verb = routing_key.rsplit(".", 1)
             past_verb = {"modify": "modified"}.get(verb, f"{verb}d")
-            formatted_comment = f"*{commenter}* {past_verb} an attachment"
+            formatted_comment = f"*{commenter}* {past_verb} an attachment:"
+
+            # When event target is an attachment, the webhook bug object has attachment info.
+            if context.bug.attachment:
+                att = context.bug.attachment
+                formatted_comment += f"\n*Description*: {att.description}"
+                formatted_comment += (
+                    f"\n*Filename*: {att.file_name} ({att.content_type})"
+                )
+
         else:
             comment = context.bug.comment
             assert comment  # See jbi.steps.create_comment()
