@@ -732,5 +732,37 @@
   description: VPN Integration in Firefox
   parameters:
     jira_project_key: FXVPN2
+    steps:
+      new:
+        - create_issue
+        - maybe_delete_duplicate
+        - add_link_to_bugzilla
+        - add_link_to_jira
+        - maybe_assign_jira_user
+        - maybe_update_issue_status
+        - maybe_update_issue_priority
+        - maybe_update_issue_points
+        - sync_whiteboard_labels
+      existing:
+        - update_issue_summary
+        - maybe_assign_jira_user
+        - maybe_update_issue_status
+        - maybe_update_issue_priority
+        - maybe_update_issue_points
+        - sync_whiteboard_labels
     labels_brackets: both
-    status_map: *basic-status-map
+    status_map:
+      UNCONFIRMED: Backlog
+      NEW: Backlog
+      ASSIGNED: In Progress
+      REOPENED: In Progress
+      RESOLVED: Done
+      VERIFIED: Done
+      FIXED: Done
+      INVALID: Cancelled
+      WONTFIX: Cancelled
+      INACTIVE: Cancelled
+      DUPLICATE: Cancelled
+      WORKSFORME: Cancelled
+      INCOMPLETE: Cancelled
+      MOVED: Cancelled
