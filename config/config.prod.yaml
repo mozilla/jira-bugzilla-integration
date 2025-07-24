@@ -28,6 +28,7 @@
         - add_link_to_jira
         - maybe_assign_jira_user
         - maybe_update_issue_status
+        - maybe_update_issue_resolution
         - maybe_update_issue_priority
         - maybe_update_issue_severity
         - maybe_update_issue_points
@@ -36,6 +37,7 @@
         - update_issue_summary
         - maybe_assign_jira_user
         - maybe_update_issue_status
+        - maybe_update_issue_resolution
         - maybe_update_issue_priority
         - maybe_update_issue_severity
         - maybe_update_issue_points
@@ -50,6 +52,7 @@
       INCOMPLETE: Closed
       WORKSFORME: Closed
       REOPENED: In Progress
+    resolution_map: *basic-resolution-map
 
 - whiteboard_tag: fxatps
   bugzilla_user_id: tbd
