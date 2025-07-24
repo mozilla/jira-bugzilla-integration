@@ -171,6 +171,7 @@ def context_attachment_example(action_context_factory) -> ActionContext:
     return action_context_factory(
         operation=Operation.ATTACHMENT,
         bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+        bug__with_attachment=True,
         event__target="attachment",
         event__routed_key="attachment.create",
         event__user__login="phab-bot@bmo.tld",
