@@ -78,6 +78,36 @@ class WebhookComment(BaseModel, frozen=True):
     creation_time: Optional[SmartAwareDatetime] = None
 
 
+class AttachmentFlag(BaseModel, frozen=True):
+    """Flag object associated with a Bugzilla attachment."""
+
+    id: int
+    name: str
+    type_id: int
+    creation_date: SmartAwareDatetime
+    modification_date: SmartAwareDatetime
+    status: str
+    setter: str
+    requestee: Optional[str] = None
+
+
+class WebhookAttachment(BaseModel, frozen=True):
+    """Attachment object associated with a Bugzilla bug
+    when the webhook event is of type "attachment".
+    See https://bugzilla.mozilla.org/page.cgi?id=webhooks.html
+    """
+
+    id: int
+    content_type: str
+    creation_time: SmartAwareDatetime
+    description: str
+    file_name: str
+    flags: list[AttachmentFlag]
+    is_obsolete: bool
+    is_patch: bool
+    is_private: bool
+
+
 class Bug(BaseModel, frozen=True):
     """Bugzilla Bug Object"""
 
@@ -99,6 +129,7 @@ class Bug(BaseModel, frozen=True):
     creator: Optional[str] = None
     assigned_to: Optional[str] = None
     comment: Optional[WebhookComment] = None
+    attachment: Optional[WebhookAttachment] = None
     # Custom field Firefox for story points
     cf_fx_points: Optional[str] = None
 

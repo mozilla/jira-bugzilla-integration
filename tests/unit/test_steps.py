@@ -245,7 +245,7 @@ def test_added_attachment(
 
     mocked_jira.issue_add_comment.assert_called_once_with(
         issue_key="JBI-234",
-        comment="*phab-bot@bmo.tld* created an attachment",
+        comment="*phab-bot@bmo.tld* created an attachment:\n*Description*: Bug 1337 - Stop war r?peace\n*Filename*: phabricator-D1234-url.txt (text/x-phabricator-request)",
     )
 
 

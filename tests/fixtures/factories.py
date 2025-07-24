@@ -69,12 +69,30 @@ class WebhookCommentFactory(PydanticFactory):
     creation_time = None
 
 
+class WebhookAttachmentFactory(PydanticFactory):
+    class Meta:
+        model = bugzilla_models.WebhookAttachment
+
+    id = 1
+    creation_time = datetime.now()
+    description = "Bug 1337 - Stop war r?peace"
+    file_name = "phabricator-D1234-url.txt"
+    content_type = "text/x-phabricator-request"
+    flags = []
+    is_obsolete = False
+    is_patch = False
+    is_private = False
+
+
 class BugFactory(PydanticFactory):
     class Meta:
         model = bugzilla_models.Bug
 
     class Params:
         with_comment = factory.Trait(comment=factory.SubFactory(WebhookCommentFactory))
+        with_attachment = factory.Trait(
+            attachment=factory.SubFactory(WebhookAttachmentFactory)
+        )
 
     assigned_to = "nobody@mozilla.org"
     comment = None
@@ -93,6 +111,7 @@ class BugFactory(PydanticFactory):
     summary = "JBI Test"
     type = "defect"
     whiteboard = "[devtest]"
+    attachment = None
 
 
 class WebhookUserFactory(PydanticFactory):
