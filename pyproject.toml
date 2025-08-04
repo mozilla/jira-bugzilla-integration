@@ -13,7 +13,7 @@ uvicorn = {extras = ["standard"], version = "^0.35.0"}
 atlassian-python-api = "^4.0.4"
 dockerflow = {extras = ["fastapi"], version = "2024.4.2"}
 Jinja2 = "^3.1.6"
-sentry-sdk = {extras = ["fastapi"], version = "^2.33.2"}
+sentry-sdk = {extras = ["fastapi"], version = "^2.34.1"}
 pydantic-yaml = "^1.5.1"
 backoff = "^2.2.1"
 statsd = "^4.0.1"
@@ -36,7 +36,7 @@ responses = "^0.25.7"
 httpx = "^0.28.1"
 factory-boy = "^3.3.3"
 pytest-factoryboy = "^2.8.1"
-ruff = "^0.12.5"
+ruff = "^0.12.7"
 pytest-mock = "^3.14.1"
 pytest-asyncio = "^1.1.0"
 
