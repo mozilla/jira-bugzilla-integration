@@ -40,10 +40,15 @@ class BugzillaService:
         """Re-fetch a bug to ensure we have the most up-to-date data"""
 
         refreshed_bug_data = self.client.get_bug(bug.id)
-        # When bugs come in as webhook payloads, they have a "comment"
-        # attribute, but this field isn't available when we get a bug by ID.
-        # So, we make sure to add the comment back if it was present on the bug.
-        updated_bug = refreshed_bug_data.model_copy(update={"comment": bug.comment})
+        # When bugs come in as webhook payloads, they have "comment" and "attachment"
+        # attributes, but these fields aren't available when we get a bug by ID.
+        # So, we make sure to add them back if they were present on the bug.
+        updated_bug = refreshed_bug_data.model_copy(
+            update={
+                "comment": bug.comment,
+                "attachment": bug.attachment,
+            }
+        )
         return updated_bug
 
     def list_webhooks(self):
