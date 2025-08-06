@@ -766,3 +766,21 @@
       WORKSFORME: Cancelled
       INCOMPLETE: Cancelled
       MOVED: Cancelled
+
+- whiteboard_tag: cringe
+  bugzilla_user_id: tbd
+  description: Crash Ingestion
+  parameters:
+    jira_project_key: CRINGE
+    steps:
+      new:
+        - create_issue
+        - maybe_delete_duplicate
+        - maybe_update_components
+        - add_link_to_bugzilla
+        - add_link_to_jira
+      existing:
+        - update_issue_summary
+      comment:
+        - create_comment
+    labels_brackets: both
