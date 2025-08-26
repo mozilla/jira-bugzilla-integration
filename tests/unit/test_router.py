@@ -1,3 +1,4 @@
+import base64
 import json
 import os
 from datetime import datetime
@@ -19,34 +20,34 @@ def test_read_root(anon_client):
     assert get_settings().jira_base_url in infos["configuration"]["jira_base_url"]
 
 
-# @pytest.mark.parametrize(
-#     "endpoint",
-#     [
-#         "/whiteboard_tags",
-#         "/dl_queue/",
-#         "/jira_projects/",
-#         "/powered_by_jbi/",
-#         "/bugzilla_webhooks/",
-#     ],
-# )
-# def test_get_protected_endpoints(
-#     endpoint, webhook_request_factory, mocked_bugzilla, anon_client, test_api_key
-# ):
-#     resp = anon_client.get(endpoint)
-#     assert resp.status_code == 401
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "/whiteboard_tags",
+        "/dl_queue/",
+        "/jira_projects/",
+        "/powered_by_jbi/",
+        "/bugzilla_webhooks/",
+    ],
+)
+def test_get_protected_endpoints(
+    endpoint, webhook_request_factory, mocked_bugzilla, anon_client, test_api_key
+):
+    resp = anon_client.get(endpoint)
+    assert resp.status_code == 401
 
-#     # Supports authentication via `X-Api-Key` header
-#     resp = anon_client.get(endpoint, headers={"X-Api-Key": test_api_key})
-#     assert resp.status_code == 200
+    # Supports authentication via `X-Api-Key` header
+    resp = anon_client.get(endpoint, headers={"X-Api-Key": test_api_key})
+    assert resp.status_code == 200
 
-#     # Supports authentication via Basic Auth header
-#     username_password = ":" + test_api_key
-#     credentials_b64 = base64.b64encode(username_password.encode("utf8")).decode("utf8")
-#     resp = anon_client.get(
-#         endpoint,
-#         headers={"Authorization": f"Basic {credentials_b64}"},
-#     )
-#     assert resp.status_code == 200
+    # Supports authentication via Basic Auth header
+    username_password = ":" + test_api_key
+    credentials_b64 = base64.b64encode(username_password.encode("utf8")).decode("utf8")
+    resp = anon_client.get(
+        endpoint,
+        headers={"Authorization": f"Basic {credentials_b64}"},
+    )
+    assert resp.status_code == 200
 
 
 def test_whiteboard_tags(authenticated_client):
@@ -260,25 +261,25 @@ def test_webhook_is_500_if_queue_raises_Exception(
     assert response.status_code == 500
 
 
-# def test_webhook_is_401_if_unathenticated(
-#     webhook_request_factory, mocked_bugzilla, anon_client
-# ):
-#     response = anon_client.post(
-#         "/bugzilla_webhook",
-#         data={},
-#     )
-#     assert response.status_code == 401
+def test_webhook_is_401_if_unathenticated(
+    webhook_request_factory, mocked_bugzilla, anon_client
+):
+    response = anon_client.post(
+        "/bugzilla_webhook",
+        data={},
+    )
+    assert response.status_code == 401
 
 
-# def test_webhook_is_401_if_wrong_key(
-#     webhook_request_factory, mocked_bugzilla, anon_client
-# ):
-#     response = anon_client.post(
-#         "/bugzilla_webhook",
-#         headers={"X-Api-Key": "not the right key"},
-#         data={},
-#     )
-#     assert response.status_code == 401
+def test_webhook_is_401_if_wrong_key(
+    webhook_request_factory, mocked_bugzilla, anon_client
+):
+    response = anon_client.post(
+        "/bugzilla_webhook",
+        headers={"X-Api-Key": "not the right key"},
+        data={},
+    )
+    assert response.status_code == 401
 
 
 def test_webhook_is_422_if_bug_information_missing(
