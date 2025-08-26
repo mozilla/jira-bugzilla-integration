@@ -67,7 +67,8 @@ def api_key_auth(
 
 @router.post(
     "/bugzilla_webhook",
-    dependencies=[Depends(api_key_auth)],
+    # TODO:
+    # dependencies=[Depends(api_key_auth)],
 )
 async def bugzilla_webhook(
     request: Request,
