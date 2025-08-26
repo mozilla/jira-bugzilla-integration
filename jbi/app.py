@@ -128,11 +128,19 @@ async def validation_exception_handler(
     errors in order to log some information about malformed
     requests.
     """
+    try:
+        request_body = (await request.body()).decode("utf8")
+    except UnicodeDecodeError:  # pragma: no cover
+        # In theory FastAPI would have returned a 400 before doing
+        # model validation.
+        request_body = "<invalid unicode>"
+
     logger.error(
         "invalid incoming request: %s",
         exc,
         extra={
             "errors": exc.errors(),
+            "body": request_body,
         },
     )
     return JSONResponse(
