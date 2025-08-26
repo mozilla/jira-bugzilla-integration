@@ -51,6 +51,7 @@ def test_422_errors_are_logged(authenticated_client, webhook_request_factory, ca
         logged.errors[0]["msg"]
         == "Input should be a valid dictionary or object to extract fields from"
     )
+    assert '"bug":null' in logged.body
 
 
 @pytest.mark.parametrize(
