@@ -455,7 +455,6 @@
         - maybe_update_issue_status
         - maybe_update_issue_priority
         - maybe_update_issue_severity
-        - maybe_update_issue_points
         - sync_whiteboard_labels
       existing:
         - update_issue_summary
@@ -463,7 +462,6 @@
         - maybe_update_issue_status
         - maybe_update_issue_priority
         - maybe_update_issue_severity
-        - maybe_update_issue_points
         - sync_whiteboard_labels
     status_map:
       UNCONFIRMED: Backlog
