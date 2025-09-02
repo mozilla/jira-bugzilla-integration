@@ -575,8 +575,8 @@
       comment:
         - create_comment
     status_map:
-      UNCONFIRMED: To Do
-      NEW: To Do
+      UNCONFIRMED: Backlog
+      NEW: Backlog
       ASSIGNED: In Progress
       REOPENED: In Progress
       RESOLVED: Done
