@@ -158,5 +158,6 @@ linked Jira issue status to "Closed". If the bug changes to a status not listed 
    **Requirements**: ``customfield_10037`` field must be present on issue forms (or configure `jira_cf_fx_points_field`).
 - `create_comment`
 - `sync_keywords_labels`
-- `sync_whiteboard_labels`
+- `sync_whiteboard_labels`:
+  Syncs the Bugzilla whitboard tags field to the Jira labels field.
 - `maybe_update_components`: looks at the component that's set on the bug (if any) and any components added to the project configuration with the `jira_components` parameter (see above). If those components are available on the Jira side as well, they're added to the Jira issue
