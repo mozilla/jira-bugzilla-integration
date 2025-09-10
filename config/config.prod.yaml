@@ -729,6 +729,38 @@
       defect: Bug
     status_map: *basic-status-map
 
+- whiteboard_tag: glean-sdk-jira
+  bugzilla_user_id: 248036
+  description: Glean SDK
+  parameters:
+    jira_project_key: DENG
+    jira_components:
+      set_custom_components:
+        - "Data Collection Tools"
+    steps:
+      new:
+        - create_issue
+        - maybe_delete_duplicate
+        - maybe_update_components
+        - add_link_to_bugzilla
+        - add_link_to_jira
+        - maybe_assign_jira_user
+        - maybe_update_issue_status
+      existing:
+        - update_issue_summary
+        - maybe_assign_jira_user
+        - maybe_update_components
+        - maybe_update_issue_status
+        - sync_keywords_labels
+        - sync_whiteboard_labels
+      comment:
+        - create_comment
+    issue_type_map:
+      enhancement: Story
+      task: Task
+      defect: Bug
+    status_map: *basic-status-map
+
 - whiteboard_tag: fx-vpn
   bugzilla_user_id: 711867
   description: VPN Integration in Firefox
