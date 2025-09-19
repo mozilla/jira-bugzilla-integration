@@ -83,12 +83,7 @@ class AttachmentFlag(BaseModel, frozen=True):
 
     id: int
     name: str
-    type_id: int
-    creation_date: SmartAwareDatetime
-    modification_date: SmartAwareDatetime
-    status: str
-    setter: str
-    requestee: Optional[str] = None
+    value: str
 
 
 class WebhookAttachment(BaseModel, frozen=True):
