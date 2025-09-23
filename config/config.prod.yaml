@@ -215,6 +215,7 @@
         - maybe_assign_jira_user
         - maybe_update_issue_status
         - sync_whiteboard_labels
+        - sync_keywords_labels
       comment:
         - create_comment
     status_map:
