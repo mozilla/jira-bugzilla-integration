@@ -1,5 +1,6 @@
 import datetime
 import logging
+import re
 from typing import Any, Optional, TypedDict
 from urllib.parse import ParseResult, urlparse
 
@@ -102,6 +103,18 @@ class WebhookAttachment(BaseModel, frozen=True):
     is_patch: bool
     is_private: bool
 
+    def phabricator_url(self, base_url: str) -> str | None:
+        """
+        Returns the Phabricator patch URL from the file name if the attachment is a patch, otherwise, it returns None.
+        """
+        if self.is_patch:
+            match = re.search(r'D\d+', self.file_name)
+            if not match:
+                raise ValueError("No valid Phabricator ID (e.g., D12345) found in filename.")
+
+            revision_id = match.group(0)
+            return f"{base_url}/{revision_id}"
+        return None
 
 class Bug(BaseModel, frozen=True):
     """Bugzilla Bug Object"""
