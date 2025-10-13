@@ -25,6 +25,7 @@ ALL_STEPS = {
         "maybe_assign_jira_user",
         "maybe_update_issue_status",
         "maybe_update_issue_resolution",
+        "maybe_add_or_update_phabricator_link",
     ],
     "comment": [
         "create_comment",
@@ -246,6 +247,34 @@ def test_added_attachment(
     mocked_jira.issue_add_comment.assert_called_once_with(
         issue_key="JBI-234",
         comment="*phab-bot@bmo.tld* created an attachment:\n*Description*: Bug 1337 - Stop war r?peace\n*Filename*: phabricator-D1234-url.txt (text/x-phabricator-request)",
+    )
+
+def test_added_phabricator_attachment(
+    action_context_factory, mocked_jira, action_params_factory
+):
+    phabricator_attachment_context = action_context_factory(
+        operation=Operation.ATTACHMENT,
+        bug__with_attachment=True,
+        bug__attachment__is_patch=True,
+        bug__attachment__is_obsolete=False,
+        bug__attachment__id=123456,
+        bug__attachment__file_name="phabricator-D1234-url.txt",
+        bug__attachment__description="Bug 1234 - Fix all the bugs",
+        bug__attachment__content_type="x-phabricator-request",
+        event__target="attachment",
+        jira__issue="JBI-234",
+    )
+    callable_object = Executor(
+        action_params_factory(jira_project_key=phabricator_attachment_context.jira.project)
+    )
+
+    callable_object(context=phabricator_attachment_context)
+
+    mocked_jira.create_or_update_issue_remote_links.assert_called_once_with(
+        issue_key="JBI-234",
+        link_url="https://phabricator.services.mozilla.com/D1234",
+        title="Bug 1234 - Fix all the bugs",
+        global_id="123456",
     )
 
 
