@@ -6,7 +6,7 @@ authors = ["@mozilla/jbi-core"]
 license = "MPL"
 
 [tool.poetry.dependencies]
-python = ">=3.12, <3.14"
+python = ">=3.12, <3.15"
 fastapi = "^0.118.0"
 pydantic = {version = "^2.11.10", extras = ["email"]}
 uvicorn = {extras = ["standard"], version = "^0.37.0"}
