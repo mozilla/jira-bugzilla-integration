@@ -134,33 +134,33 @@ def maybe_add_or_update_phabricator_link(
 
     if not phabricator_url:
         return (StepStatus.NOOP, context)
-    else:
-        description = attachment.description
-        if attachment.is_obsolete:
-            description = f"{0} - {1}".format("Abandoned", attachment.description)
 
-        issue_key = context.jira.issue
+    description = attachment.description
+    if attachment.is_obsolete:
+        description = f"{0} - {1}".format("Abandoned", attachment.description)
 
-        jira_response = jira_service.client.create_or_update_issue_remote_links(
-            issue_key=issue_key,
-            global_id=f"{context.bug.id}-{attachment.id}",
-            link_url=phabricator_url,
-            title=description,
+    issue_key = context.jira.issue
+
+    jira_response = jira_service.client.create_or_update_issue_remote_links(
+        issue_key=issue_key,
+        global_id=f"{context.bug.id}-{attachment.id}",
+        link_url=phabricator_url,
+        title=description,
+    )
+
+    if jira_response:
+        logger.info(
+            "Phabricator patch added or updated in Jira issue %s",
+            issue_key,
+            extra=context.update(operation=Operation.LINK).model_dump(),
         )
-
-        if jira_response:
-            logger.info(
-                "Phabricator patch added or updated in Jira issue %s",
-                issue_key,
-                extra=context.update(operation=Operation.LINK).model_dump(),
-            )
-            context = context.append_responses(jira_response)
-            return (StepStatus.SUCCESS, context)
-        else:
-            logger.info(
-                "Failed to add or update phabricator url in Jira issue %s",
-                issue_key,
-            )
+        context = context.append_responses(jira_response)
+        return (StepStatus.SUCCESS, context)
+    else:
+        logger.info(
+            "Failed to add or update phabricator url in Jira issue %s",
+            issue_key,
+        )
 
     return (StepStatus.NOOP, context)
 
