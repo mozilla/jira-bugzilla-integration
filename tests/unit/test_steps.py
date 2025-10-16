@@ -246,7 +246,7 @@ def test_added_attachment(
 
     mocked_jira.issue_add_comment.assert_called_once_with(
         issue_key="JBI-234",
-        comment="*phab-bot@bmo.tld* created an attachment:\n*Description*: Bug 1337 - Stop war r?peace\n*Filename*: phabricator-D1234-url.txt (text/x-phabricator-request)",
+        comment="*phab-bot@bmo.tld* created an attachment:\n*Description*: Bug 1337 - Stop war r?peace\n*Filename*: phabricator-D1234-url.txt (text/x-phabricator-request)\n*Phabricator URL*: https://phabricator.services.mozilla.com/D1234",
     )
 
 def test_added_phabricator_attachment(
@@ -260,7 +260,7 @@ def test_added_phabricator_attachment(
         bug__attachment__id=123456,
         bug__attachment__file_name="phabricator-D1234-url.txt",
         bug__attachment__description="Bug 1234 - Fix all the bugs",
-        bug__attachment__content_type="x-phabricator-request",
+        bug__attachment__content_type="text/x-phabricator-request",
         event__target="attachment",
         jira__issue="JBI-234",
     )
