@@ -112,34 +112,6 @@ class JiraService:
         )
         return issue_data
 
-    def add_or_update_phabricator_link(self, context):
-        """Add or update phabricator URL to the Jira issue"""
-        issue_key = context.jira.issue
-
-        if context.event.target == "attachment" and context.bug.attachment:
-            attachment = context.bug.attachment
-
-            if attachment.is_phabricator_patch():
-                description = attachment.description
-                if attachment.is_obsolete:
-                    description = f"{0} - {1}".format("Abandoned", attachment.description)
-                phabricator_url = attachment.phabricator_url(base_url=settings.phabricator_base_url)
-
-                logger.info(
-                    "Phabricator patch added or updated in Jira issue %s",
-                    issue_key,
-                    extra=context.update(operation=Operation.LINK).model_dump(),
-                )
-
-                return self.client.create_or_update_issue_remote_links(
-                    issue_key=issue_key,
-                    global_id=f"{attachment.id}",
-                    link_url=phabricator_url,
-                    title=description,
-                )
-
-        return None
-
     def add_jira_comment(self, context: ActionContext):
         """Publish a comment on the specified Jira issue"""
         context = context.update(operation=Operation.COMMENT)

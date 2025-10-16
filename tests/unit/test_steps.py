@@ -255,6 +255,7 @@ def test_added_phabricator_attachment(
     phabricator_attachment_context = action_context_factory(
         operation=Operation.ATTACHMENT,
         bug__with_attachment=True,
+        bug__id=5555,
         bug__attachment__is_patch=True,
         bug__attachment__is_obsolete=False,
         bug__attachment__id=123456,
@@ -274,7 +275,7 @@ def test_added_phabricator_attachment(
         issue_key="JBI-234",
         link_url="https://phabricator.services.mozilla.com/D1234",
         title="Bug 1234 - Fix all the bugs",
-        global_id="123456",
+        global_id="5555-123456",
     )
 
 
