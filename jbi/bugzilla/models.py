@@ -115,22 +115,24 @@ class WebhookAttachment(BaseModel, frozen=True):
         """
         Returns the Phabricator patch URL from the file name if the attachment is a patch, otherwise, it returns None.
         """
-        if self.is_phabricator_patch():
-            match = re.search(r'D\d+', self.file_name)
-            if match:
-                revision_id = match.group(0)
-                return f"{base_url}/{revision_id}"
-            else:
-                logger.info(
-                    "Expected that attachment with name %s is a patch, but we couldn't extract the phabricator id (e.g D1234)",
-                    self.file_name,
-                    extra={
-                        "bug": {
-                            "id": self.id,
-                        }
-                    },
-                )
-        return None
+        if not self.is_phabricator_patch():
+            return None
+
+        match = re.search(r'D\d+', self.file_name)
+        if not match:
+            logger.info(
+                "Expected that attachment with name %s is a patch, but we couldn't extract the phabricator id (e.g D1234)",
+                self.file_name,
+                extra={
+                    "bug": {
+                        "id": self.id,
+                    }
+                },
+            )
+            return None
+
+        revision_id = match.group(0)
+        return f"{base_url}/{revision_id}"
 
 class Bug(BaseModel, frozen=True):
     """Bugzilla Bug Object"""
