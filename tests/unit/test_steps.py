@@ -25,7 +25,7 @@ ALL_STEPS = {
         "maybe_assign_jira_user",
         "maybe_update_issue_status",
         "maybe_update_issue_resolution",
-        "maybe_add_or_update_phabricator_link",
+        "maybe_add_phabricator_link",
     ],
     "comment": [
         "create_comment",

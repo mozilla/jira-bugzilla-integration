@@ -118,7 +118,7 @@ def add_link_to_bugzilla(
     context = context.append_responses(jira_response)
     return (StepStatus.SUCCESS, context)
 
-def maybe_add_or_update_phabricator_link(
+def maybe_add_phabricator_link(
         context: ActionContext,
         *,
         jira_service: JiraService,
