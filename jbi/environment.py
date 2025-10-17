@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     bugzilla_base_url: str = "https://bugzilla-dev.allizom.org"
     bugzilla_api_key: str
 
+    # Phabricator
+    phabricator_base_url: str = "https://phabricator.services.mozilla.com"
+
     # Logging
     log_level: str = "info"
     log_format: str = "json"  # set to "text" for human-readable logs
