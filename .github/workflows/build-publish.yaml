@@ -102,7 +102,7 @@ jobs:
 
       - name: Check that container is running
         run: |
-          docker exec ${{ env.TEST_CONTAINER_NAME }} uv python bin/healthcheck.py
+          docker exec ${{ env.TEST_CONTAINER_NAME }} bin/healthcheck.py
 
       - name: Spin down container
         run: |
