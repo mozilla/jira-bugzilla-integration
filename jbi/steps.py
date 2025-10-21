@@ -118,10 +118,11 @@ def add_link_to_bugzilla(
     context = context.append_responses(jira_response)
     return (StepStatus.SUCCESS, context)
 
+
 def maybe_add_phabricator_link(
-        context: ActionContext,
-        *,
-        jira_service: JiraService,
+    context: ActionContext,
+    *,
+    jira_service: JiraService,
 ) -> StepResult:
     """Add a phabricator link to the Jira issue if an attachment is a phabricator attachment"""
     if context.event.target != "attachment" or not context.bug.attachment:
@@ -163,6 +164,7 @@ def maybe_add_phabricator_link(
         )
 
     return (StepStatus.NOOP, context)
+
 
 def maybe_delete_duplicate(
     context: ActionContext,

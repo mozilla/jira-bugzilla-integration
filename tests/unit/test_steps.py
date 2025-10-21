@@ -249,6 +249,7 @@ def test_added_attachment(
         comment="*phab-bot@bmo.tld* created an attachment:\n*Description*: Bug 1337 - Stop war r?peace\n*Filename*: phabricator-D1234-url.txt (text/x-phabricator-request)\n*Phabricator URL*: https://phabricator.services.mozilla.com/D1234",
     )
 
+
 def test_added_phabricator_attachment(
     action_context_factory, mocked_jira, action_params_factory
 ):
@@ -266,7 +267,9 @@ def test_added_phabricator_attachment(
         jira__issue="JBI-234",
     )
     callable_object = Executor(
-        action_params_factory(jira_project_key=phabricator_attachment_context.jira.project)
+        action_params_factory(
+            jira_project_key=phabricator_attachment_context.jira.project
+        )
     )
 
     callable_object(context=phabricator_attachment_context)

@@ -8,69 +8,56 @@ VENV := $(shell echo $${VIRTUAL_ENV-.venv})
 INSTALL_STAMP = $(VENV)/.install.stamp
 DOTENV_FILE = .env
 
-.PHONY: help
+
+INSTALL_STAMP := .install.stamp
+UV := $(shell command -v uv 2> /dev/null)
+
 help:
-	@echo "Usage: make RULE"
-	@echo ""
-	@echo "JBI make rules:"
-	@echo ""
-	@echo "Local"
-	@echo "  clean         - clean local cache folders"
-	@echo "  format        - run linting checks, fix in place"
-	@echo "  lint          - run linting checks"
-	@echo "  start         - run the API service locally"
-	@echo "  test          - run test suite"
-	@echo ""
-	@echo "Docker"
-	@echo "  build         - build docker container"
-	@echo "  docker-start  - run the API service through docker"
-	@echo "  docker-shell  - open a shell in the web container"
-	@echo ""
-	@echo "  help          - see this text"
+	@echo "Please use 'make <target>' where <target> is one of the following commands.\n"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' Makefile | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+	@echo "\nCheck the Makefile to know exactly what each target is doing."
 
 .PHONY: clean
-clean:
+clean: ## Delete cache files
 	find . -name "__pycache__" | xargs rm -rf
 	rm -rf .mypy_cache .ruff_cache .coverage .venv
 
-$(VENV)/bin/python:
-	python3 -m venv $(VENV)
-
-install: $(VENV)/bin/python $(INSTALL_STAMP)
-$(INSTALL_STAMP): poetry.lock
-	@if [ -z $(shell command -v poetry 2> /dev/null) ]; then echo "Poetry could not be found. See https://python-poetry.org/docs/"; exit 2; fi
-	POETRY_VIRTUALENVS_IN_PROJECT=1 poetry install --with dev --no-root
+install: $(INSTALL_STAMP)
+$(INSTALL_STAMP): pyproject.toml uv.lock  ## Install dependencies
+	@if [ -z $(UV) ]; then echo "uv could not be found. See https://docs.astral.sh/uv/"; exit 2; fi
+	$(UV) --version
+	$(UV) sync --frozen --verbose
 	touch $(INSTALL_STAMP)
 
 .PHONY: build
-build:
+build: ## Build docker container
 	docker-compose build \
 		--build-arg userid=${_UID} --build-arg groupid=${_GID}
 
 .PHONY: format
-format: $(INSTALL_STAMP)
+format: $(INSTALL_STAMP)  ## Format code base
 	bin/lint.sh lint --fix
 	bin/lint.sh format --fix
 
 .PHONY: lint
-lint: $(INSTALL_STAMP)
+lint: $(INSTALL_STAMP)  ## Analyze code base
 	bin/lint.sh
 
 .PHONY: start
-start: $(INSTALL_STAMP) $(DOTENV_FILE)
-	poetry run python -m asgi
+start: $(INSTALL_STAMP) $(DOTENV_FILE) ## Start local
+	$(UV) run python -m asgi
 
-$(DOTENV_FILE):
+$(DOTENV_FILE):  ## Initialize default configuration
 	cp .env.example $(DOTENV_FILE)
 
 .PHONY: docker-shell
-docker-shell: $(DOTENV_FILE)
+docker-shell: $(DOTENV_FILE) ## Run shell from container
 	docker compose run --rm web /bin/sh
 
 .PHONY: docker-start
-docker-start: $(DOTENV_FILE)
+docker-start: $(DOTENV_FILE) ## Start container
 	docker compose up
 
 .PHONY: test
-test: $(INSTALL_STAMP)
-	bin/test.sh
+test: $(INSTALL_STAMP) ## Run unit tests
+	$(UV) run pytest tests -n auto --cov-report term-missing --cov-fail-under 75 --cov jbi --cov checks

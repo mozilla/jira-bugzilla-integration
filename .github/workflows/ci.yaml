@@ -7,39 +7,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
-        id: setup-python
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
         with:
-          python-version: "3.13"
-      - name: Install poetry
-        run: pipx install poetry
-      - uses: actions/cache@v4
-        with:
-          path: .venv
-          key: poetry-${{ steps.setup-python.outputs.python-version}}-${{ hashFiles('poetry.lock') }}
-      - name: Install dependencies
-        run: make install
-      - run: bin/lint.sh
+          enable-cache: true
+          python-version: 3.13
+      - name: Run lint
+        run: make lint
   run_test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
-        id: setup-python
-        with:
-          python-version: "3.13"
       - name: Install pandoc
         run: sudo apt-get install -y pandoc
-      - name: Install poetry
-        run: pipx install poetry
-      - uses: actions/cache@v4
+      - uses: actions/checkout@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
         with:
-          path: .venv
-          key: poetry-${{ steps.setup-python.outputs.python-version}}-${{ hashFiles('poetry.lock') }}
-      - name: Install dependencies
-        run: make install
+          enable-cache: true
+          python-version: 3.13
       - name: Run tests
-        run: bin/test.sh
+        run: make tests
       - name: Run retry
         env:
           JBI_API_KEY: key  # pragma: allowlist secret
@@ -48,7 +35,7 @@ jobs:
           BUGZILLA_API_KEY: key  # pragma: allowlist secret
           DL_QUEUE_CONSTANT_RETRY: false
           DL_QUEUE_DSN: "file:///tmp/dlqueue"
-        run: .venv/bin/python -m jbi.retry
+        run: uv run python -m jbi.retry
   review-dependabot-pr:
     permissions:
       contents: write
