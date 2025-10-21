@@ -387,7 +387,7 @@
     status_map: *basic-status-map
     resolution_map: *basic-resolution-map
     priority_map:
-      "": (none)
+      "--": (None)
       P1: P1
       P2: P2
       P3: P3
