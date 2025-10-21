@@ -12,7 +12,7 @@ RUN groupadd --gid $groupid app && \
 
 # Install pandoc for markdown to Jira conversions.
 RUN apt-get -y update && \
-    apt-get -y install --no-install-recommends pandoc
+    apt-get -y install --no-install-recommends pandoc curl
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
