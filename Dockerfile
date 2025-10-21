@@ -18,7 +18,6 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 COPY ./pyproject.toml /app/
 COPY ./uv.lock /app/
-COPY . /app
 
 ENV UV_CACHE_DIR=/opt/uv-cache
 RUN mkdir -p "${UV_CACHE_DIR}" && \
@@ -29,6 +28,10 @@ RUN --mount=type=cache,target="${UV_CACHE_DIR}" \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     uv sync --no-dev --locked --no-install-project --no-editable
+
+COPY . /app
+
+WORKDIR /app
 
 # run as non priviledged user
 USER app
