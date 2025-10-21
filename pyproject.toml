@@ -1,51 +1,55 @@
-[tool.poetry]
+[project]
+authors = [
+    {name = "Contactless", email = "postmaster@localhost"},
+]
+license = {text = "MPL"}
+requires-python = "<3.15,>=3.12"
+dependencies = [
+    "fastapi<1.0.0,>=0.119.0",
+    "pydantic[email]<3.0.0,>=2.12.3",
+    "uvicorn[standard]<1.0.0,>=0.38.0",
+    "atlassian-python-api<5.0.0,>=4.0.7",
+    "dockerflow[fastapi]==2024.4.2",
+    "Jinja2<4.0.0,>=3.1.6",
+    "sentry-sdk[fastapi]<3.0.0,>=2.42.0",
+    "pydantic-yaml<2.0.0,>=1.6.0",
+    "backoff<3.0.0,>=2.2.1",
+    "statsd<5.0.0,>=4.0.1",
+    "requests<3.0.0,>=2.32.5",
+    "pydantic-settings<3.0.0,>=2.11.0",
+    "pypandoc<2.0,>=1.15",
+]
 name = "jbi"
 version = "0"
 description = "jira-bugzilla-integration"
-authors = ["@mozilla/jbi-core"]
-license = "MPL"
 
-[tool.poetry.dependencies]
-python = ">=3.12, <3.15"
-fastapi = "^0.119.0"
-pydantic = {version = "^2.12.3", extras = ["email"]}
-uvicorn = {extras = ["standard"], version = "^0.38.0"}
-atlassian-python-api = "^4.0.7"
-dockerflow = {extras = ["fastapi"], version = "2024.4.2"}
-Jinja2 = "^3.1.6"
-sentry-sdk = {extras = ["fastapi"], version = "^2.42.0"}
-pydantic-yaml = "^1.6.0"
-backoff = "^2.2.1"
-statsd = "^4.0.1"
-requests = "^2.32.5"
-pydantic-settings = "^2.11.0"
-pypandoc = "^1.15"
-
-[tool.poetry.group.dev.dependencies]
-click = "^8.3.0"
-pre-commit = "^4.3.0"
-coverage = {extras = ["toml"], version = "^7.11"}
-mypy = "^1.18"
-detect-secrets = "^1.5.0"
-bandit = "^1.8.6"
-pytest = "^8.4.2"
-yamllint = "^1.37.1"
-pytest-dotenv = "^0.5.2"
-types-requests = "^2.32.4"
-responses = "^0.25.8"
-httpx = "^0.28.1"
-factory-boy = "^3.3.3"
-pytest-factoryboy = "^2.8.1"
-ruff = "^0.14.1"
-pytest-mock = "^3.15.1"
-pytest-asyncio = "^1.2.0"
-
-[tool.poetry.scripts]
+[project.scripts]
 jbi = "jbi.__main__:cli"
 
+[dependency-groups]
+dev = [
+    "click<9.0.0,>=8.3.0",
+    "pre-commit<5.0.0,>=4.3.0",
+    "coverage[toml]<8.0,>=7.11",
+    "mypy<2.0,>=1.18",
+    "detect-secrets<2.0.0,>=1.5.0",
+    "bandit<2.0.0,>=1.8.6",
+    "pytest<9.0.0,>=8.4.2",
+    "yamllint<2.0.0,>=1.37.1",
+    "pytest-dotenv<1.0.0,>=0.5.2",
+    "types-requests<3.0.0,>=2.32.4",
+    "responses<1.0.0,>=0.25.8",
+    "httpx<1.0.0,>=0.28.1",
+    "factory-boy<4.0.0,>=3.3.3",
+    "pytest-factoryboy<3.0.0,>=2.8.1",
+    "ruff<1.0.0,>=0.14.1",
+    "pytest-mock<4.0.0,>=3.15.1",
+    "pytest-asyncio<2.0.0,>=1.2.0",
+]
+
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
 
 [tool.ruff]
 target-version = "py312"

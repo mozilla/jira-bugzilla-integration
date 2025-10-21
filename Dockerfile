@@ -1,50 +1,37 @@
-# Creating a python base with shared environment variables
-FROM python:3.14.0 AS base
-ENV PIP_NO_CACHE_DIR=off \
-    PIP_DEFAULT_TIMEOUT=100 \
-    PIP_DISABLE_PIP_VERSION_CHECK=on \
-    POETRY_HOME="/opt/poetry" \
-    POETRY_NO_INTERACTION=1 \
-    POETRY_VIRTUALENVS_IN_PROJECT=true \
-    PYSETUP_PATH="/opt/pysetup"
+FROM python:3.14.0-slim
 
-ENV PATH="$POETRY_HOME/bin:$PATH"
-
-# Install Poetry - respects $POETRY_VERSION & $POETRY_HOME
-RUN python3 -m venv $POETRY_HOME && \
-    $POETRY_HOME/bin/pip install poetry==1.7.1 && \
-    $POETRY_HOME/bin/poetry --version
-
-# We copy our Python requirements here to cache them
-# and install only runtime deps using poetry
-WORKDIR $PYSETUP_PATH
-COPY ./poetry.lock ./pyproject.toml ./
-RUN $POETRY_HOME/bin/poetry install --without dev --no-root
-
-# `production` stage uses the dependencies downloaded in the `base` stage
-FROM python:3.14.0-slim AS production
-
-# Install pandoc for markdown to Jira conversions.
-RUN apt-get -y update && \
-    apt-get -y install --no-install-recommends pandoc
-
-ENV PORT=8000 \
-    PYTHONUNBUFFERED=1 \
+ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    VIRTUAL_ENV=/opt/pysetup/.venv
-
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
-
-COPY --from=base $VIRTUAL_ENV $VIRTUAL_ENV
+    HOST=0.0.0.0 \
+    PORT=8000
 
 ARG userid=10001
 ARG groupid=10001
 RUN groupadd --gid $groupid app && \
     useradd -g app --uid $userid --shell /usr/sbin/nologin --create-home app
-USER app
 
-WORKDIR /app
-COPY . .
+# Install pandoc for markdown to Jira conversions.
+RUN apt-get -y update && \
+    apt-get -y install --no-install-recommends pandoc
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+COPY ./pyproject.toml /app/
+COPY ./uv.lock /app/
+COPY . /app
+
+ENV UV_CACHE_DIR=/opt/uv-cache
+RUN mkdir -p "${UV_CACHE_DIR}" && \
+    chown app:app "${UV_CACHE_DIR}"
+
+# Install dependencies
+RUN --mount=type=cache,target="${UV_CACHE_DIR}" \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --no-dev --locked --no-install-project --no-editable
+
+# run as non priviledged user
+USER app
 
 EXPOSE $PORT
 CMD ["python", "-m", "asgi"]

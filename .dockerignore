@@ -5,7 +5,7 @@
 !/bin
 !/config
 !/jbi
-!/poetry.lock
+!/uv.lock
 !/pyproject.toml
 !/version.json
 

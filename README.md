@@ -85,7 +85,7 @@ We use [pandoc](https://pandoc.org) to convert markdown to the Jira syntax. Make
 In order to pass arguments to `pytest`:
 
 ```
-poetry run pytest -vv -k test_bugzilla_list_webhooks
+PYTEST_ADDOPTS="--last-failed -vv" make test
 ```
 
 You may consider:
