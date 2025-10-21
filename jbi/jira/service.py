@@ -132,6 +132,8 @@ class JiraService:
                 formatted_comment += (
                     f"\n*Filename*: {att.file_name} ({att.content_type})"
                 )
+                if phabricator_url := att.phabricator_url(base_url=settings.phabricator_base_url):
+                    formatted_comment += f"\n*Phabricator URL*: {phabricator_url}"
 
         else:
             comment = context.bug.comment

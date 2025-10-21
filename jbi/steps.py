@@ -118,6 +118,51 @@ def add_link_to_bugzilla(
     context = context.append_responses(jira_response)
     return (StepStatus.SUCCESS, context)
 
+def maybe_add_phabricator_link(
+        context: ActionContext,
+        *,
+        jira_service: JiraService,
+) -> StepResult:
+    """Add a phabricator link to the Jira issue if an attachment is a phabricator attachment"""
+    if context.event.target != "attachment" or not context.bug.attachment:
+        return (StepStatus.NOOP, context)
+
+    attachment = context.bug.attachment
+
+    settings = get_settings()
+    phabricator_url = attachment.phabricator_url(base_url=settings.phabricator_base_url)
+
+    if not phabricator_url:
+        return (StepStatus.NOOP, context)
+
+    description = attachment.description
+    if attachment.is_obsolete:
+        description = f"{0} - {1}".format("Abandoned", attachment.description)
+
+    issue_key = context.jira.issue
+
+    jira_response = jira_service.client.create_or_update_issue_remote_links(
+        issue_key=issue_key,
+        global_id=f"{context.bug.id}-{attachment.id}",
+        link_url=phabricator_url,
+        title=description,
+    )
+
+    if jira_response:
+        logger.info(
+            "Phabricator patch added or updated in Jira issue %s",
+            issue_key,
+            extra=context.update(operation=Operation.LINK).model_dump(),
+        )
+        context = context.append_responses(jira_response)
+        return (StepStatus.SUCCESS, context)
+    else:
+        logger.info(
+            "Failed to add or update phabricator url in Jira issue %s",
+            issue_key,
+        )
+
+    return (StepStatus.NOOP, context)
 
 def maybe_delete_duplicate(
     context: ActionContext,
