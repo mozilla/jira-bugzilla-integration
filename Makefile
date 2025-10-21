@@ -60,4 +60,4 @@ docker-start: $(DOTENV_FILE) ## Start container
 
 .PHONY: test
 test: $(INSTALL_STAMP) ## Run unit tests
-	bin/test.sh
+	$(UV) run pytest tests --cov-report term-missing --cov-fail-under 75 --cov jbi --cov checks

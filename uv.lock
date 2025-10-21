@@ -493,6 +493,7 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "pydantic-yaml" },
     { name = "pypandoc" },
+    { name = "pytest-cov" },
     { name = "requests" },
     { name = "sentry-sdk", extra = ["fastapi"] },
     { name = "statsd" },
@@ -531,6 +532,7 @@ requires-dist = [
     { name = "pydantic-settings", specifier = ">=2.11.0,<3.0.0" },
     { name = "pydantic-yaml", specifier = ">=1.6.0,<2.0.0" },
     { name = "pypandoc", specifier = ">=1.15,<2.0" },
+    { name = "pytest-cov", specifier = ">=7.0.0" },
     { name = "requests", specifier = ">=2.32.5,<3.0.0" },
     { name = "sentry-sdk", extras = ["fastapi"], specifier = ">=2.42.0,<3.0.0" },
     { name = "statsd", specifier = ">=4.0.1,<5.0.0" },
@@ -934,6 +936,20 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/42/86/9e3c5f48f7b7b638b216e4b9e645f54d199d7abbbab7a64a13b4e12ba10f/pytest_asyncio-1.2.0.tar.gz", hash = "sha256:c609a64a2a8768462d0c99811ddb8bd2583c33fd33cf7f21af1c142e824ffb57", size = 50119, upload-time = "2025-09-12T07:33:53.816Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/04/93/2fa34714b7a4ae72f2f8dad66ba17dd9a2c793220719e736dda28b7aec27/pytest_asyncio-1.2.0-py3-none-any.whl", hash = "sha256:8e17ae5e46d8e7efe51ab6494dd2010f4ca8dae51652aa3c8d55acf50bfb2e99", size = 15095, upload-time = "2025-09-12T07:33:52.639Z" },
+]
+
+[[package]]
+name = "pytest-cov"
+version = "7.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "coverage" },
+    { name = "pluggy" },
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5e/f7/c933acc76f5208b3b00089573cf6a2bc26dc80a8aece8f52bb7d6b1855ca/pytest_cov-7.0.0.tar.gz", hash = "sha256:33c97eda2e049a0c5298e91f519302a1334c26ac65c1a483d6206fd458361af1", size = 54328, upload-time = "2025-09-09T10:57:02.113Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ee/49/1377b49de7d0c1ce41292161ea0f721913fa8722c19fb9c1e3aa0367eecb/pytest_cov-7.0.0-py3-none-any.whl", hash = "sha256:3b8e9558b16cc1479da72058bdecf8073661c7f57f7d3c5f22a1c23507f2d861", size = 22424, upload-time = "2025-09-09T10:57:00.695Z" },
 ]
 
 [[package]]

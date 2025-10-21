@@ -18,6 +18,7 @@ dependencies = [
     "requests<3.0.0,>=2.32.5",
     "pydantic-settings<3.0.0,>=2.11.0",
     "pypandoc<2.0,>=1.15",
+    "pytest-cov>=7.0.0",
 ]
 name = "jbi"
 version = "0"
