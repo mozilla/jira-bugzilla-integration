@@ -34,4 +34,4 @@ RUN --mount=type=cache,target="${UV_CACHE_DIR}" \
 USER app
 
 EXPOSE $PORT
-CMD ["python", "-m", "asgi"]
+CMD ["uv", "run", "python", "-m", "asgi"]
