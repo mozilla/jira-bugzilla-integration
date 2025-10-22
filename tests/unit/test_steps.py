@@ -825,10 +825,10 @@ def test_update_issue_remove_priority(
     action_context = action_context_factory(
         operation=Operation.UPDATE,
         jira__issue="JBI-234",
-        bug__priority=None,
+        bug__priority="--",
         current_step="maybe_update_issue_priority",
         event__changes=[
-            webhook_event_change_factory(field="priority", removed="P1", added="--")
+            webhook_event_change_factory(field="priority", removed="P1", added="")
         ],
     )
     params = action_params_factory(
@@ -841,7 +841,7 @@ def test_update_issue_remove_priority(
 
     assert result == steps.StepStatus.SUCCESS
     mocked_jira.update_issue_field.assert_called_with(
-        key="JBI-234", fields={"priority": {"name": "(none)"}}
+        key="JBI-234", fields={"priority": None}
     )
 
 
