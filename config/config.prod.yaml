@@ -850,14 +850,14 @@
         - add_link_to_bugzilla
         - add_link_to_jira
         - sync_whiteboard_labels
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
+        - maybe_update_issue_resolution
       existing:
         - update_issue_summary
         - add_jira_comments_for_changes
         - sync_whiteboard_labels
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
+        - maybe_update_issue_resolution
       comment:
         - create_comment
     status_map:
@@ -891,14 +891,14 @@
         - add_link_to_bugzilla
         - add_link_to_jira
         - sync_whiteboard_labels
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
+        - maybe_update_issue_resolution
       existing:
         - update_issue_summary
         - add_jira_comments_for_changes
         - sync_whiteboard_labels
-        - maybe_update_issue_resolution
         - maybe_update_issue_status
+        - maybe_update_issue_resolution
       comment:
         - create_comment
     status_map:
