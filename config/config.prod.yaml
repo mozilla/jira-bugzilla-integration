@@ -875,6 +875,7 @@
       WORKSFORME: Closed
       INCOMPLETE: Closed
       MOVED: Closed
+    resolution_map: *basic-resolution-map
 
 - whiteboard_tag: bz-ffx-core
   bugzilla_user_id: tbd
@@ -916,3 +917,5 @@
       WORKSFORME: Closed
       INCOMPLETE: Closed
       MOVED: Closed
+    resolution_map: *basic-resolution-map
+
