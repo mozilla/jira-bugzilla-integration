@@ -13,7 +13,7 @@ uvicorn = {extras = ["standard"], version = "^0.38.0"}
 atlassian-python-api = "^4.0.7"
 dockerflow = {extras = ["fastapi"], version = "2024.4.2"}
 Jinja2 = "^3.1.6"
-sentry-sdk = "2.43.0"
+sentry-sdk = {version = "2.43.0", extras = ["fastapi"]}
 pydantic-yaml = "^1.6.0"
 backoff = "^2.2.1"
 statsd = "^4.0.1"
