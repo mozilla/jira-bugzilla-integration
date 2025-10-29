@@ -280,11 +280,6 @@ def _maybe_update_issue_mapped_field(
         )
         return (StepStatus.INCOMPLETE, context)
 
-    # Special handling for clearing fields in Jira.
-    if target_value == "(None)":
-        target_value = None
-        wrap_value = None
-
     resp = jira_service.update_issue_field(
         context,
         target_field,
