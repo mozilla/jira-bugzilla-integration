@@ -7,13 +7,13 @@ license = "MPL"
 
 [tool.poetry.dependencies]
 python = ">=3.12, <3.15"
-fastapi = "^0.120.0"
+fastapi = "^0.120.2"
 pydantic = {version = "^2.12.3", extras = ["email"]}
 uvicorn = {extras = ["standard"], version = "^0.38.0"}
 atlassian-python-api = "^4.0.7"
 dockerflow = {extras = ["fastapi"], version = "2024.4.2"}
 Jinja2 = "^3.1.6"
-sentry-sdk = {extras = ["fastapi"], version = "^2.42.1"}
+sentry-sdk = "2.43.0"
 pydantic-yaml = "^1.6.0"
 backoff = "^2.2.1"
 statsd = "^4.0.1"
