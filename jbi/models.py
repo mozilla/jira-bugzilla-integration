@@ -97,8 +97,8 @@ class ActionParams(BaseModel, frozen=True):
     labels_brackets: Literal["yes", "no", "both"] = "no"
     status_map: dict[str, str] = {}
     priority_map: dict[str, str] = {
-        "": "(None)",
-        "--": "(None)",
+        "": "None",
+        "--": "None",
         "P1": "P1",
         "P2": "P2",
         "P3": "P3",

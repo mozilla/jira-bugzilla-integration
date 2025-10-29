@@ -841,7 +841,7 @@ def test_update_issue_remove_priority(
 
     assert result == steps.StepStatus.SUCCESS
     mocked_jira.update_issue_field.assert_called_with(
-        key="JBI-234", fields={"priority": None}
+        key="JBI-234", fields={"priority": {"name": "None"}}
     )
 
 
