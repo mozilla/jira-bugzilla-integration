@@ -212,12 +212,14 @@
         - maybe_assign_jira_user
         - maybe_delete_duplicate
         - maybe_update_issue_status
+        - maybe_add_phabricator_link
       existing:
         - update_issue_summary
         - maybe_assign_jira_user
         - maybe_update_issue_status
         - sync_whiteboard_labels
         - sync_keywords_labels
+        - maybe_add_phabricator_link
       comment:
         - create_comment
     status_map:
@@ -387,7 +389,8 @@
     status_map: *basic-status-map
     resolution_map: *basic-resolution-map
     priority_map:
-      "": (none)
+      "": None
+      "--": None
       P1: P1
       P2: P2
       P3: P3
@@ -834,3 +837,85 @@
       comment:
         - create_comment
     labels_brackets: both
+
+- whiteboard_tag: bz-ffx-firefox
+  bugzilla_user_id: tbd
+  description: Bugs affecting Firefox components
+  parameters:
+    jira_project_key: BZFFX
+    jira_components:
+      set_custom_components:
+        - "Firefox"
+    steps:
+      new:
+        - create_issue
+        - maybe_delete_duplicate
+        - add_link_to_bugzilla
+        - sync_whiteboard_labels
+        - maybe_update_issue_status
+        - maybe_update_issue_resolution
+      existing:
+        - update_issue_summary
+        - add_jira_comments_for_changes
+        - sync_whiteboard_labels
+        - maybe_update_issue_status
+        - maybe_update_issue_resolution
+      comment:
+        - create_comment
+    status_map:
+      UNCONFIRMED: Backlog
+      NEW: Backlog
+      ASSIGNED: In Progress
+      REOPENED: Backlog
+      RESOLVED: Closed
+      VERIFIED: Closed
+      FIXED: Closed
+      INVALID: Closed
+      WONTFIX: Closed
+      INACTIVE: Closed
+      DUPLICATE: Duplicate
+      WORKSFORME: Closed
+      INCOMPLETE: Closed
+      MOVED: Closed
+    resolution_map: *basic-resolution-map
+
+- whiteboard_tag: bz-ffx-core
+  bugzilla_user_id: tbd
+  description: Bugs affecting Core components
+  parameters:
+    jira_project_key: BZFFX
+    jira_components:
+      set_custom_components:
+        - "Core"
+    steps:
+      new:
+        - create_issue
+        - maybe_delete_duplicate
+        - add_link_to_bugzilla
+        - sync_whiteboard_labels
+        - maybe_update_issue_status
+        - maybe_update_issue_resolution
+      existing:
+        - update_issue_summary
+        - add_jira_comments_for_changes
+        - sync_whiteboard_labels
+        - maybe_update_issue_status
+        - maybe_update_issue_resolution
+      comment:
+        - create_comment
+    status_map:
+      UNCONFIRMED: Backlog
+      NEW: Backlog
+      ASSIGNED: In Progress
+      REOPENED: Backlog
+      RESOLVED: Closed
+      VERIFIED: Closed
+      FIXED: Closed
+      INVALID: Closed
+      WONTFIX: Closed
+      INACTIVE: Closed
+      DUPLICATE: Duplicate
+      WORKSFORME: Closed
+      INCOMPLETE: Closed
+      MOVED: Closed
+    resolution_map: *basic-resolution-map
