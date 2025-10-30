@@ -18,7 +18,7 @@ MYPY_CMD="$UV_RUN mypy jbi"
 
 YAMLLINT_CMD="$UV_RUN yamllint -c .yamllint config/*.yaml"
 
-ACTIONS_LINT_CMD="$UV_RUN jbi lint"
+ACTIONS_LINT_CMD="$UV_RUN python -m jbi lint"
 
 all () {
   echo "running bandit"
