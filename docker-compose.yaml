@@ -2,7 +2,7 @@ version: "3.8"
 services:
   web:
     build: .
-    command: python -m asgi
+    command: uv run python -m asgi
     env_file:
       - .env
     # Let the init system handle signals for us.
@@ -14,7 +14,7 @@ services:
       - .:/app
   retry:
     build: .
-    command: python -m jbi.retry
+    command: uv run python -m jbi.retry
     env_file:
       - .env
     volumes:

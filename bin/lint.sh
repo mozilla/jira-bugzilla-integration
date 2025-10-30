@@ -2,23 +2,23 @@
 
 set -e
 
-POETRY_RUN="poetry run"
+UV_RUN="uv run"
 
-BANDIT_CMD="$POETRY_RUN bandit -lll --recursive jbi"
+BANDIT_CMD="$UV_RUN bandit -lll --recursive jbi"
 
-FORMAT_CMD="$POETRY_RUN ruff format ."
+FORMAT_CMD="$UV_RUN ruff format ."
 
-# Scan only files fixed into the repo, omit poetry.lock
-DETECT_SECRETS_FILES="$(git ls-tree --full-tree -r --name-only HEAD | grep -v poetry.lock)"
-DETECT_SECRETS_CMD="$POETRY_RUN detect-secrets-hook $DETECT_SECRETS_FILES --baseline .secrets.baseline"
+# Scan only files fixed into the repo, omit uv.lock
+DETECT_SECRETS_FILES="$(git ls-tree --full-tree -r --name-only HEAD | grep -v uv.lock)"
+DETECT_SECRETS_CMD="$UV_RUN detect-secrets-hook $DETECT_SECRETS_FILES --baseline .secrets.baseline"
 
-LINT_CMD="$POETRY_RUN ruff check ."
+LINT_CMD="$UV_RUN ruff check ."
 
-MYPY_CMD="$POETRY_RUN mypy jbi"
+MYPY_CMD="$UV_RUN mypy jbi"
 
-YAMLLINT_CMD="$POETRY_RUN yamllint -c .yamllint config/*.yaml"
+YAMLLINT_CMD="$UV_RUN yamllint -c .yamllint config/*.yaml"
 
-ACTIONS_LINT_CMD="$POETRY_RUN jbi lint"
+ACTIONS_LINT_CMD="$UV_RUN python -m jbi lint"
 
 all () {
   echo "running bandit"

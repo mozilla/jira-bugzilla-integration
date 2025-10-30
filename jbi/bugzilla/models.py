@@ -118,7 +118,7 @@ class WebhookAttachment(BaseModel, frozen=True):
         if not self.is_phabricator_patch():
             return None
 
-        match = re.search(r'D\d+', self.file_name)
+        match = re.search(r"D\d+", self.file_name)
         if not match:
             logger.info(
                 "Expected that attachment with name %s is a patch, but we couldn't extract the phabricator id (e.g D1234)",
@@ -133,6 +133,7 @@ class WebhookAttachment(BaseModel, frozen=True):
 
         revision_id = match.group(0)
         return f"{base_url}/{revision_id}"
+
 
 class Bug(BaseModel, frozen=True):
     """Bugzilla Bug Object"""
