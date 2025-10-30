@@ -49,10 +49,6 @@ dev = [
     "pytest-asyncio<2.0.0,>=1.2.0",
 ]
 
-[build-system]
-requires = ["pdm-backend"]
-build-backend = "pdm.backend"
-
 [tool.ruff]
 target-version = "py312"
 lint.extend-select = ["I"]
