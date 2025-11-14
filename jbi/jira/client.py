@@ -70,6 +70,7 @@ class JiraClient(Jira):
 
     get_server_info = instrumented_method(Jira.get_server_info)
     get_project_components = instrumented_method(Jira.get_project_components)
+    create_component = instrumented_method(Jira.create_component)
     update_issue = instrumented_method(Jira.update_issue)
     update_issue_field = instrumented_method(Jira.update_issue_field)
     set_issue_status = instrumented_method(Jira.set_issue_status)

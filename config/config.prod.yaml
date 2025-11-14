@@ -844,8 +844,9 @@
   parameters:
     jira_project_key: BZFFX
     jira_components:
-      set_custom_components:
-        - "Firefox"
+      use_bug_component_with_product_prefix: true
+      use_bug_component: false
+      create_components: true
     steps:
       new:
         - create_issue
@@ -885,8 +886,9 @@
   parameters:
     jira_project_key: BZFFX
     jira_components:
-      set_custom_components:
-        - "Core"
+      use_bug_component_with_product_prefix: true
+      use_bug_component: false
+      create_components: true
     steps:
       new:
         - create_issue

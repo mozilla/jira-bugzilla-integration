@@ -80,6 +80,7 @@ class JiraComponents(BaseModel, frozen=True):
     use_bug_component: bool = True
     use_bug_product: bool = False
     use_bug_component_with_product_prefix: bool = False
+    create_components: bool = False
     set_custom_components: list[str] = []
 
 

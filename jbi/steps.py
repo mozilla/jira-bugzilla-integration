@@ -405,6 +405,7 @@ def maybe_update_components(
         resp, missing_components = jira_service.update_issue_components(
             context=context,
             components=candidate_components,
+            create_components=parameters.jira_components.create_components,
         )
     except requests_exceptions.HTTPError as exc:
         if getattr(exc.response, "status_code", None) != 400:
