@@ -375,16 +375,16 @@ class JiraService:
                 missing_components.remove(comp["name"])
 
         if not jira_components:
-            if create_components:
-                for comp_name in missing_components:
-                    new_comp = self.client.create_component(
-                        project_key=context.jira.project,
-                        name=comp_name,
-                    )
-                    jira_components.append({"id": new_comp["id"]})
-                missing_components.clear()
-            else:
+            if not create_components:
                 return None, missing_components
+
+            for comp_name in missing_components:
+                new_comp = self.client.create_component(
+                    project_key=context.jira.project,
+                    name=comp_name,
+                )
+                jira_components.append({"id": new_comp["id"]})
+            missing_components.clear()
 
         resp = self.update_issue_field(
             context, field="components", value=jira_components

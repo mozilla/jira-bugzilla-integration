@@ -1351,6 +1351,82 @@ def test_maybe_update_components_failing(
     ]
 
 
+def test_maybe_update_components_create_components_normal_component(
+    action_context_factory,
+    mocked_jira,
+    action_params_factory,
+):
+    action_context = action_context_factory(
+        operation=Operation.CREATE,
+        current_step="maybe_update_components",
+        bug__component="NewComponent",
+        jira__issue="JBI-234",
+    )
+    action_params = action_params_factory(
+        jira_project_key=action_context.jira.project,
+        jira_components=JiraComponents(create_components=True),
+    )
+    mocked_jira.get_project_components.return_value = [
+        {"id": 1, "name": "ExistingComponent"},
+    ]
+    mocked_jira.create_component.return_value = {"id": "42", "name": "NewComponent"}
+
+    steps.maybe_update_components(
+        action_context,
+        parameters=action_params,
+        jira_service=JiraService(mocked_jira),
+    )
+
+    mocked_jira.create_component.assert_called_once_with(
+        project_key=action_context.jira.project,
+        name="NewComponent",
+    )
+    mocked_jira.update_issue_field.assert_called_with(
+        key="JBI-234",
+        fields={"components": [{"id": "42"}]},
+    )
+
+
+def test_maybe_update_components_create_components_prefix_component(
+    action_context_factory,
+    mocked_jira,
+    action_params_factory,
+):
+    action_context = action_context_factory(
+        operation=Operation.CREATE,
+        current_step="maybe_update_components",
+        bug__product="Firefox",
+        bug__component="NewComponent",
+        jira__issue="JBI-234",
+    )
+    action_params = action_params_factory(
+        jira_project_key=action_context.jira.project,
+        jira_components=JiraComponents(
+            create_components=True,
+            use_bug_component_with_product_prefix=True,
+            use_bug_component=False
+        ),
+    )
+    mocked_jira.get_project_components.return_value = [
+        {"id": 1, "name": "Firefox::ExistingComponent"},
+    ]
+    mocked_jira.create_component.return_value = {"id": "42", "name": "Firefox::NewComponent"}
+
+    steps.maybe_update_components(
+        action_context,
+        parameters=action_params,
+        jira_service=JiraService(mocked_jira),
+    )
+
+    mocked_jira.create_component.assert_called_once_with(
+        project_key=action_context.jira.project,
+        name="Firefox::NewComponent",
+    )
+    mocked_jira.update_issue_field.assert_called_with(
+        key="JBI-234",
+        fields={"components": [{"id": "42"}]},
+    )
+
 def test_sync_whiteboard_labels(
     action_context_factory,
     mocked_jira,
