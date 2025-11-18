@@ -1378,7 +1378,7 @@ def test_maybe_update_components_create_components_normal_component(
     )
 
     mocked_jira.create_component.assert_called_once_with(
-        project_key=action_context.jira.project,
+        project=action_context.jira.project,
         name="NewComponent",
     )
     mocked_jira.update_issue_field.assert_called_with(
@@ -1419,7 +1419,7 @@ def test_maybe_update_components_create_components_prefix_component(
     )
 
     mocked_jira.create_component.assert_called_once_with(
-        project_key=action_context.jira.project,
+        project=action_context.jira.project,
         name="Firefox::NewComponent",
     )
     mocked_jira.update_issue_field.assert_called_with(
