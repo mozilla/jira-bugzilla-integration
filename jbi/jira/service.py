@@ -379,10 +379,8 @@ class JiraService:
                 return None, missing_components
 
             for comp_name in missing_components:
-                new_comp = self.client.create_component(
-                    project=context.jira.project,
-                    name=comp_name,
-                )
+                comp_data = {"name": comp_name, "project": context.jira.project}
+                new_comp = self.client.create_component(comp_data)
                 jira_components.append({"id": new_comp["id"]})
             missing_components.clear()
 
