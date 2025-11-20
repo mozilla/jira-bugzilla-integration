@@ -63,6 +63,10 @@ Parameters are used by `step` functions to control what Bugzilla data is synced 
      - `set_custom_components` (optional)
         - list[str]
         - If defined, the issues will be assigned the specified components (default `[]`)
+     - create_components  (optional)
+        - bool
+        - If true, components that do not exist in Jira will be created (default `false`)
+        - Set `use_bug_component` to `false` when this open is `true`.
 - `labels_brackets` (optional)
     - enum ["yes", "no", "both"]
     - Controls whether issue labels should have brackets or not in the `sync_whiteboard_labels` step (default: "no")
