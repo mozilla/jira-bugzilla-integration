@@ -850,7 +850,6 @@
     steps:
       new:
         - create_issue
-        - maybe_delete_duplicate
         - maybe_update_components
         - add_link_to_bugzilla
         - add_link_to_jira
@@ -897,7 +896,6 @@
     steps:
       new:
         - create_issue
-        - maybe_delete_duplicate
         - maybe_update_components
         - add_link_to_bugzilla
         - add_link_to_jira
