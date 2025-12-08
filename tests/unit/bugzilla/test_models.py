@@ -5,6 +5,12 @@ def test_attachments_flags(bug_factory):
             {"id": 2302739, "name": "approval-mozilla-beta", "value": "?"}
         ],
     )
+    bug_factory.build(
+        with_attachment=True,
+        attachment__flags=[
+            {"id": None, "name": "approval-mozilla-beta", "value": "?"}
+        ],
+    )
     # not raising is a success
 
 
