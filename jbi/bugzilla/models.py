@@ -82,7 +82,7 @@ class WebhookComment(BaseModel, frozen=True):
 class AttachmentFlag(BaseModel, frozen=True):
     """Flag object associated with a Bugzilla attachment."""
 
-    id: int
+    id: int | None
     name: str
     value: str
 
