@@ -64,32 +64,65 @@ def test_override_step_configuration_for_single_action_type():
         ([], None),
         (["foo"], None),
         (["fail:/format"], None),
-        (["foo", "http://jira.net/123"], "123"),
+        # Non-matching project keys should return None
+        (["foo", "http://jira.net/123"], None),
         (["http://org/123"], None),
         (["http://jira.com"], None),
         (["http://mozilla.jira.com/"], None),
-        (["http://mozilla.jira.com/123"], "123"),
-        (["http://mozilla.jira.com/123/"], "123"),
-        (["http://mozilla.jira.com/ticket/123"], "123"),
-        (["http://atlassian.com/ticket/123"], "123"),
-        (["http://mozilla.jira.com/123", "http://mozilla.jira.com/456"], "123"),
+        (["http://mozilla.jira.com/123"], None),
+        (["http://mozilla.jira.com/123/"], None),
+        (["http://mozilla.jira.com/ticket/123"], None),
+        (["http://atlassian.com/ticket/123"], None),
+        (["http://mozilla.jira.com/123", "http://mozilla.jira.com/456"], None),
+        # Multiple Jira issues from different projects should return None if none match
         (
             ["http://mozilla.jira.com/FOO-123", "http://mozilla.jira.com/BAR-456"],
-            "FOO-123",
+            None,
         ),
+        # Issue keys that don't match the project format should return None
         (
             ["http://mozilla.jira.com/FOO-123", "http://mozilla.jira.com/JBI456"],
-            "FOO-123",
+            None,
         ),
+        # Only return issue key if it matches the specified project
         (
             ["http://mozilla.jira.com/FOO-123", "http://mozilla.jira.com/JBI-456"],
             "JBI-456",
+        ),
+        # Test the specific scenario: BZFFX issue shouldn't prevent GENAI creation
+        (
+            ["http://mozilla.jira.com/BZFFX-123"],
+            None,
         ),
     ],
 )
 def test_extract_see_also(see_also, expected, bug_factory):
     bug = bug_factory(see_also=see_also)
     assert bug.extract_from_see_also("JBI") == expected
+
+
+def test_extract_see_also_different_projects(bug_factory):
+    """Test that a bug with a BZFFX issue can still match GENAI project."""
+    bug = bug_factory(see_also=["http://mozilla.jira.com/browse/BZFFX-123"])
+    # When looking for GENAI project, should return None (allowing new ticket creation)
+    assert bug.extract_from_see_also("GENAI") is None
+    # When looking for BZFFX project, should return the issue key
+    assert bug.extract_from_see_also("BZFFX") == "BZFFX-123"
+
+
+def test_extract_see_also_multiple_projects(bug_factory):
+    """Test that extract_from_see_also correctly handles bugs linked to multiple projects."""
+    bug = bug_factory(
+        see_also=[
+            "http://mozilla.jira.com/browse/BZFFX-123",
+            "http://mozilla.jira.com/browse/GENAI-456",
+        ]
+    )
+    # Each project should only match its own issue
+    assert bug.extract_from_see_also("BZFFX") == "BZFFX-123"
+    assert bug.extract_from_see_also("GENAI") == "GENAI-456"
+    # Non-matching project should return None
+    assert bug.extract_from_see_also("FOOBAR") is None
 
 
 @pytest.mark.parametrize(

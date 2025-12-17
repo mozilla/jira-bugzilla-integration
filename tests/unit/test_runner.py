@@ -276,7 +276,9 @@ def test_runner_ignores_request_if_jira_is_linked_but_without_whiteboard(
     )
     mocked_bugzilla.get_bug.return_value = webhook.bug
 
-    assert webhook.bug.extract_from_see_also(project_key="foo") is not None
+    # Verify that the bug has a JBI link (matching project), but not for other projects
+    assert webhook.bug.extract_from_see_also(project_key="JBI") == "JBI-234"
+    assert webhook.bug.extract_from_see_also(project_key="foo") is None
 
     with pytest.raises(IgnoreInvalidRequestError) as exc_info:
         execute_action(request=webhook, actions=actions)
