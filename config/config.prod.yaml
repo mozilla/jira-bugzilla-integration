@@ -196,6 +196,56 @@
       MOVED: Done
     resolution_map: *basic-resolution-map
 
+- whiteboard_tag: fxpe
+  bugzilla_user_id: 697742
+  description: Performance Team
+  parameters:
+    jira_project_key: FXP
+    jira_components:
+      use_bug_component: false
+      use_bug_component_with_product_prefix: true
+    steps:
+      new:
+        - create_issue
+        - maybe_delete_duplicate
+        - add_link_to_bugzilla
+        - add_link_to_jira
+        - maybe_assign_jira_user
+        - maybe_update_components
+        - maybe_update_issue_status
+        - maybe_update_issue_resolution
+        - maybe_add_phabricator_link
+        - sync_whiteboard_labels
+        - sync_keywords_labels
+      existing:
+        - update_issue_summary
+        - maybe_update_components
+        - maybe_assign_jira_user
+        - maybe_update_issue_status
+        - maybe_update_issue_resolution
+        - maybe_add_phabricator_link
+        - sync_whiteboard_labels
+        - sync_keywords_labels
+        - add_jira_comments_for_changes
+      comment:
+        - create_comment
+    status_map: &basic-status-map
+      UNCONFIRMED: Backlog
+      NEW: Backlog
+      ASSIGNED: In Progress
+      REOPENED: In Progress
+      RESOLVED: Done
+      VERIFIED: Done
+      FIXED: Done
+      INVALID: Done
+      WONTFIX: Done
+      INACTIVE: Done
+      DUPLICATE: Done
+      WORKSFORME: Done
+      INCOMPLETE: Done
+      MOVED: Done
+    resolution_map: *basic-resolution-map
+
 - whiteboard_tag: fxsync
   bugzilla_user_id: 624105
   description: Firefox Sync Team whiteboard tag
