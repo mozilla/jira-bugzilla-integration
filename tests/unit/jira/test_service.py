@@ -494,3 +494,101 @@ def test_all_projects_permissions(
 
     results = jira_service.check_jira_all_projects_have_permissions(actions)
     assert [msg.id for msg in results] == expected_result
+
+
+def test_create_issue_link_blocks_creates_link(
+    jira_service, mocked_responses, settings, action_context_factory
+):
+    """Test that create_issue_link_blocks creates a 'Blocks' link between two issues."""
+    context = action_context_factory(jira__issue="JBI-123")
+
+    mocked_responses.add(
+        "POST",
+        f"{settings.jira_base_url}rest/api/2/issueLink",
+        json={},
+        status=201,
+    )
+
+    jira_service.create_issue_link_blocks(
+        context, blocking_issue="JBI-456", blocked_issue="JBI-123"
+    )
+
+    # Verify the request was made correctly
+    assert len(mocked_responses.calls) == 1
+    request_body = mocked_responses.calls[0].request.body
+    import json
+
+    data = json.loads(request_body)
+    assert data["type"]["name"] == "Blocks"
+    assert data["outwardIssue"]["key"] == "JBI-456"
+    assert data["inwardIssue"]["key"] == "JBI-123"
+
+
+def test_create_issue_link_blocks_handles_duplicate_link(
+    jira_service, mocked_responses, settings, action_context_factory
+):
+    """Test that create_issue_link_blocks handles idempotency (400 error for duplicate links)."""
+    context = action_context_factory(jira__issue="JBI-123")
+
+    mocked_responses.add(
+        "POST",
+        f"{settings.jira_base_url}rest/api/2/issueLink",
+        json={"errorMessages": ["The link already exists"]},
+        status=400,
+    )
+
+    # Should not raise an exception
+    jira_service.create_issue_link_blocks(
+        context, blocking_issue="JBI-456", blocked_issue="JBI-123"
+    )
+
+
+def test_create_issue_link_blocks_raises_on_other_http_errors(
+    jira_service, mocked_responses, settings, action_context_factory
+):
+    """Test that create_issue_link_blocks raises exception for non-400 HTTP errors."""
+    import requests
+
+    context = action_context_factory(jira__issue="JBI-123")
+
+    mocked_responses.add(
+        "POST",
+        f"{settings.jira_base_url}rest/api/2/issueLink",
+        json={"errorMessages": ["Internal server error"]},
+        status=500,
+    )
+
+    with pytest.raises(requests.exceptions.HTTPError):
+        jira_service.create_issue_link_blocks(
+            context, blocking_issue="JBI-456", blocked_issue="JBI-123"
+        )
+
+
+def test_lookup_jira_issues_for_bug_finds_multiple_issues(
+    jira_service, action_context_factory, bug_factory
+):
+    """Test that lookup_jira_issues_for_bug finds all Jira issues including cross-project."""
+    context = action_context_factory(jira__issue="JBI-123")
+    bug = bug_factory(
+        id=456,
+        see_also=[
+            "http://mozilla.jira.com/browse/JBI-789",
+            "http://mozilla.jira.com/browse/FIDEFE-101",
+        ],
+    )
+
+    result = jira_service.lookup_jira_issues_for_bug(context, 456, bug)
+
+    assert result == ["JBI-789", "FIDEFE-101"]
+
+
+def test_lookup_jira_issues_for_bug_returns_empty_when_no_see_also(
+    jira_service, action_context_factory, bug_factory
+):
+    """Test that lookup_jira_issues_for_bug returns empty list when no see_also."""
+    context = action_context_factory(jira__issue="JBI-123")
+    bug = bug_factory(id=456, see_also=None)
+
+    result = jira_service.lookup_jira_issues_for_bug(context, 456, bug)
+
+    assert result == []

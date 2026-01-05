@@ -5,6 +5,7 @@ import pytest
 import requests
 
 from jbi import Operation, steps
+from jbi.bugzilla.service import BugzillaService
 from jbi.jira import JiraService
 from jbi.jira.client import JiraCreateError
 from jbi.models import ActionContext, JiraComponents
@@ -1654,3 +1655,319 @@ def test_sync_keywords_labels_failing(
     assert capturelogs.messages == [
         "Could not set labels on issue JBI-123: some message"
     ]
+
+
+def test_sync_depends_on_links_create_with_dependency(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+):
+    """Test sync_depends_on_links creates links on CREATE with valid dependency."""
+    # Bug 123 depends_on bug 456
+    # Bug 456 has Jira issue JBI-456
+    # Expected: JBI-456 blocks JBI-123
+    action_context = action_context_factory(
+        operation=Operation.CREATE,
+        jira__issue="JBI-123",
+        bug__id=123,
+        bug__depends_on=[456],
+    )
+
+    # Mock bug 456 with see_also containing JBI-456
+    dependency_bug = bug_factory(
+        id=456, see_also=["http://mozilla.jira.com/browse/JBI-456"]
+    )
+    mocked_bugzilla.get_bug.return_value = dependency_bug
+
+    result, context = steps.sync_depends_on_links(
+        context=action_context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.create_issue_link.assert_called_once_with(
+        data={
+            "type": {"name": "Blocks"},
+            "inwardIssue": {"key": "JBI-123"},
+            "outwardIssue": {"key": "JBI-456"},
+        }
+    )
+
+
+def test_sync_depends_on_links_noop_when_empty(
+    action_context_factory,
+    mocked_jira,
+    mocked_bugzilla,
+):
+    """Test sync_depends_on_links returns NOOP when depends_on is empty."""
+    action_context = action_context_factory(
+        operation=Operation.CREATE,
+        jira__issue="JBI-123",
+        bug__depends_on=[],
+    )
+
+    result, context = steps.sync_depends_on_links(
+        context=action_context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.NOOP
+    mocked_bugzilla.get_bug.assert_not_called()
+    mocked_jira.create_issue_link.assert_not_called()
+
+
+def test_sync_depends_on_links_noop_on_update_when_field_unchanged(
+    action_context_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    webhook_event_change_factory,
+):
+    """Test sync_depends_on_links returns NOOP on UPDATE when field unchanged."""
+    action_context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="JBI-123",
+        bug__depends_on=[456],
+        event__changes=[
+            webhook_event_change_factory(field="summary", removed="old", added="new")
+        ],
+    )
+
+    result, context = steps.sync_depends_on_links(
+        context=action_context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.NOOP
+    mocked_bugzilla.get_bug.assert_not_called()
+
+
+def test_sync_depends_on_links_processes_update_when_field_changed(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    webhook_event_change_factory,
+):
+    """Test sync_depends_on_links processes UPDATE when field changed."""
+    action_context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="JBI-123",
+        bug__depends_on=[456],
+        event__changes=[
+            webhook_event_change_factory(
+                field="depends_on", removed="", added="456"
+            )
+        ],
+    )
+
+    dependency_bug = bug_factory(
+        id=456, see_also=["http://mozilla.jira.com/browse/JBI-456"]
+    )
+    mocked_bugzilla.get_bug.return_value = dependency_bug
+
+    result, context = steps.sync_depends_on_links(
+        context=action_context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.create_issue_link.assert_called_once()
+
+
+def test_sync_depends_on_links_skips_bugs_without_jira_issues(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+):
+    """Test sync_depends_on_links skips dependencies without Jira issues."""
+    action_context = action_context_factory(
+        operation=Operation.CREATE,
+        jira__issue="JBI-123",
+        bug__depends_on=[456],
+    )
+
+    # Mock bug 456 with no see_also
+    dependency_bug = bug_factory(id=456, see_also=None)
+    mocked_bugzilla.get_bug.return_value = dependency_bug
+
+    result, context = steps.sync_depends_on_links(
+        context=action_context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.NOOP
+    mocked_jira.create_issue_link.assert_not_called()
+
+
+def test_sync_depends_on_links_handles_multiple_jira_issues(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+):
+    """Test sync_depends_on_links creates links to all Jira issues (cross-project)."""
+    action_context = action_context_factory(
+        operation=Operation.CREATE,
+        jira__issue="JBI-123",
+        bug__depends_on=[456],
+    )
+
+    # Mock bug 456 with multiple Jira issues
+    dependency_bug = bug_factory(
+        id=456,
+        see_also=[
+            "http://mozilla.jira.com/browse/JBI-456",
+            "http://mozilla.jira.com/browse/FIDEFE-789",
+        ],
+    )
+    mocked_bugzilla.get_bug.return_value = dependency_bug
+
+    result, context = steps.sync_depends_on_links(
+        context=action_context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    assert mocked_jira.create_issue_link.call_count == 2
+    calls = mocked_jira.create_issue_link.call_args_list
+    assert calls[0] == mock.call(
+        data={
+            "type": {"name": "Blocks"},
+            "inwardIssue": {"key": "JBI-123"},
+            "outwardIssue": {"key": "JBI-456"},
+        }
+    )
+    assert calls[1] == mock.call(
+        data={
+            "type": {"name": "Blocks"},
+            "inwardIssue": {"key": "JBI-123"},
+            "outwardIssue": {"key": "FIDEFE-789"},
+        }
+    )
+
+
+def test_sync_depends_on_links_handles_multiple_dependencies(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+):
+    """Test sync_depends_on_links handles multiple dependencies."""
+    action_context = action_context_factory(
+        operation=Operation.CREATE,
+        jira__issue="JBI-123",
+        bug__depends_on=[456, 789],
+    )
+
+    def get_bug_side_effect(bug_id):
+        return bug_factory(
+            id=bug_id,
+            see_also=[f"http://mozilla.jira.com/browse/JBI-{bug_id}"],
+        )
+
+    mocked_bugzilla.get_bug.side_effect = get_bug_side_effect
+
+    result, context = steps.sync_depends_on_links(
+        context=action_context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    assert mocked_jira.create_issue_link.call_count == 2
+
+
+def test_sync_blocks_links_create_with_blocked_bug(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+):
+    """Test sync_blocks_links creates links on CREATE with blocked bug."""
+    # Bug 123 blocks bug 456
+    # Bug 456 has Jira issue JBI-456
+    # Expected: JBI-123 blocks JBI-456
+    action_context = action_context_factory(
+        operation=Operation.CREATE,
+        jira__issue="JBI-123",
+        bug__id=123,
+        bug__blocks=[456],
+    )
+
+    # Mock bug 456 with see_also containing JBI-456
+    blocked_bug = bug_factory(
+        id=456, see_also=["http://mozilla.jira.com/browse/JBI-456"]
+    )
+    mocked_bugzilla.get_bug.return_value = blocked_bug
+
+    result, context = steps.sync_blocks_links(
+        context=action_context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.create_issue_link.assert_called_once_with(
+        data={
+            "type": {"name": "Blocks"},
+            "inwardIssue": {"key": "JBI-456"},
+            "outwardIssue": {"key": "JBI-123"},
+        }
+    )
+
+
+def test_sync_blocks_links_noop_when_empty(
+    action_context_factory,
+    mocked_jira,
+    mocked_bugzilla,
+):
+    """Test sync_blocks_links returns NOOP when blocks is empty."""
+    action_context = action_context_factory(
+        operation=Operation.CREATE,
+        jira__issue="JBI-123",
+        bug__blocks=[],
+    )
+
+    result, context = steps.sync_blocks_links(
+        context=action_context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.NOOP
+    mocked_bugzilla.get_bug.assert_not_called()
+    mocked_jira.create_issue_link.assert_not_called()
+
+
+def test_sync_blocks_links_noop_on_update_when_field_unchanged(
+    action_context_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    webhook_event_change_factory,
+):
+    """Test sync_blocks_links returns NOOP on UPDATE when field unchanged."""
+    action_context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="JBI-123",
+        bug__blocks=[456],
+        event__changes=[
+            webhook_event_change_factory(field="summary", removed="old", added="new")
+        ],
+    )
+
+    result, context = steps.sync_blocks_links(
+        context=action_context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.NOOP
+    mocked_bugzilla.get_bug.assert_not_called()

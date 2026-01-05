@@ -51,6 +51,35 @@ class BugzillaService:
         )
         return updated_bug
 
+    def get_bugs_by_ids(self, bug_ids: list[int]) -> dict[int, Bug]:
+        """Fetch multiple bugs by their IDs.
+
+        Returns a dictionary mapping bug_id -> Bug object.
+        Silently skips bugs that are private/inaccessible or don't exist.
+        """
+        from .client import BugNotAccessibleError
+
+        bugs_by_id = {}
+        for bug_id in bug_ids:
+            try:
+                bug_data = self.client.get_bug(bug_id)
+                bugs_by_id[bug_id] = bug_data
+            except BugNotAccessibleError:
+                logger.info(
+                    "Skipping bug %s (not accessible)",
+                    bug_id,
+                    extra={"bug": {"id": bug_id}},
+                )
+            except requests.HTTPError as e:
+                logger.info(
+                    "Skipping bug %s (HTTP error: %s)",
+                    bug_id,
+                    e,
+                    extra={"bug": {"id": bug_id}},
+                )
+
+        return bugs_by_id
+
     def list_webhooks(self):
         """List the currently configured webhooks, including their status."""
 
