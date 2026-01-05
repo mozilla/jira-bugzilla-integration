@@ -198,9 +198,9 @@
 
 - whiteboard_tag: fxpe
   bugzilla_user_id: 697742
-  description: Performance Team
+  description: Performance Engineering Team
   parameters:
-    jira_project_key: FXP
+    jira_project_key: FXPE
     jira_components:
       use_bug_component: false
       use_bug_component_with_product_prefix: true
