@@ -1758,9 +1758,7 @@ def test_sync_depends_on_links_processes_update_when_field_changed(
         jira__issue="JBI-123",
         bug__depends_on=[456],
         event__changes=[
-            webhook_event_change_factory(
-                field="depends_on", removed="", added="456"
-            )
+            webhook_event_change_factory(field="depends_on", removed="", added="456")
         ],
     )
 

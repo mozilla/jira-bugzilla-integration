@@ -8,7 +8,7 @@ import concurrent
 import json
 import logging
 from functools import lru_cache
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable, Optional, cast
 
 import requests
 from dockerflow import checks
@@ -465,7 +465,8 @@ class JiraService:
         Returns:
             List of all Jira issue keys found (may be empty)
         """
-        jira_keys = bug_data.extract_from_see_also(project_key=None)
+        # When project_key is None, extract_from_see_also always returns a list
+        jira_keys = cast(list[str], bug_data.extract_from_see_also(project_key=None))
         if not jira_keys:
             logger.info(
                 "No Jira issues found for bug %s",

@@ -174,7 +174,9 @@ class Bug(BaseModel, frozen=True):
         """Return `true` if the bug is assigned to a user."""
         return self.assigned_to != "nobody@mozilla.org"
 
-    def extract_from_see_also(self, project_key: Optional[str] = None) -> Optional[str] | list[str]:
+    def extract_from_see_also(
+        self, project_key: Optional[str] = None
+    ) -> Optional[str] | list[str]:
         """Extract Jira Issue Key(s) from see_also if jira url present.
 
         If project_key is provided: Returns the Jira issue key only if it matches

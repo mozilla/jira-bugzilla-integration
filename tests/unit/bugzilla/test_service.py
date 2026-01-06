@@ -38,9 +38,7 @@ def test_refresh_bug_data_keeps_comment_and_attachment(
     assert updated.attachment == bug.attachment
 
 
-def test_get_bugs_by_ids_successful_fetch(
-    bugzilla_service, mocked_responses, settings
-):
+def test_get_bugs_by_ids_successful_fetch(bugzilla_service, mocked_responses, settings):
     """Test that get_bugs_by_ids successfully fetches multiple bugs."""
     bug_ids = [123, 456, 789]
 
