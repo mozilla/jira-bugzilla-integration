@@ -173,3 +173,72 @@ def test_max_configured_projects_raises_error(action_factory):
     actions = [action_factory(whiteboard_tag=str(i)) for i in range(51)]
     with pytest.raises(pydantic.ValidationError):
         Actions(root=actions)
+
+
+def test_bug_accepts_depends_on_and_blocks_fields(bug_factory):
+    """Test that Bug model accepts depends_on and blocks fields."""
+    bug = bug_factory(depends_on=[123, 456], blocks=[789])
+    assert bug.depends_on == [123, 456]
+    assert bug.blocks == [789]
+
+
+def test_bug_handles_empty_dependencies(bug_factory):
+    """Test that Bug model handles empty/None dependencies."""
+    bug_none = bug_factory(depends_on=None, blocks=None)
+    assert bug_none.depends_on is None
+    assert bug_none.blocks is None
+
+    bug_empty = bug_factory(depends_on=[], blocks=[])
+    assert bug_empty.depends_on == []
+    assert bug_empty.blocks == []
+
+
+def test_extract_from_see_also_with_project_key_returns_single_issue(bug_factory):
+    """Test that extract_from_see_also returns single issue for specific project."""
+    bug = bug_factory(
+        see_also=[
+            "http://mozilla.jira.com/browse/JBI-123",
+            "http://mozilla.jira.com/browse/FIDEFE-456",
+        ]
+    )
+    # Should return only the matching project
+    assert bug.extract_from_see_also("JBI") == "JBI-123"
+    assert bug.extract_from_see_also("FIDEFE") == "FIDEFE-456"
+    assert bug.extract_from_see_also("GENAI") is None
+
+
+def test_extract_from_see_also_with_no_project_key_returns_all_issues(bug_factory):
+    """Test that extract_from_see_also returns list of all Jira issues when project_key is None."""
+    bug = bug_factory(
+        see_also=[
+            "http://mozilla.jira.com/browse/JBI-123",
+            "http://mozilla.jira.com/browse/FIDEFE-456",
+            "http://mozilla.jira.com/browse/GENAI-789",
+        ]
+    )
+    # Should return all Jira issue keys
+    result = bug.extract_from_see_also(project_key=None)
+    assert result == ["JBI-123", "FIDEFE-456", "GENAI-789"]
+
+
+def test_extract_from_see_also_none_returns_empty_list_when_no_see_also(bug_factory):
+    """Test that extract_from_see_also returns empty list when no see_also and project_key is None."""
+    bug_none = bug_factory(see_also=None)
+    assert bug_none.extract_from_see_also(project_key=None) == []
+
+    bug_empty = bug_factory(see_also=[])
+    assert bug_empty.extract_from_see_also(project_key=None) == []
+
+
+def test_extract_from_see_also_none_filters_non_jira_urls(bug_factory):
+    """Test that extract_from_see_also filters out non-Jira URLs when project_key is None."""
+    bug = bug_factory(
+        see_also=[
+            "http://example.com/bug/123",
+            "http://mozilla.jira.com/browse/JBI-123",
+            "fail:/format",
+            "http://mozilla.jira.com/browse/FIDEFE-456",
+        ]
+    )
+    result = bug.extract_from_see_also(project_key=None)
+    assert result == ["JBI-123", "FIDEFE-456"]
