@@ -229,7 +229,7 @@
         - add_jira_comments_for_changes
       comment:
         - create_comment
-    status_map: &basic-status-map
+    status_map: *basic-status-map
       UNCONFIRMED: Backlog
       NEW: Backlog
       ASSIGNED: In Progress
