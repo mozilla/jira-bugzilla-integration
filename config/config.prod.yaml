@@ -154,6 +154,7 @@
     jira_components:
       use_bug_component: false
       use_bug_component_with_product_prefix: true
+      create_components: true
     steps:
       new:
         - create_issue
@@ -208,6 +209,7 @@
     jira_components:
       use_bug_component: false
       use_bug_component_with_product_prefix: true
+      create_components: true
     steps:
       new:
         - create_issue
