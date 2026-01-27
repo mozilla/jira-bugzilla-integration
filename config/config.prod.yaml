@@ -165,6 +165,7 @@
         - maybe_update_components
         - maybe_update_issue_status
         - maybe_update_issue_resolution
+        - maybe_update_issue_priority
         - maybe_update_issue_severity
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
@@ -175,6 +176,7 @@
         - maybe_assign_jira_user
         - maybe_update_issue_status
         - maybe_update_issue_resolution
+        - maybe_update_issue_priority
         - maybe_update_issue_severity
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
@@ -218,6 +220,7 @@
         - maybe_update_components
         - maybe_update_issue_status
         - maybe_update_issue_resolution
+        - maybe_update_issue_priority
         - maybe_update_issue_severity
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
@@ -228,6 +231,7 @@
         - maybe_assign_jira_user
         - maybe_update_issue_status
         - maybe_update_issue_resolution
+        - maybe_update_issue_priority
         - maybe_update_issue_severity
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
