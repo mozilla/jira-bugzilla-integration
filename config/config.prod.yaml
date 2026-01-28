@@ -434,14 +434,6 @@
         - create_comment
     status_map: *basic-status-map
     resolution_map: *basic-resolution-map
-    priority_map:
-      "": None
-      "--": None
-      P1: P1
-      P2: P2
-      P3: P3
-      P4: P4
-      P5: P5
 
 - whiteboard_tag: proton
   bugzilla_user_id: tbd
