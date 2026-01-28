@@ -986,6 +986,42 @@ def test_update_issue_unknown_severity(
     assert capturelogs.messages == ["Bug severity 'S3' was not in the severity map."]
 
 
+def test_update_issue_severity_clear_when_none(
+    action_context_factory,
+    mocked_jira,
+    action_params_factory,
+    webhook_event_change_factory,
+):
+    """Test that severity field is cleared when mapped to None"""
+    action_context = action_context_factory(
+        operation=Operation.UPDATE,
+        current_step="maybe_update_issue_severity",
+        bug__see_also=["https://mozilla.atlassian.net/browse/JBI-234"],
+        jira__issue="JBI-234",
+        bug__severity="",
+        event__action="modify",
+        event__changes=[
+            webhook_event_change_factory(field="severity", removed="S3", added="")
+        ],
+    )
+
+    params = action_params_factory(
+        jira_project_key=action_context.jira.project,
+        severity_map={
+            "": None,
+            "S3": "Moderate",
+        },
+    )
+    steps.maybe_update_issue_severity(
+        action_context, parameters=params, jira_service=JiraService(mocked_jira)
+    )
+
+    mocked_jira.create_issue.assert_not_called()
+    mocked_jira.update_issue_field.assert_called_with(
+        key="JBI-234", fields={"customfield_10319": {"value": None}}
+    )
+
+
 def test_update_issue_points(
     action_context_factory,
     mocked_jira,

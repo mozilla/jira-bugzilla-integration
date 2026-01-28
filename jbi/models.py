@@ -107,13 +107,14 @@ class ActionParams(BaseModel, frozen=True):
         "P5": "Lowest",
     }
     resolution_map: dict[str, str] = {}
-    severity_map: dict[str, str] = {
-        "": "N/A",
-        "--": "N/A",
+    severity_map: dict[str, str | None] = {
+        "": None,
+        "--": None,
         "S1": "S1",
         "S2": "S2",
         "S3": "S3",
         "S4": "S4",
+        "N/A": "N/A",
     }
     cf_fx_points_map: dict[str, int] = {
         "---": 0,
