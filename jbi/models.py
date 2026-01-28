@@ -103,8 +103,8 @@ class ActionParams(BaseModel, frozen=True):
         "P1": "P1",
         "P2": "P2",
         "P3": "P3",
-        "P4": "Low",
-        "P5": "Lowest",
+        "P4": "P4",
+        "P5": "P5",
     }
     resolution_map: dict[str, str] = {}
     severity_map: dict[str, str | None] = {
