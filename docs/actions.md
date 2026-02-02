@@ -166,3 +166,7 @@ linked Jira issue status to "Closed". If the bug changes to a status not listed 
   Syncs the Bugzilla whitboard tags field to the Jira labels field.
 - `maybe_update_components`: looks at the component that's set on the bug (if any) and any components added to the project configuration with the `jira_components` parameter (see above). If those components are available on the Jira side as well, they're added to the Jira issue
 - `maybe_add_phabricator_link`: looks at an attachment and if it is a phabricator attachment, it gets added as a link or updated if the attachment was previously added.
+- `sync_blocks_links`:
+  Creates Jira "Blocks" issue links based on Bugzilla's `blocks` field. If bug A blocks bug B, and bug B has a linked Jira issue, a link is created where A's issue blocks B's issue. Supports cross-project linking when blocked bugs have multiple Jira issues. Silently skips blocked bugs that are private, missing, or have no Jira issues. On UPDATE operations, only processes when the `blocks` field changes.
+- `sync_depends_on_links`:
+  Creates Jira "Blocks" issue links based on Bugzilla's `depends_on` field. If bug A depends on bug B, and bug B has a linked Jira issue, a link is created where B's issue blocks A's issue. Supports cross-project linking when dependency bugs have multiple Jira issues. Silently skips dependencies that are private, missing, or have no Jira issues. On UPDATE operations, only processes when the `depends_on` field changes.
