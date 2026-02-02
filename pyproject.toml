@@ -9,7 +9,7 @@ dependencies = [
     "pydantic[email]<3.0.0,>=2.12.3",
     "uvicorn[standard]<1.0.0,>=0.38.0",
     "atlassian-python-api<5.0.0,>=4.0.7",
-    "dockerflow[fastapi]==2024.4.2",
+    "dockerflow[fastapi]==2026.1.26",
     "Jinja2<4.0.0,>=3.1.6",
     "sentry-sdk[fastapi]<3.0.0,>=2.43.0",
     "pydantic-yaml<2.0.0,>=1.6.0",
