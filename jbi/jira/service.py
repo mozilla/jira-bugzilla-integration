@@ -137,6 +137,9 @@ class JiraService:
                 ):
                     formatted_comment += f"\n*Phabricator URL*: {phabricator_url}"
 
+                if github_url := att.github_url(base_url=settings.github_base_url):
+                    formatted_comment += f"\n*Github URL*: {github_url}"
+
         else:
             comment = context.bug.comment
             assert comment  # See jbi.steps.create_comment()

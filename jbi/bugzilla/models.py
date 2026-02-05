@@ -103,6 +103,37 @@ class WebhookAttachment(BaseModel, frozen=True):
     is_patch: bool
     is_private: bool
 
+    def is_github_pull_request(self) -> bool:
+        """
+        Returns True if this attachment is a github pull request attachment.
+
+        We identify an attachment as a pull request if the content type contains "github-pull-request"
+        """
+        return "github-pull-request" in self.content_type
+
+    def github_url(self, base_url: str) -> str | None:
+        """
+        Returns the github patch URL from the file name if the attachment is a patch, otherwise, it returns None.
+        """
+        if not self.is_github_pull_request():
+            return None
+
+        match = re.search(r"\d+", self.file_name)
+        if not match:
+            logger.info(
+                "Expected that attachment with name %s is a pull request, but we couldn't extract the pull request id",
+                self.file_name,
+                extra={
+                    "bug": {
+                        "id": self.id,
+                    }
+                },
+            )
+            return None
+
+        revision_id = match.group(0)
+        return f"{base_url}/{revision_id}"
+
     def is_phabricator_patch(self) -> bool:
         """
         Returns True if this attachment is a phabricator patch attachment.

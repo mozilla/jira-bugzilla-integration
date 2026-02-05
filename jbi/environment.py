@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     bugzilla_base_url: str = "https://bugzilla-dev.allizom.org"
     bugzilla_api_key: str
 
+    # Github
+    github_base_url: str = "https://github.com/mozilla-firefox/firefox/pull"
+
     # Phabricator
     phabricator_base_url: str = "https://phabricator.services.mozilla.com"
 
