@@ -105,6 +105,8 @@ class BugFactory(PydanticFactory):
     priority = ""
     product = "JBI"
     resolution = ""
+    depends_on = []
+    blocks = []
     see_also = []
     severity = "--"
     status = "NEW"

@@ -6,7 +6,7 @@ import inspect
 import itertools
 import logging
 import re
-from typing import Optional
+from typing import Optional, cast
 
 from dockerflow.logging import request_id_context
 from statsd.defaults.env import statsd
@@ -282,8 +282,10 @@ def do_execute_actions(
 
     details = {}
     for action in actions:
-        linked_issue_key: Optional[str] = bug.extract_from_see_also(
-            project_key=action.jira_project_key
+        # When project_key is provided, extract_from_see_also returns Optional[str], not list
+        linked_issue_key: Optional[str] = cast(
+            Optional[str],
+            bug.extract_from_see_also(project_key=action.jira_project_key),
         )
 
         action_context = ActionContext(

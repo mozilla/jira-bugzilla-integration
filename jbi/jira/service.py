@@ -8,7 +8,7 @@ import concurrent
 import json
 import logging
 from functools import lru_cache
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable, Optional, cast
 
 import requests
 from dockerflow import checks
@@ -412,6 +412,76 @@ class JiraService:
             issue_key=issue_key,
             update={"update": {"labels": updated_labels}},
         )
+
+    def create_issue_link_blocks(
+        self, context: ActionContext, blocking_issue: str, blocked_issue: str
+    ):
+        """Create a 'Blocks' link between two Jira issues.
+
+        Args:
+            context: The action context
+            blocking_issue: The issue key that blocks (e.g., 'JBI-123')
+            blocked_issue: The issue key that is blocked (e.g., 'JBI-456')
+        """
+        try:
+            self.client.create_issue_link(
+                data={
+                    "type": {"name": "Blocks"},
+                    "inwardIssue": {"key": blocked_issue},
+                    "outwardIssue": {"key": blocking_issue},
+                }
+            )
+            logger.info(
+                "Created link: %s blocks %s",
+                blocking_issue,
+                blocked_issue,
+                extra=context.update(operation=Operation.LINK).model_dump(),
+            )
+        except requests_exceptions.HTTPError as e:
+            # Handle idempotency: 400 error for duplicate links
+            if e.response is not None and e.response.status_code == 400:
+                logger.info(
+                    "Link already exists: %s blocks %s",
+                    blocking_issue,
+                    blocked_issue,
+                    extra=context.model_dump(),
+                )
+            else:
+                raise
+
+    def lookup_jira_issues_for_bug(
+        self, context: ActionContext, bug_id: int, bug_data: bugzilla_models.Bug
+    ) -> list[str]:
+        """Find all Jira issue keys for a Bugzilla bug ID.
+
+        Uses bug_data.extract_from_see_also(project_key=None) to get all issues,
+        supporting cross-project linking.
+
+        Args:
+            context: The action context
+            bug_id: The Bugzilla bug ID
+            bug_data: The Bug object containing see_also links
+
+        Returns:
+            List of all Jira issue keys found (may be empty)
+        """
+        # When project_key is None, extract_from_see_also always returns a list
+        jira_keys = cast(list[str], bug_data.extract_from_see_also(project_key=None))
+        if not jira_keys:
+            logger.info(
+                "No Jira issues found for bug %s",
+                bug_id,
+                extra=context.model_dump(),
+            )
+            return []
+
+        logger.info(
+            "Found Jira issues %s for bug %s",
+            jira_keys,
+            bug_id,
+            extra=context.model_dump(),
+        )
+        return jira_keys
 
     def check_jira_connection(self):
         try:

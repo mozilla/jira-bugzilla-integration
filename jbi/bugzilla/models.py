@@ -149,6 +149,8 @@ class Bug(BaseModel, frozen=True):
     groups: Optional[list] = None
     status: Optional[str] = None
     resolution: Optional[str] = None
+    depends_on: Optional[list[int]] = None
+    blocks: Optional[list[int]] = None
     see_also: Optional[list] = None
     summary: Optional[str] = None
     severity: Optional[str] = None
@@ -172,16 +174,23 @@ class Bug(BaseModel, frozen=True):
         """Return `true` if the bug is assigned to a user."""
         return self.assigned_to != "nobody@mozilla.org"
 
-    def extract_from_see_also(self, project_key):
-        """Extract Jira Issue Key from see_also if jira url present for the specified project.
+    def extract_from_see_also(
+        self, project_key: Optional[str] = None
+    ) -> Optional[str] | list[str]:
+        """Extract Jira Issue Key(s) from see_also if jira url present.
 
-        Returns the Jira issue key only if it matches the specified project_key.
-        If a see_also link points to a different Jira project, it will not be returned,
-        allowing a new ticket to be created for the specified project.
+        If project_key is provided: Returns the Jira issue key only if it matches
+        the specified project_key. If a see_also link points to a different Jira
+        project, it will not be returned, allowing a new ticket to be created for
+        the specified project.
+
+        If project_key is None: Returns a list of ALL Jira issue keys found in
+        see_also, regardless of project. This supports cross-project linking.
         """
         if not self.see_also or len(self.see_also) == 0:
-            return None
+            return None if project_key else []
 
+        all_keys = []
         for url in self.see_also:
             try:
                 parsed_url: ParseResult = urlparse(url=url)
@@ -201,12 +210,17 @@ class Bug(BaseModel, frozen=True):
 
             if any(part in JIRA_HOSTNAMES for part in host_parts):
                 parsed_jira_key = parsed_url.path.rstrip("/").split("/")[-1]
-                if parsed_jira_key:  # URL ending with /
-                    # Issue keys are like `{project_key}-{number}`
-                    # Only return if the key matches the specified project
-                    if parsed_jira_key.startswith(f"{project_key}-"):
+                if parsed_jira_key:
+                    if project_key is None:
+                        # Collect all keys
+                        all_keys.append(parsed_jira_key)
+                    elif parsed_jira_key.startswith(f"{project_key}-"):
+                        # Return first matching key for specific project
                         return parsed_jira_key
 
+        # Return based on mode
+        if project_key is None:
+            return all_keys
         return None
 
 
