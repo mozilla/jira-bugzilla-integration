@@ -287,7 +287,9 @@ class JiraService:
             bug.id,
             extra=context.model_dump(),
         )
-        fields: dict[str, Any] = {field: {wrap_value: value} if wrap_value else value}
+        fields: dict[str, Any] = {
+            field: {wrap_value: value} if wrap_value and value is not None else value
+        }
         response = self.client.update_issue_field(key=issue_key, fields=fields)
         logger.info(
             f"Updated {field} of Jira issue %s to %s for Bug %s",
