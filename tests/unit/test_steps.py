@@ -26,6 +26,7 @@ ALL_STEPS = {
         "maybe_update_issue_status",
         "maybe_update_issue_resolution",
         "maybe_add_phabricator_link",
+        "maybe_add_github_link",
     ],
     "comment": [
         "create_comment",
@@ -247,6 +248,36 @@ def test_added_attachment(
     mocked_jira.issue_add_comment.assert_called_once_with(
         issue_key="JBI-234",
         comment="*phab-bot@bmo.tld* created an attachment:\n*Description*: Bug 1337 - Stop war r?peace\n*Filename*: phabricator-D1234-url.txt (text/x-phabricator-request)\n*Phabricator URL*: https://phabricator.services.mozilla.com/D1234",
+    )
+
+
+def test_added_github_attachment(
+    action_context_factory, mocked_jira, action_params_factory
+):
+    github_attachment_context = action_context_factory(
+        operation=Operation.ATTACHMENT,
+        bug__with_attachment=True,
+        bug__id=5555,
+        bug__attachment__is_patch=True,
+        bug__attachment__is_obsolete=False,
+        bug__attachment__id=1981576,
+        bug__attachment__file_name="github-53-url.txt",
+        bug__attachment__description="[mozilla-firefox/firefox] Bug 1981576 - Permanently make exceptions for certificate errors for normal tabs (#53)",
+        bug__attachment__content_type="text/x-github-pull-request",
+        event__target="attachment",
+        jira__issue="JBI-234",
+    )
+    callable_object = Executor(
+        action_params_factory(jira_project_key=github_attachment_context.jira.project)
+    )
+
+    callable_object(context=github_attachment_context)
+
+    mocked_jira.create_or_update_issue_remote_links.assert_called_once_with(
+        issue_key="JBI-234",
+        link_url="https://github.com/mozilla-firefox/firefox/pull/53",
+        title="[mozilla-firefox/firefox] Bug 1981576 - Permanently make exceptions for certificate errors for normal tabs (#53)",
+        global_id="5555-123456",
     )
 
 
@@ -1439,13 +1470,16 @@ def test_maybe_update_components_create_components_prefix_component(
         jira_components=JiraComponents(
             create_components=True,
             use_bug_component_with_product_prefix=True,
-            use_bug_component=False
+            use_bug_component=False,
         ),
     )
     mocked_jira.get_project_components.return_value = [
         {"id": 1, "name": "Firefox::ExistingComponent"},
     ]
-    mocked_jira.create_component.return_value = {"id": "42", "name": "Firefox::NewComponent"}
+    mocked_jira.create_component.return_value = {
+        "id": "42",
+        "name": "Firefox::NewComponent",
+    }
 
     steps.maybe_update_components(
         action_context,
@@ -1460,6 +1494,7 @@ def test_maybe_update_components_create_components_prefix_component(
         key="JBI-234",
         fields={"components": [{"id": "42"}]},
     )
+
 
 def test_sync_whiteboard_labels(
     action_context_factory,
