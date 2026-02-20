@@ -1018,7 +1018,7 @@ def test_update_issue_severity_clear_when_none(
 
     mocked_jira.create_issue.assert_not_called()
     mocked_jira.update_issue_field.assert_called_with(
-        key="JBI-234", fields={"customfield_10319": {"value": None}}
+        key="JBI-234", fields={"customfield_10319": None}
     )
 
 
