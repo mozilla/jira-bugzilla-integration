@@ -83,12 +83,14 @@
         - maybe_assign_jira_user
         - maybe_update_issue_priority
         - maybe_update_issue_status
+        - maybe_add_phabricator_link
         - sync_whiteboard_labels
       existing:
         - update_issue_summary
         - maybe_assign_jira_user
         - maybe_update_issue_priority
         - maybe_update_issue_status
+        - maybe_add_phabricator_link
         - sync_whiteboard_labels
     labels_brackets: both
     status_map:
@@ -154,6 +156,7 @@
     jira_components:
       use_bug_component: false
       use_bug_component_with_product_prefix: true
+      create_components: true
     steps:
       new:
         - create_issue
@@ -164,6 +167,8 @@
         - maybe_update_components
         - maybe_update_issue_status
         - maybe_update_issue_resolution
+        - maybe_update_issue_priority
+        - maybe_update_issue_severity
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
@@ -173,6 +178,8 @@
         - maybe_assign_jira_user
         - maybe_update_issue_status
         - maybe_update_issue_resolution
+        - maybe_update_issue_priority
+        - maybe_update_issue_severity
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
@@ -204,6 +211,7 @@
     jira_components:
       use_bug_component: false
       use_bug_component_with_product_prefix: true
+      create_components: true
     steps:
       new:
         - create_issue
@@ -214,6 +222,8 @@
         - maybe_update_components
         - maybe_update_issue_status
         - maybe_update_issue_resolution
+        - maybe_update_issue_priority
+        - maybe_update_issue_severity
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
@@ -223,6 +233,8 @@
         - maybe_assign_jira_user
         - maybe_update_issue_status
         - maybe_update_issue_resolution
+        - maybe_update_issue_priority
+        - maybe_update_issue_severity
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
@@ -424,14 +436,6 @@
         - create_comment
     status_map: *basic-status-map
     resolution_map: *basic-resolution-map
-    priority_map:
-      "": None
-      "--": None
-      P1: P1
-      P2: P2
-      P3: P3
-      P4: P4
-      P5: P5
 
 - whiteboard_tag: proton
   bugzilla_user_id: tbd
