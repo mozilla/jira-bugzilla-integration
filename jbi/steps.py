@@ -263,7 +263,7 @@ def _maybe_update_issue_mapped_field(
 ) -> StepResult:
     source_value = getattr(context.bug, source_field, None) or ""
     target_field = getattr(parameters, f"jira_{source_field}_field")
-    target_value = getattr(parameters, f"{source_field}_map").get(source_value)
+    field_map = getattr(parameters, f"{source_field}_map")
 
     # If field is empty on create, or update is about another field, then nothing to do.
     if (context.operation == Operation.CREATE and source_value in ["", "---"]) or (
@@ -272,7 +272,8 @@ def _maybe_update_issue_mapped_field(
     ):
         return (StepStatus.NOOP, context)
 
-    if target_value is None:
+    # Check if source_value exists in the map
+    if source_value not in field_map:
         logger.info(
             f"Bug {source_field} %r was not in the {source_field} map.",
             source_value,
@@ -282,6 +283,9 @@ def _maybe_update_issue_mapped_field(
         )
         return (StepStatus.INCOMPLETE, context)
 
+    target_value = field_map[source_value]
+
+    # target_value can be None to clear the field in Jira
     resp = jira_service.update_issue_field(
         context,
         target_field,
