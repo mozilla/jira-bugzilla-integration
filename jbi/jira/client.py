@@ -79,6 +79,23 @@ class JiraClient(Jira):
     get_project = instrumented_method(Jira.get_project)
 
     @instrumented_method
+    def get_issue_transitions_with_fields(self, issue_key: str) -> list[dict]:
+        """Get available transitions for an issue with field metadata.
+
+        This uses expand=transitions.fields to get information about which
+        fields are available on each transition screen.
+
+        Args:
+            issue_key: The issue key (e.g., "SYNC-5055")
+
+        Returns:
+            List of transition objects with field metadata
+        """
+        url = f"rest/api/2/issue/{issue_key}/transitions"
+        response = self.get(url, params={"expand": "transitions.fields"})
+        return response.get("transitions", []) if response else []
+
+    @instrumented_method
     def paginated_projects(
         self,
         included_archived=None,
