@@ -46,6 +46,7 @@ class ActionSteps(BaseModel, frozen=True):
     attachment: list[str] = [
         "create_comment",
         "maybe_add_phabricator_link",
+        "maybe_add_github_link",
     ]
 
     @field_validator("*")
