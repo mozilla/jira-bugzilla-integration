@@ -83,12 +83,14 @@
         - maybe_assign_jira_user
         - maybe_update_issue_priority
         - maybe_update_issue_status
+        - maybe_add_phabricator_link
         - sync_whiteboard_labels
       existing:
         - update_issue_summary
         - maybe_assign_jira_user
         - maybe_update_issue_priority
         - maybe_update_issue_status
+        - maybe_add_phabricator_link
         - sync_whiteboard_labels
     labels_brackets: both
     status_map:
@@ -154,6 +156,7 @@
     jira_components:
       use_bug_component: false
       use_bug_component_with_product_prefix: true
+      create_components: true
     steps:
       new:
         - create_issue
@@ -164,6 +167,8 @@
         - maybe_update_components
         - maybe_update_issue_status
         - maybe_update_issue_resolution
+        - maybe_update_issue_priority
+        - maybe_update_issue_severity
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
@@ -173,6 +178,8 @@
         - maybe_assign_jira_user
         - maybe_update_issue_status
         - maybe_update_issue_resolution
+        - maybe_update_issue_priority
+        - maybe_update_issue_severity
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
@@ -194,6 +201,88 @@
       WORKSFORME: Done
       INCOMPLETE: Done
       MOVED: Done
+    resolution_map: *basic-resolution-map
+
+- whiteboard_tag: fxpe
+  bugzilla_user_id: 697742
+  description: Performance Engineering Team
+  parameters:
+    jira_project_key: FXPE
+    jira_components:
+      use_bug_component: false
+      use_bug_component_with_product_prefix: true
+      create_components: true
+    steps:
+      new:
+        - create_issue
+        - maybe_delete_duplicate
+        - add_link_to_bugzilla
+        - add_link_to_jira
+        - maybe_assign_jira_user
+        - maybe_update_components
+        - maybe_update_issue_status
+        - maybe_update_issue_resolution
+        - maybe_update_issue_priority
+        - maybe_update_issue_severity
+        - maybe_add_phabricator_link
+        - sync_whiteboard_labels
+        - sync_keywords_labels
+      existing:
+        - update_issue_summary
+        - maybe_update_components
+        - maybe_assign_jira_user
+        - maybe_update_issue_status
+        - maybe_update_issue_resolution
+        - maybe_update_issue_priority
+        - maybe_update_issue_severity
+        - maybe_add_phabricator_link
+        - sync_whiteboard_labels
+        - sync_keywords_labels
+        - add_jira_comments_for_changes
+      comment:
+        - create_comment
+    status_map: *basic-status-map
+    resolution_map: *basic-resolution-map
+
+- whiteboard_tag: fp
+  bugzilla_user_id: 396948
+  description: Firefox Profiler
+  parameters:
+    jira_project_key: FP
+    jira_components:
+      use_bug_component: false
+      use_bug_component_with_product_prefix: true
+      create_components: true
+    steps:
+      new:
+        - create_issue
+        - maybe_delete_duplicate
+        - add_link_to_bugzilla
+        - add_link_to_jira
+        - maybe_assign_jira_user
+        - maybe_update_components
+        - maybe_update_issue_status
+        - maybe_update_issue_resolution
+        - maybe_update_issue_priority
+        - maybe_update_issue_severity
+        - maybe_add_phabricator_link
+        - sync_whiteboard_labels
+        - sync_keywords_labels
+      existing:
+        - update_issue_summary
+        - maybe_update_components
+        - maybe_assign_jira_user
+        - maybe_update_issue_status
+        - maybe_update_issue_resolution
+        - maybe_update_issue_priority
+        - maybe_update_issue_severity
+        - maybe_add_phabricator_link
+        - sync_whiteboard_labels
+        - sync_keywords_labels
+        - add_jira_comments_for_changes
+      comment:
+        - create_comment
+    status_map: *basic-status-map
     resolution_map: *basic-resolution-map
 
 - whiteboard_tag: fxsync
@@ -388,14 +477,6 @@
         - create_comment
     status_map: *basic-status-map
     resolution_map: *basic-resolution-map
-    priority_map:
-      "": None
-      "--": None
-      P1: P1
-      P2: P2
-      P3: P3
-      P4: P4
-      P5: P5
 
 - whiteboard_tag: proton
   bugzilla_user_id: tbd

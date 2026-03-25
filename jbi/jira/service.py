@@ -287,7 +287,9 @@ class JiraService:
             bug.id,
             extra=context.model_dump(),
         )
-        fields: dict[str, Any] = {field: {wrap_value: value} if wrap_value else value}
+        fields: dict[str, Any] = {
+            field: {wrap_value: value} if wrap_value and value is not None else value
+        }
         response = self.client.update_issue_field(key=issue_key, fields=fields)
         logger.info(
             f"Updated {field} of Jira issue %s to %s for Bug %s",
@@ -305,9 +307,24 @@ class JiraService:
 
         kwargs: dict[str, Any] = {}
         if jira_status == "Cancelled":
-            kwargs["fields"] = {
-                "resolution": {"name": "Invalid"},
-            }
+            # Check if resolution field is available on the transition screen
+            transitions = self.client.get_issue_transitions_with_fields(issue_key)
+            target_transition = next(
+                (t for t in transitions if t.get("to", {}).get("name") == jira_status),
+                None,
+            )
+
+            if target_transition and "resolution" in target_transition.get("fields", {}):
+                kwargs["fields"] = {
+                    "resolution": {"name": "Invalid"},
+                }
+            else:
+                logger.info(
+                    "Resolution field not available on transition screen for %s, skipping",
+                    issue_key,
+                    extra=context.model_dump(),
+                )
+
             kwargs["update"] = {
                 "comment": [{"add": {"body": "Issue was cancelled."}}],
             }

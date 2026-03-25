@@ -180,6 +180,25 @@ def test_update_issue_status_adds_comment_and_resolution_when_cancelled(
     context = action_context_factory(jira__issue="JBI-234")
     url = f"{settings.jira_base_url}rest/api/2/issue/JBI-234/transitions"
 
+    # Mock GET transitions with expand=transitions.fields (for checking resolution availability)
+    mocked_responses.add(
+        responses.GET,
+        url,
+        match=[
+            responses.matchers.query_param_matcher({"expand": "transitions.fields"})
+        ],
+        json={
+            "transitions": [
+                {
+                    "name": "foo",
+                    "id": 42,
+                    "to": {"name": "Cancelled"},
+                    "fields": {"resolution": {"required": True}},
+                }
+            ]
+        },
+    )
+    # Mock GET transitions (for set_issue_status to find transition ID)
     mocked_responses.add(
         responses.GET,
         url,
