@@ -1440,13 +1440,16 @@ def test_maybe_update_components_create_components_prefix_component(
         jira_components=JiraComponents(
             create_components=True,
             use_bug_component_with_product_prefix=True,
-            use_bug_component=False
+            use_bug_component=False,
         ),
     )
     mocked_jira.get_project_components.return_value = [
         {"id": 1, "name": "Firefox::ExistingComponent"},
     ]
-    mocked_jira.create_component.return_value = {"id": "42", "name": "Firefox::NewComponent"}
+    mocked_jira.create_component.return_value = {
+        "id": "42",
+        "name": "Firefox::NewComponent",
+    }
 
     steps.maybe_update_components(
         action_context,
@@ -1461,6 +1464,7 @@ def test_maybe_update_components_create_components_prefix_component(
         key="JBI-234",
         fields={"components": [{"id": "42"}]},
     )
+
 
 def test_sync_whiteboard_labels(
     action_context_factory,
