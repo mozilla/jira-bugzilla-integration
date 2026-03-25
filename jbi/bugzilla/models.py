@@ -194,6 +194,8 @@ class Bug(BaseModel, frozen=True):
         for url in self.see_also:
             try:
                 parsed_url: ParseResult = urlparse(url=url)
+                if not parsed_url.hostname:
+                    continue
                 host_parts = parsed_url.hostname.split(".")
             except (ValueError, AttributeError):
                 logger.info(
