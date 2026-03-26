@@ -172,6 +172,8 @@
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
+        - sync_depends_on_links
+        - sync_blocks_links
       existing:
         - update_issue_summary
         - maybe_update_components
@@ -183,6 +185,8 @@
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
+        - sync_depends_on_links
+        - sync_blocks_links
         - add_jira_comments_for_changes
       comment:
         - create_comment
@@ -227,6 +231,8 @@
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
+        - sync_depends_on_links
+        - sync_blocks_links
       existing:
         - update_issue_summary
         - maybe_update_components
@@ -238,6 +244,8 @@
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
+        - sync_depends_on_links
+        - sync_blocks_links
         - add_jira_comments_for_changes
       comment:
         - create_comment
@@ -268,6 +276,8 @@
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
+        - sync_depends_on_links
+        - sync_blocks_links
       existing:
         - update_issue_summary
         - maybe_update_components
@@ -279,6 +289,8 @@
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
+        - sync_depends_on_links
+        - sync_blocks_links
         - add_jira_comments_for_changes
       comment:
         - create_comment
@@ -462,6 +474,8 @@
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
+        - sync_depends_on_links
+        - sync_blocks_links
       existing:
         - update_issue_summary
         - maybe_assign_jira_user
@@ -472,6 +486,8 @@
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
+        - sync_depends_on_links
+        - sync_blocks_links
         - add_jira_comments_for_changes
       comment:
         - create_comment
