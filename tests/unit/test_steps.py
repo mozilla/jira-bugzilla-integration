@@ -1730,8 +1730,8 @@ def test_sync_depends_on_links_create_with_dependency(
     mocked_jira.create_issue_link.assert_called_once_with(
         data={
             "type": {"name": "Blocks"},
-            "inwardIssue": {"key": "JBI-123"},
-            "outwardIssue": {"key": "JBI-456"},
+            "inwardIssue": {"key": "JBI-456"},
+            "outwardIssue": {"key": "JBI-123"},
         }
     )
 
@@ -1956,8 +1956,8 @@ def test_sync_blocks_links_create_with_blocked_bug(
     mocked_jira.create_issue_link.assert_called_once_with(
         data={
             "type": {"name": "Blocks"},
-            "inwardIssue": {"key": "JBI-456"},
-            "outwardIssue": {"key": "JBI-123"},
+            "inwardIssue": {"key": "JBI-123"},
+            "outwardIssue": {"key": "JBI-456"},
         }
     )
 

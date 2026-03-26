@@ -444,8 +444,8 @@ class JiraService:
             self.client.create_issue_link(
                 data={
                     "type": {"name": "Blocks"},
-                    "inwardIssue": {"key": blocked_issue},
-                    "outwardIssue": {"key": blocking_issue},
+                    "inwardIssue": {"key": blocking_issue},
+                    "outwardIssue": {"key": blocked_issue},
                 }
             )
             logger.info(

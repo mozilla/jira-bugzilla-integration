@@ -539,8 +539,8 @@ def test_create_issue_link_blocks_creates_link(
 
     data = json.loads(request_body)
     assert data["type"]["name"] == "Blocks"
-    assert data["outwardIssue"]["key"] == "JBI-456"
-    assert data["inwardIssue"]["key"] == "JBI-123"
+    assert data["inwardIssue"]["key"] == "JBI-456"
+    assert data["outwardIssue"]["key"] == "JBI-123"
 
 
 def test_create_issue_link_blocks_handles_duplicate_link(
