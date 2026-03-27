@@ -547,59 +547,103 @@ def _update_issue_labels(
     return (StepStatus.SUCCESS, context)
 
 
+def _parse_changed_bug_ids(
+    changes: list, field: str, direction: str
+) -> list[int]:
+    """Parse bug IDs from a depends_on/blocks change event.
+
+    Args:
+        changes: list of WebhookEventChange objects
+        field: field name (e.g., "depends_on", "blocks")
+        direction: "removed" or "added"
+
+    Returns:
+        List of bug IDs parsed from the comma-separated change value
+    """
+    for change in changes:
+        if change.field == field:
+            value = getattr(change, direction)
+            if not value.strip():
+                return []
+            return [int(x.strip()) for x in value.split(",") if x.strip()]
+    return []
+
+
 def sync_depends_on_links(
     context: ActionContext,
     *,
     jira_service: JiraService,
     bugzilla_service: BugzillaService,
 ) -> StepResult:
-    """Create Jira 'Blocks' links for bugs that this bug depends on.
+    """Create and remove Jira 'Blocks' links for bugs that this bug depends on.
 
-    For each bug in depends_on, creates links where the dependency bug's Jira
-    issue(s) block the current bug's Jira issue.
+    For each bug added to depends_on, creates links where the dependency bug's
+    Jira issue(s) block the current bug's Jira issue. For each bug removed from
+    depends_on, deletes the corresponding Jira links.
 
     If bug A depends_on bug B, and B has Jira issues JBI-123 and FIDEFE-456,
     then both JBI-123 and FIDEFE-456 will block A's issue.
     """
-    if not context.bug.depends_on:
-        return (StepStatus.NOOP, context)
-
     # On UPDATE, only process if depends_on field changed
     if context.event.changes:
-        changed_fields = context.event.changed_fields()
-        if "depends_on" not in changed_fields:
+        if "depends_on" not in context.event.changed_fields():
             return (StepStatus.NOOP, context)
+    elif not context.bug.depends_on:
+        # CREATE with no depends_on
+        return (StepStatus.NOOP, context)
 
     if not context.jira.issue:
         raise ValueError("Jira issue unset in Action Context")
 
-    # Fetch all dependency bugs
-    bugs_by_id = bugzilla_service.get_bugs_by_ids(context.bug.depends_on)
+    links_changed = 0
 
-    links_created = 0
-    for bug_id, bug_data in bugs_by_id.items():
-        # Look up ALL Jira issues for this dependency bug
-        jira_keys = jira_service.lookup_jira_issues_for_bug(context, bug_id, bug_data)
+    # Handle removals (only on UPDATE)
+    if context.event.changes:
+        removed_ids = _parse_changed_bug_ids(context.event.changes, "depends_on", "removed")
+        if removed_ids:
+            bugs_by_id = bugzilla_service.get_bugs_by_ids(removed_ids)
+            for bug_id, bug_data in bugs_by_id.items():
+                jira_keys = jira_service.lookup_jira_issues_for_bug(context, bug_id, bug_data)
+                for jira_key in jira_keys:
+                    try:
+                        jira_service.delete_issue_link_blocks(
+                            context,
+                            blocking_issue=jira_key,
+                            blocked_issue=context.jira.issue,
+                        )
+                        links_changed += 1
+                    except requests_exceptions.HTTPError as e:
+                        logger.warning(
+                            "Failed to delete link from %s to %s: %s",
+                            jira_key,
+                            context.jira.issue,
+                            e,
+                            extra=context.model_dump(),
+                        )
 
-        for jira_key in jira_keys:
-            # Create reversed Blocks link: dependency blocks current bug
-            try:
-                jira_service.create_issue_link_blocks(
-                    context,
-                    blocking_issue=jira_key,
-                    blocked_issue=context.jira.issue,
-                )
-                links_created += 1
-            except requests_exceptions.HTTPError as e:
-                logger.warning(
-                    "Failed to create link from %s to %s: %s",
-                    jira_key,
-                    context.jira.issue,
-                    e,
-                    extra=context.model_dump(),
-                )
+    # Handle additions (create links for current depends_on)
+    if context.bug.depends_on:
+        bugs_by_id = bugzilla_service.get_bugs_by_ids(context.bug.depends_on)
+        for bug_id, bug_data in bugs_by_id.items():
+            jira_keys = jira_service.lookup_jira_issues_for_bug(context, bug_id, bug_data)
+            for jira_key in jira_keys:
+                try:
+                    jira_service.create_issue_link_blocks(
+                        context,
+                        blocking_issue=jira_key,
+                        blocked_issue=context.jira.issue,
+                    )
+                    links_changed += 1
+                except requests_exceptions.HTTPError as e:
+                    logger.warning(
+                        "Failed to create link from %s to %s: %s",
+                        jira_key,
+                        context.jira.issue,
+                        e,
+                        extra=context.model_dump(),
+                    )
 
-    if links_created > 0:
+    if links_changed > 0:
         return (StepStatus.SUCCESS, context)
     return (StepStatus.NOOP, context)
 
@@ -610,52 +654,74 @@ def sync_blocks_links(
     jira_service: JiraService,
     bugzilla_service: BugzillaService,
 ) -> StepResult:
-    """Create Jira 'Blocks' links for bugs that this bug blocks.
+    """Create and remove Jira 'Blocks' links for bugs that this bug blocks.
 
-    For each bug in blocks, creates links where the current bug's Jira issue
-    blocks the blocked bug's Jira issue(s).
+    For each bug added to blocks, creates links where the current bug's Jira
+    issue blocks the blocked bug's Jira issue(s). For each bug removed from
+    blocks, deletes the corresponding Jira links.
 
     If bug A blocks bug B, and B has Jira issues JBI-123 and FIDEFE-456,
     then A's issue will block both JBI-123 and FIDEFE-456.
     """
-    if not context.bug.blocks:
-        return (StepStatus.NOOP, context)
-
     # On UPDATE, only process if blocks field changed
     if context.event.changes:
-        changed_fields = context.event.changed_fields()
-        if "blocks" not in changed_fields:
+        if "blocks" not in context.event.changed_fields():
             return (StepStatus.NOOP, context)
+    elif not context.bug.blocks:
+        # CREATE with no blocks
+        return (StepStatus.NOOP, context)
 
     if not context.jira.issue:
         raise ValueError("Jira issue unset in Action Context")
 
-    # Fetch all blocked bugs
-    bugs_by_id = bugzilla_service.get_bugs_by_ids(context.bug.blocks)
+    links_changed = 0
 
-    links_created = 0
-    for bug_id, bug_data in bugs_by_id.items():
-        # Look up ALL Jira issues for this blocked bug
-        jira_keys = jira_service.lookup_jira_issues_for_bug(context, bug_id, bug_data)
+    # Handle removals (only on UPDATE)
+    if context.event.changes:
+        removed_ids = _parse_changed_bug_ids(context.event.changes, "blocks", "removed")
+        if removed_ids:
+            bugs_by_id = bugzilla_service.get_bugs_by_ids(removed_ids)
+            for bug_id, bug_data in bugs_by_id.items():
+                jira_keys = jira_service.lookup_jira_issues_for_bug(context, bug_id, bug_data)
+                for jira_key in jira_keys:
+                    try:
+                        jira_service.delete_issue_link_blocks(
+                            context,
+                            blocking_issue=context.jira.issue,
+                            blocked_issue=jira_key,
+                        )
+                        links_changed += 1
+                    except requests_exceptions.HTTPError as e:
+                        logger.warning(
+                            "Failed to delete link from %s to %s: %s",
+                            context.jira.issue,
+                            jira_key,
+                            e,
+                            extra=context.model_dump(),
+                        )
 
-        for jira_key in jira_keys:
-            # Create direct Blocks link: current bug blocks the other issue
-            try:
-                jira_service.create_issue_link_blocks(
-                    context,
-                    blocking_issue=context.jira.issue,
-                    blocked_issue=jira_key,
-                )
-                links_created += 1
-            except requests_exceptions.HTTPError as e:
-                logger.warning(
-                    "Failed to create link from %s to %s: %s",
-                    context.jira.issue,
-                    jira_key,
-                    e,
-                    extra=context.model_dump(),
-                )
+    # Handle additions (create links for current blocks)
+    if context.bug.blocks:
+        bugs_by_id = bugzilla_service.get_bugs_by_ids(context.bug.blocks)
+        for bug_id, bug_data in bugs_by_id.items():
+            jira_keys = jira_service.lookup_jira_issues_for_bug(context, bug_id, bug_data)
+            for jira_key in jira_keys:
+                try:
+                    jira_service.create_issue_link_blocks(
+                        context,
+                        blocking_issue=context.jira.issue,
+                        blocked_issue=jira_key,
+                    )
+                    links_changed += 1
+                except requests_exceptions.HTTPError as e:
+                    logger.warning(
+                        "Failed to create link from %s to %s: %s",
+                        context.jira.issue,
+                        jira_key,
+                        e,
+                        extra=context.model_dump(),
+                    )
 
-    if links_created > 0:
+    if links_changed > 0:
         return (StepStatus.SUCCESS, context)
     return (StepStatus.NOOP, context)
