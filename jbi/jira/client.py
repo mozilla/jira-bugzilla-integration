@@ -75,8 +75,10 @@ class JiraClient(Jira):
     update_issue_field = instrumented_method(Jira.update_issue_field)
     set_issue_status = instrumented_method(Jira.set_issue_status)
     issue_add_comment = instrumented_method(Jira.issue_add_comment)
+    get_issue = instrumented_method(Jira.get_issue)
     create_issue = instrumented_method(Jira.create_issue)
     create_issue_link = instrumented_method(Jira.create_issue_link)
+    remove_issue_link = instrumented_method(Jira.remove_issue_link)
     get_project = instrumented_method(Jira.get_project)
 
     @instrumented_method
