@@ -5,7 +5,7 @@ authors = [
 license = {text = "MPL"}
 requires-python = "<3.15,>=3.12"
 dependencies = [
-    "fastapi<1.0.0,>=0.120.2",
+    "fastapi>=0.135.3,<1.0.0",
     "pydantic[email]<3.0.0,>=2.12.3",
     "uvicorn[standard]<1.0.0,>=0.38.0",
     "atlassian-python-api<5.0.0,>=4.0.7",
@@ -15,7 +15,7 @@ dependencies = [
     "pydantic-yaml<2.0.0,>=1.6.0",
     "backoff<3.0.0,>=2.2.1",
     "statsd<5.0.0,>=4.0.1",
-    "requests<3.0.0,>=2.32.5",
+    "requests>=2.33.1,<3.0.0",
     "pydantic-settings<3.0.0,>=2.11.0",
     "pypandoc<2.0,>=1.15",
     "pytest-cov>=7.0.0",
@@ -30,13 +30,13 @@ jbi = "jbi.__main__:cli"
 
 [dependency-groups]
 dev = [
-    "click<9.0.0,>=8.3.0",
+    "click>=8.3.2,<9.0.0",
     "pre-commit<5.0.0,>=4.3.0",
     "coverage[toml]<8.0,>=7.11",
-    "mypy<2.0,>=1.18",
+    "mypy>=1.20.0,<2.0",
     "detect-secrets<2.0.0,>=1.5.0",
     "bandit<2.0.0,>=1.8.6",
-    "pytest>=8.4.2,<10.0.0",
+    "pytest>=9.0.3,<10.0.0",
     "yamllint<2.0.0,>=1.37.1",
     "pytest-dotenv<1.0.0,>=0.5.2",
     "types-requests<3.0.0,>=2.32.4",
@@ -44,7 +44,7 @@ dev = [
     "httpx<1.0.0,>=0.28.1",
     "factory-boy<4.0.0,>=3.3.3",
     "pytest-factoryboy<3.0.0,>=2.8.1",
-    "ruff<1.0.0,>=0.14.2",
+    "ruff>=0.15.10,<1.0.0",
     "pytest-mock<4.0.0,>=3.15.1",
     "pytest-asyncio<2.0.0,>=1.2.0",
 ]
