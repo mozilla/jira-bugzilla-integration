@@ -466,6 +466,42 @@ class JiraService:
             else:
                 raise
 
+    def delete_issue_link_blocks(
+        self, context: ActionContext, blocking_issue: str, blocked_issue: str
+    ):
+        """Delete a 'Blocks' link between two Jira issues.
+
+        Fetches the blocked issue's links, finds the 'Blocks' link where
+        blocking_issue is the inward (blocker) issue, and deletes it by ID.
+
+        Args:
+            context: The action context
+            blocking_issue: The issue key that blocks (e.g., 'JBI-123')
+            blocked_issue: The issue key that is blocked (e.g., 'JBI-456')
+        """
+        issue = self.client.get_issue(blocked_issue, fields="issuelinks")
+        if not issue:
+            return
+        for link in issue.get("fields", {}).get("issuelinks", []):
+            if (
+                link.get("type", {}).get("name") == "Blocks"
+                and link.get("inwardIssue", {}).get("key") == blocking_issue
+            ):
+                self.client.remove_issue_link(link["id"])
+                logger.info(
+                    "Deleted link: %s blocks %s",
+                    blocking_issue,
+                    blocked_issue,
+                    extra=context.update(operation=Operation.LINK).model_dump(),
+                )
+                return
+        logger.info(
+            "No link found to delete: %s blocks %s",
+            blocking_issue,
+            blocked_issue,
+            extra=context.model_dump(),
+        )
+
     def lookup_jira_issues_for_bug(
         self, context: ActionContext, bug_id: int, bug_data: bugzilla_models.Bug
     ) -> list[str]:

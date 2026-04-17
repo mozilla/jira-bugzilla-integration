@@ -1879,15 +1879,15 @@ def test_sync_depends_on_links_handles_multiple_jira_issues(
     assert calls[0] == mock.call(
         data={
             "type": {"name": "Blocks"},
-            "inwardIssue": {"key": "JBI-123"},
-            "outwardIssue": {"key": "JBI-456"},
+            "inwardIssue": {"key": "JBI-456"},
+            "outwardIssue": {"key": "JBI-123"},
         }
     )
     assert calls[1] == mock.call(
         data={
             "type": {"name": "Blocks"},
-            "inwardIssue": {"key": "JBI-123"},
-            "outwardIssue": {"key": "FIDEFE-789"},
+            "inwardIssue": {"key": "FIDEFE-789"},
+            "outwardIssue": {"key": "JBI-123"},
         }
     )
 
@@ -2009,3 +2009,201 @@ def test_sync_blocks_links_noop_on_update_when_field_unchanged(
 
     assert result == steps.StepStatus.NOOP
     mocked_bugzilla.get_bug.assert_not_called()
+
+
+def test_sync_depends_on_links_removes_link_on_update(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    webhook_event_change_factory,
+):
+    """Test sync_depends_on_links deletes link when bug removed from depends_on."""
+    # Bug 123 had depends_on=[456], now depends_on=[] after removing 456
+    action_context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="JBI-123",
+        bug__depends_on=[],
+        event__changes=[
+            webhook_event_change_factory(field="depends_on", removed="456", added="")
+        ],
+    )
+
+    removed_bug = bug_factory(id=456, see_also=["http://mozilla.jira.com/browse/JBI-456"])
+    mocked_bugzilla.get_bug.return_value = removed_bug
+
+    mocked_jira.get_issue.return_value = {
+        "fields": {
+            "issuelinks": [
+                {
+                    "id": "10001",
+                    "type": {"name": "Blocks"},
+                    "inwardIssue": {"key": "JBI-456"},
+                }
+            ]
+        }
+    }
+
+    result, context = steps.sync_depends_on_links(
+        context=action_context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.remove_issue_link.assert_called_once_with("10001")
+    mocked_jira.create_issue_link.assert_not_called()
+
+
+def test_sync_depends_on_links_removes_and_adds_on_update(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    webhook_event_change_factory,
+):
+    """Test sync_depends_on_links handles simultaneous removal and addition."""
+    # Bug 123: remove depends_on 456, add depends_on 789
+    action_context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="JBI-123",
+        bug__depends_on=[789],
+        event__changes=[
+            webhook_event_change_factory(field="depends_on", removed="456", added="789")
+        ],
+    )
+
+    def get_bug_side_effect(bug_id):
+        return bug_factory(
+            id=bug_id,
+            see_also=[f"http://mozilla.jira.com/browse/JBI-{bug_id}"],
+        )
+
+    mocked_bugzilla.get_bug.side_effect = get_bug_side_effect
+
+    mocked_jira.get_issue.return_value = {
+        "fields": {
+            "issuelinks": [
+                {
+                    "id": "10001",
+                    "type": {"name": "Blocks"},
+                    "inwardIssue": {"key": "JBI-456"},
+                }
+            ]
+        }
+    }
+
+    result, context = steps.sync_depends_on_links(
+        context=action_context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.remove_issue_link.assert_called_once_with("10001")
+    mocked_jira.create_issue_link.assert_called_once_with(
+        data={
+            "type": {"name": "Blocks"},
+            "inwardIssue": {"key": "JBI-789"},
+            "outwardIssue": {"key": "JBI-123"},
+        }
+    )
+
+
+def test_sync_blocks_links_removes_link_on_update(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    webhook_event_change_factory,
+):
+    """Test sync_blocks_links deletes link when bug removed from blocks."""
+    # Bug 123 had blocks=[456], now blocks=[] after removing 456
+    action_context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="JBI-123",
+        bug__blocks=[],
+        event__changes=[
+            webhook_event_change_factory(field="blocks", removed="456", added="")
+        ],
+    )
+
+    removed_bug = bug_factory(id=456, see_also=["http://mozilla.jira.com/browse/JBI-456"])
+    mocked_bugzilla.get_bug.return_value = removed_bug
+
+    mocked_jira.get_issue.return_value = {
+        "fields": {
+            "issuelinks": [
+                {
+                    "id": "10001",
+                    "type": {"name": "Blocks"},
+                    "inwardIssue": {"key": "JBI-123"},
+                }
+            ]
+        }
+    }
+
+    result, context = steps.sync_blocks_links(
+        context=action_context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.remove_issue_link.assert_called_once_with("10001")
+    mocked_jira.create_issue_link.assert_not_called()
+
+
+def test_sync_blocks_links_removes_and_adds_on_update(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    webhook_event_change_factory,
+):
+    """Test sync_blocks_links handles simultaneous removal and addition."""
+    # Bug 123: remove blocks 456, add blocks 789
+    action_context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="JBI-123",
+        bug__blocks=[789],
+        event__changes=[
+            webhook_event_change_factory(field="blocks", removed="456", added="789")
+        ],
+    )
+
+    def get_bug_side_effect(bug_id):
+        return bug_factory(
+            id=bug_id,
+            see_also=[f"http://mozilla.jira.com/browse/JBI-{bug_id}"],
+        )
+
+    mocked_bugzilla.get_bug.side_effect = get_bug_side_effect
+
+    mocked_jira.get_issue.return_value = {
+        "fields": {
+            "issuelinks": [
+                {
+                    "id": "10001",
+                    "type": {"name": "Blocks"},
+                    "inwardIssue": {"key": "JBI-123"},
+                }
+            ]
+        }
+    }
+
+    result, context = steps.sync_blocks_links(
+        context=action_context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.remove_issue_link.assert_called_once_with("10001")
+    mocked_jira.create_issue_link.assert_called_once_with(
+        data={
+            "type": {"name": "Blocks"},
+            "inwardIssue": {"key": "JBI-123"},
+            "outwardIssue": {"key": "JBI-789"},
+        }
+    )
