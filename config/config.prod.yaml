@@ -716,11 +716,11 @@
   parameters:
     jira_project_key: JB
 
-- whiteboard_tag: genai
+- whiteboard_tag: aife
   bugzilla_user_id: tbd
-  description: Firefox GenAI
+  description: Firefox GenAI - Frontend
   parameters:
-    jira_project_key: GENAI
+    jira_project_key: AIFE
     steps:
       new:
         - create_issue
@@ -753,11 +753,48 @@
       WORKSFORME: Closed
       REOPENED: In Progress
 
-- whiteboard_tag: ai-runtime
+- whiteboard_tag: aimodels
   bugzilla_user_id: tbd
-  description: Firefox GenAI - ai-runtime
+  description: Firefox GenAI - Models
   parameters:
-    jira_project_key: GENAI
+    jira_project_key: AIMOD
+    steps:
+      new:
+        - create_issue
+        - maybe_delete_duplicate
+        - add_link_to_bugzilla
+        - add_link_to_jira
+        - maybe_assign_jira_user
+        - maybe_update_issue_status
+        - maybe_update_issue_priority
+        - maybe_update_issue_severity
+        - maybe_update_issue_points
+        - sync_whiteboard_labels
+      existing:
+        - update_issue_summary
+        - maybe_assign_jira_user
+        - maybe_update_issue_status
+        - maybe_update_issue_priority
+        - maybe_update_issue_severity
+        - maybe_update_issue_points
+        - sync_whiteboard_labels
+      comment:
+        - create_comment
+    status_map:
+      ASSIGNED: In Progress
+      FIXED: Closed
+      WONTFIX: Closed
+      DUPLICATE: Closed
+      INVALID: Closed
+      INCOMPLETE: Closed
+      WORKSFORME: Closed
+      REOPENED: In Progress
+
+- whiteboard_tag: aiplatform
+  bugzilla_user_id: tbd
+  description: Firefox GenAI - Platform
+  parameters:
+    jira_project_key: AIPLAT
     steps:
       new:
         - create_issue
@@ -1025,4 +1062,39 @@
       WORKSFORME: Closed
       INCOMPLETE: Closed
       MOVED: Closed
+    resolution_map: *basic-resolution-map
+
+- whiteboard_tag: fidefe-acq
+  bugzilla_user_id: tbd
+  description: Firefox Front End Acquisition whiteboard tag
+  parameters:
+    jira_project_key: FIDEFE
+    steps:
+      new:
+        - create_issue
+        - maybe_delete_duplicate
+        - add_link_to_bugzilla
+        - add_link_to_jira
+        - maybe_update_issue_status
+        - maybe_update_issue_resolution
+        - maybe_update_issue_priority
+        - maybe_update_issue_severity
+      existing:
+        - update_issue_summary
+        - add_jira_comments_for_changes
+        - maybe_update_issue_status
+        - maybe_update_issue_resolution
+        - maybe_update_issue_priority
+        - maybe_update_issue_severity
+      comment:
+        - create_comment
+    status_map:
+      ASSIGNED: In Progress
+      FIXED: Closed
+      WONTFIX: Closed
+      DUPLICATE: Closed
+      INVALID: Closed
+      INCOMPLETE: Closed
+      WORKSFORME: Closed
+      REOPENED: In Progress
     resolution_map: *basic-resolution-map
