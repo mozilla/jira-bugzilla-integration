@@ -702,3 +702,143 @@ def test_delete_issue_link_blocks_skips_non_blocks_links(
     )
 
     assert len(mocked_responses.calls) == 1
+
+
+def test_create_issue_link_relates_to_creates_link(
+    jira_service, mocked_responses, settings, action_context_factory
+):
+    context = action_context_factory(jira__issue="JBI-123")
+
+    mocked_responses.add(
+        "POST",
+        f"{settings.jira_base_url}rest/api/2/issueLink",
+        json={},
+        status=201,
+    )
+
+    jira_service.create_issue_link_relates_to(context, "JBI-123", "FXP-456")
+
+    assert len(mocked_responses.calls) == 1
+    import json
+
+    data = json.loads(mocked_responses.calls[0].request.body)
+    assert data["type"]["name"] == "Relates"
+    assert data["inwardIssue"]["key"] == "JBI-123"
+    assert data["outwardIssue"]["key"] == "FXP-456"
+
+
+def test_create_issue_link_relates_to_handles_400(
+    jira_service, mocked_responses, settings, action_context_factory
+):
+    context = action_context_factory(jira__issue="JBI-123")
+
+    mocked_responses.add(
+        "POST",
+        f"{settings.jira_base_url}rest/api/2/issueLink",
+        json={"errorMessages": ["The link already exists"]},
+        status=400,
+    )
+
+    # Should not raise
+    jira_service.create_issue_link_relates_to(context, "JBI-123", "FXP-456")
+
+
+def test_create_issue_link_relates_to_reraises_non_400(
+    jira_service, mocked_responses, settings, action_context_factory
+):
+    import requests
+
+    context = action_context_factory(jira__issue="JBI-123")
+
+    mocked_responses.add(
+        "POST",
+        f"{settings.jira_base_url}rest/api/2/issueLink",
+        status=500,
+    )
+
+    with pytest.raises(requests.exceptions.HTTPError):
+        jira_service.create_issue_link_relates_to(context, "JBI-123", "FXP-456")
+
+
+def test_delete_issue_link_relates_to_inward(
+    jira_service, mocked_responses, settings, action_context_factory
+):
+    context = action_context_factory(jira__issue="JBI-123")
+
+    mocked_responses.add(
+        "GET",
+        f"{settings.jira_base_url}rest/api/2/issue/JBI-123",
+        json={
+            "fields": {
+                "issuelinks": [
+                    {
+                        "id": "10001",
+                        "type": {"name": "Relates"},
+                        "inwardIssue": {"key": "FXP-456"},
+                    }
+                ]
+            }
+        },
+        status=200,
+    )
+    mocked_responses.add(
+        "DELETE",
+        f"{settings.jira_base_url}rest/api/2/issueLink/10001",
+        status=204,
+    )
+
+    jira_service.delete_issue_link_relates_to(context, "JBI-123", "FXP-456")
+
+    assert len(mocked_responses.calls) == 2
+    assert mocked_responses.calls[1].request.url.endswith("/issueLink/10001")
+
+
+def test_delete_issue_link_relates_to_outward(
+    jira_service, mocked_responses, settings, action_context_factory
+):
+    context = action_context_factory(jira__issue="JBI-123")
+
+    mocked_responses.add(
+        "GET",
+        f"{settings.jira_base_url}rest/api/2/issue/JBI-123",
+        json={
+            "fields": {
+                "issuelinks": [
+                    {
+                        "id": "10002",
+                        "type": {"name": "Relates"},
+                        "outwardIssue": {"key": "FXP-456"},
+                    }
+                ]
+            }
+        },
+        status=200,
+    )
+    mocked_responses.add(
+        "DELETE",
+        f"{settings.jira_base_url}rest/api/2/issueLink/10002",
+        status=204,
+    )
+
+    jira_service.delete_issue_link_relates_to(context, "JBI-123", "FXP-456")
+
+    assert len(mocked_responses.calls) == 2
+    assert mocked_responses.calls[1].request.url.endswith("/issueLink/10002")
+
+
+def test_delete_issue_link_relates_to_no_match(
+    jira_service, mocked_responses, settings, action_context_factory
+):
+    context = action_context_factory(jira__issue="JBI-123")
+
+    mocked_responses.add(
+        "GET",
+        f"{settings.jira_base_url}rest/api/2/issue/JBI-123",
+        json={"fields": {"issuelinks": []}},
+        status=200,
+    )
+
+    jira_service.delete_issue_link_relates_to(context, "JBI-123", "FXP-456")
+
+    # Only the GET, no DELETE
+    assert len(mocked_responses.calls) == 1

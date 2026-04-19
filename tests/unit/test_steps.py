@@ -2207,3 +2207,303 @@ def test_sync_blocks_links_removes_and_adds_on_update(
             "outwardIssue": {"key": "JBI-789"},
         }
     )
+
+
+# --- sync_see_also ---
+
+
+def test_sync_see_also_noop_when_no_changes(
+    action_context_factory, mocked_jira, mocked_bugzilla
+):
+    context = action_context_factory(
+        jira__issue="JBI-123",
+        event__changes=None,
+        bug__see_also=[],
+    )
+
+    result, _ = steps.sync_see_also(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.NOOP
+    mocked_jira.create_issue_link.assert_not_called()
+
+
+def test_sync_see_also_noop_when_other_field_changed(
+    action_context_factory, webhook_event_change_factory, mocked_jira, mocked_bugzilla
+):
+    context = action_context_factory(
+        jira__issue="JBI-123",
+        event__changes=[
+            webhook_event_change_factory(field="summary", removed="", added="New title")
+        ],
+    )
+
+    result, _ = steps.sync_see_also(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.NOOP
+    mocked_jira.create_issue_link.assert_not_called()
+
+
+def test_sync_see_also_creates_link_for_added_jira_url(
+    action_context_factory, webhook_event_change_factory, mocked_jira, mocked_bugzilla
+):
+    context = action_context_factory(
+        jira__issue="JBI-123",
+        event__changes=[
+            webhook_event_change_factory(
+                field="see_also",
+                removed="",
+                added="https://mozilla.atlassian.net/browse/FXP-456",
+            )
+        ],
+    )
+
+    result, _ = steps.sync_see_also(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.create_issue_link.assert_called_once_with(
+        data={
+            "type": {"name": "Relates"},
+            "inwardIssue": {"key": "JBI-123"},
+            "outwardIssue": {"key": "FXP-456"},
+        }
+    )
+
+
+def test_sync_see_also_skips_primary_jira_issue(
+    action_context_factory, webhook_event_change_factory, mocked_jira, mocked_bugzilla
+):
+    context = action_context_factory(
+        jira__issue="JBI-123",
+        event__changes=[
+            webhook_event_change_factory(
+                field="see_also",
+                removed="",
+                added="https://mozilla.atlassian.net/browse/JBI-123",
+            )
+        ],
+    )
+
+    result, _ = steps.sync_see_also(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.NOOP
+    mocked_jira.create_issue_link.assert_not_called()
+
+
+def test_sync_see_also_creates_link_for_added_bugzilla_url(
+    action_context_factory,
+    webhook_event_change_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    settings,
+):
+    linked_bug = bug_factory(
+        id=456, see_also=["https://mozilla.atlassian.net/browse/FXP-789"]
+    )
+    mocked_bugzilla.get_bug.return_value = linked_bug
+
+    context = action_context_factory(
+        jira__issue="JBI-123",
+        event__changes=[
+            webhook_event_change_factory(
+                field="see_also",
+                removed="",
+                added=f"{settings.bugzilla_base_url}/show_bug.cgi?id=456",
+            )
+        ],
+    )
+
+    result, _ = steps.sync_see_also(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.create_issue_link.assert_called_once_with(
+        data={
+            "type": {"name": "Relates"},
+            "inwardIssue": {"key": "JBI-123"},
+            "outwardIssue": {"key": "FXP-789"},
+        }
+    )
+
+
+def test_sync_see_also_noop_when_bugzilla_bug_has_no_jira_issue(
+    action_context_factory,
+    webhook_event_change_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    settings,
+):
+    linked_bug = bug_factory(id=456, see_also=[])
+    mocked_bugzilla.get_bug.return_value = linked_bug
+
+    context = action_context_factory(
+        jira__issue="JBI-123",
+        event__changes=[
+            webhook_event_change_factory(
+                field="see_also",
+                removed="",
+                added=f"{settings.bugzilla_base_url}/show_bug.cgi?id=456",
+            )
+        ],
+    )
+
+    result, _ = steps.sync_see_also(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.NOOP
+    mocked_jira.create_issue_link.assert_not_called()
+
+
+def test_sync_see_also_deletes_link_for_removed_jira_url(
+    action_context_factory, webhook_event_change_factory, mocked_jira, mocked_bugzilla
+):
+    mocked_jira.get_issue.return_value = {
+        "fields": {
+            "issuelinks": [
+                {
+                    "id": "10001",
+                    "type": {"name": "Relates"},
+                    "inwardIssue": {"key": "FXP-456"},
+                }
+            ]
+        }
+    }
+
+    context = action_context_factory(
+        jira__issue="JBI-123",
+        event__changes=[
+            webhook_event_change_factory(
+                field="see_also",
+                removed="https://mozilla.atlassian.net/browse/FXP-456",
+                added="",
+            )
+        ],
+    )
+
+    result, _ = steps.sync_see_also(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.remove_issue_link.assert_called_once_with("10001")
+
+
+def test_sync_see_also_deletes_link_for_removed_bugzilla_url(
+    action_context_factory,
+    webhook_event_change_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    settings,
+):
+    linked_bug = bug_factory(
+        id=456, see_also=["https://mozilla.atlassian.net/browse/FXP-789"]
+    )
+    mocked_bugzilla.get_bug.return_value = linked_bug
+    mocked_jira.get_issue.return_value = {
+        "fields": {
+            "issuelinks": [
+                {
+                    "id": "10001",
+                    "type": {"name": "Relates"},
+                    "inwardIssue": {"key": "FXP-789"},
+                }
+            ]
+        }
+    }
+
+    context = action_context_factory(
+        jira__issue="JBI-123",
+        event__changes=[
+            webhook_event_change_factory(
+                field="see_also",
+                removed=f"{settings.bugzilla_base_url}/show_bug.cgi?id=456",
+                added="",
+            )
+        ],
+    )
+
+    result, _ = steps.sync_see_also(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.remove_issue_link.assert_called_once_with("10001")
+
+
+def test_sync_see_also_skips_non_jira_non_bugzilla_urls(
+    action_context_factory, webhook_event_change_factory, mocked_jira, mocked_bugzilla
+):
+    context = action_context_factory(
+        jira__issue="JBI-123",
+        event__changes=[
+            webhook_event_change_factory(
+                field="see_also",
+                removed="",
+                added="https://github.com/org/repo/issues/1",
+            )
+        ],
+    )
+
+    result, _ = steps.sync_see_also(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.NOOP
+    mocked_jira.create_issue_link.assert_not_called()
+
+
+def test_sync_see_also_handles_multiple_urls(
+    action_context_factory, webhook_event_change_factory, mocked_jira, mocked_bugzilla
+):
+    context = action_context_factory(
+        jira__issue="JBI-123",
+        event__changes=[
+            webhook_event_change_factory(
+                field="see_also",
+                removed="",
+                added=(
+                    "https://mozilla.atlassian.net/browse/FXP-111,"
+                    "https://mozilla.atlassian.net/browse/FXP-222"
+                ),
+            )
+        ],
+    )
+
+    result, _ = steps.sync_see_also(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    assert mocked_jira.create_issue_link.call_count == 2
