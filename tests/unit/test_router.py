@@ -211,7 +211,8 @@ def test_webhook_is_200_if_action_succeeds(
 
     response = authenticated_client.post(
         "/bugzilla_webhook",
-        data=bugzilla_webhook_request.model_dump_json(),
+        content=bugzilla_webhook_request.model_dump_json(),
+        headers={"Content-Type": "application/json"},
     )
     assert response
     assert response.status_code == 200
@@ -225,7 +226,8 @@ def test_webhook_is_200_if_action_raises_IgnoreInvalidRequestError(
 
     response = authenticated_client.post(
         "/bugzilla_webhook",
-        data=webhook.model_dump_json(),
+        content=webhook.model_dump_json(),
+        headers={"Content-Type": "application/json"},
     )
     assert response
     assert response.status_code == 200
@@ -240,7 +242,8 @@ def test_webhook_is_200_if_action_raises_Exception(
 
     response = authenticated_client.post(
         "/bugzilla_webhook",
-        data=webhook.model_dump_json(),
+        content=webhook.model_dump_json(),
+        headers={"Content-Type": "application/json"},
     )
     assert response
     assert response.status_code == 200
@@ -255,7 +258,8 @@ def test_webhook_is_500_if_queue_raises_Exception(
 
     response = authenticated_client.post(
         "/bugzilla_webhook",
-        data=webhook.model_dump_json(),
+        content=webhook.model_dump_json(),
+        headers={"Content-Type": "application/json"},
     )
     assert response
     assert response.status_code == 500
@@ -289,8 +293,8 @@ def test_webhook_is_422_if_bug_information_missing(
 
     response = authenticated_client.post(
         "/bugzilla_webhook",
-        headers={"X-Api-Key": "fake_api_key"},
-        data=webhook.model_dump_json(),
+        content=webhook.model_dump_json(),
+        headers={"Content-Type": "application/json", "X-Api-Key": "fake_api_key"},
     )
     assert response.status_code == 422
     assert response.json()["detail"][0]["loc"] == ["body", "bug"]
