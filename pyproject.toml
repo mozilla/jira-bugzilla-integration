@@ -5,7 +5,7 @@ authors = [
 license = {text = "MPL"}
 requires-python = "<3.15,>=3.12"
 dependencies = [
-    "fastapi>=0.135.3,<1.0.0",
+    "fastapi>=0.136.0,<1.0.0",
     "pydantic[email]<3.0.0,>=2.12.3",
     "uvicorn[standard]<1.0.0,>=0.38.0",
     "atlassian-python-api<5.0.0,>=4.0.7",
@@ -33,7 +33,7 @@ dev = [
     "click>=8.3.2,<9.0.0",
     "pre-commit<5.0.0,>=4.3.0",
     "coverage[toml]>=7.13.5,<8.0",
-    "mypy>=1.20.0,<2.0",
+    "mypy>=1.20.1,<2.0",
     "detect-secrets<2.0.0,>=1.5.0",
     "bandit<2.0.0,>=1.8.6",
     "pytest>=9.0.3,<10.0.0",
@@ -44,7 +44,7 @@ dev = [
     "httpx<1.0.0,>=0.28.1",
     "factory-boy<4.0.0,>=3.3.3",
     "pytest-factoryboy<3.0.0,>=2.8.1",
-    "ruff>=0.15.10,<1.0.0",
+    "ruff>=0.15.11,<1.0.0",
     "pytest-mock<4.0.0,>=3.15.1",
     "pytest-asyncio<2.0.0,>=1.2.0",
 ]
