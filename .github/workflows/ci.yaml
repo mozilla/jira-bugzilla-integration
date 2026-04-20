@@ -26,7 +26,7 @@ jobs:
           enable-cache: true
           python-version: 3.13
       - name: Run tests
-        run: make tests
+        run: make test
       - name: Run retry
         env:
           JBI_API_KEY: key  # pragma: allowlist secret
