@@ -186,7 +186,8 @@ async def test_original_rid_is_put_in_retry_logs(
     assert (await dl_queue.size()) == 0
     authenticated_client.post(
         "/bugzilla_webhook",
-        data=bugzilla_webhook_request.model_dump_json(),
+        content=bugzilla_webhook_request.model_dump_json(),
+        headers={"Content-Type": "application/json"},
     )
     logged = [r for r in caplog.records if r.name == "jbi.runner"]
     original_rid = logged[0].rid
