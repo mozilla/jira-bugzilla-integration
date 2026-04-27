@@ -716,11 +716,11 @@
   parameters:
     jira_project_key: JB
 
-- whiteboard_tag: genai
+- whiteboard_tag: aife
   bugzilla_user_id: tbd
   description: Firefox GenAI - Frontend
   parameters:
-    jira_project_key: GENAI
+    jira_project_key: AIFE
     steps:
       new:
         - create_issue

@@ -41,8 +41,8 @@ def test_422_errors_are_logged(authenticated_client, webhook_request_factory, ca
     with caplog.at_level(logging.INFO):
         authenticated_client.post(
             "/bugzilla_webhook",
-            headers={"X-Api-Key": "fake_api_key"},
-            data=webhook.model_dump_json(),
+            content=webhook.model_dump_json(),
+            headers={"Content-Type": "application/json", "X-Api-Key": "fake_api_key"},
         )
 
     logged = [r for r in caplog.records if r.name == "jbi.app"][0]
@@ -87,8 +87,8 @@ async def test_errors_are_reported_to_sentry(anon_client, bugzilla_webhook_reque
             with pytest.raises(ValueError):
                 anon_client.post(
                     "/bugzilla_webhook",
-                    headers={"X-Api-Key": "fake_api_key"},
-                    data=bugzilla_webhook_request.model_dump_json(),
+                    content=bugzilla_webhook_request.model_dump_json(),
+                    headers={"Content-Type": "application/json", "X-Api-Key": "fake_api_key"},
                 )
 
     assert mocked.called, "Sentry captured the exception"
@@ -109,8 +109,9 @@ async def test_request_id_is_passed_down_to_logger_contexts(
     with caplog.at_level(logging.DEBUG):
         authenticated_client.post(
             "/bugzilla_webhook",
-            data=bugzilla_webhook_request.model_dump_json(),
+            content=bugzilla_webhook_request.model_dump_json(),
             headers={
+                "Content-Type": "application/json",
                 "X-Request-Id": "foo-bar",
             },
         )

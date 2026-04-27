@@ -611,3 +611,94 @@ def test_lookup_jira_issues_for_bug_returns_empty_when_no_see_also(
     result = jira_service.lookup_jira_issues_for_bug(context, 456, bug)
 
     assert result == []
+
+
+def test_delete_issue_link_blocks_deletes_correct_link(
+    jira_service, mocked_responses, settings, action_context_factory
+):
+    """Test that delete_issue_link_blocks identifies and deletes the matching link by ID."""
+    context = action_context_factory(jira__issue="JBI-123")
+
+    mocked_responses.add(
+        "GET",
+        f"{settings.jira_base_url}rest/api/2/issue/JBI-123",
+        json={
+            "fields": {
+                "issuelinks": [
+                    {
+                        "id": "99999",
+                        "type": {"name": "Blocks"},
+                        "inwardIssue": {"key": "JBI-000"},
+                    },
+                    {
+                        "id": "10001",
+                        "type": {"name": "Blocks"},
+                        "inwardIssue": {"key": "JBI-456"},
+                    },
+                ]
+            }
+        },
+        status=200,
+    )
+    mocked_responses.add(
+        "DELETE",
+        f"{settings.jira_base_url}rest/api/2/issueLink/10001",
+        status=204,
+    )
+
+    jira_service.delete_issue_link_blocks(
+        context, blocking_issue="JBI-456", blocked_issue="JBI-123"
+    )
+
+    assert len(mocked_responses.calls) == 2
+    assert mocked_responses.calls[1].request.url.endswith("/issueLink/10001")
+
+
+def test_delete_issue_link_blocks_no_op_when_link_not_found(
+    jira_service, mocked_responses, settings, action_context_factory
+):
+    """Test that delete_issue_link_blocks does nothing when no matching link exists."""
+    context = action_context_factory(jira__issue="JBI-123")
+
+    mocked_responses.add(
+        "GET",
+        f"{settings.jira_base_url}rest/api/2/issue/JBI-123",
+        json={"fields": {"issuelinks": []}},
+        status=200,
+    )
+
+    jira_service.delete_issue_link_blocks(
+        context, blocking_issue="JBI-456", blocked_issue="JBI-123"
+    )
+
+    assert len(mocked_responses.calls) == 1
+
+
+def test_delete_issue_link_blocks_skips_non_blocks_links(
+    jira_service, mocked_responses, settings, action_context_factory
+):
+    """Test that delete_issue_link_blocks ignores links of other types."""
+    context = action_context_factory(jira__issue="JBI-123")
+
+    mocked_responses.add(
+        "GET",
+        f"{settings.jira_base_url}rest/api/2/issue/JBI-123",
+        json={
+            "fields": {
+                "issuelinks": [
+                    {
+                        "id": "10002",
+                        "type": {"name": "Relates"},
+                        "inwardIssue": {"key": "JBI-456"},
+                    }
+                ]
+            }
+        },
+        status=200,
+    )
+
+    jira_service.delete_issue_link_blocks(
+        context, blocking_issue="JBI-456", blocked_issue="JBI-123"
+    )
+
+    assert len(mocked_responses.calls) == 1
