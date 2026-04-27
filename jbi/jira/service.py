@@ -430,6 +430,49 @@ class JiraService:
             update={"update": {"labels": updated_labels}},
         )
 
+    def _create_issue_link(
+        self,
+        context: ActionContext,
+        link_type: str,
+        inward_issue: str,
+        outward_issue: str,
+    ):
+        """Create a Jira issue link, ignoring 400 errors for duplicate links.
+
+        Args:
+            context: The action context
+            link_type: The link type name (e.g., 'Blocks', 'Relates')
+            inward_issue: The inward issue key (e.g., 'JBI-123')
+            outward_issue: The outward issue key (e.g., 'JBI-456')
+        """
+        try:
+            self.client.create_issue_link(
+                data={
+                    "type": {"name": link_type},
+                    "inwardIssue": {"key": inward_issue},
+                    "outwardIssue": {"key": outward_issue},
+                }
+            )
+            logger.info(
+                "Created '%s' link: %s -> %s",
+                link_type,
+                inward_issue,
+                outward_issue,
+                extra=context.update(operation=Operation.LINK).model_dump(),
+            )
+        except requests_exceptions.HTTPError as e:
+            # Handle idempotency: 400 error for duplicate links
+            if e.response is not None and e.response.status_code == 400:
+                logger.info(
+                    "Link already exists: '%s' %s -> %s",
+                    link_type,
+                    inward_issue,
+                    outward_issue,
+                    extra=context.model_dump(),
+                )
+            else:
+                raise
+
     def create_issue_link_blocks(
         self, context: ActionContext, blocking_issue: str, blocked_issue: str
     ):
@@ -440,31 +483,7 @@ class JiraService:
             blocking_issue: The issue key that blocks (e.g., 'JBI-123')
             blocked_issue: The issue key that is blocked (e.g., 'JBI-456')
         """
-        try:
-            self.client.create_issue_link(
-                data={
-                    "type": {"name": "Blocks"},
-                    "inwardIssue": {"key": blocking_issue},
-                    "outwardIssue": {"key": blocked_issue},
-                }
-            )
-            logger.info(
-                "Created link: %s blocks %s",
-                blocking_issue,
-                blocked_issue,
-                extra=context.update(operation=Operation.LINK).model_dump(),
-            )
-        except requests_exceptions.HTTPError as e:
-            # Handle idempotency: 400 error for duplicate links
-            if e.response is not None and e.response.status_code == 400:
-                logger.info(
-                    "Link already exists: %s blocks %s",
-                    blocking_issue,
-                    blocked_issue,
-                    extra=context.model_dump(),
-                )
-            else:
-                raise
+        self._create_issue_link(context, "Blocks", blocking_issue, blocked_issue)
 
     def delete_issue_link_blocks(
         self, context: ActionContext, blocking_issue: str, blocked_issue: str
@@ -489,14 +508,14 @@ class JiraService:
             ):
                 self.client.remove_issue_link(link["id"])
                 logger.info(
-                    "Deleted link: %s blocks %s",
+                    "Deleted 'Blocks' link: %s -> %s",
                     blocking_issue,
                     blocked_issue,
                     extra=context.update(operation=Operation.LINK).model_dump(),
                 )
                 return
         logger.info(
-            "No link found to delete: %s blocks %s",
+            "No 'Blocks' link found to delete: %s -> %s",
             blocking_issue,
             blocked_issue,
             extra=context.model_dump(),
@@ -535,6 +554,56 @@ class JiraService:
             extra=context.model_dump(),
         )
         return jira_keys
+
+    def create_issue_link_relates_to(
+        self, context: ActionContext, source_issue: str, related_issue: str
+    ):
+        """Create a 'Relates' link between two Jira issues.
+
+        Args:
+            context: The action context
+            source_issue: The issue key to link from (e.g., 'JBI-123')
+            related_issue: The issue key to link to (e.g., 'JBI-456')
+        """
+        self._create_issue_link(context, "Relates", source_issue, related_issue)
+
+    def delete_issue_link_relates_to(
+        self, context: ActionContext, source_issue: str, related_issue: str
+    ):
+        """Delete a 'Relates' link between two Jira issues.
+
+        Fetches the source issue's links and checks both inwardIssue and
+        outwardIssue since 'Relates' is symmetric.
+
+        Args:
+            context: The action context
+            source_issue: The issue key to fetch links from (e.g., 'JBI-123')
+            related_issue: The issue key to unlink (e.g., 'JBI-456')
+        """
+        issue = self.client.get_issue(source_issue, fields="issuelinks")
+        if not issue:
+            return
+        for link in issue.get("fields", {}).get("issuelinks", []):
+            if link.get("type", {}).get("name") != "Relates":
+                continue
+            linked_key = (
+                link.get("inwardIssue") or link.get("outwardIssue") or {}
+            ).get("key")
+            if linked_key == related_issue:
+                self.client.remove_issue_link(link["id"])
+                logger.info(
+                    "Deleted 'Relates' link: %s -> %s",
+                    source_issue,
+                    related_issue,
+                    extra=context.update(operation=Operation.LINK).model_dump(),
+                )
+                return
+        logger.info(
+            "No 'Relates' link found to delete: %s -> %s",
+            source_issue,
+            related_issue,
+            extra=context.model_dump(),
+        )
 
     def check_jira_connection(self):
         try:

@@ -13,10 +13,12 @@ from __future__ import annotations
 import logging
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Iterable, Optional
+from urllib.parse import parse_qs, urlparse
 
 from requests import exceptions as requests_exceptions
 
 from jbi import Operation
+from jbi.bugzilla.models import JIRA_HOSTNAMES
 from jbi.environment import get_settings
 
 
@@ -725,3 +727,139 @@ def sync_blocks_links(
     if links_changed > 0:
         return (StepStatus.SUCCESS, context)
     return (StepStatus.NOOP, context)
+
+
+def _parse_changed_see_also_urls(changes: list, direction: str) -> list[str]:
+    """Extract added or removed URLs from a see_also WebhookEventChange."""
+    for change in changes:
+        if change.field == "see_also":
+            value = getattr(change, direction, "").strip()
+            return [u.strip() for u in value.split(",") if u.strip()] if value else []
+    return []
+
+
+def _classify_see_also_url(
+    url: str, bugzilla_base_url: str
+) -> tuple[str, Optional[str]]:
+    """Classify a see_also URL as 'jira', 'bugzilla', or 'other'.
+
+    Returns (kind, value):
+      - ('jira', issue_key) for Jira URLs
+      - ('bugzilla', bug_id_str) for Bugzilla bug URLs
+      - ('other', None) for everything else
+    """
+    try:
+        parsed = urlparse(url)
+        hostname = parsed.hostname or ""
+    except ValueError:
+        return ("other", None)
+
+    if any(part in JIRA_HOSTNAMES for part in hostname.split(".")):
+        key = parsed.path.rstrip("/").split("/")[-1]
+        return ("jira", key or None)
+
+    base_host = urlparse(bugzilla_base_url).hostname or ""
+    if hostname == base_host:
+        bug_id = parse_qs(parsed.query).get("id", [None])[0]
+        return ("bugzilla", bug_id)
+
+    return ("other", None)
+
+
+def sync_see_also(
+    context: ActionContext,
+    *,
+    jira_service: JiraService,
+    bugzilla_service: BugzillaService,
+) -> StepResult:
+    """Create or delete Jira 'Relates' links when see_also URLs are added/removed.
+
+    - Jira URLs → 'Relates' link directly to that issue (skips the primary issue)
+    - Bugzilla URLs → looks up the linked bug's Jira issue(s) and 'Relates' to those
+    """
+    settings = get_settings()
+
+    # On UPDATE, only run if see_also changed
+    if context.event.changes:
+        if "see_also" not in context.event.changed_fields():
+            return (StepStatus.NOOP, context)
+    elif not context.bug.see_also:
+        # CREATE with no see_also
+        return (StepStatus.NOOP, context)
+
+    if not context.jira.issue:
+        raise ValueError("Jira issue unset in ActionContext")
+
+    primary_issue: str = context.jira.issue
+    links_changed = 0
+
+    def _process_urls(urls: list[str], link_action: str) -> None:
+        nonlocal links_changed
+        for url in urls:
+            kind, value = _classify_see_also_url(url, settings.bugzilla_base_url)
+
+            if kind == "jira":
+                if not value or value == primary_issue:
+                    continue
+                try:
+                    if link_action == "create":
+                        jira_service.create_issue_link_relates_to(
+                            context, primary_issue, value
+                        )
+                    else:
+                        jira_service.delete_issue_link_relates_to(
+                            context, primary_issue, value
+                        )
+                    links_changed += 1
+                except requests_exceptions.HTTPError as e:
+                    logger.warning(
+                        "Failed to %s 'Relates' link between %s and %s: %s",
+                        link_action,
+                        primary_issue,
+                        value,
+                        e,
+                        extra=context.model_dump(),
+                    )
+
+            elif kind == "bugzilla" and value:
+                bugs_by_id = bugzilla_service.get_bugs_by_ids([int(value)])
+                for bug_id, bug_data in bugs_by_id.items():
+                    jira_keys = jira_service.lookup_jira_issues_for_bug(
+                        context, bug_id, bug_data
+                    )
+                    for jira_key in jira_keys:
+                        if jira_key == primary_issue:
+                            continue
+                        try:
+                            if link_action == "create":
+                                jira_service.create_issue_link_relates_to(
+                                    context, primary_issue, jira_key
+                                )
+                            else:
+                                jira_service.delete_issue_link_relates_to(
+                                    context, primary_issue, jira_key
+                                )
+                            links_changed += 1
+                        except requests_exceptions.HTTPError as e:
+                            logger.warning(
+                                "Failed to %s 'Relates' link between %s and %s: %s",
+                                link_action,
+                                primary_issue,
+                                jira_key,
+                                e,
+                                extra=context.model_dump(),
+                            )
+
+    # Handle removals (UPDATE only)
+    if context.event.changes:
+        removed_urls = _parse_changed_see_also_urls(context.event.changes, "removed")
+        _process_urls(removed_urls, "delete")
+
+    # Handle additions: use change delta on UPDATE, full see_also on CREATE
+    if context.event.changes:
+        added_urls = _parse_changed_see_also_urls(context.event.changes, "added")
+    else:
+        added_urls = [str(u) for u in (context.bug.see_also or [])]
+    _process_urls(added_urls, "create")
+
+    return (StepStatus.SUCCESS if links_changed > 0 else StepStatus.NOOP, context)
