@@ -723,8 +723,31 @@ def test_create_issue_link_relates_to_creates_link(
 
     data = json.loads(mocked_responses.calls[0].request.body)
     assert data["type"]["name"] == "Relates"
-    assert data["inwardIssue"]["key"] == "JBI-123"
-    assert data["outwardIssue"]["key"] == "FXP-456"
+    # Keys are sorted to normalise order: "FXP-456" < "JBI-123"
+    assert data["inwardIssue"]["key"] == "FXP-456"
+    assert data["outwardIssue"]["key"] == "JBI-123"
+
+
+def test_create_issue_link_relates_to_normalises_key_order(
+    jira_service, mocked_responses, settings, action_context_factory
+):
+    context = action_context_factory(jira__issue="JBI-123")
+
+    mocked_responses.add(
+        "POST",
+        f"{settings.jira_base_url}rest/api/2/issueLink",
+        json={},
+        status=201,
+    )
+
+    # Reverse order should produce the same inward/outward assignment
+    jira_service.create_issue_link_relates_to(context, "FXP-456", "JBI-123")
+
+    import json
+
+    data = json.loads(mocked_responses.calls[0].request.body)
+    assert data["inwardIssue"]["key"] == "FXP-456"
+    assert data["outwardIssue"]["key"] == "JBI-123"
 
 
 def test_create_issue_link_relates_to_handles_400(

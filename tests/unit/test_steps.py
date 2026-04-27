@@ -2275,8 +2275,8 @@ def test_sync_see_also_creates_link_for_added_jira_url(
     mocked_jira.create_issue_link.assert_called_once_with(
         data={
             "type": {"name": "Relates"},
-            "inwardIssue": {"key": "JBI-123"},
-            "outwardIssue": {"key": "FXP-456"},
+            "inwardIssue": {"key": "FXP-456"},
+            "outwardIssue": {"key": "JBI-123"},
         }
     )
 
@@ -2339,8 +2339,8 @@ def test_sync_see_also_creates_link_for_added_bugzilla_url(
     mocked_jira.create_issue_link.assert_called_once_with(
         data={
             "type": {"name": "Relates"},
-            "inwardIssue": {"key": "JBI-123"},
-            "outwardIssue": {"key": "FXP-789"},
+            "inwardIssue": {"key": "FXP-789"},
+            "outwardIssue": {"key": "JBI-123"},
         }
     )
 

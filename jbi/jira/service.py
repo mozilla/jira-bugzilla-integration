@@ -560,12 +560,17 @@ class JiraService:
     ):
         """Create a 'Relates' link between two Jira issues.
 
+        Key order is normalized (sorted) so that both (A, B) and (B, A) produce
+        the same Jira link, preventing duplicates when both sides of a Bugzilla
+        see_also relationship trigger webhook events.
+
         Args:
             context: The action context
             source_issue: The issue key to link from (e.g., 'JBI-123')
             related_issue: The issue key to link to (e.g., 'JBI-456')
         """
-        self._create_issue_link(context, "Relates", source_issue, related_issue)
+        inward, outward = sorted([source_issue, related_issue])
+        self._create_issue_link(context, "Relates", inward, outward)
 
     def delete_issue_link_relates_to(
         self, context: ActionContext, source_issue: str, related_issue: str
