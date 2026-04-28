@@ -241,6 +241,7 @@
         - sync_keywords_labels
         - sync_depends_on_links
         - sync_blocks_links
+        - sync_see_also
       existing:
         - update_issue_summary
         - maybe_update_components
@@ -254,6 +255,7 @@
         - sync_keywords_labels
         - sync_depends_on_links
         - sync_blocks_links
+        - sync_see_also
         - add_jira_comments_for_changes
       comment:
         - create_comment
@@ -286,6 +288,7 @@
         - sync_keywords_labels
         - sync_depends_on_links
         - sync_blocks_links
+        - sync_see_also
       existing:
         - update_issue_summary
         - maybe_update_components
@@ -299,6 +302,7 @@
         - sync_keywords_labels
         - sync_depends_on_links
         - sync_blocks_links
+        - sync_see_also
         - add_jira_comments_for_changes
       comment:
         - create_comment
@@ -484,6 +488,7 @@
         - sync_keywords_labels
         - sync_depends_on_links
         - sync_blocks_links
+        - sync_see_also
       existing:
         - update_issue_summary
         - maybe_assign_jira_user
@@ -496,6 +501,7 @@
         - sync_keywords_labels
         - sync_depends_on_links
         - sync_blocks_links
+        - sync_see_also
         - add_jira_comments_for_changes
       comment:
         - create_comment
