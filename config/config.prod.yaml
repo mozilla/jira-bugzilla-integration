@@ -33,6 +33,9 @@
         - maybe_update_issue_severity
         - maybe_update_issue_points
         - sync_whiteboard_labels
+        - sync_depends_on_links
+        - sync_blocks_links
+        - sync_see_also
       existing:
         - update_issue_summary
         - maybe_assign_jira_user
@@ -42,6 +45,9 @@
         - maybe_update_issue_severity
         - maybe_update_issue_points
         - sync_whiteboard_labels
+        - sync_depends_on_links
+        - sync_blocks_links
+        - sync_see_also
     labels_brackets: both
     status_map:
       ASSIGNED: In Progress
