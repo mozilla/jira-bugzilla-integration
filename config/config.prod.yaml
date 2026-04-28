@@ -528,12 +528,26 @@
         - add_link_to_jira
         - maybe_assign_jira_user
         - maybe_update_issue_status
+        - maybe_update_issue_resolution
+        - maybe_update_issue_priority
+        - maybe_update_issue_severity
+        - maybe_update_issue_points
         - sync_whiteboard_labels
+        - sync_depends_on_links
+        - sync_blocks_links
+        - sync_see_also
       existing:
         - update_issue_summary
         - maybe_assign_jira_user
         - maybe_update_issue_status
+        - maybe_update_issue_resolution
+        - maybe_update_issue_priority
+        - maybe_update_issue_severity
+        - maybe_update_issue_points
         - sync_whiteboard_labels
+        - sync_depends_on_links
+        - sync_blocks_links
+        - sync_see_also
     labels_brackets: both
     status_map:
       ASSIGNED: In Progress
@@ -544,6 +558,15 @@
       INCOMPLETE: Closed
       WORKSFORME: Closed
       REOPENED: In Progress
+    resolution_map: &basic-resolution-map
+      FIXED: Done
+      INVALID: Invalid
+      WONTFIX: "Won't Do"
+      INACTIVE: Inactive
+      DUPLICATE: Duplicate
+      WORKSFORME: "Cannot Reproduce"
+      INCOMPLETE: Incomplete
+      MOVED: Moved
 
 - whiteboard_tag: relops
   bugzilla_user_id: tbd
