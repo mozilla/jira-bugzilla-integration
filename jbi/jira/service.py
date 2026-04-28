@@ -473,6 +473,17 @@ class JiraService:
             else:
                 raise
 
+    def _get_issue_links(self, issue_key: str, link_type: str) -> list[dict]:
+        """Return all issue links of a given type for an issue, or [] if not found."""
+        issue = self.client.get_issue(issue_key, fields="issuelinks")
+        if not issue:
+            return []
+        return [
+            link
+            for link in issue.get("fields", {}).get("issuelinks", [])
+            if link.get("type", {}).get("name") == link_type
+        ]
+
     def create_issue_link_blocks(
         self, context: ActionContext, blocking_issue: str, blocked_issue: str
     ):
@@ -490,22 +501,13 @@ class JiraService:
     ):
         """Delete a 'Blocks' link between two Jira issues.
 
-        Fetches the blocked issue's links, finds the 'Blocks' link where
-        blocking_issue is the inward (blocker) issue, and deletes it by ID.
-
         Args:
             context: The action context
             blocking_issue: The issue key that blocks (e.g., 'JBI-123')
             blocked_issue: The issue key that is blocked (e.g., 'JBI-456')
         """
-        issue = self.client.get_issue(blocked_issue, fields="issuelinks")
-        if not issue:
-            return
-        for link in issue.get("fields", {}).get("issuelinks", []):
-            if (
-                link.get("type", {}).get("name") == "Blocks"
-                and link.get("inwardIssue", {}).get("key") == blocking_issue
-            ):
+        for link in self._get_issue_links(blocked_issue, "Blocks"):
+            if link.get("inwardIssue", {}).get("key") == blocking_issue:
                 self.client.remove_issue_link(link["id"])
                 logger.info(
                     "Deleted 'Blocks' link: %s -> %s",
@@ -585,12 +587,7 @@ class JiraService:
             source_issue: The issue key to fetch links from (e.g., 'JBI-123')
             related_issue: The issue key to unlink (e.g., 'JBI-456')
         """
-        issue = self.client.get_issue(source_issue, fields="issuelinks")
-        if not issue:
-            return
-        for link in issue.get("fields", {}).get("issuelinks", []):
-            if link.get("type", {}).get("name") != "Relates":
-                continue
+        for link in self._get_issue_links(source_issue, "Relates"):
             linked_key = (
                 link.get("inwardIssue") or link.get("outwardIssue") or {}
             ).get("key")
@@ -607,6 +604,48 @@ class JiraService:
             "No 'Relates' link found to delete: %s -> %s",
             source_issue,
             related_issue,
+            extra=context.model_dump(),
+        )
+
+    def create_issue_link_duplicates(
+        self, context: ActionContext, duplicate_issue: str, original_issue: str
+    ):
+        """Create a 'Duplicate' link. inwardIssue = duplicate, outwardIssue = original.
+
+        Args:
+            context: The action context
+            duplicate_issue: The issue key that IS a duplicate (e.g., 'FXP-1')
+            original_issue: The issue key that was duplicated (e.g., 'FXP-2')
+        """
+        self._create_issue_link(context, "Duplicate", duplicate_issue, original_issue)
+
+    def delete_issue_link_duplicates(
+        self, context: ActionContext, duplicate_issue: str, original_issue: str
+    ):
+        """Delete a 'Duplicate' link. Fetches duplicate_issue and matches both keys.
+
+        Args:
+            context: The action context
+            duplicate_issue: The issue key that IS a duplicate (e.g., 'FXP-1')
+            original_issue: The issue key that was duplicated (e.g., 'FXP-2')
+        """
+        for link in self._get_issue_links(duplicate_issue, "Duplicate"):
+            if (
+                link.get("inwardIssue", {}).get("key") == duplicate_issue
+                and link.get("outwardIssue", {}).get("key") == original_issue
+            ):
+                self.client.remove_issue_link(link["id"])
+                logger.info(
+                    "Deleted 'Duplicate' link: %s -> %s",
+                    duplicate_issue,
+                    original_issue,
+                    extra=context.update(operation=Operation.LINK).model_dump(),
+                )
+                return
+        logger.info(
+            "No 'Duplicate' link found to delete: %s -> %s",
+            duplicate_issue,
+            original_issue,
             extra=context.model_dump(),
         )
 
