@@ -2507,3 +2507,385 @@ def test_sync_see_also_handles_multiple_urls(
 
     assert result == steps.StepStatus.SUCCESS
     assert mocked_jira.create_issue_link.call_count == 2
+
+
+# --- sync_duplicates ---
+
+
+def test_sync_duplicates_noop_on_create(
+    action_context_factory,
+    mocked_jira,
+    mocked_bugzilla,
+):
+    # dupe_of and duplicates can only be set via resolution updates, never on creation.
+    context = action_context_factory(
+        operation=Operation.CREATE,
+        jira__issue="FXP-1",
+    )
+
+    result, _ = steps.sync_duplicates(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.NOOP
+    mocked_jira.create_issue_link.assert_not_called()
+
+
+def test_sync_duplicates_noop_when_no_relevant_changes(
+    action_context_factory,
+    webhook_event_change_factory,
+    mocked_jira,
+    mocked_bugzilla,
+):
+    context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="FXP-1",
+        event__changes=[
+            webhook_event_change_factory(field="summary", removed="old", added="new")
+        ],
+    )
+
+    result, _ = steps.sync_duplicates(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.NOOP
+    mocked_jira.create_issue_link.assert_not_called()
+
+
+def test_sync_duplicates_update_dupe_of_added(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    webhook_event_change_factory,
+):
+    context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="FXP-1",
+        bug__dupe_of=456,
+        event__changes=[
+            webhook_event_change_factory(field="dupe_of", removed="", added="456")
+        ],
+    )
+    original_bug = bug_factory(
+        id=456, see_also=["http://mozilla.jira.com/browse/FXP-2"]
+    )
+    mocked_bugzilla.get_bug.return_value = original_bug
+
+    result, _ = steps.sync_duplicates(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.create_issue_link.assert_called_once()
+
+
+def test_sync_duplicates_update_dupe_of_removed(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    webhook_event_change_factory,
+):
+    context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="FXP-1",
+        bug__dupe_of=None,
+        event__changes=[
+            webhook_event_change_factory(field="dupe_of", removed="456", added="")
+        ],
+    )
+    removed_bug = bug_factory(
+        id=456, see_also=["http://mozilla.jira.com/browse/FXP-2"]
+    )
+    mocked_bugzilla.get_bug.return_value = removed_bug
+    mocked_jira.get_issue.return_value = {
+        "fields": {
+            "issuelinks": [
+                {
+                    "id": "10001",
+                    "type": {"name": "Duplicate"},
+                    "inwardIssue": {"key": "FXP-1"},
+                    "outwardIssue": {"key": "FXP-2"},
+                }
+            ]
+        }
+    }
+
+    result, _ = steps.sync_duplicates(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.remove_issue_link.assert_called_once_with("10001")
+    mocked_jira.create_issue_link.assert_not_called()
+
+
+def test_sync_duplicates_update_dupe_of_changed(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    webhook_event_change_factory,
+):
+    # dupe_of changed from bug 456 to bug 789
+    context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="FXP-1",
+        bug__dupe_of=789,
+        event__changes=[
+            webhook_event_change_factory(field="dupe_of", removed="456", added="789")
+        ],
+    )
+
+    def get_bug_side_effect(bug_id):
+        if bug_id == 456:
+            return bug_factory(id=456, see_also=["http://mozilla.jira.com/browse/FXP-2"])
+        return bug_factory(id=789, see_also=["http://mozilla.jira.com/browse/FXP-3"])
+
+    mocked_bugzilla.get_bug.side_effect = get_bug_side_effect
+    mocked_jira.get_issue.return_value = {
+        "fields": {
+            "issuelinks": [
+                {
+                    "id": "10001",
+                    "type": {"name": "Duplicate"},
+                    "inwardIssue": {"key": "FXP-1"},
+                    "outwardIssue": {"key": "FXP-2"},
+                }
+            ]
+        }
+    }
+
+    result, _ = steps.sync_duplicates(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.remove_issue_link.assert_called_once_with("10001")
+    mocked_jira.create_issue_link.assert_called_once()
+
+
+def test_sync_duplicates_dupe_of_skips_bug_without_jira(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    webhook_event_change_factory,
+):
+    context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="FXP-1",
+        bug__dupe_of=456,
+        event__changes=[
+            webhook_event_change_factory(field="dupe_of", removed="", added="456")
+        ],
+    )
+    original_bug = bug_factory(id=456, see_also=[])
+    mocked_bugzilla.get_bug.return_value = original_bug
+
+    result, _ = steps.sync_duplicates(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.NOOP
+    mocked_jira.create_issue_link.assert_not_called()
+
+
+def test_sync_duplicates_update_duplicates_added(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    webhook_event_change_factory,
+):
+    context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="FXP-2",
+        bug__duplicates=[456],
+        event__changes=[
+            webhook_event_change_factory(field="duplicates", removed="", added="456")
+        ],
+    )
+    duplicate_bug = bug_factory(
+        id=456, see_also=["http://mozilla.jira.com/browse/FXP-1"]
+    )
+    mocked_bugzilla.get_bug.return_value = duplicate_bug
+
+    result, _ = steps.sync_duplicates(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.create_issue_link.assert_called_once()
+
+
+def test_sync_duplicates_update_duplicates_removed(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    webhook_event_change_factory,
+):
+    context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="FXP-2",
+        bug__duplicates=[],
+        event__changes=[
+            webhook_event_change_factory(field="duplicates", removed="456", added="")
+        ],
+    )
+    removed_bug = bug_factory(
+        id=456, see_also=["http://mozilla.jira.com/browse/FXP-1"]
+    )
+    mocked_bugzilla.get_bug.return_value = removed_bug
+    mocked_jira.get_issue.return_value = {
+        "fields": {
+            "issuelinks": [
+                {
+                    "id": "20001",
+                    "type": {"name": "Duplicate"},
+                    "inwardIssue": {"key": "FXP-1"},
+                    "outwardIssue": {"key": "FXP-2"},
+                }
+            ]
+        }
+    }
+
+    result, _ = steps.sync_duplicates(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.remove_issue_link.assert_called_once_with("20001")
+    mocked_jira.create_issue_link.assert_not_called()
+
+
+def test_sync_duplicates_update_duplicates_changed(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    webhook_event_change_factory,
+):
+    # duplicates changed: removed 456, added 789
+    context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="FXP-2",
+        bug__duplicates=[789],
+        event__changes=[
+            webhook_event_change_factory(field="duplicates", removed="456", added="789")
+        ],
+    )
+
+    def get_bug_side_effect(bug_id):
+        if bug_id == 456:
+            return bug_factory(id=456, see_also=["http://mozilla.jira.com/browse/FXP-1"])
+        return bug_factory(id=789, see_also=["http://mozilla.jira.com/browse/FXP-3"])
+
+    mocked_bugzilla.get_bug.side_effect = get_bug_side_effect
+    mocked_jira.get_issue.return_value = {
+        "fields": {
+            "issuelinks": [
+                {
+                    "id": "20001",
+                    "type": {"name": "Duplicate"},
+                    "inwardIssue": {"key": "FXP-1"},
+                    "outwardIssue": {"key": "FXP-2"},
+                }
+            ]
+        }
+    }
+
+    result, _ = steps.sync_duplicates(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.remove_issue_link.assert_called_once_with("20001")
+    mocked_jira.create_issue_link.assert_called_once()
+
+
+def test_sync_duplicates_duplicates_skips_bug_without_jira(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    webhook_event_change_factory,
+):
+    context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="FXP-2",
+        bug__duplicates=[456],
+        event__changes=[
+            webhook_event_change_factory(field="duplicates", removed="", added="456")
+        ],
+    )
+    duplicate_bug = bug_factory(id=456, see_also=[])
+    mocked_bugzilla.get_bug.return_value = duplicate_bug
+
+    result, _ = steps.sync_duplicates(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.NOOP
+    mocked_jira.create_issue_link.assert_not_called()
+
+
+def test_sync_duplicates_both_fields_changed(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    webhook_event_change_factory,
+):
+    # Both dupe_of and duplicates changed in same UPDATE event
+    context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="FXP-1",
+        bug__dupe_of=456,
+        bug__duplicates=[789],
+        event__changes=[
+            webhook_event_change_factory(field="dupe_of", removed="", added="456"),
+            webhook_event_change_factory(field="duplicates", removed="", added="789"),
+        ],
+    )
+
+    def get_bug_side_effect(bug_id):
+        if bug_id == 456:
+            return bug_factory(
+                id=456, see_also=["http://mozilla.jira.com/browse/FXP-2"]
+            )
+        return bug_factory(id=789, see_also=["http://mozilla.jira.com/browse/FXP-3"])
+
+    mocked_bugzilla.get_bug.side_effect = get_bug_side_effect
+
+    result, _ = steps.sync_duplicates(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    assert mocked_jira.create_issue_link.call_count == 2
