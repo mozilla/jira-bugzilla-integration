@@ -107,6 +107,8 @@ class BugFactory(PydanticFactory):
     resolution = ""
     depends_on = []
     blocks = []
+    dupe_of = None
+    duplicates = []
     see_also = []
     severity = "--"
     status = "NEW"

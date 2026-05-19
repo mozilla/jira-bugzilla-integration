@@ -863,3 +863,78 @@ def sync_see_also(
     _process_urls(added_urls, "create")
 
     return (StepStatus.SUCCESS if links_changed > 0 else StepStatus.NOOP, context)
+
+
+def sync_duplicates(
+    context: ActionContext,
+    *,
+    jira_service: JiraService,
+    bugzilla_service: BugzillaService,
+) -> StepResult:
+    """Create and remove Jira 'Duplicate' links for dupe_of and duplicates changes.
+
+    dupe_of: if this bug is a duplicate of bug B, creates Duplicate(inward=this, outward=B).
+    duplicates: if bug A is a duplicate of this bug, creates Duplicate(inward=A, outward=this).
+
+    Only runs on UPDATE events: a bug cannot be filed as a duplicate (dupe_of is set
+    when resolving an existing bug as DUPLICATE, and duplicates is the inverse list
+    populated at the same time).
+    """
+    # dupe_of and duplicates are only ever set via resolution updates, never on creation.
+    if not context.event.changes:
+        return (StepStatus.NOOP, context)
+
+    if not (
+        "dupe_of" in context.event.changed_fields()
+        or "duplicates" in context.event.changed_fields()
+    ):
+        return (StepStatus.NOOP, context)
+
+    if not context.jira.issue:
+        raise ValueError("Jira issue unset in Action Context")
+
+    primary_issue: str = context.jira.issue
+    links_changed = 0
+
+    def _process(bug_ids: list[int], *, action: str, current_is_duplicate: bool) -> None:
+        nonlocal links_changed
+        bugs_by_id = bugzilla_service.get_bugs_by_ids(bug_ids)
+        for bug_id, bug_data in bugs_by_id.items():
+            for jira_key in jira_service.lookup_jira_issues_for_bug(
+                context, bug_id, bug_data
+            ):
+                dup = primary_issue if current_is_duplicate else jira_key
+                orig = jira_key if current_is_duplicate else primary_issue
+                try:
+                    if action == "create":
+                        jira_service.create_issue_link_duplicates(context, dup, orig)
+                    else:
+                        jira_service.delete_issue_link_duplicates(context, dup, orig)
+                    links_changed += 1
+                except requests_exceptions.HTTPError as e:
+                    logger.warning(
+                        "Failed to %s 'Duplicate' link %s -> %s: %s",
+                        action,
+                        dup,
+                        orig,
+                        e,
+                        extra=context.model_dump(),
+                    )
+
+    # dupe_of: this bug IS the duplicate (current_is_duplicate=True means primary_issue is dup)
+    if "dupe_of" in context.event.changed_fields():
+        removed = _parse_changed_bug_ids(context.event.changes, "dupe_of", "removed")
+        if removed:
+            _process(removed, action="delete", current_is_duplicate=True)
+        if context.bug.dupe_of:
+            _process([context.bug.dupe_of], action="create", current_is_duplicate=True)
+
+    # duplicates: other bugs ARE duplicates of this bug (current_is_duplicate=False means jira_key is dup)
+    if "duplicates" in context.event.changed_fields():
+        removed = _parse_changed_bug_ids(context.event.changes, "duplicates", "removed")
+        if removed:
+            _process(removed, action="delete", current_is_duplicate=False)
+        if context.bug.duplicates:
+            _process(context.bug.duplicates, action="create", current_is_duplicate=False)
+
+    return (StepStatus.SUCCESS if links_changed > 0 else StepStatus.NOOP, context)
