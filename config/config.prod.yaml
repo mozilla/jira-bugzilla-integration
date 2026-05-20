@@ -257,6 +257,7 @@
         - sync_depends_on_links
         - sync_blocks_links
         - sync_see_also
+        - sync_duplicates
         - add_jira_comments_for_changes
       comment:
         - create_comment
@@ -304,6 +305,7 @@
         - sync_depends_on_links
         - sync_blocks_links
         - sync_see_also
+        - sync_duplicates
         - add_jira_comments_for_changes
       comment:
         - create_comment
@@ -503,6 +505,7 @@
         - sync_depends_on_links
         - sync_blocks_links
         - sync_see_also
+        - sync_duplicates
         - add_jira_comments_for_changes
       comment:
         - create_comment
