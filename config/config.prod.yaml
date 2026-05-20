@@ -257,6 +257,7 @@
         - sync_depends_on_links
         - sync_blocks_links
         - sync_see_also
+        - sync_duplicates
         - add_jira_comments_for_changes
       comment:
         - create_comment
@@ -304,6 +305,7 @@
         - sync_depends_on_links
         - sync_blocks_links
         - sync_see_also
+        - sync_duplicates
         - add_jira_comments_for_changes
       comment:
         - create_comment
@@ -503,6 +505,7 @@
         - sync_depends_on_links
         - sync_blocks_links
         - sync_see_also
+        - sync_duplicates
         - add_jira_comments_for_changes
       comment:
         - create_comment
@@ -559,15 +562,7 @@
       INCOMPLETE: Closed
       WORKSFORME: Closed
       REOPENED: In Progress
-    resolution_map: &basic-resolution-map
-      FIXED: Done
-      INVALID: Invalid
-      WONTFIX: "Won't Do"
-      INACTIVE: Inactive
-      DUPLICATE: Duplicate
-      WORKSFORME: "Cannot Reproduce"
-      INCOMPLETE: Incomplete
-      MOVED: Moved
+    resolution_map: *basic-resolution-map
 
 - whiteboard_tag: relops
   bugzilla_user_id: tbd
