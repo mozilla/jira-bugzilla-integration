@@ -938,3 +938,80 @@ def sync_duplicates(
             _process(context.bug.duplicates, action="create", current_is_duplicate=False)
 
     return (StepStatus.SUCCESS if links_changed > 0 else StepStatus.NOOP, context)
+
+
+def sync_regressions(
+    context: ActionContext,
+    *,
+    jira_service: JiraService,
+    bugzilla_service: BugzillaService,
+) -> StepResult:
+    """Create and remove Jira 'Problem/Incident' links for regressions/regressed_by changes.
+
+    regressions: if this bug caused bug B to regress (B → FXP-2, this → FXP-1),
+               creates Problem/Incident(inward=FXP-1, outward=FXP-2).
+    regressed_by: if bug A caused this bug to regress (A → FXP-1, this → FXP-2),
+               creates Problem/Incident(inward=FXP-1, outward=FXP-2).
+
+    Regression links can be set when filing a new bug, so this step runs on both
+    CREATE (syncs full field values) and UPDATE (syncs delta).
+    """
+    if context.event.changes:
+        if not (
+            "regressions" in context.event.changed_fields()
+            or "regressed_by" in context.event.changed_fields()
+        ):
+            return (StepStatus.NOOP, context)
+    else:
+        # CREATE: only proceed if there are fields to sync
+        if not context.bug.regressions and not context.bug.regressed_by:
+            return (StepStatus.NOOP, context)
+
+    if not context.jira.issue:
+        raise ValueError("Jira issue unset in Action Context")
+
+    primary_issue: str = context.jira.issue
+    links_changed = 0
+
+    def _process(bug_ids: list[int], *, action: str, current_is_cause: bool) -> None:
+        nonlocal links_changed
+        bugs_by_id = bugzilla_service.get_bugs_by_ids(bug_ids)
+        for bug_id, bug_data in bugs_by_id.items():
+            for jira_key in jira_service.lookup_jira_issues_for_bug(context, bug_id, bug_data):
+                causing = primary_issue if current_is_cause else jira_key
+                caused = jira_key if current_is_cause else primary_issue
+                try:
+                    if action == "create":
+                        jira_service.create_issue_link_causes(context, causing, caused)
+                    else:
+                        jira_service.delete_issue_link_causes(context, causing, caused)
+                    links_changed += 1
+                except requests_exceptions.HTTPError as e:
+                    logger.warning(
+                        "Failed to %s 'Problem/Incident' link %s -> %s: %s",
+                        action,
+                        causing,
+                        caused,
+                        e,
+                        extra=context.model_dump(),
+                    )
+
+    # regressions: current bug IS the cause (Bugzilla API field name: "regressions")
+    if not context.event.changes or "regressions" in context.event.changed_fields():
+        if context.event.changes:
+            removed = _parse_changed_bug_ids(context.event.changes, "regressions", "removed")
+            if removed:
+                _process(removed, action="delete", current_is_cause=True)
+        if context.bug.regressions:
+            _process(context.bug.regressions, action="create", current_is_cause=True)
+
+    # regressed_by: current bug IS the effect
+    if not context.event.changes or "regressed_by" in context.event.changed_fields():
+        if context.event.changes:
+            removed = _parse_changed_bug_ids(context.event.changes, "regressed_by", "removed")
+            if removed:
+                _process(removed, action="delete", current_is_cause=False)
+        if context.bug.regressed_by:
+            _process(context.bug.regressed_by, action="create", current_is_cause=False)
+
+    return (StepStatus.SUCCESS if links_changed > 0 else StepStatus.NOOP, context)

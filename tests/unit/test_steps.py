@@ -2889,3 +2889,432 @@ def test_sync_duplicates_both_fields_changed(
 
     assert result == steps.StepStatus.SUCCESS
     assert mocked_jira.create_issue_link.call_count == 2
+
+
+# sync_regressions
+
+
+def test_sync_regressions_noop_when_no_relevant_changes(
+    action_context_factory,
+    webhook_event_change_factory,
+    mocked_jira,
+    mocked_bugzilla,
+):
+    context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="FXP-1",
+        event__changes=[
+            webhook_event_change_factory(field="summary", removed="old", added="new")
+        ],
+    )
+
+    result, _ = steps.sync_regressions(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.NOOP
+    mocked_jira.create_issue_link.assert_not_called()
+
+
+def test_sync_regressions_noop_when_no_fields_on_create(
+    action_context_factory,
+    mocked_jira,
+    mocked_bugzilla,
+):
+    context = action_context_factory(
+        operation=Operation.CREATE,
+        jira__issue="FXP-1",
+    )
+
+    result, _ = steps.sync_regressions(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.NOOP
+    mocked_jira.create_issue_link.assert_not_called()
+
+
+def test_sync_regressions_create_with_regresses(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+):
+    # On CREATE, FXP-1 regresses FXP-2 → Causes(inward=FXP-1, outward=FXP-2)
+    context = action_context_factory(
+        operation=Operation.CREATE,
+        jira__issue="FXP-1",
+        bug__regressions=[456],
+    )
+    regressed_bug = bug_factory(id=456, see_also=["http://mozilla.jira.com/browse/FXP-2"])
+    mocked_bugzilla.get_bug.return_value = regressed_bug
+
+    result, _ = steps.sync_regressions(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.create_issue_link.assert_called_once()
+    data = mocked_jira.create_issue_link.call_args[1]["data"]
+    assert data["type"]["name"] == "Problem/Incident"
+    assert data["inwardIssue"]["key"] == "FXP-1"
+    assert data["outwardIssue"]["key"] == "FXP-2"
+
+
+def test_sync_regressions_update_regresses_added(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    webhook_event_change_factory,
+):
+    context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="FXP-1",
+        bug__regressions=[456],
+        event__changes=[
+            webhook_event_change_factory(field="regressions", removed="", added="456")
+        ],
+    )
+    regressed_bug = bug_factory(id=456, see_also=["http://mozilla.jira.com/browse/FXP-2"])
+    mocked_bugzilla.get_bug.return_value = regressed_bug
+
+    result, _ = steps.sync_regressions(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.create_issue_link.assert_called_once()
+
+
+def test_sync_regressions_update_regresses_removed(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    webhook_event_change_factory,
+):
+    context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="FXP-1",
+        bug__regressions=[],
+        event__changes=[
+            webhook_event_change_factory(field="regressions", removed="456", added="")
+        ],
+    )
+    regressed_bug = bug_factory(id=456, see_also=["http://mozilla.jira.com/browse/FXP-2"])
+    mocked_bugzilla.get_bug.return_value = regressed_bug
+    mocked_jira.get_issue.return_value = {
+        "fields": {
+            "issuelinks": [
+                {
+                    "id": "10001",
+                    "type": {"name": "Problem/Incident"},
+                    "inwardIssue": {"key": "FXP-1"},
+                    "outwardIssue": {"key": "FXP-2"},
+                }
+            ]
+        }
+    }
+
+    result, _ = steps.sync_regressions(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.remove_issue_link.assert_called_once_with("10001")
+    mocked_jira.create_issue_link.assert_not_called()
+
+
+def test_sync_regressions_update_regresses_changed(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    webhook_event_change_factory,
+):
+    # regresses changed from bug 456 to bug 789
+    context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="FXP-1",
+        bug__regressions=[789],
+        event__changes=[
+            webhook_event_change_factory(field="regressions", removed="456", added="789")
+        ],
+    )
+
+    def get_bug_side_effect(bug_id):
+        if bug_id == 456:
+            return bug_factory(id=456, see_also=["http://mozilla.jira.com/browse/FXP-2"])
+        return bug_factory(id=789, see_also=["http://mozilla.jira.com/browse/FXP-3"])
+
+    mocked_bugzilla.get_bug.side_effect = get_bug_side_effect
+    mocked_jira.get_issue.return_value = {
+        "fields": {
+            "issuelinks": [
+                {
+                    "id": "10001",
+                    "type": {"name": "Problem/Incident"},
+                    "inwardIssue": {"key": "FXP-1"},
+                    "outwardIssue": {"key": "FXP-2"},
+                }
+            ]
+        }
+    }
+
+    result, _ = steps.sync_regressions(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.remove_issue_link.assert_called_once_with("10001")
+    mocked_jira.create_issue_link.assert_called_once()
+
+
+def test_sync_regressions_regresses_skips_bug_without_jira(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    webhook_event_change_factory,
+):
+    context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="FXP-1",
+        bug__regressions=[456],
+        event__changes=[
+            webhook_event_change_factory(field="regressions", removed="", added="456")
+        ],
+    )
+    regressed_bug = bug_factory(id=456, see_also=[])
+    mocked_bugzilla.get_bug.return_value = regressed_bug
+
+    result, _ = steps.sync_regressions(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.NOOP
+    mocked_jira.create_issue_link.assert_not_called()
+
+
+def test_sync_regressions_create_with_regressed_by(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+):
+    # On CREATE, FXP-2 was regressed by FXP-1 → Causes(inward=FXP-1, outward=FXP-2)
+    context = action_context_factory(
+        operation=Operation.CREATE,
+        jira__issue="FXP-2",
+        bug__regressed_by=[456],
+    )
+    causing_bug = bug_factory(id=456, see_also=["http://mozilla.jira.com/browse/FXP-1"])
+    mocked_bugzilla.get_bug.return_value = causing_bug
+
+    result, _ = steps.sync_regressions(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.create_issue_link.assert_called_once()
+    data = mocked_jira.create_issue_link.call_args[1]["data"]
+    assert data["type"]["name"] == "Problem/Incident"
+    assert data["inwardIssue"]["key"] == "FXP-1"
+    assert data["outwardIssue"]["key"] == "FXP-2"
+
+
+def test_sync_regressions_update_regressed_by_added(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    webhook_event_change_factory,
+):
+    context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="FXP-2",
+        bug__regressed_by=[456],
+        event__changes=[
+            webhook_event_change_factory(field="regressed_by", removed="", added="456")
+        ],
+    )
+    causing_bug = bug_factory(id=456, see_also=["http://mozilla.jira.com/browse/FXP-1"])
+    mocked_bugzilla.get_bug.return_value = causing_bug
+
+    result, _ = steps.sync_regressions(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.create_issue_link.assert_called_once()
+
+
+def test_sync_regressions_update_regressed_by_removed(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    webhook_event_change_factory,
+):
+    context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="FXP-2",
+        bug__regressed_by=[],
+        event__changes=[
+            webhook_event_change_factory(field="regressed_by", removed="456", added="")
+        ],
+    )
+    causing_bug = bug_factory(id=456, see_also=["http://mozilla.jira.com/browse/FXP-1"])
+    mocked_bugzilla.get_bug.return_value = causing_bug
+    mocked_jira.get_issue.return_value = {
+        "fields": {
+            "issuelinks": [
+                {
+                    "id": "10001",
+                    "type": {"name": "Problem/Incident"},
+                    "inwardIssue": {"key": "FXP-1"},
+                    "outwardIssue": {"key": "FXP-2"},
+                }
+            ]
+        }
+    }
+
+    result, _ = steps.sync_regressions(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.remove_issue_link.assert_called_once_with("10001")
+    mocked_jira.create_issue_link.assert_not_called()
+
+
+def test_sync_regressions_update_regressed_by_changed(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    webhook_event_change_factory,
+):
+    # regressed_by changed from bug 456 to bug 789
+    context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="FXP-2",
+        bug__regressed_by=[789],
+        event__changes=[
+            webhook_event_change_factory(field="regressed_by", removed="456", added="789")
+        ],
+    )
+
+    def get_bug_side_effect(bug_id):
+        if bug_id == 456:
+            return bug_factory(id=456, see_also=["http://mozilla.jira.com/browse/FXP-1"])
+        return bug_factory(id=789, see_also=["http://mozilla.jira.com/browse/FXP-3"])
+
+    mocked_bugzilla.get_bug.side_effect = get_bug_side_effect
+    mocked_jira.get_issue.return_value = {
+        "fields": {
+            "issuelinks": [
+                {
+                    "id": "10001",
+                    "type": {"name": "Problem/Incident"},
+                    "inwardIssue": {"key": "FXP-1"},
+                    "outwardIssue": {"key": "FXP-2"},
+                }
+            ]
+        }
+    }
+
+    result, _ = steps.sync_regressions(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.remove_issue_link.assert_called_once_with("10001")
+    mocked_jira.create_issue_link.assert_called_once()
+
+
+def test_sync_regressions_regressed_by_skips_bug_without_jira(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    webhook_event_change_factory,
+):
+    context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="FXP-2",
+        bug__regressed_by=[456],
+        event__changes=[
+            webhook_event_change_factory(field="regressed_by", removed="", added="456")
+        ],
+    )
+    causing_bug = bug_factory(id=456, see_also=[])
+    mocked_bugzilla.get_bug.return_value = causing_bug
+
+    result, _ = steps.sync_regressions(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.NOOP
+    mocked_jira.create_issue_link.assert_not_called()
+
+
+def test_sync_regressions_both_fields_changed(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    webhook_event_change_factory,
+):
+    # Both regresses and regressed_by changed in same UPDATE event
+    context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="FXP-2",
+        bug__regressions=[456],
+        bug__regressed_by=[789],
+        event__changes=[
+            webhook_event_change_factory(field="regressions", removed="", added="456"),
+            webhook_event_change_factory(field="regressed_by", removed="", added="789"),
+        ],
+    )
+
+    def get_bug_side_effect(bug_id):
+        if bug_id == 456:
+            return bug_factory(id=456, see_also=["http://mozilla.jira.com/browse/FXP-3"])
+        return bug_factory(id=789, see_also=["http://mozilla.jira.com/browse/FXP-1"])
+
+    mocked_bugzilla.get_bug.side_effect = get_bug_side_effect
+
+    result, _ = steps.sync_regressions(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    assert mocked_jira.create_issue_link.call_count == 2
