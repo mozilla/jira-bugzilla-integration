@@ -49,7 +49,7 @@
         - sync_blocks_links
         - sync_see_also
     labels_brackets: both
-    status_map:
+    status_map: &status-closed-map
       ASSIGNED: In Progress
       FIXED: Closed
       WONTFIX: Closed
@@ -159,7 +159,7 @@
   description: Performance Team
   parameters:
     jira_project_key: FXP
-    jira_components:
+    jira_components: &create-product-component
       use_bug_component: false
       use_bug_component_with_product_prefix: true
       create_components: true
@@ -756,111 +756,109 @@
   description: Firefox GenAI - Frontend
   parameters:
     jira_project_key: AIFE
-    steps:
+    jira_components: *create-product-component
+    steps: &genai-steps
       new:
         - create_issue
         - maybe_delete_duplicate
         - add_link_to_bugzilla
         - add_link_to_jira
         - maybe_assign_jira_user
+        - maybe_update_components
         - maybe_update_issue_status
+        - maybe_update_issue_resolution
         - maybe_update_issue_priority
         - maybe_update_issue_severity
         - maybe_update_issue_points
+        - maybe_add_phabricator_link
         - sync_whiteboard_labels
+        - sync_keywords_labels
+        - sync_depends_on_links
+        - sync_blocks_links
+        - sync_see_also
+        - sync_regressions
       existing:
         - update_issue_summary
+        - maybe_update_components
         - maybe_assign_jira_user
         - maybe_update_issue_status
+        - maybe_update_issue_resolution
         - maybe_update_issue_priority
         - maybe_update_issue_severity
         - maybe_update_issue_points
+        - maybe_add_phabricator_link
         - sync_whiteboard_labels
+        - sync_keywords_labels
+        - sync_depends_on_links
+        - sync_blocks_links
+        - sync_see_also
+        - sync_duplicates
+        - sync_regressions
+        - add_jira_comments_for_changes
       comment:
         - create_comment
-    status_map:
-      ASSIGNED: In Progress
-      FIXED: Closed
-      WONTFIX: Closed
-      DUPLICATE: Closed
-      INVALID: Closed
-      INCOMPLETE: Closed
-      WORKSFORME: Closed
-      REOPENED: In Progress
+    status_map: *status-closed-map
+    resolution_map: *basic-resolution-map
 
 - whiteboard_tag: aimodels
   bugzilla_user_id: tbd
   description: Firefox GenAI - Models
   parameters:
     jira_project_key: AIMOD
-    steps:
-      new:
-        - create_issue
-        - maybe_delete_duplicate
-        - add_link_to_bugzilla
-        - add_link_to_jira
-        - maybe_assign_jira_user
-        - maybe_update_issue_status
-        - maybe_update_issue_priority
-        - maybe_update_issue_severity
-        - maybe_update_issue_points
-        - sync_whiteboard_labels
-      existing:
-        - update_issue_summary
-        - maybe_assign_jira_user
-        - maybe_update_issue_status
-        - maybe_update_issue_priority
-        - maybe_update_issue_severity
-        - maybe_update_issue_points
-        - sync_whiteboard_labels
-      comment:
-        - create_comment
-    status_map:
-      ASSIGNED: In Progress
-      FIXED: Closed
-      WONTFIX: Closed
-      DUPLICATE: Closed
-      INVALID: Closed
-      INCOMPLETE: Closed
-      WORKSFORME: Closed
-      REOPENED: In Progress
+    jira_components: *create-product-component
+    steps: *genai-steps
+    status_map: *status-closed-map
+    resolution_map: *basic-resolution-map
 
 - whiteboard_tag: aiplatform
   bugzilla_user_id: tbd
   description: Firefox GenAI - Platform
   parameters:
     jira_project_key: AIPLAT
-    steps:
-      new:
-        - create_issue
-        - maybe_delete_duplicate
-        - add_link_to_bugzilla
-        - add_link_to_jira
-        - maybe_assign_jira_user
-        - maybe_update_issue_status
-        - maybe_update_issue_priority
-        - maybe_update_issue_severity
-        - maybe_update_issue_points
-        - sync_whiteboard_labels
-      existing:
-        - update_issue_summary
-        - maybe_assign_jira_user
-        - maybe_update_issue_status
-        - maybe_update_issue_priority
-        - maybe_update_issue_severity
-        - maybe_update_issue_points
-        - sync_whiteboard_labels
-      comment:
-        - create_comment
-    status_map:
-      ASSIGNED: In Progress
-      FIXED: Closed
-      WONTFIX: Closed
-      DUPLICATE: Closed
-      INVALID: Closed
-      INCOMPLETE: Closed
-      WORKSFORME: Closed
-      REOPENED: In Progress
+    jira_components: *create-product-component
+    steps: *genai-steps
+    status_map: *status-closed-map
+    resolution_map: *basic-resolution-map
+
+- whiteboard_tag: aiact
+  bugzilla_user_id: tbd
+  description: Firefox GenAI - Act
+  parameters:
+    jira_project_key: AIACT
+    jira_components: *create-product-component
+    steps: *genai-steps
+    status_map: *status-closed-map
+    resolution_map: *basic-resolution-map
+
+- whiteboard_tag: aiasst
+  bugzilla_user_id: tbd
+  description: Firefox GenAI - Assist
+  parameters:
+    jira_project_key: AIASST
+    jira_components: *create-product-component
+    steps: *genai-steps
+    status_map: *status-closed-map
+    resolution_map: *basic-resolution-map
+
+- whiteboard_tag: aiaug
+  bugzilla_user_id: tbd
+  description: Firefox GenAI - Augment
+  parameters:
+    jira_project_key: AIAUG
+    jira_components: *create-product-component
+    steps: *genai-steps
+    status_map: *status-closed-map
+    resolution_map: *basic-resolution-map
+
+- whiteboard_tag: aidisc
+  bugzilla_user_id: tbd
+  description: Firefox GenAI - Discover
+  parameters:
+    jira_project_key: AIDISC
+    jira_components: *create-product-component
+    steps: *genai-steps
+    status_map: *status-closed-map
+    resolution_map: *basic-resolution-map
 
 - whiteboard_tag: jbi-aut
   bugzilla_user_id: 429623
