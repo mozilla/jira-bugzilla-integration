@@ -141,18 +141,18 @@
     status_map:
       UNCONFIRMED: Backlog
       NEW: Backlog
-      ASSIGNED: In Progress
+      ASSIGNED: In Eng
       REOPENED: Backlog
-      RESOLVED: Closed
-      VERIFIED: Closed
-      FIXED: Closed
-      INVALID: Closed
-      WONTFIX: Closed
-      INACTIVE: Closed
-      DUPLICATE: Closed
-      WORKSFORME: Closed
-      INCOMPLETE: Closed
-      MOVED: Closed
+      RESOLVED: Done
+      VERIFIED: Done
+      FIXED: Done
+      INVALID: Done
+      WONTFIX: Done
+      INACTIVE: Done
+      DUPLICATE: Done
+      WORKSFORME: Done
+      INCOMPLETE: Done
+      MOVED: Done
 
 - whiteboard_tag: fxp
   bugzilla_user_id: 396948
