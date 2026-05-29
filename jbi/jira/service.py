@@ -649,6 +649,48 @@ class JiraService:
             extra=context.model_dump(),
         )
 
+    def create_issue_link_causes(
+        self, context: ActionContext, causing_issue: str, caused_issue: str
+    ):
+        """Create a 'Problem/Incident' link. inwardIssue = causing, outwardIssue = caused.
+
+        Args:
+            context: The action context
+            causing_issue: The issue key that IS the cause (e.g., 'FXP-1')
+            caused_issue: The issue key that was caused to regress (e.g., 'FXP-2')
+        """
+        self._create_issue_link(context, "Problem/Incident", causing_issue, caused_issue)
+
+    def delete_issue_link_causes(
+        self, context: ActionContext, causing_issue: str, caused_issue: str
+    ):
+        """Delete a 'Problem/Incident' link. Fetches causing_issue and matches both keys.
+
+        Args:
+            context: The action context
+            causing_issue: The issue key that IS the cause (e.g., 'FXP-1')
+            caused_issue: The issue key that was caused to regress (e.g., 'FXP-2')
+        """
+        for link in self._get_issue_links(causing_issue, "Problem/Incident"):
+            if (
+                link.get("inwardIssue", {}).get("key") == causing_issue
+                and link.get("outwardIssue", {}).get("key") == caused_issue
+            ):
+                self.client.remove_issue_link(link["id"])
+                logger.info(
+                    "Deleted 'Problem/Incident' link: %s -> %s",
+                    causing_issue,
+                    caused_issue,
+                    extra=context.update(operation=Operation.LINK).model_dump(),
+                )
+                return
+        logger.info(
+            "No 'Problem/Incident' link found to delete: %s -> %s",
+            causing_issue,
+            caused_issue,
+            extra=context.model_dump(),
+        )
+
     def check_jira_connection(self):
         try:
             if self.client.get_server_info(True) is None:

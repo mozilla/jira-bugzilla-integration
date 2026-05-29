@@ -1012,3 +1012,150 @@ def test_delete_issue_link_duplicates_ignores_other_link_types(
 
     # Only the GET, no DELETE
     assert len(mocked_responses.calls) == 1
+
+
+def test_create_issue_link_causes_creates_link(
+    jira_service, mocked_responses, settings, action_context_factory
+):
+    context = action_context_factory(jira__issue="FXP-1")
+
+    mocked_responses.add(
+        "POST",
+        f"{settings.jira_base_url}rest/api/2/issueLink",
+        json={},
+        status=201,
+    )
+
+    jira_service.create_issue_link_causes(
+        context, causing_issue="FXP-1", caused_issue="FXP-2"
+    )
+
+    assert len(mocked_responses.calls) == 1
+    import json
+
+    data = json.loads(mocked_responses.calls[0].request.body)
+    assert data["type"]["name"] == "Problem/Incident"
+    assert data["inwardIssue"]["key"] == "FXP-1"
+    assert data["outwardIssue"]["key"] == "FXP-2"
+
+
+def test_create_issue_link_causes_handles_400(
+    jira_service, mocked_responses, settings, action_context_factory
+):
+    context = action_context_factory(jira__issue="FXP-1")
+
+    mocked_responses.add(
+        "POST",
+        f"{settings.jira_base_url}rest/api/2/issueLink",
+        json={"errorMessages": ["The link already exists"]},
+        status=400,
+    )
+
+    # Should not raise
+    jira_service.create_issue_link_causes(
+        context, causing_issue="FXP-1", caused_issue="FXP-2"
+    )
+
+
+def test_create_issue_link_causes_reraises_non_400(
+    jira_service, mocked_responses, settings, action_context_factory
+):
+    context = action_context_factory(jira__issue="FXP-1")
+
+    mocked_responses.add(
+        "POST",
+        f"{settings.jira_base_url}rest/api/2/issueLink",
+        status=500,
+    )
+
+    with pytest.raises(requests.exceptions.HTTPError):
+        jira_service.create_issue_link_causes(
+            context, causing_issue="FXP-1", caused_issue="FXP-2"
+        )
+
+
+def test_delete_issue_link_causes_deletes_link(
+    jira_service, mocked_responses, settings, action_context_factory
+):
+    context = action_context_factory(jira__issue="FXP-1")
+
+    mocked_responses.add(
+        "GET",
+        f"{settings.jira_base_url}rest/api/2/issue/FXP-1",
+        json={
+            "fields": {
+                "issuelinks": [
+                    {
+                        "id": "20001",
+                        "type": {"name": "Problem/Incident"},
+                        "inwardIssue": {"key": "FXP-1"},
+                        "outwardIssue": {"key": "FXP-2"},
+                    }
+                ]
+            }
+        },
+        status=200,
+    )
+    mocked_responses.add(
+        "DELETE",
+        f"{settings.jira_base_url}rest/api/2/issueLink/20001",
+        status=204,
+    )
+
+    jira_service.delete_issue_link_causes(
+        context, causing_issue="FXP-1", caused_issue="FXP-2"
+    )
+
+    assert len(mocked_responses.calls) == 2
+    assert mocked_responses.calls[1].request.url.endswith("/issueLink/20001")
+
+
+def test_delete_issue_link_causes_no_match(
+    jira_service, mocked_responses, settings, action_context_factory
+):
+    context = action_context_factory(jira__issue="FXP-1")
+
+    mocked_responses.add(
+        "GET",
+        f"{settings.jira_base_url}rest/api/2/issue/FXP-1",
+        json={"fields": {"issuelinks": []}},
+        status=200,
+    )
+
+    jira_service.delete_issue_link_causes(
+        context, causing_issue="FXP-1", caused_issue="FXP-2"
+    )
+
+    # Only the GET, no DELETE
+    assert len(mocked_responses.calls) == 1
+
+
+def test_delete_issue_link_causes_ignores_other_link_types(
+    jira_service, mocked_responses, settings, action_context_factory
+):
+    context = action_context_factory(jira__issue="FXP-1")
+
+    mocked_responses.add(
+        "GET",
+        f"{settings.jira_base_url}rest/api/2/issue/FXP-1",
+        json={
+            "fields": {
+                "issuelinks": [
+                    {
+                        "id": "30001",
+                        "type": {"name": "Relates"},
+                        "inwardIssue": {"key": "FXP-1"},
+                        "outwardIssue": {"key": "FXP-2"},
+                    }
+                ]
+            }
+        },
+        status=200,
+    )
+
+    jira_service.delete_issue_link_causes(
+        context, causing_issue="FXP-1", caused_issue="FXP-2"
+    )
+
+    # Only the GET, no DELETE
+    assert len(mocked_responses.calls) == 1

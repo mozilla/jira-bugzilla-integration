@@ -109,6 +109,8 @@ class BugFactory(PydanticFactory):
     blocks = []
     dupe_of = None
     duplicates = []
+    regressions = []
+    regressed_by = []
     see_also = []
     severity = "--"
     status = "NEW"
