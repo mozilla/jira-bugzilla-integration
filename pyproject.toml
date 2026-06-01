@@ -11,7 +11,7 @@ dependencies = [
     "atlassian-python-api<5.0.0,>=4.0.7",
     "dockerflow[fastapi]==2026.3.4",
     "Jinja2<4.0.0,>=3.1.6",
-    "sentry-sdk[fastapi]<3.0.0,>=2.43.0",
+    "sentry-sdk[fastapi]>=2.61.0,<3.0.0",
     "pydantic-yaml<2.0.0,>=1.6.0",
     "backoff<3.0.0,>=2.2.1",
     "statsd<5.0.0,>=4.0.1",
