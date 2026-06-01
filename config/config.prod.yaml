@@ -181,6 +181,7 @@
         - sync_depends_on_links
         - sync_blocks_links
         - sync_see_also
+        - sync_regressions
       existing:
         - update_issue_summary
         - maybe_update_components
@@ -196,6 +197,7 @@
         - sync_blocks_links
         - sync_see_also
         - sync_duplicates
+        - sync_regressions
         - add_jira_comments_for_changes
       comment:
         - create_comment
