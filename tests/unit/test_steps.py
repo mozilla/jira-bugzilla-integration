@@ -3019,7 +3019,6 @@ def test_sync_regressions_update_regresses_removed(
                     "id": "10001",
                     "type": {"name": "Problem/Incident"},
                     "inwardIssue": {"key": "FXP-1"},
-                    "outwardIssue": {"key": "FXP-2"},
                 }
             ]
         }
@@ -3066,7 +3065,6 @@ def test_sync_regressions_update_regresses_changed(
                     "id": "10001",
                     "type": {"name": "Problem/Incident"},
                     "inwardIssue": {"key": "FXP-1"},
-                    "outwardIssue": {"key": "FXP-2"},
                 }
             ]
         }
@@ -3192,7 +3190,6 @@ def test_sync_regressions_update_regressed_by_removed(
                     "id": "10001",
                     "type": {"name": "Problem/Incident"},
                     "inwardIssue": {"key": "FXP-1"},
-                    "outwardIssue": {"key": "FXP-2"},
                 }
             ]
         }
@@ -3239,7 +3236,6 @@ def test_sync_regressions_update_regressed_by_changed(
                     "id": "10001",
                     "type": {"name": "Problem/Incident"},
                     "inwardIssue": {"key": "FXP-1"},
-                    "outwardIssue": {"key": "FXP-2"},
                 }
             ]
         }
