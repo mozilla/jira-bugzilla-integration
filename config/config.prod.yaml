@@ -33,8 +33,7 @@
         - maybe_update_issue_severity
         - maybe_update_issue_points
         - sync_whiteboard_labels
-        - sync_depends_on_links
-        - sync_blocks_links
+        - sync_dependencies
         - sync_see_also
       existing:
         - update_issue_summary
@@ -45,8 +44,7 @@
         - maybe_update_issue_severity
         - maybe_update_issue_points
         - sync_whiteboard_labels
-        - sync_depends_on_links
-        - sync_blocks_links
+        - sync_dependencies
         - sync_see_also
     labels_brackets: both
     status_map: &status-closed-map
@@ -178,8 +176,7 @@
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
-        - sync_depends_on_links
-        - sync_blocks_links
+        - sync_dependencies
         - sync_see_also
         - sync_regressions
       existing:
@@ -193,8 +190,7 @@
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
-        - sync_depends_on_links
-        - sync_blocks_links
+        - sync_dependencies
         - sync_see_also
         - sync_duplicates
         - sync_regressions
@@ -242,8 +238,7 @@
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
-        - sync_depends_on_links
-        - sync_blocks_links
+        - sync_dependencies
         - sync_see_also
       existing:
         - update_issue_summary
@@ -256,8 +251,7 @@
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
-        - sync_depends_on_links
-        - sync_blocks_links
+        - sync_dependencies
         - sync_see_also
         - sync_duplicates
         - add_jira_comments_for_changes
@@ -290,8 +284,7 @@
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
-        - sync_depends_on_links
-        - sync_blocks_links
+        - sync_dependencies
         - sync_see_also
       existing:
         - update_issue_summary
@@ -304,8 +297,7 @@
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
-        - sync_depends_on_links
-        - sync_blocks_links
+        - sync_dependencies
         - sync_see_also
         - sync_duplicates
         - add_jira_comments_for_changes
@@ -491,8 +483,7 @@
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
-        - sync_depends_on_links
-        - sync_blocks_links
+        - sync_dependencies
         - sync_see_also
       existing:
         - update_issue_summary
@@ -504,8 +495,7 @@
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
-        - sync_depends_on_links
-        - sync_blocks_links
+        - sync_dependencies
         - sync_see_also
         - sync_duplicates
         - add_jira_comments_for_changes
@@ -539,8 +529,7 @@
         - maybe_update_issue_severity
         - maybe_update_issue_points
         - sync_whiteboard_labels
-        - sync_depends_on_links
-        - sync_blocks_links
+        - sync_dependencies
         - sync_see_also
       existing:
         - update_issue_summary
@@ -551,8 +540,7 @@
         - maybe_update_issue_severity
         - maybe_update_issue_points
         - sync_whiteboard_labels
-        - sync_depends_on_links
-        - sync_blocks_links
+        - sync_dependencies
         - sync_see_also
     labels_brackets: both
     status_map:
@@ -773,8 +761,7 @@
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
-        - sync_depends_on_links
-        - sync_blocks_links
+        - sync_dependencies
         - sync_see_also
         - sync_regressions
       existing:
@@ -789,8 +776,7 @@
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
-        - sync_depends_on_links
-        - sync_blocks_links
+        - sync_dependencies
         - sync_see_also
         - sync_duplicates
         - sync_regressions
