@@ -622,18 +622,19 @@ class JiraService:
     def delete_issue_link_duplicates(
         self, context: ActionContext, duplicate_issue: str, original_issue: str
     ):
-        """Delete a 'Duplicate' link. Fetches duplicate_issue and matches both keys.
+        """Delete a 'Duplicate' link. Fetches original_issue and matches duplicate_issue.
+
+        Jira returns only the OTHER issue in each link object, not the queried issue.
+        Since duplicate_issue is inward, we query original_issue (outward) to get a
+        link containing inwardIssue=duplicate_issue.
 
         Args:
             context: The action context
             duplicate_issue: The issue key that IS a duplicate (e.g., 'FXP-1')
             original_issue: The issue key that was duplicated (e.g., 'FXP-2')
         """
-        for link in self._get_issue_links(duplicate_issue, "Duplicate"):
-            if (
-                link.get("inwardIssue", {}).get("key") == duplicate_issue
-                and link.get("outwardIssue", {}).get("key") == original_issue
-            ):
+        for link in self._get_issue_links(original_issue, "Duplicate"):
+            if link.get("inwardIssue", {}).get("key") == duplicate_issue:
                 self.client.remove_issue_link(link["id"])
                 logger.info(
                     "Deleted 'Duplicate' link: %s -> %s",
@@ -664,18 +665,19 @@ class JiraService:
     def delete_issue_link_causes(
         self, context: ActionContext, causing_issue: str, caused_issue: str
     ):
-        """Delete a 'Problem/Incident' link. Fetches causing_issue and matches both keys.
+        """Delete a 'Problem/Incident' link. Fetches caused_issue and matches causing_issue.
+
+        Jira returns only the OTHER issue in each link object, not the queried issue.
+        Since causing_issue is inward, we query caused_issue (outward) to get a link
+        containing inwardIssue=causing_issue.
 
         Args:
             context: The action context
             causing_issue: The issue key that IS the cause (e.g., 'FXP-1')
             caused_issue: The issue key that was caused to regress (e.g., 'FXP-2')
         """
-        for link in self._get_issue_links(causing_issue, "Problem/Incident"):
-            if (
-                link.get("inwardIssue", {}).get("key") == causing_issue
-                and link.get("outwardIssue", {}).get("key") == caused_issue
-            ):
+        for link in self._get_issue_links(caused_issue, "Problem/Incident"):
+            if link.get("inwardIssue", {}).get("key") == causing_issue:
                 self.client.remove_issue_link(link["id"])
                 logger.info(
                     "Deleted 'Problem/Incident' link: %s -> %s",
