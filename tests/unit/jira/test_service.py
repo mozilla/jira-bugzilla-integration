@@ -934,7 +934,7 @@ def test_delete_issue_link_duplicates_deletes_link(
 
     mocked_responses.add(
         "GET",
-        f"{settings.jira_base_url}rest/api/2/issue/FXP-1",
+        f"{settings.jira_base_url}rest/api/2/issue/FXP-2",
         json={
             "fields": {
                 "issuelinks": [
@@ -942,7 +942,6 @@ def test_delete_issue_link_duplicates_deletes_link(
                         "id": "20001",
                         "type": {"name": "Duplicate"},
                         "inwardIssue": {"key": "FXP-1"},
-                        "outwardIssue": {"key": "FXP-2"},
                     }
                 ]
             }
@@ -970,7 +969,7 @@ def test_delete_issue_link_duplicates_no_match(
 
     mocked_responses.add(
         "GET",
-        f"{settings.jira_base_url}rest/api/2/issue/FXP-1",
+        f"{settings.jira_base_url}rest/api/2/issue/FXP-2",
         json={"fields": {"issuelinks": []}},
         status=200,
     )
@@ -990,7 +989,7 @@ def test_delete_issue_link_duplicates_ignores_other_link_types(
 
     mocked_responses.add(
         "GET",
-        f"{settings.jira_base_url}rest/api/2/issue/FXP-1",
+        f"{settings.jira_base_url}rest/api/2/issue/FXP-2",
         json={
             "fields": {
                 "issuelinks": [
@@ -998,7 +997,6 @@ def test_delete_issue_link_duplicates_ignores_other_link_types(
                         "id": "30001",
                         "type": {"name": "Relates"},
                         "inwardIssue": {"key": "FXP-1"},
-                        "outwardIssue": {"key": "FXP-2"},
                     }
                 ]
             }
@@ -1081,7 +1079,7 @@ def test_delete_issue_link_causes_deletes_link(
 
     mocked_responses.add(
         "GET",
-        f"{settings.jira_base_url}rest/api/2/issue/FXP-1",
+        f"{settings.jira_base_url}rest/api/2/issue/FXP-2",
         json={
             "fields": {
                 "issuelinks": [
@@ -1089,7 +1087,6 @@ def test_delete_issue_link_causes_deletes_link(
                         "id": "20001",
                         "type": {"name": "Problem/Incident"},
                         "inwardIssue": {"key": "FXP-1"},
-                        "outwardIssue": {"key": "FXP-2"},
                     }
                 ]
             }
@@ -1117,7 +1114,7 @@ def test_delete_issue_link_causes_no_match(
 
     mocked_responses.add(
         "GET",
-        f"{settings.jira_base_url}rest/api/2/issue/FXP-1",
+        f"{settings.jira_base_url}rest/api/2/issue/FXP-2",
         json={"fields": {"issuelinks": []}},
         status=200,
     )
@@ -1137,7 +1134,7 @@ def test_delete_issue_link_causes_ignores_other_link_types(
 
     mocked_responses.add(
         "GET",
-        f"{settings.jira_base_url}rest/api/2/issue/FXP-1",
+        f"{settings.jira_base_url}rest/api/2/issue/FXP-2",
         json={
             "fields": {
                 "issuelinks": [
@@ -1145,7 +1142,6 @@ def test_delete_issue_link_causes_ignores_other_link_types(
                         "id": "30001",
                         "type": {"name": "Relates"},
                         "inwardIssue": {"key": "FXP-1"},
-                        "outwardIssue": {"key": "FXP-2"},
                     }
                 ]
             }
