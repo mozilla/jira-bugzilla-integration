@@ -529,7 +529,8 @@ class JiraService:
         """Find all Jira issue keys for a Bugzilla bug ID.
 
         Uses bug_data.extract_from_see_also(project_key=None) to get all issues,
-        supporting cross-project linking.
+        supporting cross-project linking. Excludes issues from projects in
+        context.action.parameters.linked_project_excludes.
 
         Args:
             context: The action context
@@ -548,6 +549,10 @@ class JiraService:
                 extra=context.model_dump(),
             )
             return []
+
+        excluded = context.action.parameters.linked_project_excludes
+        if excluded:
+            jira_keys = [k for k in jira_keys if k.split("-")[0] not in excluded]
 
         logger.info(
             "Found Jira issues %s for bug %s",

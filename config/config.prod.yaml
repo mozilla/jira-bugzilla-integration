@@ -1057,6 +1057,7 @@
   description: Bugs affecting Firefox components
   parameters:
     jira_project_key: BZFFX
+    linked_project_excludes: []
     jira_components:
       use_bug_component_with_product_prefix: true
       use_bug_component: false
@@ -1103,6 +1104,7 @@
   description: Bugs affecting Core components
   parameters:
     jira_project_key: BZFFX
+    linked_project_excludes: []
     jira_components:
       use_bug_component_with_product_prefix: true
       use_bug_component: false
