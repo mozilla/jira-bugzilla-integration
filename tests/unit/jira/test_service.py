@@ -613,6 +613,48 @@ def test_lookup_jira_issues_for_bug_returns_empty_when_no_see_also(
     assert result == []
 
 
+def test_lookup_jira_issues_for_bug_excludes_configured_projects(
+    jira_service, action_context_factory, bug_factory
+):
+    """Test that lookup_jira_issues_for_bug filters out keys from excluded projects."""
+    context = action_context_factory(
+        jira__issue="JBI-123",
+        action__parameters__linked_project_excludes=["BZFFX"],
+    )
+    bug = bug_factory(
+        id=456,
+        see_also=[
+            "http://mozilla.jira.com/browse/JBI-789",
+            "http://mozilla.jira.com/browse/BZFFX-123",
+        ],
+    )
+
+    result = jira_service.lookup_jira_issues_for_bug(context, 456, bug)
+
+    assert result == ["JBI-789"]
+
+
+def test_lookup_jira_issues_for_bug_empty_excludes_returns_all(
+    jira_service, action_context_factory, bug_factory
+):
+    """Test that lookup_jira_issues_for_bug returns all keys when excludes is empty."""
+    context = action_context_factory(
+        jira__issue="JBI-123",
+        action__parameters__linked_project_excludes=[],
+    )
+    bug = bug_factory(
+        id=456,
+        see_also=[
+            "http://mozilla.jira.com/browse/JBI-789",
+            "http://mozilla.jira.com/browse/BZFFX-123",
+        ],
+    )
+
+    result = jira_service.lookup_jira_issues_for_bug(context, 456, bug)
+
+    assert result == ["JBI-789", "BZFFX-123"]
+
+
 def test_delete_issue_link_blocks_deletes_correct_link(
     jira_service, mocked_responses, settings, action_context_factory
 ):
