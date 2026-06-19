@@ -1697,6 +1697,90 @@ def test_sync_keywords_labels_failing(
     ]
 
 
+def test_sync_keywords_labels_create_via_whiteboard_change(
+    action_context_factory,
+    mocked_jira,
+    action_params_factory,
+    webhook_event_change_factory,
+):
+    # Adding a whiteboard tag to a pre-existing bug creates the Jira issue in
+    # response to a *modify* webhook: operation is CREATE but event.changes is
+    # populated (with the whiteboard change). All keywords must still be synced.
+    action_context = action_context_factory(
+        operation=Operation.CREATE,
+        jira__issue="JBI-123",
+        bug__keywords=["regression", "perf"],
+        event__changes=[
+            webhook_event_change_factory(
+                field="whiteboard", removed="", added="[devtest]"
+            )
+        ],
+    )
+
+    callable_object = Executor(
+        action_params_factory(
+            jira_project_key=action_context.jira.project,
+            steps={"new": ["sync_keywords_labels"]},
+        )
+    )
+    callable_object(context=action_context)
+
+    mocked_jira.update_issue.assert_called_once_with(
+        issue_key=action_context.jira.issue,
+        update={
+            "update": {
+                "labels": [
+                    {"add": "regression"},
+                    {"add": "perf"},
+                ]
+            }
+        },
+    )
+
+
+def test_sync_whiteboard_labels_create_via_whiteboard_change(
+    action_context_factory,
+    mocked_jira,
+    action_params_factory,
+    webhook_event_change_factory,
+):
+    # CREATE triggered by a whiteboard-add modify webhook: the full whiteboard
+    # label set must be synced, not just the delta from the change.
+    action_context = action_context_factory(
+        operation=Operation.CREATE,
+        jira__issue="JBI-123",
+        bug__whiteboard="[devtest] [server]",
+        event__changes=[
+            webhook_event_change_factory(
+                field="whiteboard",
+                removed="[devtest]",
+                added="[devtest] [server]",
+            )
+        ],
+    )
+
+    callable_object = Executor(
+        action_params_factory(
+            jira_project_key=action_context.jira.project,
+            steps={"new": ["sync_whiteboard_labels"]},
+        )
+    )
+    callable_object(context=action_context)
+
+    mocked_jira.update_issue.assert_called_once_with(
+        issue_key=action_context.jira.issue,
+        update={
+            "update": {
+                "labels": [
+                    {"add": "bugzilla"},
+                    {"add": "devtest"},
+                    {"add": "server"},
+                ]
+            }
+        },
+    )
+
+
 def test_sync_depends_on_links_create_with_dependency(
     action_context_factory,
     bug_factory,
@@ -2029,7 +2113,9 @@ def test_sync_depends_on_links_removes_link_on_update(
         ],
     )
 
-    removed_bug = bug_factory(id=456, see_also=["http://mozilla.jira.com/browse/JBI-456"])
+    removed_bug = bug_factory(
+        id=456, see_also=["http://mozilla.jira.com/browse/JBI-456"]
+    )
     mocked_bugzilla.get_bug.return_value = removed_bug
 
     mocked_jira.get_issue.return_value = {
@@ -2128,7 +2214,9 @@ def test_sync_blocks_links_removes_link_on_update(
         ],
     )
 
-    removed_bug = bug_factory(id=456, see_also=["http://mozilla.jira.com/browse/JBI-456"])
+    removed_bug = bug_factory(
+        id=456, see_also=["http://mozilla.jira.com/browse/JBI-456"]
+    )
     mocked_bugzilla.get_bug.return_value = removed_bug
 
     mocked_jira.get_issue.return_value = {
@@ -2235,6 +2323,7 @@ def test_sync_see_also_noop_when_other_field_changed(
     action_context_factory, webhook_event_change_factory, mocked_jira, mocked_bugzilla
 ):
     context = action_context_factory(
+        operation=Operation.UPDATE,
         jira__issue="JBI-123",
         event__changes=[
             webhook_event_change_factory(field="summary", removed="", added="New title")
@@ -2255,6 +2344,7 @@ def test_sync_see_also_creates_link_for_added_jira_url(
     action_context_factory, webhook_event_change_factory, mocked_jira, mocked_bugzilla
 ):
     context = action_context_factory(
+        operation=Operation.UPDATE,
         jira__issue="JBI-123",
         event__changes=[
             webhook_event_change_factory(
@@ -2285,6 +2375,7 @@ def test_sync_see_also_skips_primary_jira_issue(
     action_context_factory, webhook_event_change_factory, mocked_jira, mocked_bugzilla
 ):
     context = action_context_factory(
+        operation=Operation.UPDATE,
         jira__issue="JBI-123",
         event__changes=[
             webhook_event_change_factory(
@@ -2319,6 +2410,7 @@ def test_sync_see_also_creates_link_for_added_bugzilla_url(
     mocked_bugzilla.get_bug.return_value = linked_bug
 
     context = action_context_factory(
+        operation=Operation.UPDATE,
         jira__issue="JBI-123",
         event__changes=[
             webhook_event_change_factory(
@@ -2357,6 +2449,7 @@ def test_sync_see_also_noop_when_bugzilla_bug_has_no_jira_issue(
     mocked_bugzilla.get_bug.return_value = linked_bug
 
     context = action_context_factory(
+        operation=Operation.UPDATE,
         jira__issue="JBI-123",
         event__changes=[
             webhook_event_change_factory(
@@ -2393,6 +2486,7 @@ def test_sync_see_also_deletes_link_for_removed_jira_url(
     }
 
     context = action_context_factory(
+        operation=Operation.UPDATE,
         jira__issue="JBI-123",
         event__changes=[
             webhook_event_change_factory(
@@ -2438,6 +2532,7 @@ def test_sync_see_also_deletes_link_for_removed_bugzilla_url(
     }
 
     context = action_context_factory(
+        operation=Operation.UPDATE,
         jira__issue="JBI-123",
         event__changes=[
             webhook_event_change_factory(
@@ -2462,6 +2557,7 @@ def test_sync_see_also_skips_non_jira_non_bugzilla_urls(
     action_context_factory, webhook_event_change_factory, mocked_jira, mocked_bugzilla
 ):
     context = action_context_factory(
+        operation=Operation.UPDATE,
         jira__issue="JBI-123",
         event__changes=[
             webhook_event_change_factory(
@@ -2486,6 +2582,7 @@ def test_sync_see_also_handles_multiple_urls(
     action_context_factory, webhook_event_change_factory, mocked_jira, mocked_bugzilla
 ):
     context = action_context_factory(
+        operation=Operation.UPDATE,
         jira__issue="JBI-123",
         event__changes=[
             webhook_event_change_factory(
@@ -2602,9 +2699,7 @@ def test_sync_duplicates_update_dupe_of_removed(
             webhook_event_change_factory(field="dupe_of", removed="456", added="")
         ],
     )
-    removed_bug = bug_factory(
-        id=456, see_also=["http://mozilla.jira.com/browse/FXP-2"]
-    )
+    removed_bug = bug_factory(id=456, see_also=["http://mozilla.jira.com/browse/FXP-2"])
     mocked_bugzilla.get_bug.return_value = removed_bug
     mocked_jira.get_issue.return_value = {
         "fields": {
@@ -2649,7 +2744,9 @@ def test_sync_duplicates_update_dupe_of_changed(
 
     def get_bug_side_effect(bug_id):
         if bug_id == 456:
-            return bug_factory(id=456, see_also=["http://mozilla.jira.com/browse/FXP-2"])
+            return bug_factory(
+                id=456, see_also=["http://mozilla.jira.com/browse/FXP-2"]
+            )
         return bug_factory(id=789, see_also=["http://mozilla.jira.com/browse/FXP-3"])
 
     mocked_bugzilla.get_bug.side_effect = get_bug_side_effect
@@ -2750,9 +2847,7 @@ def test_sync_duplicates_update_duplicates_removed(
             webhook_event_change_factory(field="duplicates", removed="456", added="")
         ],
     )
-    removed_bug = bug_factory(
-        id=456, see_also=["http://mozilla.jira.com/browse/FXP-1"]
-    )
+    removed_bug = bug_factory(id=456, see_also=["http://mozilla.jira.com/browse/FXP-1"])
     mocked_bugzilla.get_bug.return_value = removed_bug
     mocked_jira.get_issue.return_value = {
         "fields": {
@@ -2797,7 +2892,9 @@ def test_sync_duplicates_update_duplicates_changed(
 
     def get_bug_side_effect(bug_id):
         if bug_id == 456:
-            return bug_factory(id=456, see_also=["http://mozilla.jira.com/browse/FXP-1"])
+            return bug_factory(
+                id=456, see_also=["http://mozilla.jira.com/browse/FXP-1"]
+            )
         return bug_factory(id=789, see_also=["http://mozilla.jira.com/browse/FXP-3"])
 
     mocked_bugzilla.get_bug.side_effect = get_bug_side_effect
@@ -2950,7 +3047,48 @@ def test_sync_regressions_create_with_regresses(
         jira__issue="FXP-1",
         bug__regressions=[456],
     )
-    regressed_bug = bug_factory(id=456, see_also=["http://mozilla.jira.com/browse/FXP-2"])
+    regressed_bug = bug_factory(
+        id=456, see_also=["http://mozilla.jira.com/browse/FXP-2"]
+    )
+    mocked_bugzilla.get_bug.return_value = regressed_bug
+
+    result, _ = steps.sync_regressions(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.create_issue_link.assert_called_once()
+    data = mocked_jira.create_issue_link.call_args[1]["data"]
+    assert data["type"]["name"] == "Problem/Incident"
+    assert data["inwardIssue"]["key"] == "FXP-1"
+    assert data["outwardIssue"]["key"] == "FXP-2"
+
+
+def test_sync_regressions_create_via_whiteboard_change(
+    action_context_factory,
+    bug_factory,
+    webhook_event_change_factory,
+    mocked_jira,
+    mocked_bugzilla,
+):
+    # CREATE triggered by a whiteboard-add modify webhook: event.changes is
+    # populated (whiteboard) but the regression links must still be synced from
+    # the full bug field, not skipped as if it were a delta update.
+    context = action_context_factory(
+        operation=Operation.CREATE,
+        jira__issue="FXP-1",
+        bug__regressions=[456],
+        event__changes=[
+            webhook_event_change_factory(
+                field="whiteboard", removed="", added="[devtest]"
+            )
+        ],
+    )
+    regressed_bug = bug_factory(
+        id=456, see_also=["http://mozilla.jira.com/browse/FXP-2"]
+    )
     mocked_bugzilla.get_bug.return_value = regressed_bug
 
     result, _ = steps.sync_regressions(
@@ -2982,7 +3120,9 @@ def test_sync_regressions_update_regresses_added(
             webhook_event_change_factory(field="regressions", removed="", added="456")
         ],
     )
-    regressed_bug = bug_factory(id=456, see_also=["http://mozilla.jira.com/browse/FXP-2"])
+    regressed_bug = bug_factory(
+        id=456, see_also=["http://mozilla.jira.com/browse/FXP-2"]
+    )
     mocked_bugzilla.get_bug.return_value = regressed_bug
 
     result, _ = steps.sync_regressions(
@@ -3010,7 +3150,9 @@ def test_sync_regressions_update_regresses_removed(
             webhook_event_change_factory(field="regressions", removed="456", added="")
         ],
     )
-    regressed_bug = bug_factory(id=456, see_also=["http://mozilla.jira.com/browse/FXP-2"])
+    regressed_bug = bug_factory(
+        id=456, see_also=["http://mozilla.jira.com/browse/FXP-2"]
+    )
     mocked_bugzilla.get_bug.return_value = regressed_bug
     mocked_jira.get_issue.return_value = {
         "fields": {
@@ -3048,13 +3190,17 @@ def test_sync_regressions_update_regresses_changed(
         jira__issue="FXP-1",
         bug__regressions=[789],
         event__changes=[
-            webhook_event_change_factory(field="regressions", removed="456", added="789")
+            webhook_event_change_factory(
+                field="regressions", removed="456", added="789"
+            )
         ],
     )
 
     def get_bug_side_effect(bug_id):
         if bug_id == 456:
-            return bug_factory(id=456, see_also=["http://mozilla.jira.com/browse/FXP-2"])
+            return bug_factory(
+                id=456, see_also=["http://mozilla.jira.com/browse/FXP-2"]
+            )
         return bug_factory(id=789, see_also=["http://mozilla.jira.com/browse/FXP-3"])
 
     mocked_bugzilla.get_bug.side_effect = get_bug_side_effect
@@ -3219,13 +3365,17 @@ def test_sync_regressions_update_regressed_by_changed(
         jira__issue="FXP-2",
         bug__regressed_by=[789],
         event__changes=[
-            webhook_event_change_factory(field="regressed_by", removed="456", added="789")
+            webhook_event_change_factory(
+                field="regressed_by", removed="456", added="789"
+            )
         ],
     )
 
     def get_bug_side_effect(bug_id):
         if bug_id == 456:
-            return bug_factory(id=456, see_also=["http://mozilla.jira.com/browse/FXP-1"])
+            return bug_factory(
+                id=456, see_also=["http://mozilla.jira.com/browse/FXP-1"]
+            )
         return bug_factory(id=789, see_also=["http://mozilla.jira.com/browse/FXP-3"])
 
     mocked_bugzilla.get_bug.side_effect = get_bug_side_effect
@@ -3301,7 +3451,9 @@ def test_sync_regressions_both_fields_changed(
 
     def get_bug_side_effect(bug_id):
         if bug_id == 456:
-            return bug_factory(id=456, see_also=["http://mozilla.jira.com/browse/FXP-3"])
+            return bug_factory(
+                id=456, see_also=["http://mozilla.jira.com/browse/FXP-3"]
+            )
         return bug_factory(id=789, see_also=["http://mozilla.jira.com/browse/FXP-1"])
 
     mocked_bugzilla.get_bug.side_effect = get_bug_side_effect
