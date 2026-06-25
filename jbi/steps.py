@@ -476,8 +476,12 @@ def sync_whiteboard_labels(
     """
     Set whiteboard tags as labels on the Jira issue.
     """
-    # On update of whiteboard field, add/remove corresponding labels
-    if context.event.changes:
+    # On update of the whiteboard field, add/remove the corresponding labels.
+    # We gate on the operation (not just the presence of changes): adding a
+    # whiteboard tag to a pre-existing bug creates the Jira issue in response to
+    # a *modify* webhook, so `event.changes` is populated even though this is a
+    # CREATE. In that case we must sync the full label set, not just the delta.
+    if context.event.changes and context.operation == Operation.UPDATE:
         changes_by_field = {change.field: change for change in context.event.changes}
         if change := changes_by_field.get("whiteboard"):
             additions, removals = _build_labels_update(
@@ -502,7 +506,9 @@ def sync_keywords_labels(
     """
     Set keywords as labels on the Jira issue.
     """
-    if context.event.changes:
+    # See sync_whiteboard_labels: a CREATE triggered by a whiteboard-add modify
+    # webhook carries `event.changes`, so gate the delta path on the operation.
+    if context.event.changes and context.operation == Operation.UPDATE:
         changes_by_field = {change.field: change for change in context.event.changes}
         if change := changes_by_field.get("keywords"):
             additions = [x.strip() for x in change.added.split(",")]
@@ -550,19 +556,19 @@ def _update_issue_labels(
 
 
 def _parse_changed_bug_ids(
-    changes: list, field: str, direction: str
+    changes: Optional[list], field: str, direction: str
 ) -> list[int]:
     """Parse bug IDs from a depends_on/blocks change event.
 
     Args:
-        changes: list of WebhookEventChange objects
+        changes: list of WebhookEventChange objects (or None)
         field: field name (e.g., "depends_on", "blocks")
         direction: "removed" or "added"
 
     Returns:
         List of bug IDs parsed from the comma-separated change value
     """
-    for change in changes:
+    for change in changes or []:
         if change.field == field:
             value = getattr(change, direction)
             if not value.strip():
@@ -571,167 +577,96 @@ def _parse_changed_bug_ids(
     return []
 
 
-def sync_depends_on_links(
+def sync_dependencies(
     context: ActionContext,
     *,
     jira_service: JiraService,
     bugzilla_service: BugzillaService,
 ) -> StepResult:
-    """Create and remove Jira 'Blocks' links for bugs that this bug depends on.
+    """Create and remove Jira 'Blocks' links for depends_on and blocks changes.
 
-    For each bug added to depends_on, creates links where the dependency bug's
-    Jira issue(s) block the current bug's Jira issue. For each bug removed from
-    depends_on, deletes the corresponding Jira links.
-
-    If bug A depends_on bug B, and B has Jira issues JBI-123 and FIDEFE-456,
-    then both JBI-123 and FIDEFE-456 will block A's issue.
+    depends_on: if bug A depends_on bug B, B's Jira issue blocks A's issue.
+    blocks: if bug A blocks bug B, A's Jira issue blocks B's Jira issue.
     """
-    # On UPDATE, only process if depends_on field changed
-    if context.event.changes:
-        if "depends_on" not in context.event.changed_fields():
-            return (StepStatus.NOOP, context)
-    elif not context.bug.depends_on:
-        # CREATE with no depends_on
+    # A CREATE triggered by a whiteboard-add modify webhook carries
+    # `event.changes`, so gate the delta path on the operation, not just on the
+    # presence of changes.
+    is_update = bool(context.event.changes) and context.operation == Operation.UPDATE
+
+    depends_on_changed = not is_update or "depends_on" in context.event.changed_fields()
+    blocks_changed = not is_update or "blocks" in context.event.changed_fields()
+
+    if is_update and not depends_on_changed and not blocks_changed:
+        return (StepStatus.NOOP, context)
+
+    if not is_update and not context.bug.depends_on and not context.bug.blocks:
         return (StepStatus.NOOP, context)
 
     if not context.jira.issue:
         raise ValueError("Jira issue unset in Action Context")
 
+    primary_issue: str = context.jira.issue
     links_changed = 0
 
-    # Handle removals (only on UPDATE)
-    if context.event.changes:
-        removed_ids = _parse_changed_bug_ids(context.event.changes, "depends_on", "removed")
-        if removed_ids:
-            bugs_by_id = bugzilla_service.get_bugs_by_ids(removed_ids)
-            for bug_id, bug_data in bugs_by_id.items():
-                jira_keys = jira_service.lookup_jira_issues_for_bug(context, bug_id, bug_data)
-                for jira_key in jira_keys:
-                    try:
-                        jira_service.delete_issue_link_blocks(
-                            context,
-                            blocking_issue=jira_key,
-                            blocked_issue=context.jira.issue,
-                        )
-                        links_changed += 1
-                    except requests_exceptions.HTTPError as e:
-                        logger.warning(
-                            "Failed to delete link from %s to %s: %s",
-                            jira_key,
-                            context.jira.issue,
-                            e,
-                            extra=context.model_dump(),
-                        )
-
-    # Handle additions (create links for current depends_on)
-    if context.bug.depends_on:
-        bugs_by_id = bugzilla_service.get_bugs_by_ids(context.bug.depends_on)
+    def _sync_field(
+        bug_ids: list[int], *, action: str, primary_is_blocked: bool
+    ) -> None:
+        nonlocal links_changed
+        bugs_by_id = bugzilla_service.get_bugs_by_ids(bug_ids)
         for bug_id, bug_data in bugs_by_id.items():
-            jira_keys = jira_service.lookup_jira_issues_for_bug(context, bug_id, bug_data)
-            for jira_key in jira_keys:
+            for jira_key in jira_service.lookup_jira_issues_for_bug(
+                context, bug_id, bug_data
+            ):
+                blocking = jira_key if primary_is_blocked else primary_issue
+                blocked = primary_issue if primary_is_blocked else jira_key
                 try:
-                    jira_service.create_issue_link_blocks(
-                        context,
-                        blocking_issue=jira_key,
-                        blocked_issue=context.jira.issue,
-                    )
+                    if action == "create":
+                        jira_service.create_issue_link_blocks(
+                            context, blocking_issue=blocking, blocked_issue=blocked
+                        )
+                    else:
+                        jira_service.delete_issue_link_blocks(
+                            context, blocking_issue=blocking, blocked_issue=blocked
+                        )
                     links_changed += 1
                 except requests_exceptions.HTTPError as e:
                     logger.warning(
-                        "Failed to create link from %s to %s: %s",
-                        jira_key,
-                        context.jira.issue,
+                        "Failed to %s 'Blocks' link %s -> %s: %s",
+                        action,
+                        blocking,
+                        blocked,
                         e,
                         extra=context.model_dump(),
                     )
 
-    if links_changed > 0:
-        return (StepStatus.SUCCESS, context)
-    return (StepStatus.NOOP, context)
+    # depends_on: dependency bug BLOCKS the current bug
+    if depends_on_changed:
+        if is_update:
+            removed = _parse_changed_bug_ids(
+                context.event.changes, "depends_on", "removed"
+            )
+            if removed:
+                _sync_field(removed, action="delete", primary_is_blocked=True)
+        if context.bug.depends_on:
+            _sync_field(
+                context.bug.depends_on, action="create", primary_is_blocked=True
+            )
+
+    # blocks: current bug BLOCKS the related bug
+    if blocks_changed:
+        if is_update:
+            removed = _parse_changed_bug_ids(context.event.changes, "blocks", "removed")
+            if removed:
+                _sync_field(removed, action="delete", primary_is_blocked=False)
+        if context.bug.blocks:
+            _sync_field(context.bug.blocks, action="create", primary_is_blocked=False)
+
+    return (StepStatus.SUCCESS if links_changed > 0 else StepStatus.NOOP, context)
 
 
-def sync_blocks_links(
-    context: ActionContext,
-    *,
-    jira_service: JiraService,
-    bugzilla_service: BugzillaService,
-) -> StepResult:
-    """Create and remove Jira 'Blocks' links for bugs that this bug blocks.
-
-    For each bug added to blocks, creates links where the current bug's Jira
-    issue blocks the blocked bug's Jira issue(s). For each bug removed from
-    blocks, deletes the corresponding Jira links.
-
-    If bug A blocks bug B, and B has Jira issues JBI-123 and FIDEFE-456,
-    then A's issue will block both JBI-123 and FIDEFE-456.
-    """
-    # On UPDATE, only process if blocks field changed
-    if context.event.changes:
-        if "blocks" not in context.event.changed_fields():
-            return (StepStatus.NOOP, context)
-    elif not context.bug.blocks:
-        # CREATE with no blocks
-        return (StepStatus.NOOP, context)
-
-    if not context.jira.issue:
-        raise ValueError("Jira issue unset in Action Context")
-
-    links_changed = 0
-
-    # Handle removals (only on UPDATE)
-    if context.event.changes:
-        removed_ids = _parse_changed_bug_ids(context.event.changes, "blocks", "removed")
-        if removed_ids:
-            bugs_by_id = bugzilla_service.get_bugs_by_ids(removed_ids)
-            for bug_id, bug_data in bugs_by_id.items():
-                jira_keys = jira_service.lookup_jira_issues_for_bug(context, bug_id, bug_data)
-                for jira_key in jira_keys:
-                    try:
-                        jira_service.delete_issue_link_blocks(
-                            context,
-                            blocking_issue=context.jira.issue,
-                            blocked_issue=jira_key,
-                        )
-                        links_changed += 1
-                    except requests_exceptions.HTTPError as e:
-                        logger.warning(
-                            "Failed to delete link from %s to %s: %s",
-                            context.jira.issue,
-                            jira_key,
-                            e,
-                            extra=context.model_dump(),
-                        )
-
-    # Handle additions (create links for current blocks)
-    if context.bug.blocks:
-        bugs_by_id = bugzilla_service.get_bugs_by_ids(context.bug.blocks)
-        for bug_id, bug_data in bugs_by_id.items():
-            jira_keys = jira_service.lookup_jira_issues_for_bug(context, bug_id, bug_data)
-            for jira_key in jira_keys:
-                try:
-                    jira_service.create_issue_link_blocks(
-                        context,
-                        blocking_issue=context.jira.issue,
-                        blocked_issue=jira_key,
-                    )
-                    links_changed += 1
-                except requests_exceptions.HTTPError as e:
-                    logger.warning(
-                        "Failed to create link from %s to %s: %s",
-                        context.jira.issue,
-                        jira_key,
-                        e,
-                        extra=context.model_dump(),
-                    )
-
-    if links_changed > 0:
-        return (StepStatus.SUCCESS, context)
-    return (StepStatus.NOOP, context)
-
-
-def _parse_changed_see_also_urls(changes: list, direction: str) -> list[str]:
+def _parse_changed_see_also_urls(changes: Optional[list], direction: str) -> list[str]:
     """Extract added or removed URLs from a see_also WebhookEventChange."""
-    for change in changes:
+    for change in changes or []:
         if change.field == "see_also":
             value = getattr(change, direction, "").strip()
             return [u.strip() for u in value.split(",") if u.strip()] if value else []
@@ -779,8 +714,13 @@ def sync_see_also(
     """
     settings = get_settings()
 
+    # A CREATE triggered by a whiteboard-add modify webhook carries
+    # `event.changes`, so gate the delta path on the operation, not just on the
+    # presence of changes.
+    is_update = bool(context.event.changes) and context.operation == Operation.UPDATE
+
     # On UPDATE, only run if see_also changed
-    if context.event.changes:
+    if is_update:
         if "see_also" not in context.event.changed_fields():
             return (StepStatus.NOOP, context)
     elif not context.bug.see_also:
@@ -851,12 +791,12 @@ def sync_see_also(
                             )
 
     # Handle removals (UPDATE only)
-    if context.event.changes:
+    if is_update:
         removed_urls = _parse_changed_see_also_urls(context.event.changes, "removed")
         _process_urls(removed_urls, "delete")
 
     # Handle additions: use change delta on UPDATE, full see_also on CREATE
-    if context.event.changes:
+    if is_update:
         added_urls = _parse_changed_see_also_urls(context.event.changes, "added")
     else:
         added_urls = [str(u) for u in (context.bug.see_also or [])]
@@ -896,7 +836,9 @@ def sync_duplicates(
     primary_issue: str = context.jira.issue
     links_changed = 0
 
-    def _process(bug_ids: list[int], *, action: str, current_is_duplicate: bool) -> None:
+    def _process(
+        bug_ids: list[int], *, action: str, current_is_duplicate: bool
+    ) -> None:
         nonlocal links_changed
         bugs_by_id = bugzilla_service.get_bugs_by_ids(bug_ids)
         for bug_id, bug_data in bugs_by_id.items():
@@ -935,7 +877,9 @@ def sync_duplicates(
         if removed:
             _process(removed, action="delete", current_is_duplicate=False)
         if context.bug.duplicates:
-            _process(context.bug.duplicates, action="create", current_is_duplicate=False)
+            _process(
+                context.bug.duplicates, action="create", current_is_duplicate=False
+            )
 
     return (StepStatus.SUCCESS if links_changed > 0 else StepStatus.NOOP, context)
 
@@ -956,7 +900,12 @@ def sync_regressions(
     Regression links can be set when filing a new bug, so this step runs on both
     CREATE (syncs full field values) and UPDATE (syncs delta).
     """
-    if context.event.changes:
+    # A CREATE triggered by a whiteboard-add modify webhook carries
+    # `event.changes`, so gate the delta path on the operation, not just on the
+    # presence of changes.
+    is_update = bool(context.event.changes) and context.operation == Operation.UPDATE
+
+    if is_update:
         if not (
             "regressions" in context.event.changed_fields()
             or "regressed_by" in context.event.changed_fields()
@@ -977,7 +926,9 @@ def sync_regressions(
         nonlocal links_changed
         bugs_by_id = bugzilla_service.get_bugs_by_ids(bug_ids)
         for bug_id, bug_data in bugs_by_id.items():
-            for jira_key in jira_service.lookup_jira_issues_for_bug(context, bug_id, bug_data):
+            for jira_key in jira_service.lookup_jira_issues_for_bug(
+                context, bug_id, bug_data
+            ):
                 causing = primary_issue if current_is_cause else jira_key
                 caused = jira_key if current_is_cause else primary_issue
                 try:
@@ -997,18 +948,22 @@ def sync_regressions(
                     )
 
     # regressions: current bug IS the cause (Bugzilla API field name: "regressions")
-    if not context.event.changes or "regressions" in context.event.changed_fields():
-        if context.event.changes:
-            removed = _parse_changed_bug_ids(context.event.changes, "regressions", "removed")
+    if not is_update or "regressions" in context.event.changed_fields():
+        if is_update:
+            removed = _parse_changed_bug_ids(
+                context.event.changes, "regressions", "removed"
+            )
             if removed:
                 _process(removed, action="delete", current_is_cause=True)
         if context.bug.regressions:
             _process(context.bug.regressions, action="create", current_is_cause=True)
 
     # regressed_by: current bug IS the effect
-    if not context.event.changes or "regressed_by" in context.event.changed_fields():
-        if context.event.changes:
-            removed = _parse_changed_bug_ids(context.event.changes, "regressed_by", "removed")
+    if not is_update or "regressed_by" in context.event.changed_fields():
+        if is_update:
+            removed = _parse_changed_bug_ids(
+                context.event.changes, "regressed_by", "removed"
+            )
             if removed:
                 _process(removed, action="delete", current_is_cause=False)
         if context.bug.regressed_by:
