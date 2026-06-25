@@ -79,6 +79,9 @@ Parameters are used by `step` functions to control what Bugzilla data is synced 
 - `issue_type_map` (optional)
     - mapping [str, str]
     - If defined, map the Bugzilla type to Jira issue type (default: ``Bug`` if ``defect`` else ``Task``)
+- `linked_project_excludes` (optional)
+    - list[str]
+    - Project keys to exclude from Jira issue link syncing (default: `["BZFFX"]`).
 
 Minimal configuration:
 ```yaml

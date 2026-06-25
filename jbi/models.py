@@ -131,6 +131,7 @@ class ActionParams(BaseModel, frozen=True):
         "15": 15,
     }
     issue_type_map: dict[str, str] = {"task": "Task", "defect": "Bug"}
+    linked_project_excludes: list[str] = ["BZFFX"]
 
 
 class Action(BaseModel, frozen=True):
