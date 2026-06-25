@@ -1697,30 +1697,82 @@ def test_sync_keywords_labels_failing(
     ]
 
 
-def test_sync_depends_on_links_create_with_dependency(
+# --- sync_dependencies ---
+
+
+def test_sync_dependencies_noop_on_update_when_neither_field_changed(
+    action_context_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    webhook_event_change_factory,
+):
+    """Test sync_dependencies returns NOOP on UPDATE when neither depends_on nor blocks changed."""
+    action_context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="JBI-123",
+        bug__depends_on=[456],
+        bug__blocks=[789],
+        event__changes=[
+            webhook_event_change_factory(field="summary", removed="old", added="new")
+        ],
+    )
+
+    result, context = steps.sync_dependencies(
+        context=action_context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.NOOP
+    mocked_bugzilla.get_bug.assert_not_called()
+    mocked_jira.create_issue_link.assert_not_called()
+
+
+def test_sync_dependencies_noop_on_create_when_both_fields_empty(
+    action_context_factory,
+    mocked_jira,
+    mocked_bugzilla,
+):
+    """Test sync_dependencies returns NOOP on CREATE when both depends_on and blocks are empty."""
+    action_context = action_context_factory(
+        operation=Operation.CREATE,
+        jira__issue="JBI-123",
+        bug__depends_on=[],
+        bug__blocks=[],
+    )
+
+    result, context = steps.sync_dependencies(
+        context=action_context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.NOOP
+    mocked_bugzilla.get_bug.assert_not_called()
+    mocked_jira.create_issue_link.assert_not_called()
+
+
+def test_sync_dependencies_create_with_depends_on(
     action_context_factory,
     bug_factory,
     mocked_jira,
     mocked_bugzilla,
 ):
-    """Test sync_depends_on_links creates links on CREATE with valid dependency."""
-    # Bug 123 depends_on bug 456
-    # Bug 456 has Jira issue JBI-456
-    # Expected: JBI-456 blocks JBI-123
+    """Test sync_dependencies creates Blocks link for depends_on on CREATE.
+
+    Bug 123 depends_on bug 456; bug 456 has JBI-456.
+    Expected: JBI-456 blocks JBI-123 (dependency blocks current).
+    """
     action_context = action_context_factory(
         operation=Operation.CREATE,
         jira__issue="JBI-123",
-        bug__id=123,
         bug__depends_on=[456],
     )
-
-    # Mock bug 456 with see_also containing JBI-456
-    dependency_bug = bug_factory(
+    mocked_bugzilla.get_bug.return_value = bug_factory(
         id=456, see_also=["http://mozilla.jira.com/browse/JBI-456"]
     )
-    mocked_bugzilla.get_bug.return_value = dependency_bug
 
-    result, context = steps.sync_depends_on_links(
+    result, context = steps.sync_dependencies(
         context=action_context,
         jira_service=JiraService(mocked_jira),
         bugzilla_service=BugzillaService(mocked_bugzilla),
@@ -1736,63 +1788,14 @@ def test_sync_depends_on_links_create_with_dependency(
     )
 
 
-def test_sync_depends_on_links_noop_when_empty(
-    action_context_factory,
-    mocked_jira,
-    mocked_bugzilla,
-):
-    """Test sync_depends_on_links returns NOOP when depends_on is empty."""
-    action_context = action_context_factory(
-        operation=Operation.CREATE,
-        jira__issue="JBI-123",
-        bug__depends_on=[],
-    )
-
-    result, context = steps.sync_depends_on_links(
-        context=action_context,
-        jira_service=JiraService(mocked_jira),
-        bugzilla_service=BugzillaService(mocked_bugzilla),
-    )
-
-    assert result == steps.StepStatus.NOOP
-    mocked_bugzilla.get_bug.assert_not_called()
-    mocked_jira.create_issue_link.assert_not_called()
-
-
-def test_sync_depends_on_links_noop_on_update_when_field_unchanged(
-    action_context_factory,
-    mocked_jira,
-    mocked_bugzilla,
-    webhook_event_change_factory,
-):
-    """Test sync_depends_on_links returns NOOP on UPDATE when field unchanged."""
-    action_context = action_context_factory(
-        operation=Operation.UPDATE,
-        jira__issue="JBI-123",
-        bug__depends_on=[456],
-        event__changes=[
-            webhook_event_change_factory(field="summary", removed="old", added="new")
-        ],
-    )
-
-    result, context = steps.sync_depends_on_links(
-        context=action_context,
-        jira_service=JiraService(mocked_jira),
-        bugzilla_service=BugzillaService(mocked_bugzilla),
-    )
-
-    assert result == steps.StepStatus.NOOP
-    mocked_bugzilla.get_bug.assert_not_called()
-
-
-def test_sync_depends_on_links_processes_update_when_field_changed(
+def test_sync_dependencies_update_depends_on_added(
     action_context_factory,
     bug_factory,
     mocked_jira,
     mocked_bugzilla,
     webhook_event_change_factory,
 ):
-    """Test sync_depends_on_links processes UPDATE when field changed."""
+    """Test sync_dependencies creates link when depends_on bug is added on UPDATE."""
     action_context = action_context_factory(
         operation=Operation.UPDATE,
         jira__issue="JBI-123",
@@ -1801,13 +1804,11 @@ def test_sync_depends_on_links_processes_update_when_field_changed(
             webhook_event_change_factory(field="depends_on", removed="", added="456")
         ],
     )
-
-    dependency_bug = bug_factory(
+    mocked_bugzilla.get_bug.return_value = bug_factory(
         id=456, see_also=["http://mozilla.jira.com/browse/JBI-456"]
     )
-    mocked_bugzilla.get_bug.return_value = dependency_bug
 
-    result, context = steps.sync_depends_on_links(
+    result, context = steps.sync_dependencies(
         context=action_context,
         jira_service=JiraService(mocked_jira),
         bugzilla_service=BugzillaService(mocked_bugzilla),
@@ -1817,209 +1818,14 @@ def test_sync_depends_on_links_processes_update_when_field_changed(
     mocked_jira.create_issue_link.assert_called_once()
 
 
-def test_sync_depends_on_links_skips_bugs_without_jira_issues(
-    action_context_factory,
-    bug_factory,
-    mocked_jira,
-    mocked_bugzilla,
-):
-    """Test sync_depends_on_links skips dependencies without Jira issues."""
-    action_context = action_context_factory(
-        operation=Operation.CREATE,
-        jira__issue="JBI-123",
-        bug__depends_on=[456],
-    )
-
-    # Mock bug 456 with no see_also
-    dependency_bug = bug_factory(id=456, see_also=None)
-    mocked_bugzilla.get_bug.return_value = dependency_bug
-
-    result, context = steps.sync_depends_on_links(
-        context=action_context,
-        jira_service=JiraService(mocked_jira),
-        bugzilla_service=BugzillaService(mocked_bugzilla),
-    )
-
-    assert result == steps.StepStatus.NOOP
-    mocked_jira.create_issue_link.assert_not_called()
-
-
-def test_sync_depends_on_links_handles_multiple_jira_issues(
-    action_context_factory,
-    bug_factory,
-    mocked_jira,
-    mocked_bugzilla,
-):
-    """Test sync_depends_on_links creates links to all Jira issues (cross-project)."""
-    action_context = action_context_factory(
-        operation=Operation.CREATE,
-        jira__issue="JBI-123",
-        bug__depends_on=[456],
-    )
-
-    # Mock bug 456 with multiple Jira issues
-    dependency_bug = bug_factory(
-        id=456,
-        see_also=[
-            "http://mozilla.jira.com/browse/JBI-456",
-            "http://mozilla.jira.com/browse/FIDEFE-789",
-        ],
-    )
-    mocked_bugzilla.get_bug.return_value = dependency_bug
-
-    result, context = steps.sync_depends_on_links(
-        context=action_context,
-        jira_service=JiraService(mocked_jira),
-        bugzilla_service=BugzillaService(mocked_bugzilla),
-    )
-
-    assert result == steps.StepStatus.SUCCESS
-    assert mocked_jira.create_issue_link.call_count == 2
-    calls = mocked_jira.create_issue_link.call_args_list
-    assert calls[0] == mock.call(
-        data={
-            "type": {"name": "Blocks"},
-            "inwardIssue": {"key": "JBI-456"},
-            "outwardIssue": {"key": "JBI-123"},
-        }
-    )
-    assert calls[1] == mock.call(
-        data={
-            "type": {"name": "Blocks"},
-            "inwardIssue": {"key": "FIDEFE-789"},
-            "outwardIssue": {"key": "JBI-123"},
-        }
-    )
-
-
-def test_sync_depends_on_links_handles_multiple_dependencies(
-    action_context_factory,
-    bug_factory,
-    mocked_jira,
-    mocked_bugzilla,
-):
-    """Test sync_depends_on_links handles multiple dependencies."""
-    action_context = action_context_factory(
-        operation=Operation.CREATE,
-        jira__issue="JBI-123",
-        bug__depends_on=[456, 789],
-    )
-
-    def get_bug_side_effect(bug_id):
-        return bug_factory(
-            id=bug_id,
-            see_also=[f"http://mozilla.jira.com/browse/JBI-{bug_id}"],
-        )
-
-    mocked_bugzilla.get_bug.side_effect = get_bug_side_effect
-
-    result, context = steps.sync_depends_on_links(
-        context=action_context,
-        jira_service=JiraService(mocked_jira),
-        bugzilla_service=BugzillaService(mocked_bugzilla),
-    )
-
-    assert result == steps.StepStatus.SUCCESS
-    assert mocked_jira.create_issue_link.call_count == 2
-
-
-def test_sync_blocks_links_create_with_blocked_bug(
-    action_context_factory,
-    bug_factory,
-    mocked_jira,
-    mocked_bugzilla,
-):
-    """Test sync_blocks_links creates links on CREATE with blocked bug."""
-    # Bug 123 blocks bug 456
-    # Bug 456 has Jira issue JBI-456
-    # Expected: JBI-123 blocks JBI-456
-    action_context = action_context_factory(
-        operation=Operation.CREATE,
-        jira__issue="JBI-123",
-        bug__id=123,
-        bug__blocks=[456],
-    )
-
-    # Mock bug 456 with see_also containing JBI-456
-    blocked_bug = bug_factory(
-        id=456, see_also=["http://mozilla.jira.com/browse/JBI-456"]
-    )
-    mocked_bugzilla.get_bug.return_value = blocked_bug
-
-    result, context = steps.sync_blocks_links(
-        context=action_context,
-        jira_service=JiraService(mocked_jira),
-        bugzilla_service=BugzillaService(mocked_bugzilla),
-    )
-
-    assert result == steps.StepStatus.SUCCESS
-    mocked_jira.create_issue_link.assert_called_once_with(
-        data={
-            "type": {"name": "Blocks"},
-            "inwardIssue": {"key": "JBI-123"},
-            "outwardIssue": {"key": "JBI-456"},
-        }
-    )
-
-
-def test_sync_blocks_links_noop_when_empty(
-    action_context_factory,
-    mocked_jira,
-    mocked_bugzilla,
-):
-    """Test sync_blocks_links returns NOOP when blocks is empty."""
-    action_context = action_context_factory(
-        operation=Operation.CREATE,
-        jira__issue="JBI-123",
-        bug__blocks=[],
-    )
-
-    result, context = steps.sync_blocks_links(
-        context=action_context,
-        jira_service=JiraService(mocked_jira),
-        bugzilla_service=BugzillaService(mocked_bugzilla),
-    )
-
-    assert result == steps.StepStatus.NOOP
-    mocked_bugzilla.get_bug.assert_not_called()
-    mocked_jira.create_issue_link.assert_not_called()
-
-
-def test_sync_blocks_links_noop_on_update_when_field_unchanged(
-    action_context_factory,
-    mocked_jira,
-    mocked_bugzilla,
-    webhook_event_change_factory,
-):
-    """Test sync_blocks_links returns NOOP on UPDATE when field unchanged."""
-    action_context = action_context_factory(
-        operation=Operation.UPDATE,
-        jira__issue="JBI-123",
-        bug__blocks=[456],
-        event__changes=[
-            webhook_event_change_factory(field="summary", removed="old", added="new")
-        ],
-    )
-
-    result, context = steps.sync_blocks_links(
-        context=action_context,
-        jira_service=JiraService(mocked_jira),
-        bugzilla_service=BugzillaService(mocked_bugzilla),
-    )
-
-    assert result == steps.StepStatus.NOOP
-    mocked_bugzilla.get_bug.assert_not_called()
-
-
-def test_sync_depends_on_links_removes_link_on_update(
+def test_sync_dependencies_update_depends_on_removed(
     action_context_factory,
     bug_factory,
     mocked_jira,
     mocked_bugzilla,
     webhook_event_change_factory,
 ):
-    """Test sync_depends_on_links deletes link when bug removed from depends_on."""
-    # Bug 123 had depends_on=[456], now depends_on=[] after removing 456
+    """Test sync_dependencies deletes link when depends_on bug is removed on UPDATE."""
     action_context = action_context_factory(
         operation=Operation.UPDATE,
         jira__issue="JBI-123",
@@ -2028,23 +1834,18 @@ def test_sync_depends_on_links_removes_link_on_update(
             webhook_event_change_factory(field="depends_on", removed="456", added="")
         ],
     )
-
-    removed_bug = bug_factory(id=456, see_also=["http://mozilla.jira.com/browse/JBI-456"])
-    mocked_bugzilla.get_bug.return_value = removed_bug
-
+    mocked_bugzilla.get_bug.return_value = bug_factory(
+        id=456, see_also=["http://mozilla.jira.com/browse/JBI-456"]
+    )
     mocked_jira.get_issue.return_value = {
         "fields": {
             "issuelinks": [
-                {
-                    "id": "10001",
-                    "type": {"name": "Blocks"},
-                    "inwardIssue": {"key": "JBI-456"},
-                }
+                {"id": "10001", "type": {"name": "Blocks"}, "inwardIssue": {"key": "JBI-456"}}
             ]
         }
     }
 
-    result, context = steps.sync_depends_on_links(
+    result, context = steps.sync_dependencies(
         context=action_context,
         jira_service=JiraService(mocked_jira),
         bugzilla_service=BugzillaService(mocked_bugzilla),
@@ -2055,15 +1856,14 @@ def test_sync_depends_on_links_removes_link_on_update(
     mocked_jira.create_issue_link.assert_not_called()
 
 
-def test_sync_depends_on_links_removes_and_adds_on_update(
+def test_sync_dependencies_update_depends_on_changed(
     action_context_factory,
     bug_factory,
     mocked_jira,
     mocked_bugzilla,
     webhook_event_change_factory,
 ):
-    """Test sync_depends_on_links handles simultaneous removal and addition."""
-    # Bug 123: remove depends_on 456, add depends_on 789
+    """Test sync_dependencies deletes and creates links when depends_on changes on UPDATE."""
     action_context = action_context_factory(
         operation=Operation.UPDATE,
         jira__issue="JBI-123",
@@ -2072,28 +1872,19 @@ def test_sync_depends_on_links_removes_and_adds_on_update(
             webhook_event_change_factory(field="depends_on", removed="456", added="789")
         ],
     )
-
-    def get_bug_side_effect(bug_id):
-        return bug_factory(
-            id=bug_id,
-            see_also=[f"http://mozilla.jira.com/browse/JBI-{bug_id}"],
-        )
-
-    mocked_bugzilla.get_bug.side_effect = get_bug_side_effect
-
+    mocked_bugzilla.get_bug.side_effect = lambda bug_id: bug_factory(
+        id=bug_id,
+        see_also=[f"http://mozilla.jira.com/browse/JBI-{bug_id}"],
+    )
     mocked_jira.get_issue.return_value = {
         "fields": {
             "issuelinks": [
-                {
-                    "id": "10001",
-                    "type": {"name": "Blocks"},
-                    "inwardIssue": {"key": "JBI-456"},
-                }
+                {"id": "10001", "type": {"name": "Blocks"}, "inwardIssue": {"key": "JBI-456"}}
             ]
         }
     }
 
-    result, context = steps.sync_depends_on_links(
+    result, context = steps.sync_dependencies(
         context=action_context,
         jira_service=JiraService(mocked_jira),
         bugzilla_service=BugzillaService(mocked_bugzilla),
@@ -2110,15 +1901,80 @@ def test_sync_depends_on_links_removes_and_adds_on_update(
     )
 
 
-def test_sync_blocks_links_removes_link_on_update(
+def test_sync_dependencies_create_with_blocks(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+):
+    """Test sync_dependencies creates Blocks link for blocks on CREATE.
+
+    Bug 123 blocks bug 456; bug 456 has JBI-456.
+    Expected: JBI-123 blocks JBI-456 (current blocks the other).
+    """
+    action_context = action_context_factory(
+        operation=Operation.CREATE,
+        jira__issue="JBI-123",
+        bug__blocks=[456],
+    )
+    mocked_bugzilla.get_bug.return_value = bug_factory(
+        id=456, see_also=["http://mozilla.jira.com/browse/JBI-456"]
+    )
+
+    result, context = steps.sync_dependencies(
+        context=action_context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.create_issue_link.assert_called_once_with(
+        data={
+            "type": {"name": "Blocks"},
+            "inwardIssue": {"key": "JBI-123"},
+            "outwardIssue": {"key": "JBI-456"},
+        }
+    )
+
+
+def test_sync_dependencies_update_blocks_added(
     action_context_factory,
     bug_factory,
     mocked_jira,
     mocked_bugzilla,
     webhook_event_change_factory,
 ):
-    """Test sync_blocks_links deletes link when bug removed from blocks."""
-    # Bug 123 had blocks=[456], now blocks=[] after removing 456
+    """Test sync_dependencies creates link when blocks bug is added on UPDATE."""
+    action_context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="JBI-123",
+        bug__blocks=[456],
+        event__changes=[
+            webhook_event_change_factory(field="blocks", removed="", added="456")
+        ],
+    )
+    mocked_bugzilla.get_bug.return_value = bug_factory(
+        id=456, see_also=["http://mozilla.jira.com/browse/JBI-456"]
+    )
+
+    result, context = steps.sync_dependencies(
+        context=action_context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.create_issue_link.assert_called_once()
+
+
+def test_sync_dependencies_update_blocks_removed(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    webhook_event_change_factory,
+):
+    """Test sync_dependencies deletes link when blocks bug is removed on UPDATE."""
     action_context = action_context_factory(
         operation=Operation.UPDATE,
         jira__issue="JBI-123",
@@ -2127,23 +1983,18 @@ def test_sync_blocks_links_removes_link_on_update(
             webhook_event_change_factory(field="blocks", removed="456", added="")
         ],
     )
-
-    removed_bug = bug_factory(id=456, see_also=["http://mozilla.jira.com/browse/JBI-456"])
-    mocked_bugzilla.get_bug.return_value = removed_bug
-
+    mocked_bugzilla.get_bug.return_value = bug_factory(
+        id=456, see_also=["http://mozilla.jira.com/browse/JBI-456"]
+    )
     mocked_jira.get_issue.return_value = {
         "fields": {
             "issuelinks": [
-                {
-                    "id": "10001",
-                    "type": {"name": "Blocks"},
-                    "inwardIssue": {"key": "JBI-123"},
-                }
+                {"id": "10001", "type": {"name": "Blocks"}, "inwardIssue": {"key": "JBI-123"}}
             ]
         }
     }
 
-    result, context = steps.sync_blocks_links(
+    result, context = steps.sync_dependencies(
         context=action_context,
         jira_service=JiraService(mocked_jira),
         bugzilla_service=BugzillaService(mocked_bugzilla),
@@ -2154,15 +2005,14 @@ def test_sync_blocks_links_removes_link_on_update(
     mocked_jira.create_issue_link.assert_not_called()
 
 
-def test_sync_blocks_links_removes_and_adds_on_update(
+def test_sync_dependencies_update_blocks_changed(
     action_context_factory,
     bug_factory,
     mocked_jira,
     mocked_bugzilla,
     webhook_event_change_factory,
 ):
-    """Test sync_blocks_links handles simultaneous removal and addition."""
-    # Bug 123: remove blocks 456, add blocks 789
+    """Test sync_dependencies deletes and creates links when blocks changes on UPDATE."""
     action_context = action_context_factory(
         operation=Operation.UPDATE,
         jira__issue="JBI-123",
@@ -2171,28 +2021,19 @@ def test_sync_blocks_links_removes_and_adds_on_update(
             webhook_event_change_factory(field="blocks", removed="456", added="789")
         ],
     )
-
-    def get_bug_side_effect(bug_id):
-        return bug_factory(
-            id=bug_id,
-            see_also=[f"http://mozilla.jira.com/browse/JBI-{bug_id}"],
-        )
-
-    mocked_bugzilla.get_bug.side_effect = get_bug_side_effect
-
+    mocked_bugzilla.get_bug.side_effect = lambda bug_id: bug_factory(
+        id=bug_id,
+        see_also=[f"http://mozilla.jira.com/browse/JBI-{bug_id}"],
+    )
     mocked_jira.get_issue.return_value = {
         "fields": {
             "issuelinks": [
-                {
-                    "id": "10001",
-                    "type": {"name": "Blocks"},
-                    "inwardIssue": {"key": "JBI-123"},
-                }
+                {"id": "10001", "type": {"name": "Blocks"}, "inwardIssue": {"key": "JBI-123"}}
             ]
         }
     }
 
-    result, context = steps.sync_blocks_links(
+    result, context = steps.sync_dependencies(
         context=action_context,
         jira_service=JiraService(mocked_jira),
         bugzilla_service=BugzillaService(mocked_bugzilla),
@@ -2201,6 +2042,56 @@ def test_sync_blocks_links_removes_and_adds_on_update(
     assert result == steps.StepStatus.SUCCESS
     mocked_jira.remove_issue_link.assert_called_once_with("10001")
     mocked_jira.create_issue_link.assert_called_once_with(
+        data={
+            "type": {"name": "Blocks"},
+            "inwardIssue": {"key": "JBI-123"},
+            "outwardIssue": {"key": "JBI-789"},
+        }
+    )
+
+
+def test_sync_dependencies_both_fields_changed(
+    action_context_factory,
+    bug_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    webhook_event_change_factory,
+):
+    """Test sync_dependencies handles both depends_on and blocks changing in the same UPDATE."""
+    action_context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="JBI-123",
+        bug__depends_on=[456],
+        bug__blocks=[789],
+        event__changes=[
+            webhook_event_change_factory(field="depends_on", removed="", added="456"),
+            webhook_event_change_factory(field="blocks", removed="", added="789"),
+        ],
+    )
+    mocked_bugzilla.get_bug.side_effect = lambda bug_id: bug_factory(
+        id=bug_id,
+        see_also=[f"http://mozilla.jira.com/browse/JBI-{bug_id}"],
+    )
+
+    result, context = steps.sync_dependencies(
+        context=action_context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    assert mocked_jira.create_issue_link.call_count == 2
+    calls = mocked_jira.create_issue_link.call_args_list
+    # depends_on: JBI-456 blocks JBI-123
+    assert calls[0] == mock.call(
+        data={
+            "type": {"name": "Blocks"},
+            "inwardIssue": {"key": "JBI-456"},
+            "outwardIssue": {"key": "JBI-123"},
+        }
+    )
+    # blocks: JBI-123 blocks JBI-789
+    assert calls[1] == mock.call(
         data={
             "type": {"name": "Blocks"},
             "inwardIssue": {"key": "JBI-123"},
