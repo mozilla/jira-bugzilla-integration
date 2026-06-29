@@ -48,6 +48,7 @@ Parameters are used by `step` functions to control what Bugzilla data is synced 
     - mapping [str, list[str]]
     - If defined, the specified steps are executed. The group of steps listed under `new` are executed when a Bugzilla event occurs on a ticket that is unknown to Jira. The steps under `existing`, when the Bugzilla ticket is already linked to a Jira issue. The steps under `comment` when a comment is posted on a linked Bugzilla ticket.
     If one of these groups is not specified, the default steps will be used.
+    - **Note:** When the whiteboard tag is added to a bug that already has a linked Jira issue (for example, when a tag is removed and later re-added, or when a `see_also` link to an existing Jira issue is added at the same time as the tag), the `new` steps are run instead of the `existing` steps. This performs a full resync of all current bug fields to the Jira issue, rather than only reacting to the fields that changed in that single event.
 - `jira_components` (optional)
    - object
    - Controls how Jira components are set on issues in the `maybe_update_components` step.
@@ -163,6 +164,9 @@ linked Jira issue status to "Closed". If the bug changes to a status not listed 
 - `maybe_update_issue_status`
 - `maybe_update_issue_points`
    **Requirements**: ``customfield_10037`` field must be present on issue forms (or configure `jira_cf_fx_points_field`).
+- `maybe_update_issue_type`:
+  Updates the Jira issue type when the Bugzilla bug `type` field changes, using the `issue_type_map` parameter (the same mapping `create_issue` uses on creation). Unmapped types fall back to `Task`. Runs on UPDATE events only — the issue type is set at creation time by `create_issue`; add this step to the `existing` steps to keep the type in sync afterwards.
+  **Requirements**: The target Jira project must permit changing an issue's type (Jira may reject some transitions, e.g. to/from sub-tasks or across incompatible screen schemes).
 - `create_comment`
 - `sync_keywords_labels`
 - `sync_whiteboard_labels`:

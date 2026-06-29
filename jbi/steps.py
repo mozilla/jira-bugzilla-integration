@@ -78,6 +78,14 @@ def create_issue(
     bugzilla_service: BugzillaService,
 ) -> StepResult:
     """Create the Jira issue with the first comment as the description."""
+    if context.jira.issue is not None:
+        # Jira issue already exists (tag added to an already-linked bug). CREATE
+        # is used so steps sync all fields unconditionally; update the title here
+        # and let the remaining new steps handle all other fields.
+        jira_response = jira_service.update_issue_summary(context)
+        context = context.append_responses(jira_response)
+        return (StepStatus.SUCCESS, context)
+
     bug = context.bug
     issue_type = parameters.issue_type_map.get(bug.type or "", "Task")
     # In the payload of a bug creation, the `comment` field is `null`.
@@ -377,6 +385,27 @@ def maybe_update_issue_status(
             return (StepStatus.SUCCESS, context)
 
     return (StepStatus.NOOP, context)
+
+
+def maybe_update_issue_type(
+    context: ActionContext, *, parameters: ActionParams, jira_service: JiraService
+) -> StepResult:
+    """Update the Jira issue type when the Bugzilla bug type changes."""
+    # The issue type is set at creation time by `create_issue`. This step only
+    # reacts to subsequent changes of the bug `type` field on existing issues.
+    if context.operation != Operation.UPDATE:
+        return (StepStatus.NOOP, context)
+    if "type" not in context.event.changed_fields():
+        return (StepStatus.NOOP, context)
+
+    # Fall back to "Task" for unmapped types, mirroring `create_issue`.
+    issue_type = parameters.issue_type_map.get(context.bug.type or "", "Task")
+
+    resp = jira_service.update_issue_field(
+        context, "issuetype", issue_type, wrap_value="name"
+    )
+    context.append_responses(resp)
+    return (StepStatus.SUCCESS, context)
 
 
 def maybe_update_components(
