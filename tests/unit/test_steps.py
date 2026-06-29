@@ -918,6 +918,128 @@ def test_update_issue_unknown_priority(
     assert capturelogs.messages == ["Bug priority 'P1' was not in the priority map."]
 
 
+def test_update_issue_type(
+    action_context_factory,
+    mocked_jira,
+    action_params_factory,
+    webhook_event_change_factory,
+):
+    action_context = action_context_factory(
+        operation=Operation.UPDATE,
+        current_step="maybe_update_issue_type",
+        jira__issue="JBI-234",
+        bug__type="enhancement",
+        event__action="modify",
+        event__changes=[
+            webhook_event_change_factory(
+                field="type", removed="defect", added="enhancement"
+            )
+        ],
+    )
+
+    params = action_params_factory(
+        jira_project_key=action_context.jira.project,
+        issue_type_map={"defect": "Bug", "enhancement": "Improvement"},
+    )
+
+    result, _ = steps.maybe_update_issue_type(
+        action_context, parameters=params, jira_service=JiraService(mocked_jira)
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.update_issue_field.assert_called_with(
+        key="JBI-234", fields={"issuetype": {"name": "Improvement"}}
+    )
+
+
+def test_update_issue_type_unmapped_falls_back_to_task(
+    action_context_factory,
+    mocked_jira,
+    action_params_factory,
+    webhook_event_change_factory,
+):
+    action_context = action_context_factory(
+        operation=Operation.UPDATE,
+        current_step="maybe_update_issue_type",
+        jira__issue="JBI-234",
+        bug__type="enhancement",
+        event__action="modify",
+        event__changes=[
+            webhook_event_change_factory(
+                field="type", removed="defect", added="enhancement"
+            )
+        ],
+    )
+
+    params = action_params_factory(
+        jira_project_key=action_context.jira.project,
+        issue_type_map={"defect": "Bug"},
+    )
+
+    result, _ = steps.maybe_update_issue_type(
+        action_context, parameters=params, jira_service=JiraService(mocked_jira)
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.update_issue_field.assert_called_with(
+        key="JBI-234", fields={"issuetype": {"name": "Task"}}
+    )
+
+
+def test_update_issue_type_noop_when_type_unchanged(
+    action_context_factory,
+    mocked_jira,
+    action_params_factory,
+    webhook_event_change_factory,
+):
+    action_context = action_context_factory(
+        operation=Operation.UPDATE,
+        current_step="maybe_update_issue_type",
+        jira__issue="JBI-234",
+        bug__type="enhancement",
+        event__action="modify",
+        event__changes=[
+            webhook_event_change_factory(field="summary", removed="", added="new")
+        ],
+    )
+
+    params = action_params_factory(
+        jira_project_key=action_context.jira.project,
+        issue_type_map={"defect": "Bug", "enhancement": "Improvement"},
+    )
+
+    result, _ = steps.maybe_update_issue_type(
+        action_context, parameters=params, jira_service=JiraService(mocked_jira)
+    )
+
+    assert result == steps.StepStatus.NOOP
+    mocked_jira.update_issue_field.assert_not_called()
+
+
+def test_update_issue_type_noop_on_create(
+    action_context_factory,
+    mocked_jira,
+    action_params_factory,
+):
+    action_context = action_context_factory(
+        operation=Operation.CREATE,
+        current_step="maybe_update_issue_type",
+        bug__type="enhancement",
+    )
+
+    params = action_params_factory(
+        jira_project_key=action_context.jira.project,
+        issue_type_map={"defect": "Bug", "enhancement": "Improvement"},
+    )
+
+    result, _ = steps.maybe_update_issue_type(
+        action_context, parameters=params, jira_service=JiraService(mocked_jira)
+    )
+
+    assert result == steps.StepStatus.NOOP
+    mocked_jira.update_issue_field.assert_not_called()
+
+
 def test_update_issue_severity(
     action_context_factory,
     mocked_jira,

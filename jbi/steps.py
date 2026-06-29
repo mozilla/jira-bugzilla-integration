@@ -387,6 +387,27 @@ def maybe_update_issue_status(
     return (StepStatus.NOOP, context)
 
 
+def maybe_update_issue_type(
+    context: ActionContext, *, parameters: ActionParams, jira_service: JiraService
+) -> StepResult:
+    """Update the Jira issue type when the Bugzilla bug type changes."""
+    # The issue type is set at creation time by `create_issue`. This step only
+    # reacts to subsequent changes of the bug `type` field on existing issues.
+    if context.operation != Operation.UPDATE:
+        return (StepStatus.NOOP, context)
+    if "type" not in context.event.changed_fields():
+        return (StepStatus.NOOP, context)
+
+    # Fall back to "Task" for unmapped types, mirroring `create_issue`.
+    issue_type = parameters.issue_type_map.get(context.bug.type or "", "Task")
+
+    resp = jira_service.update_issue_field(
+        context, "issuetype", issue_type, wrap_value="name"
+    )
+    context.append_responses(resp)
+    return (StepStatus.SUCCESS, context)
+
+
 def maybe_update_components(
     context: ActionContext, *, parameters: ActionParams, jira_service: JiraService
 ) -> StepResult:

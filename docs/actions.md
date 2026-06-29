@@ -164,6 +164,9 @@ linked Jira issue status to "Closed". If the bug changes to a status not listed 
 - `maybe_update_issue_status`
 - `maybe_update_issue_points`
    **Requirements**: ``customfield_10037`` field must be present on issue forms (or configure `jira_cf_fx_points_field`).
+- `maybe_update_issue_type`:
+  Updates the Jira issue type when the Bugzilla bug `type` field changes, using the `issue_type_map` parameter (the same mapping `create_issue` uses on creation). Unmapped types fall back to `Task`. Runs on UPDATE events only — the issue type is set at creation time by `create_issue`; add this step to the `existing` steps to keep the type in sync afterwards.
+  **Requirements**: The target Jira project must permit changing an issue's type (Jira may reject some transitions, e.g. to/from sub-tasks or across incompatible screen schemes).
 - `create_comment`
 - `sync_keywords_labels`
 - `sync_whiteboard_labels`:
