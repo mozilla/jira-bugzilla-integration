@@ -3491,3 +3491,33 @@ def test_sync_regressions_both_fields_changed(
 
     assert result == steps.StepStatus.SUCCESS
     assert mocked_jira.create_issue_link.call_count == 2
+
+
+def test_create_issue_skips_creation_when_issue_exists(
+    action_context_factory,
+    action_params_factory,
+    mocked_jira,
+    mocked_bugzilla,
+):
+    """When a tag is added to a bug that already has a linked Jira issue,
+    create_issue must update the existing issue's title rather than creating
+    a new one."""
+    context = action_context_factory(
+        operation=Operation.CREATE,
+        jira__issue="JBI-234",
+        current_step="create_issue",
+    )
+    params = action_params_factory(jira_project_key=context.jira.project)
+
+    result, _ = steps.create_issue(
+        context,
+        parameters=params,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.create_issue.assert_not_called()
+    mocked_jira.update_issue_field.assert_called_once_with(
+        key="JBI-234", fields={"summary": mock.ANY}
+    )

@@ -35,6 +35,25 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
+def _tag_added_to_whiteboard(
+    action: Action, event: bugzilla_models.WebhookEvent
+) -> bool:
+    """Return True when the whiteboard change added this action's project tag."""
+    if not event.changes:
+        return False
+    for change in event.changes:
+        if change.field == "whiteboard":
+            search_string = r"\[" + action.whiteboard_tag + r"(-[^\]]*)*\]"
+            removed_had_tag = bool(
+                re.search(search_string, change.removed or "", re.IGNORECASE)
+            )
+            added_has_tag = bool(
+                re.search(search_string, change.added or "", re.IGNORECASE)
+            )
+            return not removed_had_tag and added_has_tag
+    return False
+
+
 GROUP_TO_OPERATION = {
     "new": Operation.CREATE,
     "existing": Operation.UPDATE,
@@ -326,13 +345,21 @@ def do_execute_actions(
                 )
 
             if event.target == "bug":
-                action_context = action_context.update(
-                    operation=Operation.UPDATE,
-                    extra={
-                        "changed_fields": ", ".join(event.changed_fields()),
-                        **action_context.extra,
-                    },
-                )
+                if _tag_added_to_whiteboard(action, event):
+                    # Tag was added to a bug that already has a linked Jira issue.
+                    # Use CREATE so that steps sync all current field values
+                    # unconditionally, rather than only reacting to the fields
+                    # that changed in this single event. create_issue detects
+                    # the existing issue and updates the summary instead.
+                    action_context = action_context.update(operation=Operation.CREATE)
+                else:
+                    action_context = action_context.update(
+                        operation=Operation.UPDATE,
+                        extra={
+                            "changed_fields": ", ".join(event.changed_fields()),
+                            **action_context.extra,
+                        },
+                    )
 
             elif event.target == "comment":
                 action_context = action_context.update(operation=Operation.COMMENT)

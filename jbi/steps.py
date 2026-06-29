@@ -78,6 +78,14 @@ def create_issue(
     bugzilla_service: BugzillaService,
 ) -> StepResult:
     """Create the Jira issue with the first comment as the description."""
+    if context.jira.issue is not None:
+        # Jira issue already exists (tag added to an already-linked bug). CREATE
+        # is used so steps sync all fields unconditionally; update the title here
+        # and let the remaining new steps handle all other fields.
+        jira_response = jira_service.update_issue_summary(context)
+        context = context.append_responses(jira_response)
+        return (StepStatus.SUCCESS, context)
+
     bug = context.bug
     issue_type = parameters.issue_type_map.get(bug.type or "", "Task")
     # In the payload of a bug creation, the `comment` field is `null`.

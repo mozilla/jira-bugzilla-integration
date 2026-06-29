@@ -14,6 +14,7 @@ from jbi.models import ActionContext
 from jbi.runner import (
     Actions,
     Executor,
+    _tag_added_to_whiteboard,
     execute_action,
     execute_or_queue,
     lookup_actions,
@@ -794,3 +795,79 @@ def test_request_triggers_multiple_update_actions(
     assert len(actions) == len(details)
     assert "devtest" in details
     assert "other" in details
+
+
+# --- _tag_added_to_whiteboard tests ---
+
+
+@pytest.mark.parametrize(
+    "removed,added,expected",
+    [
+        # Tag absent in removed, present in added → newly added
+        ("", "[devtest]", True),
+        ("[other]", "[other][devtest]", True),
+        ("[other]", "[devtest][other]", True),
+        # Tag already present in removed → not newly added
+        ("[devtest]", "[devtest][other]", False),
+        ("[devtest-sprint1]", "[devtest]", False),
+    ],
+)
+def test_tag_added_to_whiteboard(
+    removed, added, expected, action_factory, webhook_event_change_factory
+):
+    action = action_factory(whiteboard_tag="devtest")
+    event = mock.MagicMock()
+    event.changes = [
+        webhook_event_change_factory(field="whiteboard", removed=removed, added=added)
+    ]
+    assert _tag_added_to_whiteboard(action, event) is expected
+
+
+def test_tag_added_to_whiteboard_no_whiteboard_change(action_factory, webhook_event_change_factory):
+    action = action_factory(whiteboard_tag="devtest")
+    event = mock.MagicMock()
+    event.changes = [
+        webhook_event_change_factory(field="summary", removed="old", added="new")
+    ]
+    assert _tag_added_to_whiteboard(action, event) is False
+
+
+def test_tag_added_to_whiteboard_no_changes(action_factory):
+    action = action_factory(whiteboard_tag="devtest")
+    event = mock.MagicMock()
+    event.changes = None
+    assert _tag_added_to_whiteboard(action, event) is False
+
+
+def test_tag_added_to_bug_with_linked_issue_triggers_resync(
+    actions,
+    webhook_request_factory,
+    webhook_event_change_factory,
+    mocked_bugzilla,
+    mocked_jira,
+    settings,
+):
+    """When a whiteboard tag is added to a bug that already has a linked Jira issue,
+    the runner should run CREATE steps (full field resync) rather than UPDATE steps."""
+    jira_url = f"{settings.jira_base_url}browse/JBI-234"
+    webhook = webhook_request_factory(
+        bug__whiteboard="[devtest]",
+        bug__see_also=[jira_url],
+        event__changes=[
+            webhook_event_change_factory(
+                field="whiteboard", removed="", added="[devtest]"
+            )
+        ],
+    )
+    mocked_bugzilla.get_bug.return_value = webhook.bug
+    mocked_jira.get_issue.return_value = {"fields": {"project": {"key": "JBI"}}}
+    mocked_jira.create_issue.return_value = {"key": "JBI-234"}
+
+    execute_action(request=webhook, actions=actions)
+
+    # create_issue must NOT have been called (issue already exists)
+    mocked_jira.create_issue.assert_not_called()
+    # update_issue_field IS called to sync the title (via update_issue_summary)
+    mocked_jira.update_issue_field.assert_any_call(
+        key="JBI-234", fields={"summary": mock.ANY}
+    )
