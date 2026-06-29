@@ -232,6 +232,7 @@ class JiraService:
         icon_url = f"{settings.bugzilla_base_url}/favicon.ico"
         return self.client.create_or_update_issue_remote_links(
             issue_key=issue_key,
+            global_id=str(bug.id),
             link_url=bugzilla_url,
             title=bugzilla_url,
             icon_url=icon_url,

@@ -283,6 +283,31 @@ def test_added_phabricator_attachment(
     )
 
 
+def test_add_link_to_bugzilla_is_idempotent(
+    action_context_factory, mocked_jira, action_params_factory, settings
+):
+    context = action_context_factory(
+        operation=Operation.CREATE,
+        jira__issue="JBI-234",
+        bug__id=654321,
+        current_step="add_link_to_bugzilla",
+    )
+
+    result, _ = steps.add_link_to_bugzilla(
+        context, jira_service=JiraService(mocked_jira)
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.create_or_update_issue_remote_links.assert_called_once_with(
+        issue_key="JBI-234",
+        global_id="654321",
+        link_url=f"{settings.bugzilla_base_url}/show_bug.cgi?id=654321",
+        title=f"{settings.bugzilla_base_url}/show_bug.cgi?id=654321",
+        icon_url=f"{settings.bugzilla_base_url}/favicon.ico",
+        icon_title=f"{settings.bugzilla_base_url}/favicon.ico",
+    )
+
+
 def test_empty_comment_not_added(
     action_context_factory, mocked_jira, action_params_factory
 ):
