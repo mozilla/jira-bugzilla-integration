@@ -2421,6 +2421,36 @@ def test_sync_see_also_skips_primary_jira_issue(
     mocked_jira.create_issue_link.assert_not_called()
 
 
+def test_sync_see_also_skips_excluded_project_jira_url(
+    action_context_factory, mocked_jira, mocked_bugzilla
+):
+    # A Jira URL in see_also for an excluded project (default: BZFFX) must not be
+    # linked. A non-excluded project in see_also is still linked.
+    context = action_context_factory(
+        operation=Operation.CREATE,
+        jira__issue="FP-1339",
+        bug__see_also=[
+            "https://mozilla-hub.atlassian.net/browse/BZFFX-30693",
+            "https://mozilla-hub.atlassian.net/browse/FP-1047",
+        ],
+    )
+
+    result, _ = steps.sync_see_also(
+        context=context,
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.create_issue_link.assert_called_once_with(
+        data={
+            "type": {"name": "Relates"},
+            "inwardIssue": {"key": "FP-1047"},
+            "outwardIssue": {"key": "FP-1339"},
+        }
+    )
+
+
 def test_sync_see_also_creates_link_for_added_bugzilla_url(
     action_context_factory,
     webhook_event_change_factory,

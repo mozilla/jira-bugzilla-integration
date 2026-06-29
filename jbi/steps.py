@@ -760,6 +760,7 @@ def sync_see_also(
         raise ValueError("Jira issue unset in ActionContext")
 
     primary_issue: str = context.jira.issue
+    excluded_projects = context.action.parameters.linked_project_excludes
     links_changed = 0
 
     def _process_urls(urls: list[str], link_action: str) -> None:
@@ -768,7 +769,12 @@ def sync_see_also(
             kind, value = _classify_see_also_url(url, settings.bugzilla_base_url)
 
             if kind == "jira":
-                if not value or value == primary_issue:
+                # Skip the primary issue and excluded projects
+                if (
+                    not value
+                    or value == primary_issue
+                    or value.split("-")[0] in excluded_projects
+                ):
                     continue
                 try:
                     if link_action == "create":
