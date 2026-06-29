@@ -199,6 +199,10 @@
         - add_jira_comments_for_changes
       comment:
         - create_comment
+    issue_type_map:
+      task: Task
+      defect: Bug
+      enhancement: Improvement
     status_map: &basic-status-map
       UNCONFIRMED: Backlog
       NEW: Backlog
@@ -261,6 +265,10 @@
         - add_jira_comments_for_changes
       comment:
         - create_comment
+    issue_type_map:
+      task: Task
+      defect: Bug
+      enhancement: Improvement
     status_map: *basic-status-map
     resolution_map: *basic-resolution-map
 
@@ -309,6 +317,10 @@
         - add_jira_comments_for_changes
       comment:
         - create_comment
+    issue_type_map:
+      task: Task
+      defect: Bug
+      enhancement: Improvement
     status_map: *basic-status-map
     resolution_map: *basic-resolution-map
 
@@ -556,6 +568,10 @@
         - add_jira_comments_for_changes
       comment:
         - create_comment
+    issue_type_map:
+      task: Task
+      defect: Bug
+      enhancement: Improvement
     status_map: *basic-status-map
     resolution_map: *basic-resolution-map
 
