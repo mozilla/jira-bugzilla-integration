@@ -422,7 +422,7 @@ wheels = [
 
 [[package]]
 name = "fastapi"
-version = "0.138.1"
+version = "0.139.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "annotated-doc" },
@@ -431,9 +431,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "typing-inspection" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8a/c9/5e8defe249899c0dc900643695fc07829a67fc88b4ff2cdb03fcbdbf5a4b/fastapi-0.138.1.tar.gz", hash = "sha256:96e3702dce09ee0dce48856135620d3d865ca684a79fe7513fd7b13a12f82862", size = 419646, upload-time = "2026-06-25T15:40:42.115Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d3/af/a5f50ccfa659ec1802cb4ca842c23f06d906a8cc9aef6016a2caeea3d4ed/fastapi-0.139.0.tar.gz", hash = "sha256:99ab7b2d92223c76d6cf10757ab3f89d45b38267fc20b2a136cf02f6beac3145", size = 423016, upload-time = "2026-07-01T16:35:33.436Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/38/a9/69a6924f645eb4dd8cd625bf255b3625990eb3e14e073438a53c405dcd3e/fastapi-0.138.1-py3-none-any.whl", hash = "sha256:b994cae7ba8b82c976a728b544244de31333fa5f7d261f9a1dffe526444cae23", size = 129182, upload-time = "2026-06-25T15:40:40.771Z" },
+    { url = "https://files.pythonhosted.org/packages/9e/7c/8e3c6ad324ea5cb36604fc3f968554887891c316d9dfde57761611d907ad/fastapi-0.139.0-py3-none-any.whl", hash = "sha256:cf15e1e9e667ddb0ad63811e60bd11390d1aac838ca4a7a23f421807b2308189", size = 130339, upload-time = "2026-07-01T16:35:32.19Z" },
 ]
 
 [[package]]
@@ -602,7 +602,7 @@ requires-dist = [
     { name = "atlassian-python-api", specifier = ">=4.0.7,<5.0.0" },
     { name = "backoff", specifier = ">=2.2.1,<3.0.0" },
     { name = "dockerflow", extras = ["fastapi"], specifier = "==2026.3.4" },
-    { name = "fastapi", specifier = ">=0.138.1,<1.0.0" },
+    { name = "fastapi", specifier = ">=0.139.0,<1.0.0" },
     { name = "jinja2", specifier = ">=3.1.6,<4.0.0" },
     { name = "pydantic", extras = ["email"], specifier = ">=2.12.3,<3.0.0" },
     { name = "pydantic-settings", specifier = ">=2.14.2,<3.0.0" },
@@ -631,7 +631,7 @@ dev = [
     { name = "pytest-dotenv", specifier = ">=0.5.2,<1.0.0" },
     { name = "pytest-factoryboy", specifier = ">=2.8.1,<3.0.0" },
     { name = "pytest-mock", specifier = ">=3.15.1,<4.0.0" },
-    { name = "responses", specifier = ">=0.26.1,<1.0.0" },
+    { name = "responses", specifier = ">=0.26.2,<1.0.0" },
     { name = "ruff", specifier = ">=0.15.20,<1.0.0" },
     { name = "types-requests", specifier = ">=2.33.0.20260518,<3.0.0" },
     { name = "yamllint", specifier = ">=1.37.1,<2.0.0" },
@@ -1240,16 +1240,16 @@ wheels = [
 
 [[package]]
 name = "responses"
-version = "0.26.1"
+version = "0.26.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pyyaml" },
     { name = "requests" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c2/58/1fb6de3503428196df78638f991ec8095274f1ee9723e272ee4d9ff0092b/responses-0.26.1.tar.gz", hash = "sha256:2eb3218553cc8f79b57d257bac23af5e1bf381f5b9390b1767816f0843e01dc2", size = 83088, upload-time = "2026-05-21T19:56:39.747Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f0/1a/4af3e6d659394b809838490b144e4ab8d7ed3b9fecc7ca78f5d2f79b1a3d/responses-0.26.2.tar.gz", hash = "sha256:9c9259b46a8349197edebf43cfa68a87e1a2802ef503ff8b2fecbabc0b45afd8", size = 84030, upload-time = "2026-07-03T16:44:50.325Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3a/31/6a620b4427d546b9e7cca8b3b8c5f0559d9cef2bb9eedcda7f73c1473c19/responses-0.26.1-py3-none-any.whl", hash = "sha256:8aacc4586eb08fb2208ef64a9eb4258d9b0c6e6f4260845f2f018ab847495345", size = 35502, upload-time = "2026-05-21T19:56:38.046Z" },
+    { url = "https://files.pythonhosted.org/packages/7c/28/693e1d9ebf72baa062ded80d837a035b86ce75eda5a269379e9e2b1008a8/responses-0.26.2-py3-none-any.whl", hash = "sha256:6fdfeabd58e5ec473b98dfe02e6d46d3173bd8dd573eff2ccccf1a05a5135364", size = 35609, upload-time = "2026-07-03T16:44:49.1Z" },
 ]
 
 [[package]]
