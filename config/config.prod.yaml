@@ -185,6 +185,7 @@
         - update_issue_summary
         - maybe_update_components
         - maybe_assign_jira_user
+        - maybe_update_issue_type
         - maybe_update_issue_status
         - maybe_update_issue_resolution
         - maybe_update_issue_priority
@@ -251,6 +252,7 @@
         - update_issue_summary
         - maybe_update_components
         - maybe_assign_jira_user
+        - maybe_update_issue_type
         - maybe_update_issue_status
         - maybe_update_issue_resolution
         - maybe_update_issue_priority
@@ -303,6 +305,7 @@
         - update_issue_summary
         - maybe_update_components
         - maybe_assign_jira_user
+        - maybe_update_issue_type
         - maybe_update_issue_status
         - maybe_update_issue_resolution
         - maybe_update_issue_priority
@@ -554,6 +557,7 @@
       existing:
         - update_issue_summary
         - maybe_assign_jira_user
+        - maybe_update_issue_type
         - maybe_update_issue_status
         - maybe_update_issue_resolution
         - maybe_update_issue_priority
