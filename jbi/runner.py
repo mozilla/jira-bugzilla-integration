@@ -185,21 +185,50 @@ class Executor:
         return True, {"responses": responses}
 
 
+async def drain_bug_queue(
+    queue: DeadLetterQueue, bug_id: int, actions: Actions
+) -> bool:
+    """Reprocess the items queued for a bug, oldest first.
+
+    Returns `True` when the bug has no pending items left -- either because
+    they were all processed, or because they are no longer relevant.
+    """
+    async for item in await queue.retrieve_for_bug(bug_id):
+        try:
+            execute_action(item.payload, actions)
+        except IgnoreInvalidRequestError:
+            pass
+        except Exception:
+            logger.info(
+                "Pending events for Bug %s could not be processed yet.",
+                bug_id,
+                extra={"item": item.model_dump()},
+            )
+            return False
+        await queue.done(item)
+    return True
+
+
 async def execute_or_queue(
     request: bugzilla_models.WebhookRequest, queue: DeadLetterQueue, actions: Actions
 ):
     request_id = request_id_context.get()
 
     if await queue.is_blocked(request):
-        # If it's blocked, store it and wait for it to be processed later.
-        await queue.postpone(request, rid=request_id)
-        logger.info(
-            "%r event on Bug %s was put in queue for later processing.",
-            request.event.action,
-            request.bug.id,
-            extra={"payload": request.model_dump()},
-        )
-        return {"status": "skipped"}
+        # A single pending item blocks every subsequent event for the bug until
+        # the retry job runs. Give the backlog a chance to drain now, so that a
+        # new event -- eg. someone re-adding the whiteboard tag because nothing
+        # happened -- is not silently postponed as well.
+        if not await drain_bug_queue(queue, request.bug.id, actions):
+            # Still blocked: store the request and wait for the retry job.
+            await queue.postpone(request, rid=request_id)
+            logger.info(
+                "%r event on Bug %s was put in queue for later processing.",
+                request.event.action,
+                request.bug.id,
+                extra={"payload": request.model_dump()},
+            )
+            return {"status": "skipped"}
 
     try:
         return execute_action(request, actions)

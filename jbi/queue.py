@@ -352,6 +352,12 @@ class DeadLetterQueue:
         """
         return await self.backend.get_all()
 
+    async def retrieve_for_bug(self, bug_id: int) -> AsyncIterator[QueueItem]:
+        """
+        Returns a generator for the items queued for the specified bug.
+        """
+        return self.backend.get(bug_id)
+
     async def size(self, bug_id=None):
         return await self.backend.size(bug_id=bug_id)
 
