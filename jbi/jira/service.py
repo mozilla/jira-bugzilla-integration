@@ -16,6 +16,7 @@ from requests import exceptions as requests_exceptions
 
 from jbi import Operation, environment
 from jbi.bugzilla import models as bugzilla_models
+from jbi.common.net import USER_AGENT
 from jbi.jira.utils import markdown_to_jira
 from jbi.models import ActionContext
 
@@ -870,11 +871,14 @@ class JiraService:
 @lru_cache(maxsize=1)
 def get_service():
     """Get atlassian Jira Service"""
+    session = requests.Session()
+    session.headers["User-Agent"] = USER_AGENT
     client = JiraClient(
         url=settings.jira_base_url,
         username=settings.jira_username,
         password=settings.jira_api_key,  # package calls this param 'password' but actually expects an api key
         cloud=True,  # we run against an instance of Jira cloud
+        session=session,
     )
 
     return JiraService(client=client)

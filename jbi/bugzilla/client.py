@@ -4,6 +4,7 @@ import requests
 
 from jbi import environment
 from jbi.common.instrument import instrument
+from jbi.common.net import USER_AGENT
 
 from .models import (
     ApiResponse,
@@ -43,6 +44,7 @@ class BugzillaClient:
         self.base_url = base_url
         self.api_key = api_key
         self._client = requests.Session()
+        self._client.headers["User-Agent"] = USER_AGENT
 
     def _call(self, verb, url, *args, **kwargs):
         """Send HTTP requests with API key in querystring parameters."""
