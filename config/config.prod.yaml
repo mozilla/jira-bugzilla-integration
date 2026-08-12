@@ -118,6 +118,7 @@
     jira_components:
       use_bug_component_with_product_prefix: true
       use_bug_component: false
+      create_components: true
     jira_project_key: FXDROID
     steps:
       new:
