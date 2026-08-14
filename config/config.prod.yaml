@@ -118,6 +118,7 @@
     jira_components:
       use_bug_component_with_product_prefix: true
       use_bug_component: false
+      create_components: true
     jira_project_key: FXDROID
     steps:
       new:
@@ -1237,3 +1238,50 @@
       WORKSFORME: Closed
       REOPENED: In Progress
     resolution_map: *basic-resolution-map
+
+- whiteboard_tag: feltpy
+  bugzilla_user_id: 713707
+  description: Firefox Felt Privacy Team whiteboard tag
+  parameters:
+    jira_project_key: FELTPY
+    steps:
+      new:
+        - create_issue
+        - maybe_delete_duplicate
+        - add_link_to_bugzilla
+        - add_link_to_jira
+        - maybe_assign_jira_user
+        - maybe_update_issue_priority
+        - maybe_update_issue_status
+        - maybe_update_issue_points
+        - maybe_add_phabricator_link
+        - sync_whiteboard_labels
+        - sync_dependencies
+        - sync_see_also
+      existing:
+        - update_issue_summary
+        - add_jira_comments_for_changes
+        - maybe_assign_jira_user
+        - maybe_update_issue_priority
+        - maybe_update_issue_status
+        - maybe_update_issue_points
+        - maybe_add_phabricator_link
+        - sync_whiteboard_labels
+        - sync_dependencies
+        - sync_see_also
+    labels_brackets: both
+    status_map:
+      UNCONFIRMED: Backlog
+      NEW: Backlog
+      ASSIGNED: In Progress
+      REOPENED: Backlog
+      RESOLVED: Done
+      VERIFIED: Done
+      FIXED: Done
+      INVALID: Cancelled
+      WONTFIX: Cancelled
+      INACTIVE: Cancelled
+      DUPLICATE: Cancelled
+      WORKSFORME: Cancelled
+      INCOMPLETE: Cancelled
+      MOVED: Cancelled
