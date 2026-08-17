@@ -823,7 +823,9 @@ def test_tag_added_to_whiteboard(
     assert _tag_added_to_whiteboard(action, event) is expected
 
 
-def test_tag_added_to_whiteboard_no_whiteboard_change(action_factory, webhook_event_change_factory):
+def test_tag_added_to_whiteboard_no_whiteboard_change(
+    action_factory, webhook_event_change_factory
+):
     action = action_factory(whiteboard_tag="devtest")
     event = mock.MagicMock()
     event.changes = [
