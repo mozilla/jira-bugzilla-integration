@@ -636,7 +636,7 @@ requires-dist = [
     { name = "pytest-cov", specifier = ">=7.0.0" },
     { name = "pytest-xdist", specifier = ">=3.8.0" },
     { name = "requests", specifier = ">=2.34.2,<3.0.0" },
-    { name = "sentry-sdk", extras = ["fastapi"], specifier = ">=2.43.0,<3.0.0" },
+    { name = "sentry-sdk", extras = ["fastapi"], specifier = ">=2.64.0,<3.0.0" },
     { name = "statsd", specifier = ">=4.0.1,<5.0.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.49.0,<1.0.0" },
 ]
@@ -1374,15 +1374,15 @@ wheels = [
 
 [[package]]
 name = "sentry-sdk"
-version = "2.43.0"
+version = "2.64.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b3/18/09875b4323b03ca9025bae7e6539797b27e4fc032998a466b4b9c3d24653/sentry_sdk-2.43.0.tar.gz", hash = "sha256:52ed6e251c5d2c084224d73efee56b007ef5c2d408a4a071270e82131d336e20", size = 368953, upload-time = "2025-10-29T11:26:08.156Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/60/31/b7341f156a5f6f36f0b4845d6f1c28a2ae4799171dba7007f3a1e9b234b4/sentry_sdk-2.64.0.tar.gz", hash = "sha256:68be2c29e14ae310f8a39e1a79916b6d85c6cb41dcce789d14ff05fe293e4c55", size = 921020, upload-time = "2026-06-30T08:13:47.682Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/69/31/8228fa962f7fd8814d634e4ebece8780e2cdcfbdf0cd2e14d4a6861a7cd5/sentry_sdk-2.43.0-py2.py3-none-any.whl", hash = "sha256:4aacafcf1756ef066d359ae35030881917160ba7f6fc3ae11e0e58b09edc2d5d", size = 400997, upload-time = "2025-10-29T11:26:05.77Z" },
+    { url = "https://files.pythonhosted.org/packages/36/a8/3fb9a4319efa3b26f5be0e90e6d8918df43fa7c7e977d26390f589501d82/sentry_sdk-2.64.0-py3-none-any.whl", hash = "sha256:715ea91ca860a819e8d8a50a7bde3a80d0df3b4ed7b6660a20fb9a2d084188f1", size = 498901, upload-time = "2026-06-30T08:13:45.566Z" },
 ]
 
 [package.optional-dependencies]
