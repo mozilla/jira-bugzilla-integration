@@ -315,7 +315,9 @@ class JiraService:
                 None,
             )
 
-            if target_transition and "resolution" in target_transition.get("fields", {}):
+            if target_transition and "resolution" in target_transition.get(
+                "fields", {}
+            ):
                 kwargs["fields"] = {
                     "resolution": {"name": "Invalid"},
                 }
@@ -666,7 +668,9 @@ class JiraService:
             causing_issue: The issue key that IS the cause (e.g., 'FXP-1')
             caused_issue: The issue key that was caused to regress (e.g., 'FXP-2')
         """
-        self._create_issue_link(context, "Problem/Incident", causing_issue, caused_issue)
+        self._create_issue_link(
+            context, "Problem/Incident", causing_issue, caused_issue
+        )
 
     def delete_issue_link_causes(
         self, context: ActionContext, causing_issue: str, caused_issue: str

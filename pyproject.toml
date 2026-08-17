@@ -51,7 +51,9 @@ dev = [
 
 [tool.ruff]
 target-version = "py312"
-lint.extend-select = ["I"]
+# Pin the rule set explicitly so ruff version bumps can't silently
+# widen the default selection (ruff 0.16 did this, breaking CI).
+lint.select = ["E4", "E7", "E9", "F", "I"]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]

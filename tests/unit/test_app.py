@@ -88,7 +88,10 @@ async def test_errors_are_reported_to_sentry(anon_client, bugzilla_webhook_reque
                 anon_client.post(
                     "/bugzilla_webhook",
                     content=bugzilla_webhook_request.model_dump_json(),
-                    headers={"Content-Type": "application/json", "X-Api-Key": "fake_api_key"},
+                    headers={
+                        "Content-Type": "application/json",
+                        "X-Api-Key": "fake_api_key",
+                    },
                 )
 
     assert mocked.called, "Sentry captured the exception"
