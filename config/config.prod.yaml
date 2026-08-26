@@ -441,16 +441,55 @@
         - add_link_to_bugzilla
         - add_link_to_jira
         - maybe_assign_jira_user
+        - maybe_update_issue_status
+        - maybe_update_issue_resolution
+        - maybe_update_issue_priority
+        - maybe_update_issue_points
+        - maybe_add_phabricator_link
         - sync_whiteboard_labels
+        - sync_keywords_labels
+        - sync_dependencies
+        - sync_see_also
+        - sync_regressions
       existing:
         - update_issue_summary
         - maybe_assign_jira_user
+        - maybe_update_issue_status
+        - maybe_update_issue_resolution
+        - maybe_update_issue_priority
+        - maybe_update_issue_points
+        - maybe_update_issue_type
+        - maybe_add_phabricator_link
         - sync_whiteboard_labels
+        - sync_keywords_labels
+        - sync_dependencies
+        - sync_see_also
+        - sync_duplicates
+        - sync_regressions
+        - add_jira_comments_for_changes
+      comment:
+        - create_comment
     labels_brackets: both
     issue_type_map:
       enhancement: Task
       task: Task
-      defect: Task
+      defect: Bug
+    status_map:
+      UNCONFIRMED: Backlog
+      NEW: Backlog
+      ASSIGNED: In Progress
+      REOPENED: In Progress
+      RESOLVED: DONE
+      VERIFIED: DONE
+      FIXED: DONE
+      INVALID: Cancelled
+      WONTFIX: Cancelled
+      INACTIVE: Cancelled
+      DUPLICATE: Cancelled
+      WORKSFORME: Cancelled
+      INCOMPLETE: Cancelled
+      MOVED: Cancelled
+    resolution_map: *basic-resolution-map
 
 - whiteboard_tag: mv3
   bugzilla_user_id: tbd
