@@ -879,10 +879,12 @@ def get_service():
         username=settings.jira_username,
         password=settings.jira_api_key,  # package calls this param 'password' but actually expects an api key
         cloud=True,  # we run against an instance of Jira cloud
-        # Default is 75s, which is longer than Kubernetes' probe tolerance;
-        # a hanging call can still starve request workers and fail liveness
-        # checks well before that.
-        timeout=30,
+        # Keep this well under the load balancer's ~30s request budget (the
+        # library default is 75s): a slow Jira call must fail fast enough
+        # for the webhook handler to still return a response, so the event
+        # is parked in the dead letter queue and retried later instead of
+        # stalling Bugzilla's in-order delivery queue.
+        timeout=10,
     )
 
     return JiraService(client=client)
