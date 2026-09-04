@@ -879,6 +879,10 @@ def get_service():
         username=settings.jira_username,
         password=settings.jira_api_key,  # package calls this param 'password' but actually expects an api key
         cloud=True,  # we run against an instance of Jira cloud
+        # Default is 75s, which is longer than Kubernetes' probe tolerance;
+        # a hanging call can still starve request workers and fail liveness
+        # checks well before that.
+        timeout=30,
     )
 
     return JiraService(client=client)

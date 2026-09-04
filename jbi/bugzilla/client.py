@@ -50,6 +50,10 @@ class BugzillaClient:
         # https://bmo.readthedocs.io/en/latest/api/core/v1/general.html?highlight=x-bugzilla-api-key#authentication
         headers = kwargs.setdefault("headers", {})
         headers.setdefault("x-bugzilla-api-key", self.api_key)
+        # Without a timeout, a hanging Bugzilla response blocks the request
+        # handler indefinitely, which can wedge the whole webhook delivery
+        # queue (Bugzilla retries the same event until it times out itself).
+        kwargs.setdefault("timeout", 30)
         try:
             resp = self._client.request(verb, url, *args, **kwargs)
             resp.raise_for_status()
