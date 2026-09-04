@@ -479,9 +479,9 @@
       NEW: Backlog
       ASSIGNED: In Progress
       REOPENED: In Progress
-      RESOLVED: DONE
-      VERIFIED: DONE
-      FIXED: DONE
+      RESOLVED: Live
+      VERIFIED: Live
+      FIXED: Live
       INVALID: Cancelled
       WONTFIX: Cancelled
       INACTIVE: Cancelled
