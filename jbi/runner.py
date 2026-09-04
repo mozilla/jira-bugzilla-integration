@@ -9,6 +9,7 @@ import re
 from typing import Optional, cast
 
 from dockerflow.logging import request_id_context
+from starlette.concurrency import run_in_threadpool
 from statsd.defaults.env import statsd
 
 from jbi import ActionResult, Operation, jira
@@ -202,7 +203,13 @@ async def execute_or_queue(
         return {"status": "skipped"}
 
     try:
-        return execute_action(request, actions)
+        # `execute_action` performs blocking I/O (Bugzilla/Jira HTTP calls,
+        # pandoc subprocess calls). This process runs a single asyncio event
+        # loop with no other workers, so calling it directly here would
+        # freeze the whole pod - including its own /__lbheartbeat__ health
+        # check - for the duration of a slow event, tripping the liveness
+        # probe. Run it on a thread instead so the event loop stays free.
+        return await run_in_threadpool(execute_action, request, actions)
     except IgnoreInvalidRequestError as exc:
         return {"status": "invalid", "error": str(exc)}
     except Exception as exc:
