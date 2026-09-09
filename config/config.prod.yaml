@@ -1102,7 +1102,7 @@
     jira_project_key: CRINGE
     jira_components:
       use_bug_component: false
-      use_bug_component_with_product_prefix: true
+      use_bug_product: true
       create_components: false
     steps:
       new:
@@ -1113,10 +1113,7 @@
         - maybe_assign_jira_user
         - maybe_update_components
         - maybe_update_issue_status
-        - maybe_update_issue_resolution
         - maybe_update_issue_priority
-        - maybe_update_issue_severity
-        - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
         - sync_dependencies
@@ -1128,10 +1125,7 @@
         - maybe_assign_jira_user
         - maybe_update_issue_type
         - maybe_update_issue_status
-        - maybe_update_issue_resolution
         - maybe_update_issue_priority
-        - maybe_update_issue_severity
-        - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
         - sync_dependencies
@@ -1142,11 +1136,24 @@
       comment:
         - create_comment
     issue_type_map:
-      task: Story
-      defect: Bug
+      task: Task
+      defect: Task
       enhancement: Story
-    status_map: *basic-status-map
-    resolution_map: *basic-resolution-map
+    status_map:
+      UNCONFIRMED: Backlog
+      NEW: Backlog
+      ASSIGNED: In Progress
+      REOPENED: In Progress
+      RESOLVED: Done
+      VERIFIED: Done
+      FIXED: Done
+      INVALID: Cancelled
+      WONTFIX: Cancelled
+      INACTIVE: Cancelled
+      DUPLICATE: Cancelled
+      WORKSFORME: Cancelled
+      INCOMPLETE: Cancelled
+      MOVED: Cancelled
     labels_brackets: both
 
 - whiteboard_tag: bz-ffx-firefox
