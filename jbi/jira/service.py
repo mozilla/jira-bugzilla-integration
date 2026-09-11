@@ -306,6 +306,16 @@ class JiraService:
         issue_key = context.jira.issue
         assert issue_key  # Until we have more fine-grained typing of contexts
 
+        current_status = self.client.get_issue_status(issue_key)
+        if current_status == jira_status:
+            logger.info(
+                "Jira issue %s is already in status %s, skipping",
+                issue_key,
+                jira_status,
+                extra=context.model_dump(),
+            )
+            return None
+
         kwargs: dict[str, Any] = {}
         if jira_status == "Cancelled":
             # Check if resolution field is available on the transition screen

@@ -180,6 +180,12 @@ def test_update_issue_status_adds_comment_and_resolution_when_cancelled(
     context = action_context_factory(jira__issue="JBI-234")
     url = f"{settings.jira_base_url}rest/api/2/issue/JBI-234/transitions"
 
+    # Mock GET current status (issue is not already Cancelled)
+    mocked_responses.add(
+        responses.GET,
+        f"{settings.jira_base_url}rest/api/2/issue/JBI-234?fields=status",
+        json={"fields": {"status": {"name": "Open"}}},
+    )
     # Mock GET transitions with expand=transitions.fields (for checking resolution availability)
     mocked_responses.add(
         responses.GET,
@@ -223,6 +229,28 @@ def test_update_issue_status_adds_comment_and_resolution_when_cancelled(
     )
 
     jira_service.update_issue_status(context=context, jira_status="Cancelled")
+
+
+def test_update_issue_status_skips_transition_when_already_in_target_status(
+    jira_service, settings, mocked_responses, action_context_factory, capturelogs
+):
+    context = action_context_factory(jira__issue="JBI-234")
+    status_url = f"{settings.jira_base_url}rest/api/2/issue/JBI-234?fields=status"
+    mocked_responses.add(
+        responses.GET,
+        status_url,
+        json={"fields": {"status": {"name": "Live"}}},
+    )
+
+    with capturelogs.for_logger("jbi.jira.service").at_level(logging.DEBUG):
+        response = jira_service.update_issue_status(
+            context=context, jira_status="Live"
+        )
+
+    assert response is None
+    assert len(mocked_responses.calls) == 1  # only the status GET, no transitions POST
+    [record] = capturelogs.records
+    assert record.message == "Jira issue JBI-234 is already in status Live, skipping"
 
 
 def test_update_issue_resolution(
