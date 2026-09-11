@@ -232,6 +232,7 @@ class JiraService:
         icon_url = f"{settings.bugzilla_base_url}/favicon.ico"
         return self.client.create_or_update_issue_remote_links(
             issue_key=issue_key,
+            global_id=str(bug.id),
             link_url=bugzilla_url,
             title=bugzilla_url,
             icon_url=icon_url,
@@ -314,7 +315,9 @@ class JiraService:
                 None,
             )
 
-            if target_transition and "resolution" in target_transition.get("fields", {}):
+            if target_transition and "resolution" in target_transition.get(
+                "fields", {}
+            ):
                 kwargs["fields"] = {
                     "resolution": {"name": "Invalid"},
                 }
@@ -529,7 +532,8 @@ class JiraService:
         """Find all Jira issue keys for a Bugzilla bug ID.
 
         Uses bug_data.extract_from_see_also(project_key=None) to get all issues,
-        supporting cross-project linking.
+        supporting cross-project linking. Excludes issues from projects in
+        context.action.parameters.linked_project_excludes.
 
         Args:
             context: The action context
@@ -548,6 +552,10 @@ class JiraService:
                 extra=context.model_dump(),
             )
             return []
+
+        excluded = context.action.parameters.linked_project_excludes
+        if excluded:
+            jira_keys = [k for k in jira_keys if k.split("-")[0] not in excluded]
 
         logger.info(
             "Found Jira issues %s for bug %s",
@@ -660,7 +668,9 @@ class JiraService:
             causing_issue: The issue key that IS the cause (e.g., 'FXP-1')
             caused_issue: The issue key that was caused to regress (e.g., 'FXP-2')
         """
-        self._create_issue_link(context, "Problem/Incident", causing_issue, caused_issue)
+        self._create_issue_link(
+            context, "Problem/Incident", causing_issue, caused_issue
+        )
 
     def delete_issue_link_causes(
         self, context: ActionContext, causing_issue: str, caused_issue: str
@@ -869,6 +879,12 @@ def get_service():
         username=settings.jira_username,
         password=settings.jira_api_key,  # package calls this param 'password' but actually expects an api key
         cloud=True,  # we run against an instance of Jira cloud
+        # Keep this well under the load balancer's ~30s request budget (the
+        # library default is 75s): a slow Jira call must fail fast enough
+        # for the webhook handler to still return a response, so the event
+        # is parked in the dead letter queue and retried later instead of
+        # stalling Bugzilla's in-order delivery queue.
+        timeout=10,
     )
 
     return JiraService(client=client)

@@ -8,8 +8,15 @@
     labels_brackets: both
     jira_char_limit: 10000
 
+- whiteboard_tag: fide
+  bugzilla_user_id: 692168
+  description: Firefox Desktop whiteboard tag
+  parameters:
+    jira_project_key: FIDE
+    labels_brackets: both
+
 - whiteboard_tag: fidedi
-  bugzilla_user_id: tbd
+  bugzilla_user_id: 692168
   description: Firefox Desktop Integration whiteboard tag
   parameters:
     jira_project_key: FIDEDI
@@ -33,8 +40,7 @@
         - maybe_update_issue_severity
         - maybe_update_issue_points
         - sync_whiteboard_labels
-        - sync_depends_on_links
-        - sync_blocks_links
+        - sync_dependencies
         - sync_see_also
       existing:
         - update_issue_summary
@@ -45,8 +51,7 @@
         - maybe_update_issue_severity
         - maybe_update_issue_points
         - sync_whiteboard_labels
-        - sync_depends_on_links
-        - sync_blocks_links
+        - sync_dependencies
         - sync_see_also
     labels_brackets: both
     status_map: &status-closed-map
@@ -120,6 +125,7 @@
     jira_components:
       use_bug_component_with_product_prefix: true
       use_bug_component: false
+      create_components: true
     jira_project_key: FXDROID
     steps:
       new:
@@ -130,12 +136,14 @@
         - maybe_assign_jira_user
         - maybe_update_components
         - maybe_update_issue_status
+        - maybe_update_issue_points
         - sync_whiteboard_labels
       existing:
         - update_issue_summary
         - maybe_assign_jira_user
         - maybe_update_components
         - maybe_update_issue_status
+        - maybe_update_issue_points
         - sync_whiteboard_labels
     labels_brackets: both
     status_map:
@@ -178,14 +186,14 @@
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
-        - sync_depends_on_links
-        - sync_blocks_links
+        - sync_dependencies
         - sync_see_also
         - sync_regressions
       existing:
         - update_issue_summary
         - maybe_update_components
         - maybe_assign_jira_user
+        - maybe_update_issue_type
         - maybe_update_issue_status
         - maybe_update_issue_resolution
         - maybe_update_issue_priority
@@ -193,14 +201,17 @@
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
-        - sync_depends_on_links
-        - sync_blocks_links
+        - sync_dependencies
         - sync_see_also
         - sync_duplicates
         - sync_regressions
         - add_jira_comments_for_changes
       comment:
         - create_comment
+    issue_type_map:
+      task: Task
+      defect: Bug
+      enhancement: Improvement
     status_map: &basic-status-map
       UNCONFIRMED: Backlog
       NEW: Backlog
@@ -242,13 +253,14 @@
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
-        - sync_depends_on_links
-        - sync_blocks_links
+        - sync_dependencies
         - sync_see_also
+        - sync_regressions
       existing:
         - update_issue_summary
         - maybe_update_components
         - maybe_assign_jira_user
+        - maybe_update_issue_type
         - maybe_update_issue_status
         - maybe_update_issue_resolution
         - maybe_update_issue_priority
@@ -256,13 +268,17 @@
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
-        - sync_depends_on_links
-        - sync_blocks_links
+        - sync_dependencies
         - sync_see_also
         - sync_duplicates
+        - sync_regressions
         - add_jira_comments_for_changes
       comment:
         - create_comment
+    issue_type_map:
+      task: Task
+      defect: Bug
+      enhancement: Improvement
     status_map: *basic-status-map
     resolution_map: *basic-resolution-map
 
@@ -290,13 +306,14 @@
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
-        - sync_depends_on_links
-        - sync_blocks_links
+        - sync_dependencies
         - sync_see_also
+        - sync_regressions
       existing:
         - update_issue_summary
         - maybe_update_components
         - maybe_assign_jira_user
+        - maybe_update_issue_type
         - maybe_update_issue_status
         - maybe_update_issue_resolution
         - maybe_update_issue_priority
@@ -304,13 +321,17 @@
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
-        - sync_depends_on_links
-        - sync_blocks_links
+        - sync_dependencies
         - sync_see_also
         - sync_duplicates
+        - sync_regressions
         - add_jira_comments_for_changes
       comment:
         - create_comment
+    issue_type_map:
+      task: Task
+      defect: Bug
+      enhancement: Improvement
     status_map: *basic-status-map
     resolution_map: *basic-resolution-map
 
@@ -420,16 +441,55 @@
         - add_link_to_bugzilla
         - add_link_to_jira
         - maybe_assign_jira_user
+        - maybe_update_issue_status
+        - maybe_update_issue_resolution
+        - maybe_update_issue_priority
+        - maybe_update_issue_points
+        - maybe_add_phabricator_link
         - sync_whiteboard_labels
+        - sync_keywords_labels
+        - sync_dependencies
+        - sync_see_also
+        - sync_regressions
       existing:
         - update_issue_summary
         - maybe_assign_jira_user
+        - maybe_update_issue_status
+        - maybe_update_issue_resolution
+        - maybe_update_issue_priority
+        - maybe_update_issue_points
+        - maybe_update_issue_type
+        - maybe_add_phabricator_link
         - sync_whiteboard_labels
+        - sync_keywords_labels
+        - sync_dependencies
+        - sync_see_also
+        - sync_duplicates
+        - sync_regressions
+        - add_jira_comments_for_changes
+      comment:
+        - create_comment
     labels_brackets: both
     issue_type_map:
       enhancement: Task
       task: Task
-      defect: Task
+      defect: Bug
+    status_map:
+      UNCONFIRMED: Backlog
+      NEW: Backlog
+      ASSIGNED: In Progress
+      REOPENED: In Progress
+      RESOLVED: Live
+      VERIFIED: Live
+      FIXED: Live
+      INVALID: Cancelled
+      WONTFIX: Cancelled
+      INACTIVE: Cancelled
+      DUPLICATE: Cancelled
+      WORKSFORME: Cancelled
+      INCOMPLETE: Cancelled
+      MOVED: Cancelled
+    resolution_map: *basic-resolution-map
 
 - whiteboard_tag: mv3
   bugzilla_user_id: tbd
@@ -538,12 +598,13 @@
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
-        - sync_depends_on_links
-        - sync_blocks_links
+        - sync_dependencies
         - sync_see_also
+        - sync_regressions
       existing:
         - update_issue_summary
         - maybe_assign_jira_user
+        - maybe_update_issue_type
         - maybe_update_issue_status
         - maybe_update_issue_resolution
         - maybe_update_issue_priority
@@ -551,13 +612,17 @@
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
-        - sync_depends_on_links
-        - sync_blocks_links
+        - sync_dependencies
         - sync_see_also
         - sync_duplicates
+        - sync_regressions
         - add_jira_comments_for_changes
       comment:
         - create_comment
+    issue_type_map:
+      task: Task
+      defect: Bug
+      enhancement: Improvement
     status_map: *basic-status-map
     resolution_map: *basic-resolution-map
 
@@ -586,8 +651,7 @@
         - maybe_update_issue_severity
         - maybe_update_issue_points
         - sync_whiteboard_labels
-        - sync_depends_on_links
-        - sync_blocks_links
+        - sync_dependencies
         - sync_see_also
       existing:
         - update_issue_summary
@@ -598,8 +662,7 @@
         - maybe_update_issue_severity
         - maybe_update_issue_points
         - sync_whiteboard_labels
-        - sync_depends_on_links
-        - sync_blocks_links
+        - sync_dependencies
         - sync_see_also
     labels_brackets: both
     status_map:
@@ -820,8 +883,7 @@
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
-        - sync_depends_on_links
-        - sync_blocks_links
+        - sync_dependencies
         - sync_see_also
         - sync_regressions
       existing:
@@ -836,8 +898,7 @@
         - maybe_add_phabricator_link
         - sync_whiteboard_labels
         - sync_keywords_labels
-        - sync_depends_on_links
-        - sync_blocks_links
+        - sync_dependencies
         - sync_see_also
         - sync_duplicates
         - sync_regressions
@@ -995,7 +1056,7 @@
     status_map: *basic-status-map
 
 - whiteboard_tag: fx-vpn
-  bugzilla_user_id: 711867
+  bugzilla_user_id: 618576
   description: VPN Integration in Firefox
   parameters:
     jira_project_key: FXVPN2
@@ -1039,17 +1100,53 @@
   description: Crash Ingestion
   parameters:
     jira_project_key: CRINGE
+    jira_components:
+      use_bug_component: false
+      use_bug_component_with_product_prefix: true
+      create_components: false
     steps:
       new:
         - create_issue
         - maybe_delete_duplicate
-        - maybe_update_components
         - add_link_to_bugzilla
         - add_link_to_jira
+        - maybe_assign_jira_user
+        - maybe_update_components
+        - maybe_update_issue_status
+        - maybe_update_issue_resolution
+        - maybe_update_issue_priority
+        - maybe_update_issue_severity
+        - maybe_add_phabricator_link
+        - sync_whiteboard_labels
+        - sync_keywords_labels
+        - sync_dependencies
+        - sync_see_also
+        - sync_regressions
       existing:
         - update_issue_summary
+        - maybe_update_components
+        - maybe_assign_jira_user
+        - maybe_update_issue_type
+        - maybe_update_issue_status
+        - maybe_update_issue_resolution
+        - maybe_update_issue_priority
+        - maybe_update_issue_severity
+        - maybe_add_phabricator_link
+        - sync_whiteboard_labels
+        - sync_keywords_labels
+        - sync_dependencies
+        - sync_see_also
+        - sync_duplicates
+        - sync_regressions
+        - add_jira_comments_for_changes
       comment:
         - create_comment
+    issue_type_map:
+      task: Story
+      defect: Bug
+      enhancement: Story
+    status_map: *basic-status-map
+    resolution_map: *basic-resolution-map
     labels_brackets: both
 
 - whiteboard_tag: bz-ffx-firefox
@@ -1057,6 +1154,7 @@
   description: Bugs affecting Firefox components
   parameters:
     jira_project_key: BZFFX
+    linked_project_excludes: []
     jira_components:
       use_bug_component_with_product_prefix: true
       use_bug_component: false
@@ -1103,6 +1201,7 @@
   description: Bugs affecting Core components
   parameters:
     jira_project_key: BZFFX
+    linked_project_excludes: []
     jira_components:
       use_bug_component_with_product_prefix: true
       use_bug_component: false
@@ -1144,6 +1243,49 @@
       MOVED: Closed
     resolution_map: *basic-resolution-map
 
+- whiteboard_tag: moz-vpn
+  bugzilla_user_id: 618576
+  description: Mozilla VPN
+  parameters:
+    jira_project_key: VPN
+    steps:
+      new:
+        - create_issue
+        - maybe_delete_duplicate
+        - add_link_to_bugzilla
+        - add_link_to_jira
+        - maybe_assign_jira_user
+        - maybe_update_issue_status
+        - maybe_update_issue_resolution
+        - maybe_update_issue_priority
+        - maybe_update_issue_points
+        - sync_whiteboard_labels
+      existing:
+        - update_issue_summary
+        - maybe_assign_jira_user
+        - maybe_update_issue_status
+        - maybe_update_issue_resolution
+        - maybe_update_issue_priority
+        - maybe_update_issue_points
+        - sync_whiteboard_labels
+    labels_brackets: both
+    status_map:
+      UNCONFIRMED: Backlog
+      NEW: Backlog
+      ASSIGNED: In Progress
+      REOPENED: In Progress
+      RESOLVED: Done
+      VERIFIED: Done
+      FIXED: Done
+      INVALID: Cancelled
+      WONTFIX: Cancelled
+      INACTIVE: Cancelled
+      DUPLICATE: Cancelled
+      WORKSFORME: Cancelled
+      INCOMPLETE: Cancelled
+      MOVED: Cancelled
+    resolution_map: *basic-resolution-map
+
 - whiteboard_tag: fidefe-acq
   bugzilla_user_id: tbd
   description: Firefox Front End Acquisition whiteboard tag
@@ -1178,3 +1320,50 @@
       WORKSFORME: Closed
       REOPENED: In Progress
     resolution_map: *basic-resolution-map
+
+- whiteboard_tag: feltpy
+  bugzilla_user_id: 713707
+  description: Firefox Felt Privacy Team whiteboard tag
+  parameters:
+    jira_project_key: FELTPY
+    steps:
+      new:
+        - create_issue
+        - maybe_delete_duplicate
+        - add_link_to_bugzilla
+        - add_link_to_jira
+        - maybe_assign_jira_user
+        - maybe_update_issue_priority
+        - maybe_update_issue_status
+        - maybe_update_issue_points
+        - maybe_add_phabricator_link
+        - sync_whiteboard_labels
+        - sync_dependencies
+        - sync_see_also
+      existing:
+        - update_issue_summary
+        - add_jira_comments_for_changes
+        - maybe_assign_jira_user
+        - maybe_update_issue_priority
+        - maybe_update_issue_status
+        - maybe_update_issue_points
+        - maybe_add_phabricator_link
+        - sync_whiteboard_labels
+        - sync_dependencies
+        - sync_see_also
+    labels_brackets: both
+    status_map:
+      UNCONFIRMED: Backlog
+      NEW: Backlog
+      ASSIGNED: In Progress
+      REOPENED: Backlog
+      RESOLVED: Done
+      VERIFIED: Done
+      FIXED: Done
+      INVALID: Cancelled
+      WONTFIX: Cancelled
+      INACTIVE: Cancelled
+      DUPLICATE: Cancelled
+      WORKSFORME: Cancelled
+      INCOMPLETE: Cancelled
+      MOVED: Cancelled

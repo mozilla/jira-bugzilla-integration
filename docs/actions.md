@@ -48,6 +48,7 @@ Parameters are used by `step` functions to control what Bugzilla data is synced 
     - mapping [str, list[str]]
     - If defined, the specified steps are executed. The group of steps listed under `new` are executed when a Bugzilla event occurs on a ticket that is unknown to Jira. The steps under `existing`, when the Bugzilla ticket is already linked to a Jira issue. The steps under `comment` when a comment is posted on a linked Bugzilla ticket.
     If one of these groups is not specified, the default steps will be used.
+    - **Note:** When the whiteboard tag is added to a bug that already has a linked Jira issue (for example, when a tag is removed and later re-added, or when a `see_also` link to an existing Jira issue is added at the same time as the tag), the `new` steps are run instead of the `existing` steps. This performs a full resync of all current bug fields to the Jira issue, rather than only reacting to the fields that changed in that single event.
 - `jira_components` (optional)
    - object
    - Controls how Jira components are set on issues in the `maybe_update_components` step.
@@ -79,6 +80,9 @@ Parameters are used by `step` functions to control what Bugzilla data is synced 
 - `issue_type_map` (optional)
     - mapping [str, str]
     - If defined, map the Bugzilla type to Jira issue type (default: ``Bug`` if ``defect`` else ``Task``)
+- `linked_project_excludes` (optional)
+    - list[str]
+    - Project keys to exclude from Jira issue link syncing (default: `["BZFFX"]`).
 
 Minimal configuration:
 ```yaml
@@ -160,16 +164,17 @@ linked Jira issue status to "Closed". If the bug changes to a status not listed 
 - `maybe_update_issue_status`
 - `maybe_update_issue_points`
    **Requirements**: ``customfield_10037`` field must be present on issue forms (or configure `jira_cf_fx_points_field`).
+- `maybe_update_issue_type`:
+  Updates the Jira issue type when the Bugzilla bug `type` field changes, using the `issue_type_map` parameter (the same mapping `create_issue` uses on creation). Unmapped types fall back to `Task`. Runs on UPDATE events only — the issue type is set at creation time by `create_issue`; add this step to the `existing` steps to keep the type in sync afterwards.
+  **Requirements**: The target Jira project must permit changing an issue's type (Jira may reject some transitions, e.g. to/from sub-tasks or across incompatible screen schemes).
 - `create_comment`
 - `sync_keywords_labels`
 - `sync_whiteboard_labels`:
   Syncs the Bugzilla whitboard tags field to the Jira labels field.
 - `maybe_update_components`: looks at the component that's set on the bug (if any) and any components added to the project configuration with the `jira_components` parameter (see above). If those components are available on the Jira side as well, they're added to the Jira issue
 - `maybe_add_phabricator_link`: looks at an attachment and if it is a phabricator attachment, it gets added as a link or updated if the attachment was previously added.
-- `sync_blocks_links`:
-  Creates Jira "Blocks" issue links based on Bugzilla's `blocks` field. If bug A blocks bug B, and bug B has a linked Jira issue, a link is created where A's issue blocks B's issue. Supports cross-project linking when blocked bugs have multiple Jira issues. Silently skips blocked bugs that are private, missing, or have no Jira issues. On UPDATE operations, only processes when the `blocks` field changes.
-- `sync_depends_on_links`:
-  Creates Jira "Blocks" issue links based on Bugzilla's `depends_on` field. If bug A depends on bug B, and bug B has a linked Jira issue, a link is created where B's issue blocks A's issue. Supports cross-project linking when dependency bugs have multiple Jira issues. Silently skips dependencies that are private, missing, or have no Jira issues. On UPDATE operations, only processes when the `depends_on` field changes.
+- `sync_dependencies`:
+  Creates and removes Jira "Blocks" issue links based on Bugzilla's `depends_on` and `blocks` fields. For `depends_on`: if bug A depends on bug B and bug B has a linked Jira issue, a link is created where B's issue blocks A's issue. For `blocks`: if bug A blocks bug B and bug B has a linked Jira issue, a link is created where A's issue blocks B's issue. Supports cross-project linking when related bugs have multiple Jira issues. Silently skips bugs that are private, missing, or have no Jira issues. On UPDATE operations, only processes fields that actually changed.
 - `sync_see_also`:
   Creates and removes Jira "Relates" issue links when Bugzilla's `see_also` field changes. Handles two types of URLs: Jira issue URLs are linked directly; Bugzilla bug URLs cause the linked bug's Jira issue(s) to be looked up and linked. Key order is normalised so that links created from both sides of a Bugzilla `see_also` relationship (which Bugzilla mirrors bidirectionally) produce the same Jira link, preventing duplicates. Silently skips URLs that are private, missing, or resolve to no Jira issues. On UPDATE operations, only processes when the `see_also` field changes.
 - `sync_duplicates`:

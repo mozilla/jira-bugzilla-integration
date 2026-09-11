@@ -9,6 +9,7 @@ import re
 from typing import Optional, cast
 
 from dockerflow.logging import request_id_context
+from starlette.concurrency import run_in_threadpool
 from statsd.defaults.env import statsd
 
 from jbi import ActionResult, Operation, jira
@@ -33,6 +34,25 @@ from jbi.steps import StepStatus
 logger = logging.getLogger(__name__)
 
 settings = get_settings()
+
+
+def _tag_added_to_whiteboard(
+    action: Action, event: bugzilla_models.WebhookEvent
+) -> bool:
+    """Return True when the whiteboard change added this action's project tag."""
+    if not event.changes:
+        return False
+    for change in event.changes:
+        if change.field == "whiteboard":
+            search_string = r"\[" + action.whiteboard_tag + r"(-[^\]]*)*\]"
+            removed_had_tag = bool(
+                re.search(search_string, change.removed or "", re.IGNORECASE)
+            )
+            added_has_tag = bool(
+                re.search(search_string, change.added or "", re.IGNORECASE)
+            )
+            return not removed_had_tag and added_has_tag
+    return False
 
 
 GROUP_TO_OPERATION = {
@@ -183,7 +203,13 @@ async def execute_or_queue(
         return {"status": "skipped"}
 
     try:
-        return execute_action(request, actions)
+        # `execute_action` performs blocking I/O (Bugzilla/Jira HTTP calls,
+        # pandoc subprocess calls). This process runs a single asyncio event
+        # loop with no other workers, so calling it directly here would
+        # freeze the whole pod - including its own /__lbheartbeat__ health
+        # check - for the duration of a slow event, tripping the liveness
+        # probe. Run it on a thread instead so the event loop stays free.
+        return await run_in_threadpool(execute_action, request, actions)
     except IgnoreInvalidRequestError as exc:
         return {"status": "invalid", "error": str(exc)}
     except Exception as exc:
@@ -326,13 +352,21 @@ def do_execute_actions(
                 )
 
             if event.target == "bug":
-                action_context = action_context.update(
-                    operation=Operation.UPDATE,
-                    extra={
-                        "changed_fields": ", ".join(event.changed_fields()),
-                        **action_context.extra,
-                    },
-                )
+                if _tag_added_to_whiteboard(action, event):
+                    # Tag was added to a bug that already has a linked Jira issue.
+                    # Use CREATE so that steps sync all current field values
+                    # unconditionally, rather than only reacting to the fields
+                    # that changed in this single event. create_issue detects
+                    # the existing issue and updates the summary instead.
+                    action_context = action_context.update(operation=Operation.CREATE)
+                else:
+                    action_context = action_context.update(
+                        operation=Operation.UPDATE,
+                        extra={
+                            "changed_fields": ", ".join(event.changed_fields()),
+                            **action_context.extra,
+                        },
+                    )
 
             elif event.target == "comment":
                 action_context = action_context.update(operation=Operation.COMMENT)
