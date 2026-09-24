@@ -20,6 +20,7 @@ from requests import exceptions as requests_exceptions
 from jbi import Operation
 from jbi.bugzilla.models import JIRA_HOSTNAMES, WebhookAttachment
 from jbi.environment import get_settings
+from jbi.hierarchy import ensure_mirror_epic, is_metabug, resolve_metabugs
 from jbi.identity import get_identity_map
 from jbi.sync_markers import was_written_by_reverse_sync
 
@@ -337,6 +338,68 @@ def sync_phabricator_review_state(
     resp = jira_service.update_issue_status(context, target_status)
     context = context.append_responses(resp)
     return (StepStatus.SUCCESS, context)
+
+
+def maybe_seed_epic_parent(
+    context: ActionContext,
+    *,
+    parameters: ActionParams,
+    jira_service: JiraService,
+    bugzilla_service: BugzillaService,
+) -> StepResult:
+    """Parent a newly created issue under its metabug's mirror Epic (R-06).
+
+    Seeded **once, at creation only.** Thereafter the parent is a planning
+    decision Jira owns: humans re-organize freely and JBI never re-parents
+    from BMO (R-07). Membership itself is not expressed here -- the full
+    many-to-many graph is already mirrored as issue links by
+    `sync_dependencies`, so this step only chooses the single parent.
+    """
+    if not parameters.metabug_epics_enabled:
+        return (StepStatus.NOOP, context)
+
+    if context.operation != Operation.CREATE:
+        # UPDATE must never re-parent: see R-07.
+        return (StepStatus.NOOP, context)
+
+    issue_key = context.jira.issue
+    if not issue_key:
+        return (StepStatus.NOOP, context)
+
+    if is_metabug(context.bug):
+        # A metabug's own mirror is an Epic; Epics are not parented here.
+        return (StepStatus.NOOP, context)
+
+    metabugs = resolve_metabugs(context.bug, parameters, bugzilla_service)
+    if not metabugs:
+        return (StepStatus.NOOP, context)
+
+    # Walk the metabugs in id order and take the first that yields an Epic.
+    # A metabug already mirrored as a non-Epic (the rollout case) is skipped
+    # rather than converted, so the next candidate gets the chance.
+    for metabug in metabugs:
+        epic_key = ensure_mirror_epic(context, metabug, jira_service, bugzilla_service)
+        if not epic_key:
+            continue
+
+        resp = jira_service.set_issue_parent(context, issue_key, epic_key)
+        logger.info(
+            "Seeded parent of %s as %s (metabug %s of %s candidates)",
+            issue_key,
+            epic_key,
+            metabug.id,
+            len(metabugs),
+            extra=context.model_dump(),
+        )
+        context = context.append_responses(resp)
+        return (StepStatus.SUCCESS, context)
+
+    logger.info(
+        "No metabug of Bug %s has an Epic mirror; leaving the issue unparented",
+        context.bug.id,
+        extra=context.model_dump(),
+    )
+    return (StepStatus.INCOMPLETE, context)
 
 
 def maybe_delete_duplicate(
@@ -713,6 +776,87 @@ def sync_whiteboard_labels(
         )
 
     return _update_issue_labels(context, jira_service, additions, removals)
+
+
+# R-09/R-10 land in labels rather than in Jira fields, because the pilot
+# project has no release-flag or milestone custom field and `fixVersions` --
+# the only release-shaped field available -- is already written by a separate
+# release automation. Two writers on one field fight; labels cannot collide.
+#
+# Both namespaces are owned by JBI: any label matching the prefix is assumed
+# to be ours and is removed when the corresponding BMO value goes away. That
+# is what keeps a flag flipping from `affected` to `fixed` from leaving both
+# labels behind.
+RELEASE_FLAG_LABEL_PREFIX = "fx"
+MILESTONE_LABEL_PREFIX = "milestone-"
+
+
+def _release_flag_labels(release_flags: dict[str, str]) -> list[str]:
+    """Render BMO release flags as Jira labels, eg. `fx157-fixed`."""
+    labels = []
+    for release, value in sorted(release_flags.items()):
+        # `firefox157` -> `157`, `firefox_esr140` -> `esr140`.
+        short = release.replace("firefox", "", 1).lstrip("_") or release
+        labels.append(
+            f"{RELEASE_FLAG_LABEL_PREFIX}{short}-{value}".replace(" ", ".").lower()
+        )
+    return labels
+
+
+def _milestone_label(target_milestone: Optional[str]) -> Optional[str]:
+    """Render BMO's Target Milestone as a label, eg. `milestone-157-branch`.
+
+    `---` means unset, which is an absence rather than a milestone.
+    """
+    milestone = (target_milestone or "").strip()
+    if not milestone or milestone == "---":
+        return None
+    slug = milestone.lower().replace(" ", "-")
+    return f"{MILESTONE_LABEL_PREFIX}{slug}"
+
+
+def _labels_owned_by(existing: Iterable[str], prefix: str) -> list[str]:
+    """Return the existing labels in a JBI-owned namespace."""
+    return [label for label in existing if str(label).startswith(prefix)]
+
+
+def mirror_release_flags(
+    context: ActionContext, *, jira_service: JiraService
+) -> StepResult:
+    """Mirror BMO per-release status flags onto the Jira issue as labels (R-09)."""
+    desired = _release_flag_labels(context.bug.release_flags)
+
+    current = jira_service.get_issue_labels(context, context.jira.issue)
+    stale = [
+        label
+        for label in _labels_owned_by(current, RELEASE_FLAG_LABEL_PREFIX)
+        if label not in desired
+    ]
+
+    if not desired and not stale:
+        return (StepStatus.NOOP, context)
+
+    return _update_issue_labels(context, jira_service, desired, stale)
+
+
+def mirror_target_milestone(
+    context: ActionContext, *, jira_service: JiraService
+) -> StepResult:
+    """Mirror BMO's Target Milestone onto the Jira issue as a label (R-10)."""
+    desired_label = _milestone_label(context.bug.target_milestone)
+    desired = [desired_label] if desired_label else []
+
+    current = jira_service.get_issue_labels(context, context.jira.issue)
+    stale = [
+        label
+        for label in _labels_owned_by(current, MILESTONE_LABEL_PREFIX)
+        if label not in desired
+    ]
+
+    if not desired and not stale:
+        return (StepStatus.NOOP, context)
+
+    return _update_issue_labels(context, jira_service, desired, stale)
 
 
 def sync_keywords_labels(

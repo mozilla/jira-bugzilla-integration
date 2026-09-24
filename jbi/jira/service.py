@@ -466,6 +466,53 @@ class JiraService:
         except Exception:
             return False
 
+    def get_issue_type(self, context: ActionContext, issue_key: str) -> Optional[str]:
+        """Return an issue's type name, or `None` if it cannot be read."""
+        issue = self.get_issue(context, issue_key)
+        if not issue:
+            return None
+        name = (issue.get("fields", {}).get("issuetype") or {}).get("name")
+        return str(name) if name else None
+
+    def create_epic(self, context: ActionContext, summary: str, project_key: str):
+        """Create an Epic and return the created issue payload.
+
+        Deliberately minimal: `Epic Name` (customfield_10011) exists on the
+        pilot project but is not required, and writing project-specific custom
+        fields from here would not port to other projects.
+        """
+        fields: dict[str, Any] = {
+            "summary": summary,
+            "issuetype": {"name": "Epic"},
+            "project": {"key": project_key},
+        }
+        logger.info(
+            "Creating mirror Epic in %s for Bug %s",
+            project_key,
+            context.bug.id,
+            extra={"fields": fields, **context.model_dump()},
+        )
+        response = self.client.create_issue(fields=fields)
+        return response[0] if isinstance(response, list) else response
+
+    def set_issue_parent(self, context: ActionContext, issue_key: str, parent_key: str):
+        """Set an issue's parent.
+
+        Uses the modern `parent` field rather than the legacy `Epic Link`
+        custom field: the pilot project expresses epic membership through
+        `parent` (verified against live issues), and `parent` is
+        project-agnostic where the custom field id is not.
+        """
+        logger.info(
+            "Parenting Jira issue %s under %s",
+            issue_key,
+            parent_key,
+            extra=context.model_dump(),
+        )
+        return self.client.update_issue_field(
+            key=issue_key, fields={"parent": {"key": parent_key}}
+        )
+
     def update_issue_summary(self, context: ActionContext):
         """Update's an issue's summary with the description of an incoming bug"""
         truncated_summary = context.bug.summary or ""
@@ -537,9 +584,10 @@ class JiraService:
     ) -> list[str]:
         """Return an issue's current labels, or `[]` if unreadable.
 
-        Used by the sync-stop check on the reverse path, where the issue's
-        current labels are the only way to know whether a human has paused
-        this pair.
+        Needed in two places: to retire labels in a JBI-owned namespace (a
+        release flag moving from `affected` to `fixed` has to remove the old
+        label, and the old value is not derivable from the bug's current
+        state), and to check the sync-stop label on the reverse path.
 
         `context` may be `None` for callers outside a forward action -- the
         inbound path has a `ReverseContext`, not an `ActionContext` -- in

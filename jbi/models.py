@@ -194,6 +194,10 @@ class ActionParams(BaseModel, frozen=True):
     # onboarded actions default to `jbi-sync-stop` (BIDIRECTIONAL_DEFAULTS).
     sync_stop_label: Optional[str] = None
 
+    # R-05/R-06: mirror BMO metabugs as Jira Epics and seed the parent of
+    # newly created issues. Off by default; Phase 2.
+    metabug_epics_enabled: bool = False
+
     # R-02 / R-03: Jira statuses used by the Phabricator review steps. `None`
     # (the default) means the corresponding step does nothing, so adding the
     # steps to an action's config without setting these is inert. Onboarded
