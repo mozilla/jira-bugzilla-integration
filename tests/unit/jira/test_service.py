@@ -253,6 +253,36 @@ def test_update_issue_status_skips_transition_when_already_in_target_status(
     assert record.message == "Jira issue JBI-234 is already in status Live, skipping"
 
 
+def test_update_issue_status_skips_when_no_transition_to_target_status(
+    jira_service, settings, mocked_responses, action_context_factory, capturelogs
+):
+    context = action_context_factory(jira__issue="JBI-234")
+    mocked_responses.add(
+        responses.GET,
+        f"{settings.jira_base_url}rest/api/2/issue/JBI-234?fields=status",
+        json={"fields": {"status": {"name": "Code Complete"}}},
+    )
+    mocked_responses.add(
+        responses.GET,
+        f"{settings.jira_base_url}rest/api/2/issue/JBI-234/transitions",
+        json={"transitions": [{"name": "Done", "id": 2, "to": {"name": "Done"}}]},
+    )
+
+    with capturelogs.for_logger("jbi.jira.service").at_level(logging.DEBUG):
+        response = jira_service.update_issue_status(
+            context=context, jira_status="Live"
+        )
+
+    assert response is None
+    assert [c.request.method for c in mocked_responses.calls] == ["GET", "GET"]
+    [record] = capturelogs.records
+    assert record.levelno == logging.WARNING
+    assert (
+        record.message
+        == "No transition to status Live is available for Jira issue JBI-234, skipping"
+    )
+
+
 def test_update_issue_resolution(
     jira_service, settings, mocked_responses, action_context_factory, capturelogs
 ):
