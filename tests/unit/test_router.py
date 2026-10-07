@@ -549,3 +549,142 @@ def test_lbheartbeat(anon_client, method):
 
     resp = anon_client.request(method, "__lbheartbeat__")
     assert resp.status_code == 200
+
+
+# --- Inbound Jira endpoint (plan D6) ----------------------------------------
+
+
+def test_jira_webhook_requires_api_key(anon_client, jira_webhook_event):
+    """Auth parity with /bugzilla_webhook: the new endpoint is not a hole."""
+    response = anon_client.post(
+        "/jira_webhook",
+        content=jira_webhook_event.model_dump_json(),
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert response.status_code == 401
+
+
+def test_jira_webhook_reports_ignored_events_as_ok(
+    authenticated_client, mocked_jira, jira_webhook_event
+):
+    """An event JBI does not act on is normal traffic, not an error: Jira
+    Automation forwards far more events than JBI handles."""
+    mocked_jira.get_issue_remote_links.return_value = []
+
+    response = authenticated_client.post(
+        "/jira_webhook",
+        content=jira_webhook_event.model_dump_json(),
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "ignored"
+    assert "no Bugzilla bug linked" in response.json()["reason"]
+
+
+def test_jira_webhook_tolerates_unknown_payload_keys(authenticated_client, mocked_jira):
+    """The Automation rule's payload shape is not fully under our control, so
+    unknown keys must be ignored rather than rejected with a 422."""
+    mocked_jira.get_issue_remote_links.return_value = []
+
+    response = authenticated_client.post(
+        "/jira_webhook",
+        json={
+            "webhookEvent": "jira:issue_updated",
+            "issue": {"key": "JBI-234", "fields": {"summary": "hi", "votes": 3}},
+            "somethingNew": {"nested": True},
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "ignored"
+
+
+def test_jira_webhook_does_not_touch_the_bugzilla_path(
+    authenticated_client, mocked_jira, mocked_bugzilla, jira_webhook_event
+):
+    mocked_jira.get_issue_remote_links.return_value = []
+
+    authenticated_client.post(
+        "/jira_webhook",
+        content=jira_webhook_event.model_dump_json(),
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert not mocked_bugzilla.update_bug.called
+
+
+# --- Query-string auth for producers that cannot set headers ---------------
+
+
+@pytest.mark.parametrize("path", ["/bugzilla_webhook", "/jira_webhook"])
+def test_token_query_param_authenticates(anon_client, test_api_key, path, mocked_jira):
+    """A Bugzilla webhook takes only a URL, and a Pub/Sub push subscription
+    cannot add headers, so the shared secret has to work in the query string.
+    A 401 here would make those producers unusable."""
+    mocked_jira.get_issue_remote_links.return_value = []
+
+    response = anon_client.post(
+        f"{path}?token={test_api_key}",
+        json={},
+        headers={"Content-Type": "application/json"},
+    )
+
+    # 422 (bad body) proves authentication passed; 401 would mean it did not.
+    assert response.status_code != 401
+
+
+@pytest.mark.parametrize("path", ["/bugzilla_webhook", "/jira_webhook"])
+def test_wrong_token_is_rejected(anon_client, path):
+    response = anon_client.post(
+        f"{path}?token=not-the-key",
+        json={},
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert response.status_code == 401
+
+
+def test_a_bugzilla_payload_on_the_jira_endpoint_says_so(
+    authenticated_client, capturelogs
+):
+    """The two paths differ by one word and share their auth, so a misrouted
+    BMO webhook otherwise reads as an empty Jira event and is ignored -- which
+    is what happened when a real webhook was first wired up."""
+    import logging
+
+    with capturelogs.for_logger("jbi.router").at_level(logging.ERROR):
+        response = authenticated_client.post(
+            "/jira_webhook",
+            json={
+                "webhook_id": 1,
+                "webhook_name": "bmo",
+                "event": {"action": "modify", "time": "2026-09-24T00:00:00Z"},
+                "bug": {"id": 1855574},
+            },
+        )
+
+    assert response.status_code == 200
+    assert "bugzilla_webhook" in response.json()["reason"]
+    assert any("wrong endpoint" in r.message for r in capturelogs.records)
+
+
+def test_a_comment_body_with_newlines_is_accepted(authenticated_client, mocked_jira):
+    """Automation interpolates `{{comment.body}}` into JSON without escaping,
+    so a multi-line comment arrives with literal control characters inside a
+    string. Strict JSON rejects that, which broke comment sync for virtually
+    every real comment."""
+    mocked_jira.get_issue_remote_links.return_value = []
+    raw = (
+        '{"webhookEvent":"comment_created",'
+        '"issue":{"key":"JBI-234","fields":{"project":{"key":"JBI"}}},'
+        '"comment":{"id":"1","body":"line one\nline two\twith a tab"}}'
+    )
+
+    response = authenticated_client.post(
+        "/jira_webhook", content=raw, headers={"Content-Type": "application/json"}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] != "invalid"

@@ -9,6 +9,7 @@ import json
 import logging
 from functools import lru_cache
 from typing import Any, Iterable, Optional, cast
+from urllib.parse import parse_qs, urlparse
 
 import requests
 from dockerflow import checks
@@ -31,6 +32,14 @@ JIRA_REQUIRED_PERMISSIONS = {
     "DELETE_ISSUES",
     "EDIT_ISSUES",
 }
+
+
+class JiraAuthenticationError(Exception):
+    """Jira rejected our credentials.
+
+    Raised rather than swallowed so an inbound event is retried instead of
+    being acknowledged as "nothing to do".
+    """
 
 
 class JiraService:
@@ -239,6 +248,48 @@ class JiraService:
             icon_title=icon_url,
         )
 
+    def get_linked_bugzilla_bug_id(self, issue_key: str) -> Optional[int]:
+        """Return the Bugzilla bug id linked to a Jira issue, or `None`.
+
+        JBI writes this link itself on every issue it creates
+        (`add_link_to_bugzilla`), using the bug id as the remote link's
+        `globalId`, so it is the authoritative issue -> bug direction. The
+        link URL is parsed as a fallback for issues linked by hand.
+        """
+        try:
+            links = self.client.get_issue_remote_links(issue_key)
+        except requests_exceptions.HTTPError as exc:
+            if getattr(exc.response, "status_code", None) != 404:
+                raise
+            # Jira answers 404 both for "no such issue" and for "you cannot
+            # see it", including when the credentials have stopped working.
+            # Those need opposite handling: the first means the event is
+            # genuinely uncorrelated and should be acknowledged, the second
+            # is an outage whose events must be redelivered once access is
+            # restored. Returning None for both silently discards every
+            # inbound event for the duration of a credentials failure.
+            # Same defence as `BugzillaClient.get_bug`: confirm we are
+            # authenticated before concluding the issue does not exist.
+            if not self.is_authenticated():
+                raise JiraAuthenticationError(
+                    f"cannot read issue {issue_key}: Jira credentials are not working"
+                ) from exc
+            logger.error("Could not read remote links of issue %s", issue_key)
+            return None
+
+        for link in links or []:
+            global_id = str(link.get("globalId") or "")
+            if global_id.isdigit():
+                return int(global_id)
+
+            url = (link.get("object") or {}).get("url") or ""
+            if "show_bug.cgi" in url:
+                bug_ids = parse_qs(urlparse(url).query).get("id") or []
+                if bug_ids and bug_ids[0].isdigit():
+                    return int(bug_ids[0])
+
+        return None
+
     def clear_assignee(self, context: ActionContext):
         """Clear the assignee of the specified Jira issue."""
         issue_key = context.jira.issue
@@ -252,6 +303,25 @@ class JiraService:
         if len(users) != 1:
             raise ValueError(f"User {email} not found")
         return users[0]
+
+    def assign_jira_user_by_account_id(self, context: ActionContext, account_id: str):
+        """Set the assignee from a known Jira accountId, raise if it fails.
+
+        Used when the identity map resolved the person already (R-11 tier 1),
+        so no email lookup is needed -- which is the whole point for users
+        whose Jira email is hidden or differs from their BMO one.
+        """
+        issue_key = context.jira.issue
+        assert issue_key  # Until we have more fine-grained typing of contexts
+
+        try:
+            return self.update_issue_field(
+                context, "assignee", account_id, wrap_value="accountId"
+            )
+        except (requests_exceptions.HTTPError, IOError) as exc:
+            raise ValueError(
+                f"Could not assign {account_id} to issue {issue_key}"
+            ) from exc
 
     def assign_jira_user(self, context: ActionContext, email: str):
         """Set the assignee of the specified Jira issue, raise if fails."""
@@ -300,6 +370,31 @@ class JiraService:
             extra={"response": response, **context.model_dump()},
         )
         return response
+
+    def get_issue_status_category(
+        self, context: ActionContext, issue_key: str
+    ) -> Optional[str]:
+        """Return the issue's status category key, or `None` if unavailable.
+
+        Jira statuses are per-project and freely renamed, but every status
+        belongs to one of three built-in categories (`new`, `indeterminate`,
+        `done`). Callers use this to reason about an issue's state without
+        knowing a project's workflow -- eg. "is this issue already closed?".
+        """
+        issue = self.get_issue(context, issue_key)
+        if not issue:
+            return None
+        category = (
+            issue.get("fields", {}).get("status", {}).get("statusCategory", {}) or {}
+        )
+        key = category.get("key")
+        return str(key) if key else None
+
+    def issue_is_in_terminal_state(
+        self, context: ActionContext, issue_key: str
+    ) -> bool:
+        """Return True when the issue is in a `done`-category status."""
+        return self.get_issue_status_category(context, issue_key) == "done"
 
     def update_issue_status(self, context: ActionContext, jira_status: str):
         """Update the status of the Jira issue"""
@@ -363,6 +458,13 @@ class JiraService:
             jira_status,
             **kwargs,
         )
+
+    def is_authenticated(self) -> bool:
+        """Whether the configured credentials currently work."""
+        try:
+            return bool(self.client.myself())
+        except Exception:
+            return False
 
     def update_issue_summary(self, context: ActionContext):
         """Update's an issue's summary with the description of an incoming bug"""
@@ -429,6 +531,38 @@ class JiraService:
             context, field="components", value=jira_components
         )
         return resp, missing_components
+
+    def get_issue_labels(
+        self, context: Optional[ActionContext], issue_key: Optional[str]
+    ) -> list[str]:
+        """Return an issue's current labels, or `[]` if unreadable.
+
+        Used by the sync-stop check on the reverse path, where the issue's
+        current labels are the only way to know whether a human has paused
+        this pair.
+
+        `context` may be `None` for callers outside a forward action -- the
+        inbound path has a `ReverseContext`, not an `ActionContext` -- in
+        which case the issue is fetched without the action logging context.
+        """
+        if not issue_key:
+            return []
+
+        if context is None:
+            try:
+                issue = self.client.get_issue(issue_key, fields="labels")
+            except requests_exceptions.HTTPError as exc:
+                if getattr(exc.response, "status_code", None) != 404:
+                    raise
+                logger.error("Could not read labels of issue %s", issue_key)
+                return []
+        else:
+            issue = self.get_issue(context, issue_key)
+
+        if not issue:
+            return []
+        labels = issue.get("fields", {}).get("labels") or []
+        return [str(label) for label in labels]
 
     def update_issue_labels(
         self, issue_key: str, add: Iterable[str], remove: Optional[Iterable[str]]

@@ -97,7 +97,7 @@ def test_request_is_ignored_because_private(
     with pytest.raises(IgnoreInvalidRequestError) as exc_info:
         execute_action(request=webhook, actions=actions)
 
-    assert str(exc_info.value) == "private bugs are not supported"
+    assert str(exc_info.value) == "restricted bugs are not supported: bug is private"
 
 
 def test_added_comment_without_linked_issue_is_ignored(
@@ -327,10 +327,14 @@ async def test_execute_or_queue_exception(
     bugzilla_webhook_request,
 ):
     mock_queue.is_blocked.return_value = False
-    # should trigger an exception for this scenario
-    await execute_or_queue(
-        request=bugzilla_webhook_request, queue=mock_queue, actions=actions
-    )
+    # Force an unexpected failure inside execute_action. This used to happen
+    # implicitly, via the MagicMock bug returned by the refresh, but the
+    # restriction guard now rejects that mock before it can blow up further
+    # down -- so the failure is made explicit rather than incidental.
+    with mock.patch("jbi.runner.execute_action", side_effect=ValueError("boom")):
+        await execute_or_queue(
+            request=bugzilla_webhook_request, queue=mock_queue, actions=actions
+        )
     mock_queue.is_blocked.assert_called_once()
     mock_queue.postpone.assert_not_called()
     mock_queue.track_failed.assert_called_once()
@@ -873,3 +877,384 @@ def test_tag_added_to_bug_with_linked_issue_triggers_resync(
     mocked_jira.update_issue_field.assert_any_call(
         key="JBI-234", fields={"summary": mock.ANY}
     )
+
+
+# --- R-01: Product/Component scope gate (plan D2) ---------------------------
+
+
+@pytest.mark.parametrize(
+    "scope,product,component,expected_sync",
+    [
+        # No scope configured: today's behavior, everything in scope.
+        (None, "Core", "Machine Learning: On-Device", True),
+        # Exact Product::Component match.
+        (
+            ["Core::Machine Learning: On-Device"],
+            "Core",
+            "Machine Learning: On-Device",
+            True,
+        ),
+        # Bare product entry matches every component of that product.
+        (["Core"], "Core", "Some Other Component", True),
+        # Case-insensitive: BMO names are display strings.
+        (
+            ["core::machine learning: on-device"],
+            "Core",
+            "Machine Learning: On-Device",
+            True,
+        ),
+        # Out of scope: same product, different component.
+        (
+            ["Core::Machine Learning: On-Device"],
+            "Core",
+            "Networking",
+            False,
+        ),
+        # Out of scope: different product entirely.
+        (["Core"], "Firefox", "General", False),
+    ],
+)
+def test_product_component_scope_gate(
+    webhook_request_factory,
+    action_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    scope,
+    product,
+    component,
+    expected_sync,
+):
+    action = action_factory(
+        whiteboard_tag="devtest",
+        parameters__jira_project_key="JBI",
+        parameters__sync_products_components=scope,
+    )
+    actions = Actions(root=[action])
+    webhook = webhook_request_factory(
+        bug__product=product,
+        bug__component=component,
+        bug__see_also=[],
+    )
+    mocked_bugzilla.get_bug.return_value = webhook.bug
+
+    if expected_sync:
+        execute_action(request=webhook, actions=actions)
+        assert mocked_jira.create_issue.called
+    else:
+        with pytest.raises(IgnoreInvalidRequestError) as exc_info:
+            execute_action(request=webhook, actions=actions)
+        assert "out of scope" in str(exc_info.value)
+        assert not mocked_jira.create_issue.called
+
+
+def test_scope_gate_keeps_in_scope_actions_when_another_is_filtered_out(
+    webhook_request_factory, action_factory, mocked_jira, mocked_bugzilla
+):
+    """A bug matching two tags must still sync through the action whose scope
+    covers it, even when the other action's scope excludes the bug."""
+    in_scope = action_factory(
+        whiteboard_tag="devtest",
+        parameters__jira_project_key="JBI",
+        parameters__sync_products_components=["Core"],
+    )
+    out_of_scope = action_factory(
+        whiteboard_tag="other",
+        parameters__jira_project_key="OTHER",
+        parameters__sync_products_components=["Firefox"],
+    )
+    actions = Actions(root=[in_scope, out_of_scope])
+    webhook = webhook_request_factory(
+        bug__product="Core",
+        bug__component="General",
+        bug__whiteboard="[devtest][other]",
+        bug__see_also=[],
+    )
+    mocked_bugzilla.get_bug.return_value = webhook.bug
+
+    details = execute_action(request=webhook, actions=actions)
+
+    assert list(details.keys()) == ["devtest"]
+
+
+def test_scope_gate_uses_refreshed_bug_data(
+    webhook_request_factory, action_factory, mocked_jira, mocked_bugzilla, bug_factory
+):
+    """Scope is evaluated on the refreshed bug: a bug whose component was moved
+    into scope after the webhook fired must sync."""
+    action = action_factory(
+        whiteboard_tag="devtest",
+        parameters__jira_project_key="JBI",
+        parameters__sync_products_components=["Core::Machine Learning: On-Device"],
+    )
+    actions = Actions(root=[action])
+    webhook = webhook_request_factory(bug__product="Core", bug__component="Networking")
+    mocked_bugzilla.get_bug.return_value = bug_factory(
+        id=webhook.bug.id,
+        product="Core",
+        component="Machine Learning: On-Device",
+        see_also=[],
+    )
+
+    execute_action(request=webhook, actions=actions)
+
+    assert mocked_jira.create_issue.called
+
+
+# --- R-04: priority/severity threshold (plan D3) ----------------------------
+
+
+@pytest.mark.parametrize(
+    "min_priority,min_severity,priority,severity,expected_create",
+    [
+        # No thresholds configured: today's behavior.
+        (None, None, "", "--", True),
+        # At or above the priority bar.
+        ("P2", None, "P1", "--", True),
+        ("P2", None, "P2", "--", True),
+        # Below the priority bar.
+        ("P2", None, "P3", "--", False),
+        # Unset priority counts as below the bar (pre-triage bugs stay out).
+        ("P2", None, "", "--", False),
+        ("P2", None, "--", "--", False),
+        # Severity behaves the same way.
+        (None, "S2", "", "S1", True),
+        (None, "S2", "", "S3", False),
+        (None, "S2", "", "N/A", False),
+        # Both configured: both must be met.
+        ("P2", "S2", "P1", "S1", True),
+        ("P2", "S2", "P1", "S3", False),
+        ("P2", "S2", "P3", "S1", False),
+    ],
+)
+def test_priority_severity_threshold_gate(
+    webhook_request_factory,
+    action_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    min_priority,
+    min_severity,
+    priority,
+    severity,
+    expected_create,
+):
+    action = action_factory(
+        whiteboard_tag="devtest",
+        parameters__jira_project_key="JBI",
+        parameters__min_priority=min_priority,
+        parameters__min_severity=min_severity,
+    )
+    actions = Actions(root=[action])
+    webhook = webhook_request_factory(
+        bug__priority=priority, bug__severity=severity, bug__see_also=[]
+    )
+    mocked_bugzilla.get_bug.return_value = webhook.bug
+
+    execute_action(request=webhook, actions=actions)
+
+    assert mocked_jira.create_issue.called is expected_create
+
+
+def test_threshold_gate_does_not_apply_to_already_linked_bugs(
+    webhook_request_factory,
+    action_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    settings,
+):
+    """Once a bug has a linked Jira issue we keep syncing it even if it is
+    below the threshold: silently stranding an existing issue is worse than
+    never having created it."""
+    action = action_factory(
+        whiteboard_tag="devtest",
+        parameters__jira_project_key="JBI",
+        parameters__min_priority="P1",
+    )
+    actions = Actions(root=[action])
+    webhook = webhook_request_factory(
+        bug__priority="P5",
+        bug__see_also=[f"{settings.jira_base_url}browse/JBI-234"],
+        event__action="modify",
+        event__routing_key="bug.modify:assigned_to",
+        event__changes=[
+            factories.WebhookEventChangeFactory(
+                field="summary", removed="old", added="new"
+            )
+        ],
+    )
+    mocked_bugzilla.get_bug.return_value = webhook.bug
+    mocked_jira.get_issue.return_value = {"fields": {"project": {"key": "JBI"}}}
+
+    execute_action(request=webhook, actions=actions)
+
+    assert not mocked_jira.create_issue.called
+    assert mocked_jira.update_issue_field.called
+
+
+def test_below_threshold_bug_is_logged_as_ignored(
+    webhook_request_factory, action_factory, mocked_jira, mocked_bugzilla, capturelogs
+):
+    action = action_factory(
+        whiteboard_tag="devtest",
+        parameters__jira_project_key="JBI",
+        parameters__min_priority="P1",
+    )
+    actions = Actions(root=[action])
+    webhook = webhook_request_factory(bug__priority="P4", bug__see_also=[])
+    mocked_bugzilla.get_bug.return_value = webhook.bug
+
+    with capturelogs.for_logger("jbi.runner").at_level(logging.INFO):
+        execute_action(request=webhook, actions=actions)
+
+    assert any(
+        "below the sync threshold" in record.message for record in capturelogs.records
+    )
+    assert not mocked_jira.create_issue.called
+
+
+# --- Invariant C, BMO side: forward-path echo gate (plan D6b) ---------------
+
+
+def test_event_authored_by_jbi_is_ignored(
+    webhook_request_factory, actions, mocked_jira, mocked_bugzilla, settings
+):
+    """A reverse write into BMO fires this webhook like any human edit. Without
+    this gate it would bounce straight back into Jira."""
+    webhook = webhook_request_factory(event__user__login="jbi-bot@mozilla.bugs")
+    mocked_bugzilla.get_bug.return_value = webhook.bug
+
+    with mock.patch.object(settings, "bugzilla_bot_login", "jbi-bot@mozilla.bugs"):
+        with mock.patch("jbi.runner.settings", settings):
+            with pytest.raises(IgnoreInvalidRequestError) as exc_info:
+                execute_action(request=webhook, actions=actions)
+
+    assert "authored by JBI itself" in str(exc_info.value)
+    assert not mocked_jira.create_issue.called
+    assert not mocked_jira.update_issue_field.called
+
+
+def test_event_authored_by_a_human_is_not_suppressed(
+    webhook_request_factory, actions, mocked_jira, mocked_bugzilla, settings
+):
+    webhook = webhook_request_factory(
+        event__user__login="person@mozilla.com", bug__see_also=[]
+    )
+    mocked_bugzilla.get_bug.return_value = webhook.bug
+
+    with mock.patch.object(settings, "bugzilla_bot_login", "jbi-bot@mozilla.bugs"):
+        with mock.patch("jbi.runner.settings", settings):
+            execute_action(request=webhook, actions=actions)
+
+    assert mocked_jira.create_issue.called
+
+
+def test_actorless_event_is_not_suppressed(
+    webhook_request_factory, actions, mocked_jira, mocked_bugzilla, settings
+):
+    """`WebhookEvent.user` is optional, and an admin- or migration-driven
+    change can arrive without one. Those fail open; D7's read-before-write is
+    the backstop for the echo case."""
+    webhook = webhook_request_factory(event__user=None, bug__see_also=[])
+    mocked_bugzilla.get_bug.return_value = webhook.bug
+
+    with mock.patch.object(settings, "bugzilla_bot_login", "jbi-bot@mozilla.bugs"):
+        with mock.patch("jbi.runner.settings", settings):
+            execute_action(request=webhook, actions=actions)
+
+    assert mocked_jira.create_issue.called
+
+
+def test_no_suppression_when_bot_login_is_unconfigured(
+    webhook_request_factory, actions, mocked_jira, mocked_bugzilla, settings
+):
+    """Unset `bugzilla_bot_login` (today's deployed state) must suppress
+    nothing at all."""
+    webhook = webhook_request_factory(
+        event__user__login="anyone@mozilla.com", bug__see_also=[]
+    )
+    mocked_bugzilla.get_bug.return_value = webhook.bug
+
+    assert settings.bugzilla_bot_login is None
+
+    execute_action(request=webhook, actions=actions)
+
+    assert mocked_jira.create_issue.called
+
+
+# --- Restricted bugs never reach Jira (security hardening) ------------------
+
+
+def test_group_restricted_bug_is_not_synced(
+    webhook_request_factory, actions, mocked_jira, mocked_bugzilla
+):
+    """`groups` is how BMO marks security/embargoed bugs. Checking only
+    `is_private` -- an optional payload field -- would let these through."""
+    webhook = webhook_request_factory(
+        bug__is_private=False, bug__groups=["core-security"]
+    )
+    mocked_bugzilla.get_bug.return_value = webhook.bug
+
+    with pytest.raises(IgnoreInvalidRequestError) as exc_info:
+        execute_action(request=webhook, actions=actions)
+
+    assert "core-security" in str(exc_info.value)
+    assert not mocked_jira.create_issue.called
+    assert not mocked_jira.update_issue_field.called
+
+
+def test_bug_missing_is_private_but_in_groups_is_not_synced(
+    webhook_request_factory, actions, mocked_jira, mocked_bugzilla
+):
+    """`is_private` is Optional, so an absent value reads as False. The
+    groups check is what makes that safe."""
+    webhook = webhook_request_factory(bug__is_private=None, bug__groups=["secure"])
+    mocked_bugzilla.get_bug.return_value = webhook.bug
+
+    with pytest.raises(IgnoreInvalidRequestError):
+        execute_action(request=webhook, actions=actions)
+
+    assert not mocked_jira.create_issue.called
+
+
+def test_bug_restricted_after_the_webhook_fired_is_not_synced(
+    webhook_request_factory, actions, mocked_jira, mocked_bugzilla, bug_factory
+):
+    """The payload says public, the refreshed bug says restricted -- the case
+    the dead-letter queue makes likely, since an item can sit there for days.
+    `BugNotAccessibleError` does not cover it: a bug restricted to a group JBI
+    belongs to stays perfectly readable."""
+    webhook = webhook_request_factory(bug__is_private=False, bug__groups=[])
+    mocked_bugzilla.get_bug.return_value = bug_factory(
+        id=webhook.bug.id, whiteboard="[devtest]", groups=["core-security"]
+    )
+
+    with pytest.raises(IgnoreInvalidRequestError) as exc_info:
+        execute_action(request=webhook, actions=actions)
+
+    assert "core-security" in str(exc_info.value)
+    assert not mocked_jira.create_issue.called
+
+
+def test_a_real_restricted_bug_payload_is_rejected(
+    webhook_request_factory, actions, mocked_jira, mocked_bugzilla
+):
+    """The shape BMO actually sends for a group-restricted bug, captured from
+    bugzilla-dev: `is_private: true`, **no** `groups` key, and the summary
+    redacted to null. The REST API reports the opposite for the same bug
+    (`is_private: None` with `groups` populated), which is why the guard
+    checks both signals rather than picking one."""
+    webhook = webhook_request_factory(
+        bug__is_private=True,
+        bug__groups=None,
+        bug__summary=None,
+        bug__whiteboard="[devtest]",
+    )
+    mocked_bugzilla.get_bug.return_value = webhook.bug
+
+    with pytest.raises(IgnoreInvalidRequestError) as exc_info:
+        execute_action(request=webhook, actions=actions)
+
+    assert "restricted" in str(exc_info.value)
+    # Crucially, rejected *before* the refresh: JBI's own account may belong
+    # to the group, so a re-fetch would return the full, unredacted bug.
+    assert not mocked_bugzilla.get_bug.called
+    assert not mocked_jira.create_issue.called

@@ -1,0 +1,136 @@
+{
+    "issue": {
+        "self": "https://mozilla-hub-sandbox-721.atlassian.net/rest/api/2/issue/747979",
+        "id": 747979,
+        "key": "AIPLAT-1306",
+        "changelog": {
+            "startAt": 0,
+            "maxResults": 0,
+            "total": 0,
+            "histories": null
+        },
+        "fields": {
+            "statusCategory": {
+                "self": "https://mozilla-hub-sandbox-721.atlassian.net/rest/api/2/statuscategory/4",
+                "id": 4,
+                "key": "indeterminate",
+                "colorName": "yellow",
+                "name": "In Progress"
+            },
+            "resolution": null,
+            "labels": [
+                "bugzilla",
+                "jbi-sandbox"
+            ],
+            "issuelinks": [],
+            "assignee": {
+                "self": "https://mozilla-hub-sandbox-721.atlassian.net/rest/api/2/user?accountId=712020%3Ab4494526-035e-4c6a-9d91-d42e37912bc9",
+                "name": null,
+                "key": null,
+                "accountId": "712020:b4494526-035e-4c6a-9d91-d42e37912bc9",
+                "emailAddress": null,
+                "displayName": "John Gauf",
+                "active": true,
+                "timeZone": "America/Indiana/Indianapolis",
+                "groups": null,
+                "locale": null,
+                "accountType": "atlassian"
+            },
+            "components": [],
+            "reporter": {
+                "accountId": "712020:b4494526-035e-4c6a-9d91-d42e37912bc9",
+                "emailAddress": null,
+                "displayName": "John Gauf",
+                "active": true
+            },
+            "issuetype": {
+                "namedValue": "Bug",
+                "self": "https://mozilla-hub-sandbox-721.atlassian.net/rest/api/2/issuetype/10020",
+                "id": 10020,
+                "description": "",
+                "iconUrl": "https://mozilla-hub-sandbox-721.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/10303?size=medium",
+                "name": "Bug",
+                "untranslatedName": null,
+                "subtask": false,
+                "fields": {},
+                "statuses": [],
+                "hierarchyLevel": 0
+            },
+            "project": {
+                "self": "https://mozilla-hub-sandbox-721.atlassian.net/rest/api/2/project/17094",
+                "id": 17094,
+                "key": "AIPLAT",
+                "name": "Fx AI Platform",
+                "description": null,
+                "issuetypes": null,
+                "projectCategory": {
+                    "self": "https://mozilla-hub-sandbox-721.atlassian.net/rest/api/2/projectCategory/10010",
+                    "id": 10010,
+                    "name": "Firefox",
+                    "description": ""
+                },
+                "email": null,
+                "lead": null,
+                "components": null,
+                "versions": null,
+                "projectTypeKey": "software",
+                "simplified": false
+            },
+            "updated": 1790259123973,
+            "description": "Throwaway bug for testing the BMO<->Jira bidirectional integration harness. Safe to close or delete.",
+            "summary": "JBI harness: renamed from Jira",
+            "environment": null,
+            "duedate": null,
+            "comment": {
+                "maxResults": 0,
+                "total": 0,
+                "startAt": 0,
+                "comments": [],
+                "last": false
+            },
+            "fixVersions": [],
+            "priority": {
+                "self": "https://mozilla-hub-sandbox-721.atlassian.net/rest/api/2/priority/10004",
+                "id": 10004,
+                "name": "None",
+                "iconUrl": "https://mozilla-hub-sandbox-721.atlassian.net/images/icons/priorities/trivial.svg",
+                "namedValue": "None"
+            },
+            "status": {
+                "untranslatedNameValue": null,
+                "self": "https://mozilla-hub-sandbox-721.atlassian.net/rest/api/2/status/3",
+                "description": "This issue is being actively worked on at the moment by the assignee.",
+                "iconUrl": "https://mozilla-hub-sandbox-721.atlassian.net/images/icons/statuses/inprogress.png",
+                "name": "In Progress",
+                "untranslatedName": null,
+                "id": 3,
+                "statusCategory": {
+                    "self": "https://mozilla-hub-sandbox-721.atlassian.net/rest/api/2/statuscategory/4",
+                    "id": 4,
+                    "key": "indeterminate",
+                    "colorName": "yellow",
+                    "name": "In Progress"
+                }
+            },
+            "created": 1789502051183,
+            "security": null,
+            "attachment": [],
+            "customfield_10037": null
+        },
+        "renderedFields": null
+    },
+    "user": {
+        "self": null,
+        "name": "712020:b4494526-035e-4c6a-9d91-d42e37912bc9",
+        "key": "712020:b4494526-035e-4c6a-9d91-d42e37912bc9",
+        "accountId": "712020:b4494526-035e-4c6a-9d91-d42e37912bc9",
+        "emailAddress": "jgauf@mozilla.com",
+        "displayName": "John Gauf",
+        "active": true,
+        "timeZone": null,
+        "groups": null,
+        "locale": "en_US",
+        "accountType": "atlassian"
+    },
+    "timestamp": 1790259126318
+}
