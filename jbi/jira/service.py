@@ -316,6 +316,17 @@ class JiraService:
             )
             return None
 
+        # `set_issue_status` would otherwise POST a null transition id and fail,
+        # which queues the event and blocks every later event for this bug.
+        if self.client.get_transition_id_to_status_name(issue_key, jira_status) is None:
+            logger.warning(
+                "No transition to status %s is available for Jira issue %s, skipping",
+                jira_status,
+                issue_key,
+                extra=context.model_dump(),
+            )
+            return None
+
         kwargs: dict[str, Any] = {}
         if jira_status == "Cancelled":
             # Check if resolution field is available on the transition screen
