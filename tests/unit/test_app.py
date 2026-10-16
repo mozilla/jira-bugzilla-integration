@@ -121,3 +121,13 @@ async def test_request_id_is_passed_down_to_logger_contexts(
 
     runner_logs = [r for r in caplog.records if r.name == "jbi.runner"]
     assert runner_logs[0].rid == "foo-bar"
+
+
+def test_sync_endpoints_survive_many_requests_with_sentry(anon_client):
+    """
+    sentry-sdk < 2.72 re-wrapped sync endpoints on every request with
+    FastAPI >= 0.137, eventually raising RecursionError (and failing
+    /__lbheartbeat__, which restarted the pods).
+    """
+    for _ in range(1500):
+        assert anon_client.get("/__lbheartbeat__").status_code == 200
