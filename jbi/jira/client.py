@@ -81,6 +81,8 @@ class JiraClient(Jira):
     create_issue_link = instrumented_method(Jira.create_issue_link)
     remove_issue_link = instrumented_method(Jira.remove_issue_link)
     get_project = instrumented_method(Jira.get_project)
+    get_issue_remote_links = instrumented_method(Jira.get_issue_remote_links)
+    myself = instrumented_method(Jira.myself)
 
     @instrumented_method
     def get_issue_transitions_with_fields(self, issue_key: str) -> list[dict]:

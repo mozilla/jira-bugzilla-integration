@@ -133,6 +133,125 @@ class ActionParams(BaseModel, frozen=True):
     issue_type_map: dict[str, str] = {"task": "Task", "defect": "Bug"}
     linked_project_excludes: list[str] = ["BZFFX"]
 
+    # --- Bidirectional sync scaffolding (docs/bmo-jira-bidirectional-integration-plan.md) ---
+    # These are intentionally no-ops until the deliverables that consume them
+    # land (see the plan's Phase 1 D1-D12). Every field defaults so that
+    # existing `config.*.yaml` files keep parsing unchanged and existing
+    # actions keep their current behavior.
+
+    # R-01: restrict sync to a Product/Component allowlist. `None` means
+    # "no restriction", i.e. today's behavior (every bug matching the
+    # whiteboard tag is synced, regardless of Product/Component).
+    sync_products_components: Optional[list[str]] = None
+
+    # R-04: ignore bugs below a priority/severity threshold. `None` means
+    # "no threshold", i.e. today's behavior (every bug is synced regardless
+    # of priority/severity).
+    min_priority: Optional[str] = None
+    min_severity: Optional[str] = None
+
+    # R-11: enable identity-map-based resolution (YAML override + email
+    # fallback) for assignee sync and comment attribution. Defaults to off,
+    # which preserves today's email-only lookup in `find_jira_user`.
+    identity_map_enabled: bool = False
+
+    # Reverse (Jira -> BMO) status/resolution mapping, see plan section 4.1.
+    # `status_map` is many-to-one and therefore NOT invertible, so reverse
+    # status derives from Jira's built-in status category instead. These two
+    # settings only override that default behavior.
+    reverse_status_overrides: dict[str, str] = {}
+    default_reverse_resolution: Optional[str] = None
+
+    # What to do when an inbound Jira payload carries no changelog, so JBI
+    # can see the issue's current state but not which field moved. Default
+    # off: "sync only what changed" is what stops a Jira event overwriting a
+    # BMO field a human just edited, and without a changelog there is also no
+    # previous value for the conflict rule to compare against. Turning this on
+    # accepts a full-state push from Jira on every event.
+    reverse_sync_without_changelog: bool = False
+
+    # An escape hatch for humans: adding this label to a Jira issue halts
+    # syncing for that bug/issue pair in BOTH directions, and removing it
+    # resumes. Unset means the feature is off for this action.
+    sync_stop_label: Optional[str] = None
+
+    # R-02 / R-03: Jira statuses used by the Phabricator review steps. `None`
+    # (the default) means the corresponding step does nothing, so adding the
+    # steps to an action's config without setting these is inert.
+    phabricator_review_status: Optional[str] = None
+    phabricator_changes_requested_status: Optional[str] = None
+
+    # Copying Jira comment *text* onto a bug is gated separately from field
+    # sync, and defaults off. A field value is a small, enumerable thing; a
+    # comment is free text that may quote an embargoed issue, and publishing
+    # it onto a world-readable bug cannot be undone. Enabling this asserts
+    # that the Automation rule sends `comment.visibility` and
+    # `fields.security`, which the guard needs to fail closed (R-12).
+    reverse_comment_sync_enabled: bool = False
+
+    # Enables the Jira -> BMO inbound path (the `/jira_webhook` spine and its
+    # reverse field writers) for this action. Defaults to off: no inbound
+    # Jira event has any effect until an action opts in.
+    jira_inbound_enabled: bool = False
+
+    @field_validator("resolution_map")
+    @classmethod
+    def validate_resolution_map_is_invertible(cls, value: dict[str, str]):
+        """Reject a `resolution_map` that cannot be inverted (plan section 4.1).
+
+        The reverse direction recovers a BMO resolution by inverting this map,
+        which is only sound while it is injective. Every `resolution_map` in
+        config today is, so this codifies an existing property rather than
+        imposing a new one -- and a future many-to-one map fails loudly at
+        load instead of silently writing the wrong resolution to a bug.
+        """
+        seen: dict[str, str] = {}
+        collisions = []
+        for bmo_resolution, jira_resolution in value.items():
+            if jira_resolution in seen:
+                collisions.append(
+                    f"{jira_resolution!r} <- "
+                    f"{seen[jira_resolution]!r} and {bmo_resolution!r}"
+                )
+            else:
+                seen[jira_resolution] = bmo_resolution
+        if collisions:
+            raise ValueError(
+                "`resolution_map` must be invertible for reverse sync, but "
+                "these Jira resolutions map from several BMO resolutions: "
+                + "; ".join(collisions)
+            )
+        return value
+
+    @field_validator("reverse_status_overrides")
+    @classmethod
+    def validate_reverse_status_overrides(cls, value: dict[str, str]):
+        """Overrides are keyed by Jira status category, not status name."""
+        allowed = {"new", "indeterminate", "done"}
+        unknown = set(value) - allowed
+        if unknown:
+            raise ValueError(
+                "`reverse_status_overrides` keys must be Jira status "
+                f"categories {sorted(allowed)}, got {sorted(unknown)}"
+            )
+        return value
+
+    @field_validator("min_priority")
+    @classmethod
+    def validate_min_priority(cls, value: Optional[str]):
+        """`min_priority` must be a BMO priority (R-04)."""
+        if value is not None and value not in ("P1", "P2", "P3", "P4", "P5"):
+            raise ValueError(f"`min_priority` must be one of P1..P5, got {value!r}")
+        return value
+
+    @field_validator("min_severity")
+    @classmethod
+    def validate_min_severity(cls, value: Optional[str]):
+        """`min_severity` must be a BMO severity (R-04)."""
+        if value is not None and value not in ("S1", "S2", "S3", "S4"):
+            raise ValueError(f"`min_severity` must be one of S1..S4, got {value!r}")
+        return value
+
 
 class Action(BaseModel, frozen=True):
     """
