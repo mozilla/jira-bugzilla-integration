@@ -40,6 +40,28 @@ class Settings(BaseSettings):
     bugzilla_base_url: str = "https://bugzilla-dev.allizom.org"
     bugzilla_api_key: str
 
+    # Identity of JBI's own service accounts, used to suppress the events its
+    # own writes generate (Invariant C of the bidirectional sync plan). Unset
+    # means "no suppression", which is today's behavior.
+    jira_bot_account_id: Optional[str] = None
+    bugzilla_bot_login: Optional[str] = None
+
+    # Pub/Sub pull consumer (`python -m jbi consume`). Unset project/
+    # subscription means the consumer cannot start; the web service is
+    # unaffected either way.
+    pubsub_project_id: Optional[str] = None
+    pubsub_subscription_id: Optional[str] = None
+    # Never 1: a single slot serialises every ordering key, so a backlog
+    # cannot drain before the pull window closes and held ordered messages
+    # are stranded. Per-key ordering is the subscription's job, not this
+    # setting's.
+    pubsub_max_concurrent_messages: int = 10
+    pubsub_max_lease_duration: int = 600
+    # Must stay below both the lease duration and any Cloud Run job task
+    # timeout, so the process exits cleanly rather than being killed.
+    pubsub_pull_timeout_seconds: int = 540
+    pubsub_shutdown_grace_seconds: int = 3
+
     # Phabricator
     phabricator_base_url: str = "https://phabricator.services.mozilla.com"
 

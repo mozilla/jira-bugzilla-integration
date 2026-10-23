@@ -18,8 +18,10 @@ from urllib.parse import parse_qs, urlparse
 from requests import exceptions as requests_exceptions
 
 from jbi import Operation
-from jbi.bugzilla.models import JIRA_HOSTNAMES
+from jbi.bugzilla.models import JIRA_HOSTNAMES, WebhookAttachment
 from jbi.environment import get_settings
+from jbi.identity import get_identity_map
+from jbi.sync_markers import was_written_by_reverse_sync
 
 
 class StepStatus(Enum):
@@ -64,6 +66,46 @@ def create_comment(context: ActionContext, *, jira_service: JiraService) -> Step
                 extra=context.model_dump(),
             )
             return (StepStatus.NOOP, context)
+
+        if was_written_by_reverse_sync(bug.comment.body):
+            # JBI copied this comment from Jira; sending it back would nest
+            # the attribution and grow the text on every hop.
+            logger.info(
+                "Comment %s on Bug %s came from JBI's reverse sync; not "
+                "copying it to Jira",
+                bug.comment.id,
+                bug.id,
+                extra=context.update(operation=Operation.IGNORE).model_dump(),
+            )
+            return (StepStatus.NOOP, context)
+
+        if bug.comment.is_private:
+            # A private comment on an otherwise-public bug is still
+            # confidential. `BugzillaClient.get_bug` deliberately re-fetches
+            # it when JBI's account can read it, so without this guard the
+            # text would be copied into Jira verbatim.
+            logger.info(
+                "Comment %s on Bug %s is private, not copying it to Jira",
+                bug.comment.id,
+                bug.id,
+                extra=context.update(operation=Operation.IGNORE).model_dump(),
+            )
+            return (StepStatus.NOOP, context)
+
+    if (
+        context.event.target == "attachment"
+        and bug.attachment
+        and bug.attachment.is_private
+    ):
+        # Attachment events post the attachment's description and filename
+        # into Jira; both are confidential on a private attachment.
+        logger.info(
+            "Attachment %s on Bug %s is private, not copying it to Jira",
+            bug.attachment.id,
+            bug.id,
+            extra=context.update(operation=Operation.IGNORE).model_dump(),
+        )
+        return (StepStatus.NOOP, context)
 
     jira_response = jira_service.add_jira_comment(context)
     context = context.append_responses(jira_response)
@@ -140,6 +182,16 @@ def maybe_add_phabricator_link(
 
     attachment = context.bug.attachment
 
+    if attachment.is_private:
+        # The remote link carries the attachment description as its title.
+        logger.info(
+            "Attachment %s on Bug %s is private, not linking it in Jira",
+            attachment.id,
+            context.bug.id,
+            extra=context.update(operation=Operation.IGNORE).model_dump(),
+        )
+        return (StepStatus.NOOP, context)
+
     settings = get_settings()
     phabricator_url = attachment.phabricator_url(base_url=settings.phabricator_base_url)
 
@@ -174,6 +226,106 @@ def maybe_add_phabricator_link(
         )
 
     return (StepStatus.NOOP, context)
+
+
+def maybe_update_issue_status_on_patch(
+    context: ActionContext,
+    *,
+    parameters: ActionParams,
+    jira_service: JiraService,
+) -> StepResult:
+    """Move the Jira issue to the configured review status when a patch is posted (R-02).
+
+    Jira should reflect that code review is the real state of the work as soon
+    as a Phabricator patch is attached to the bug. Inert unless the action
+    configures `phabricator_review_status`.
+    """
+    target_status = parameters.phabricator_review_status
+    if not target_status:
+        return (StepStatus.NOOP, context)
+
+    if context.event.target != "attachment" or not context.bug.attachment:
+        return (StepStatus.NOOP, context)
+
+    attachment = context.bug.attachment
+    if not attachment.is_phabricator_patch():
+        return (StepStatus.NOOP, context)
+
+    if attachment.is_obsolete:
+        # An abandoned patch is not a request for review.
+        return (StepStatus.NOOP, context)
+
+    issue_key = context.jira.issue
+    assert issue_key  # Attachment events only run on linked bugs.
+
+    if jira_service.issue_is_in_terminal_state(context, issue_key):
+        # Never drag a closed issue back into review: the bug may have been
+        # resolved while a stale patch was still being attached.
+        logger.info(
+            "Issue %s is in a terminal state, not moving it to %r",
+            issue_key,
+            target_status,
+            extra=context.update(operation=Operation.IGNORE).model_dump(),
+        )
+        return (StepStatus.NOOP, context)
+
+    resp = jira_service.update_issue_status(context, target_status)
+    context = context.append_responses(resp)
+    return (StepStatus.SUCCESS, context)
+
+
+def _review_flag_value(attachment: WebhookAttachment) -> Optional[str]:
+    """Return the value of the attachment's `review` flag, if any."""
+    for flag in attachment.flags or []:
+        if flag.name == "review":
+            return flag.value
+    return None
+
+
+def sync_phabricator_review_state(
+    context: ActionContext,
+    *,
+    parameters: ActionParams,
+    jira_service: JiraService,
+) -> StepResult:
+    """Move the issue out of review when a reviewer requests changes (R-03).
+
+    A `review-` flag means the patch is back with its author, so leaving the
+    issue in review would wrongly imply reviewers are the bottleneck. `review+`
+    and `review?` are left alone: the former is handled by the bug's own status
+    change, and the latter is the request that R-02 already reacted to.
+
+    Inert unless the action configures `phabricator_changes_requested_status`.
+    """
+    target_status = parameters.phabricator_changes_requested_status
+    if not target_status:
+        return (StepStatus.NOOP, context)
+
+    if context.event.target != "attachment" or not context.bug.attachment:
+        return (StepStatus.NOOP, context)
+
+    attachment = context.bug.attachment
+    if not attachment.is_phabricator_patch():
+        return (StepStatus.NOOP, context)
+
+    if _review_flag_value(attachment) != "-":
+        return (StepStatus.NOOP, context)
+
+    issue_key = context.jira.issue
+    assert issue_key  # Attachment events only run on linked bugs.
+
+    if jira_service.issue_is_in_terminal_state(context, issue_key):
+        logger.info(
+            "Issue %s is in a terminal state, not moving it to %r",
+            issue_key,
+            target_status,
+            extra=context.update(operation=Operation.IGNORE).model_dump(),
+        )
+        return (StepStatus.NOOP, context)
+
+    resp = jira_service.update_issue_status(context, target_status)
+    context = context.append_responses(resp)
+    return (StepStatus.SUCCESS, context)
 
 
 def maybe_delete_duplicate(
@@ -220,8 +372,27 @@ def add_jira_comments_for_changes(
     return (StepStatus.SUCCESS, context)
 
 
+def _assign_from_identity_map(
+    context: ActionContext, parameters: ActionParams, jira_service: JiraService
+):
+    """Assign via the identity map, or return `None` to fall through (R-11).
+
+    Tier 1 of the resolution cascade documented in `jbi.identity`. Returning
+    `None` -- rather than raising -- is what makes the cascade a cascade: an
+    unmapped person is the normal case, not a failure.
+    """
+    if not parameters.identity_map_enabled:
+        return None
+
+    account_id = get_identity_map().jira_account_id_for(context.bug.assigned_to)
+    if not account_id:
+        return None
+
+    return jira_service.assign_jira_user_by_account_id(context, account_id)
+
+
 def maybe_assign_jira_user(
-    context: ActionContext, *, jira_service: JiraService
+    context: ActionContext, *, parameters: ActionParams, jira_service: JiraService
 ) -> StepResult:
     """Assign the user on the Jira issue, based on the Bugzilla assignee email.
 
@@ -238,7 +409,9 @@ def maybe_assign_jira_user(
             return (StepStatus.NOOP, context)
 
         try:
-            resp = jira_service.assign_jira_user(context, bug.assigned_to)  # type: ignore
+            resp = _assign_from_identity_map(
+                context, parameters, jira_service
+            ) or jira_service.assign_jira_user(context, bug.assigned_to)  # type: ignore
             context.append_responses(resp)
             return (StepStatus.SUCCESS, context)
         except ValueError as exc:
@@ -253,7 +426,9 @@ def maybe_assign_jira_user(
             resp = jira_service.clear_assignee(context)
         else:
             try:
-                resp = jira_service.assign_jira_user(context, bug.assigned_to)  # type: ignore
+                resp = _assign_from_identity_map(
+                    context, parameters, jira_service
+                ) or jira_service.assign_jira_user(context, bug.assigned_to)  # type: ignore
             except ValueError as exc:
                 logger.info(str(exc), extra=context.model_dump())
                 # If that failed then just fall back to clearing the assignee.
