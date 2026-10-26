@@ -5,6 +5,7 @@ authors = [
 license = {text = "MPL"}
 requires-python = "<3.15,>=3.12"
 dependencies = [
+    "google-cloud-pubsub>=2.31.0,<3.0.0",
     "fastapi>=0.141.1,<1.0.0",
     "pydantic[email]<3.0.0,>=2.12.3",
     "uvicorn[standard]>=0.49.0,<1.0.0",
@@ -69,6 +70,10 @@ env_files = [
 markers = [
     "no_mocked_bugzilla",
     "no_mocked_jira",
+    # End-to-end scenarios (tests/e2e). Excluded from `testpaths` above and
+    # self-skipping without sandbox credentials, so they never run by
+    # accident; see tests/e2e/README.md.
+    "e2e",
 ]
 
 [tool.mypy]
@@ -78,7 +83,7 @@ warn_return_any = true
 plugins = "pydantic.mypy"
 
 [[tool.mypy.overrides]]
-module = ["ruamel", "bugzilla", "atlassian", "atlassian.rest_client", "statsd.defaults.env", "dockerflow.*"]
+module = ["ruamel", "bugzilla", "atlassian", "atlassian.rest_client", "statsd.defaults.env", "dockerflow.*", "google.cloud.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

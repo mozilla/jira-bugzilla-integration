@@ -83,7 +83,10 @@ def test_traces_sampler(sampling_context, expected):
 @pytest.mark.asyncio
 async def test_errors_are_reported_to_sentry(anon_client, bugzilla_webhook_request):
     with patch("sentry_sdk.capture_event") as mocked:
-        with patch("jbi.router.execute_or_queue", side_effect=ValueError):
+        # The router now reaches the core through `jbi.ingest.ingest_event`;
+        # patching there keeps this testing "an unexpected error reaches
+        # Sentry" rather than the shape of the call chain.
+        with patch("jbi.router.ingest_event", side_effect=ValueError):
             with pytest.raises(ValueError):
                 anon_client.post(
                     "/bugzilla_webhook",
