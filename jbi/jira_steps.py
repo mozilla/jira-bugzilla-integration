@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Callable, Optional
 
 from requests import exceptions as requests_exceptions
 
+from jbi.bugzilla.client import error_detail
 from jbi.bugzilla.models import Bug
 from jbi.identity import UNASSIGNED_EMAIL, get_identity_map
 from jbi.jira_inbound.models import JiraWebhookRequest
@@ -168,6 +169,18 @@ def invert_priority_map(priority_map: dict[str, str]) -> dict[str, str]:
     for bmo, jira in priority_map.items():
         inverted.setdefault(jira, bmo)
     return inverted
+
+
+def _unset_priority_as_empty(value: Optional[str]) -> str:
+    """Collapse BMO's two spellings of "no priority" (`""` and `--`) into one.
+
+    `invert_priority_map` deliberately collapses both onto Jira's "None", and
+    returns whichever it saw first. A bug that has never been prioritised
+    reads `--`, so comparing the two strings as they are reports an edit that
+    never happened and the Jira change is dropped as a conflict.
+    """
+    stripped = (value or "").strip()
+    return "" if stripped == "--" else stripped
 
 
 # --- Reverse steps ----------------------------------------------------------
@@ -337,7 +350,8 @@ def writeback_priority(
     previous_jira = _previous_jira_value(context, "priority")
     previous_bmo = inverted.get(previous_jira) if previous_jira else None
     if previous_bmo is not None and bmo_wins_conflict(
-        previous_bmo, context.bug.priority
+        _unset_priority_as_empty(previous_bmo),
+        _unset_priority_as_empty(context.bug.priority),
     ):
         logger.info(
             "Bug %s priority changed independently (BMO %r); BMO wins",
@@ -544,10 +558,11 @@ class ReverseExecutor:
                 # rest of the pipeline -- a failed status write should still
                 # let the comment through.
                 logger.warning(
-                    "Reverse step %s rejected by Bugzilla (HTTP %s) for "
+                    "Reverse step %s rejected by Bugzilla (HTTP %s: %s) for "
                     "issue %s / Bug %s; continuing with the remaining steps",
                     step.__name__,
                     code,
+                    error_detail(exc.response),
                     context.issue_key,
                     context.bug.id,
                     extra=context.model_dump(),

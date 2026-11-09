@@ -619,6 +619,36 @@ wheels = [
 ]
 
 [[package]]
+name = "google-cloud-core"
+version = "2.8.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "google-api-core" },
+    { name = "google-auth" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/55/71/d6081acadf55d4233271c39860f0d140ef61fbdb4bceb2075e9c2905d947/google_cloud_core-2.8.0.tar.gz", hash = "sha256:365f8e4518ae81c8101b8dea5fc1c32a960badedb8b511f19db2843cbbd285d2", size = 36605, upload-time = "2026-09-29T19:25:59.275Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/12/ed/1b09640a565e5d34d4e517463f65a67a11f9dcdeb6b6e8220f2d06aaf489/google_cloud_core-2.8.0-py3-none-any.whl", hash = "sha256:e235b0952f7ffe7b9c71a4cf96b506d9cfb557e22557c412f0df9b7068b5d007", size = 31048, upload-time = "2026-09-29T19:25:35.361Z" },
+]
+
+[[package]]
+name = "google-cloud-firestore"
+version = "2.34.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "google-api-core", extra = ["grpc"] },
+    { name = "google-auth" },
+    { name = "google-cloud-core" },
+    { name = "grpcio" },
+    { name = "proto-plus" },
+    { name = "protobuf" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/fd/24/c578fe02430fcaa29dd487595463a4a2b7c7fa8879e24032d3d63f558488/google_cloud_firestore-2.34.1.tar.gz", hash = "sha256:d403b12375e4f68176bb638451417330a7a66d11c9cace98f7778109b884d9ab", size = 672743, upload-time = "2026-10-08T18:12:50.095Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e1/88/e064d77571324edaa78f0523620ad7076a74e5848c05d671fe440f665b67/google_cloud_firestore-2.34.1-py3-none-any.whl", hash = "sha256:6279f049336e49181e8c1d2dbf14e9c0cfb75ddf03c70971adc88fb272cdae29", size = 443943, upload-time = "2026-10-08T18:12:21.536Z" },
+]
+
+[[package]]
 name = "google-cloud-pubsub"
 version = "2.40.0"
 source = { registry = "https://pypi.org/simple" }
@@ -842,6 +872,7 @@ dependencies = [
     { name = "backoff" },
     { name = "dockerflow", extra = ["fastapi"] },
     { name = "fastapi" },
+    { name = "google-cloud-firestore" },
     { name = "google-cloud-pubsub" },
     { name = "jinja2" },
     { name = "pydantic", extra = ["email"] },
@@ -883,6 +914,7 @@ requires-dist = [
     { name = "backoff", specifier = ">=2.2.1,<3.0.0" },
     { name = "dockerflow", extras = ["fastapi"], specifier = "==2026.3.4" },
     { name = "fastapi", specifier = ">=0.141.1,<1.0.0" },
+    { name = "google-cloud-firestore", specifier = ">=2.21.0,<3.0.0" },
     { name = "google-cloud-pubsub", specifier = ">=2.31.0,<3.0.0" },
     { name = "jinja2", specifier = ">=3.1.6,<4.0.0" },
     { name = "pydantic", extras = ["email"], specifier = ">=2.12.3,<3.0.0" },

@@ -332,3 +332,249 @@ def test_closed_channel_is_matched_whatever_the_word_order(text, actions):
     message.ack_error = ValueError(text)
 
     make_callback(processor)(message)  # must not raise
+
+
+# --- Metrics ----------------------------------------------------------------
+
+
+@pytest.fixture
+def consumer_statsd():
+    with mock.patch("jbi.consumer.statsd") as patched:
+        yield patched
+
+
+def _names(calls):
+    return [call.args[0] for call in calls]
+
+
+def test_a_handled_message_is_counted_and_timed(actions, consumer_statsd):
+    processor = MessageProcessor(
+        actions,
+        ingest=mock.AsyncMock(return_value=IngestResult(outcome=IngestOutcome.HANDLED)),
+    )
+
+    processor.process(FakeMessage(jira_payload()))
+
+    assert _names(consumer_statsd.incr.call_args_list) == [
+        "jbi.consumer.received.count",
+        "jbi.consumer.outcome.handled.count",
+    ]
+    assert "jbi.consumer.process.timer" in _names(consumer_statsd.timing.call_args_list)
+
+
+def test_each_outcome_has_its_own_counter(actions, consumer_statsd):
+    for outcome in IngestOutcome:
+        processor = MessageProcessor(
+            actions,
+            ingest=mock.AsyncMock(return_value=IngestResult(outcome=outcome)),
+        )
+        processor.process(FakeMessage(jira_payload()))
+
+    counted = _names(consumer_statsd.incr.call_args_list)
+    for outcome in IngestOutcome:
+        assert f"jbi.consumer.outcome.{outcome}.count" in counted
+
+
+def test_an_undecodable_message_is_counted(actions, consumer_statsd):
+    MessageProcessor(actions, ingest=mock.AsyncMock()).process(
+        FakeMessage(None, data=b"garbage")
+    )
+
+    assert "jbi.consumer.undecodable.count" in _names(
+        consumer_statsd.incr.call_args_list
+    )
+
+
+def test_a_redelivery_is_counted(actions, consumer_statsd):
+    processor = MessageProcessor(
+        actions,
+        ingest=mock.AsyncMock(return_value=IngestResult(outcome=IngestOutcome.HANDLED)),
+    )
+    message = FakeMessage(jira_payload())
+    message.delivery_attempt = 3
+
+    processor.process(message)
+
+    assert "jbi.consumer.redelivered.count" in _names(
+        consumer_statsd.incr.call_args_list
+    )
+
+
+def test_delivery_attempt_comes_from_the_broker_message():
+    message = FakeMessage(jira_payload())
+    message.delivery_attempt = 4
+
+    assert decode_message(message).event.delivery_attempt == 4
+    # Absent (no dead-letter policy) means the first delivery.
+    assert decode_message(FakeMessage(jira_payload())).event.delivery_attempt == 1
+
+
+def test_freshness_is_recorded_only_for_finished_events(actions, consumer_statsd):
+    from datetime import datetime, timedelta, timezone
+
+    published = datetime.now(timezone.utc) - timedelta(seconds=30)
+
+    def run(outcome):
+        consumer_statsd.reset_mock()
+        message = FakeMessage(jira_payload())
+        message.publish_time = published
+        MessageProcessor(
+            actions,
+            ingest=mock.AsyncMock(return_value=IngestResult(outcome=outcome)),
+        ).process(message)
+        return {
+            call.args[0]: call.args[1] for call in consumer_statsd.timing.call_args_list
+        }
+
+    finished = run(IngestOutcome.HANDLED)
+    retried = run(IngestOutcome.RETRY)
+
+    assert 29_000 < finished["jbi.consumer.end_to_end_lag.timer"] < 60_000
+    # A retried event is not delivered yet; counting it would make an outage
+    # look like freshness.
+    assert "jbi.consumer.end_to_end_lag.timer" not in retried
+
+
+def test_acks_and_nacks_are_counted(consumer_statsd):
+    make_callback(mock.Mock(process=mock.Mock(return_value=True)))(
+        FakeMessage(jira_payload())
+    )
+    make_callback(mock.Mock(process=mock.Mock(return_value=False)))(
+        FakeMessage(jira_payload())
+    )
+
+    assert _names(consumer_statsd.incr.call_args_list) == [
+        "jbi.consumer.acked.count",
+        "jbi.consumer.nacked.count",
+    ]
+
+
+# --- Shutdown ---------------------------------------------------------------
+
+
+def _run_and_capture_handlers(actions, fake_subscriber, settings, future):
+    """Run the consumer to the end of its window, returning the signal
+    handlers it installed so a test can fire them afterwards."""
+    from concurrent.futures import TimeoutError as FuturesTimeoutError
+
+    handlers = {}
+    future.result.side_effect = FuturesTimeoutError()
+    fake_subscriber.subscribe.return_value = future
+
+    with mock.patch("jbi.consumer.get_settings", return_value=settings):
+        consumer = Consumer(actions=actions, subscriber=fake_subscriber)
+        with mock.patch("jbi.consumer.time.sleep"):
+            with mock.patch(
+                "jbi.consumer.signal.signal",
+                side_effect=lambda signum, handler: handlers.setdefault(
+                    signum, handler
+                ),
+            ):
+                consumer.run(timeout_seconds=0.05)
+    return handlers
+
+
+def test_the_wait_is_sliced_so_ctrl_c_is_seen_promptly():
+    """One long blocking wait is not interrupted by Ctrl+C on Windows: Python
+    only runs the signal handler when the wait returns. Waiting in short slices
+    gives it a chance every second."""
+    from concurrent.futures import TimeoutError as FuturesTimeoutError
+
+    future = mock.MagicMock()
+    future.result.side_effect = [FuturesTimeoutError(), FuturesTimeoutError(), "done"]
+
+    Consumer._wait(future, timeout_seconds=3600)
+
+    assert future.result.call_count == 3
+    for call in future.result.call_args_list:
+        assert call.kwargs["timeout"] <= 1.0
+
+
+def test_the_wait_still_ends_when_the_window_does():
+    from concurrent.futures import TimeoutError as FuturesTimeoutError
+
+    future = mock.MagicMock()
+    future.result.side_effect = FuturesTimeoutError()
+
+    with pytest.raises(FuturesTimeoutError):
+        Consumer._wait(future, timeout_seconds=0.05)
+
+
+def test_the_first_signal_cancels_without_blocking_and_arms_a_watchdog(
+    actions, fake_subscriber, settings
+):
+    """`cancel()` waits for in-flight messages, so running it inside the signal
+    handler blocked the handler -- and with it any further Ctrl+C. It runs on
+    its own thread, and a watchdog forces the exit if it never finishes."""
+    import signal
+
+    future = mock.MagicMock()
+    handlers = _run_and_capture_handlers(actions, fake_subscriber, settings, future)
+    future.cancel.reset_mock()
+
+    with mock.patch("jbi.consumer.threading.Timer") as timer:
+        handlers[signal.SIGINT](signal.SIGINT, None)
+
+    timer.assert_called_once()
+    seconds, _callback = timer.call_args.args
+    assert seconds == settings.pubsub_shutdown_force_seconds
+    assert timer.return_value.daemon is True
+    timer.return_value.start.assert_called_once()
+    # The cancel ran on a thread; give it a moment to be scheduled.
+    import time as real_time
+
+    deadline = real_time.monotonic() + 2
+    while not future.cancel.called and real_time.monotonic() < deadline:
+        real_time.sleep(0.01)
+    assert future.cancel.called
+
+
+def test_a_second_signal_exits_immediately(actions, fake_subscriber, settings):
+    """The escape hatch: a stuck in-flight message must not make the consumer
+    unkillable. Unacknowledged messages are redelivered by Pub/Sub."""
+    import signal
+
+    future = mock.MagicMock()
+    handlers = _run_and_capture_handlers(actions, fake_subscriber, settings, future)
+
+    with mock.patch("jbi.consumer.threading.Timer"):
+        with mock.patch("jbi.consumer.os._exit") as hard_exit:
+            handlers[signal.SIGINT](signal.SIGINT, None)
+            hard_exit.assert_not_called()
+            handlers[signal.SIGINT](signal.SIGINT, None)
+
+    hard_exit.assert_called_once_with(130)
+
+
+def test_a_cancelled_pull_after_a_signal_is_a_clean_shutdown(
+    actions, fake_subscriber, settings, capturelogs
+):
+    """Cancelling surfaces as a cancellation error with no message text, which
+    the old matching on the message missed and reported as a failure."""
+    import logging
+    import signal
+    from concurrent.futures import CancelledError
+
+    future = mock.MagicMock()
+    handlers = {}
+    fake_subscriber.subscribe.return_value = future
+
+    def fire_signal_then_fail(timeout=None):
+        handlers[signal.SIGINT](signal.SIGINT, None)
+        raise CancelledError()
+
+    future.result.side_effect = fire_signal_then_fail
+
+    with mock.patch("jbi.consumer.get_settings", return_value=settings):
+        consumer = Consumer(actions=actions, subscriber=fake_subscriber)
+        with mock.patch("jbi.consumer.time.sleep"):
+            with mock.patch("jbi.consumer.threading.Timer"):
+                with mock.patch(
+                    "jbi.consumer.signal.signal",
+                    side_effect=lambda s, h: handlers.setdefault(s, h),
+                ):
+                    with capturelogs.for_logger("jbi.consumer").at_level(logging.INFO):
+                        consumer.run(timeout_seconds=30)
+
+    assert not any(r.levelno >= logging.ERROR for r in capturelogs.records)
+    assert any("Consumer stopped" in r.message for r in capturelogs.records)

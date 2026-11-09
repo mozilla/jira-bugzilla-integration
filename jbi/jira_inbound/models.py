@@ -212,11 +212,39 @@ class JiraWebhookRequest(LenientModel):
             return self.comment.author.accountId
         return None
 
+    @property
+    def actor_email(self) -> Optional[str]:
+        """Return the email of whoever caused this event, lower-cased, if known.
+
+        Same precedence as `actor_account_id`. Jira's privacy settings can hide
+        an email, so it is a second identifier rather than the primary one.
+        """
+        candidates = (
+            self.user,
+            self.actor,
+            self.comment.author if self.comment else None,
+        )
+        for candidate in candidates:
+            if candidate and candidate.emailAddress:
+                return candidate.emailAddress.strip().lower()
+        return None
+
     def changed_fields(self) -> list[str]:
         """Return the names of the fields changed by this event."""
         if not self.changelog:
             return []
         return [item.field for item in self.changelog.items if item.field]
+
+    @property
+    def lacks_needed_changelog(self) -> bool:
+        """Whether this is a field update that does not say which field moved.
+
+        That is the only kind of event a missing changelog makes unusable: the
+        field writers act on what the changelog says changed. A comment event
+        never has one (a comment is not a field change) and does not need one,
+        because the comment step copies the comment carried in the payload.
+        """
+        return not self.has_changelog and self.comment is None
 
     @property
     def has_changelog(self) -> bool:

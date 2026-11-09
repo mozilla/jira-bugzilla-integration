@@ -21,6 +21,7 @@ dependencies = [
     "pypandoc<2.0,>=1.15",
     "pytest-cov>=7.0.0",
     "pytest-xdist>=3.8.0",
+    "google-cloud-firestore>=2.21.0,<3.0.0",
 ]
 name = "jbi"
 version = "0"

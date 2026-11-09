@@ -38,8 +38,60 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
-def _ignore(reason: str) -> IgnoreInvalidRequestError:
+def _ignore(reason: str, code: str) -> IgnoreInvalidRequestError:
+    """Build the "ignored" signal, counting it under a stable reason code.
+
+    `jbi.jira.ignored.count` is the total; `jbi.jira.ignored.<code>.count` says
+    *why*, so an ignored-heavy dashboard is explainable rather than a mystery.
+    """
+    statsd.incr("jbi.jira.ignored.count")
+    statsd.incr(f"jbi.jira.ignored.{code}.count")
     return IgnoreInvalidRequestError(reason)
+
+
+# The account id of the credentials JBI writes to Jira with, looked up once at
+# startup by `resolve_bot_identity`. Kept out of `is_bot_authored`'s path so the
+# per-event check never makes a network call (the publisher runs it too).
+_resolved_bot_account_id: Optional[str] = None
+
+
+def resolve_bot_identity(
+    jira_service: Optional[jira.JiraService] = None,
+) -> Optional[str]:
+    """Find out which Jira account JBI's credentials belong to, and remember it.
+
+    JBI's own writes come back as events authored by that account, so the
+    account has to be recognisable. It is looked up (`myself`) rather than
+    configured, so the answer cannot drift from `JIRA_USERNAME`; a configured
+    `JIRA_BOT_ACCOUNT_ID` takes precedence and avoids the call.
+
+    Never raises: if Jira is unreachable at startup the email comparison in
+    `is_bot_authored` still applies, and read-before-write stops an unsuppressed
+    echo from oscillating.
+    """
+    global _resolved_bot_account_id
+
+    if settings.jira_bot_account_id:
+        return settings.jira_bot_account_id
+
+    try:
+        me = (jira_service or jira.get_service()).client.myself()
+        account_id = me.get("accountId") if isinstance(me, dict) else None
+    except Exception:
+        logger.warning(
+            "Could not look up the Jira account JBI authenticates as; events it "
+            "authors are recognised by email only",
+            exc_info=True,
+        )
+        return None
+
+    if not isinstance(account_id, str) or not account_id:
+        logger.warning("Jira did not report an account id for JBI's credentials")
+        return None
+
+    _resolved_bot_account_id = account_id
+    logger.info("JBI's own Jira account id resolved; its events will be ignored")
+    return account_id
 
 
 def is_bot_authored(event: JiraWebhookRequest) -> bool:
@@ -48,14 +100,16 @@ def is_bot_authored(event: JiraWebhookRequest) -> bool:
     Half of Invariant C. The other half lives on the Bugzilla side
     (`jbi.runner`, D6b) -- a loop has two directions and both must be closed.
 
-    When `jira_bot_account_id` is unset (the default), no event is suppressed:
-    that is the current, pre-deployment state, and D7's read-before-write is
-    what keeps an unsuppressed echo from oscillating.
+    The account is recognised two ways, because a payload may carry either:
+    its account id (configured, or looked up from the credentials at startup),
+    and its email, which is `JIRA_USERNAME`. Neither makes a network call.
     """
-    bot_account_id = settings.jira_bot_account_id
-    if not bot_account_id:
-        return False
-    return event.actor_account_id == bot_account_id
+    bot_account_id = settings.jira_bot_account_id or _resolved_bot_account_id
+    if bot_account_id and event.actor_account_id == bot_account_id:
+        return True
+
+    bot_email = (settings.jira_username or "").strip().lower()
+    return "@" in bot_email and event.actor_email == bot_email
 
 
 def correlate_bug_id(
@@ -100,48 +154,54 @@ def execute_jira_event(event: JiraWebhookRequest, actions: Actions) -> dict:
     issue = event.issue
     issue_key = issue.key if issue else None
     if not issue_key:
-        raise _ignore("no issue key in payload")
+        raise _ignore("no issue key in payload", "no_issue_key")
 
     project_key = issue.project_key if issue else None
     if not project_key:
-        raise _ignore(f"cannot determine project of issue {issue_key}")
+        raise _ignore(f"cannot determine project of issue {issue_key}", "no_project")
 
     # Gate 1: echo suppression (Invariant C).
     if is_bot_authored(event):
-        statsd.incr("jbi.jira.ignored.count")
-        raise _ignore(f"ignore event on {issue_key} authored by JBI itself")
+        raise _ignore(
+            f"ignore event on {issue_key} authored by JBI itself", "bot_authored"
+        )
 
     # Gate 2: correlation (Invariant B).
     bug_id = correlate_bug_id(issue_key)
     if bug_id is None:
-        statsd.incr("jbi.jira.ignored.count")
-        raise _ignore(f"no Bugzilla bug linked to issue {issue_key}")
+        raise _ignore(f"no Bugzilla bug linked to issue {issue_key}", "uncorrelated")
 
     bugzilla_service = get_bugzilla_service()
     try:
         bug = bugzilla_service.client.get_bug(bug_id)
     except BugNotAccessibleError as err:
-        raise _ignore(f"bug {bug_id} is not accessible: {err}") from err
+        raise _ignore(
+            f"bug {bug_id} is not accessible: {err}", "bug_not_accessible"
+        ) from err
 
     if reason := bug_restriction_reason(bug):
         # Same definition of "restricted" as the forward path, and the same
         # consequence: no field of a security or embargoed bug is touched,
         # not just its comments.
-        raise _ignore(f"bug {bug_id} is restricted: {reason}")
+        raise _ignore(f"bug {bug_id} is restricted: {reason}", "bug_restricted")
 
     # Cross-check the link in the other direction. A one-sided link means the
     # bug was re-pointed at a different issue, and writing to it would put the
     # change on the wrong bug.
     linked_key = bug.extract_from_see_also(project_key=project_key)
     if linked_key and linked_key != issue_key:
-        raise _ignore(f"bug {bug_id} links to issue {linked_key!r}, not {issue_key!r}")
+        raise _ignore(
+            f"bug {bug_id} links to issue {linked_key!r}, not {issue_key!r}",
+            "link_mismatch",
+        )
 
     # Gate 3: the bug's action must have opted into inbound sync.
     action = find_inbound_action(bug, project_key, actions)
     if action is None:
         raise _ignore(
             f"no action with `jira_inbound_enabled` for bug {bug_id} "
-            f"in project {project_key}"
+            f"in project {project_key}",
+            "no_inbound_action",
         )
 
     # Same label, same meaning, other direction. Labels come from the payload
@@ -155,15 +215,22 @@ def execute_jira_event(event: JiraWebhookRequest, actions: Actions) -> dict:
             labels = jira.get_service().get_issue_labels(None, issue_key)
         if sync_is_stopped(labels, stop_label):
             statsd.incr("jbi.sync_stopped.count")
-            raise _ignore(f"sync stopped by the {stop_label!r} label on {issue_key}")
+            raise _ignore(
+                f"sync stopped by the {stop_label!r} label on {issue_key}",
+                "stop_label",
+            )
 
-    if not event.has_changelog and not action.parameters.reverse_sync_without_changelog:
+    if (
+        event.lacks_needed_changelog
+        and not action.parameters.reverse_sync_without_changelog
+    ):
         # Loud rather than silent: without this the event is "handled" and
         # every writer NOOPs, which looks like success and syncs nothing.
         raise _ignore(
             f"payload for {issue_key} carries no changelog, so JBI cannot "
             "tell which field changed; configure the Automation rule to send "
-            "one, or set `reverse_sync_without_changelog`"
+            "one, or set `reverse_sync_without_changelog`",
+            "no_changelog",
         )
 
     context = ReverseContext(

@@ -23,9 +23,13 @@ from fastapi.staticfiles import StaticFiles
 
 import jbi
 import jbi.queue
+from jbi.common.redact import redact_querystring
 from jbi.configuration import get_actions
+from jbi.dedup import FirestoreDedupStore, get_dedup_store
 from jbi.environment import get_settings
+from jbi.jira_inbound.handler import resolve_bot_identity
 from jbi.log import CONFIG
+from jbi.publisher import get_publisher
 from jbi.router import router
 
 SRC_DIR = Path(__file__).parent
@@ -65,6 +69,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     bugzilla_service = jbi.bugzilla.service.get_service()
     queue = jbi.queue.get_dl_queue()
 
+    # Recognise JBI's own Jira account, so the events its writes cause are
+    # ignored rather than processed as a person's changes.
+    resolve_bot_identity(jira_service)
+
     checks.register(bugzilla_service.check_bugzilla_connection, name="bugzilla.up")
     checks.register(
         bugzilla_service.check_bugzilla_webhooks,
@@ -96,7 +104,30 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     checks.register(queue.check_writable, name="queue.writable")
     checks.register(queue.check_readable, name="queue.readable")
 
+    if settings.pubsub_topic_id:
+        # Fail at startup, with a clear message, rather than on the first
+        # event: publishing needs both the project and the topic.
+        get_publisher()
+    dedup_store = get_dedup_store()
+    if isinstance(dedup_store, FirestoreDedupStore):
+        checks.register(dedup_store.check_readable, name="dedup.readable")
+
     yield
+
+
+class RedactedRequestSummaryLogger(MozlogRequestSummaryLogger):  # type: ignore[misc]
+    """`request.summary` with secrets removed from the logged query string.
+
+    The Bugzilla webhook authenticates with `?token=`, and the stock logger
+    prints the query string verbatim, so every request wrote the shared secret
+    into the logs.
+    """
+
+    def _format(self, scope: Any, info: Any) -> dict[str, Any]:
+        fields: dict[str, Any] = super()._format(scope, info)
+        if "querystring" in fields:
+            fields["querystring"] = redact_querystring(fields["querystring"])
+        return fields
 
 
 app = FastAPI(
@@ -114,7 +145,7 @@ app.state.DOCKERFLOW_SUMMARY_LOG_QUERYSTRING = True
 app.include_router(router)
 app.include_router(dockerflow_router)
 app.add_middleware(RequestIdMiddleware)
-app.add_middleware(MozlogRequestSummaryLogger)
+app.add_middleware(RedactedRequestSummaryLogger)
 
 app.mount("/static", StaticFiles(directory=SRC_DIR / "static"), name="static")
 

@@ -749,6 +749,67 @@ def test_priority_conflict_resolves_to_the_bmo_value(
     assert not mocked_bugzilla.update_bug.called
 
 
+@pytest.mark.parametrize("unset_in_bmo", ["--", ""])
+def test_an_unset_priority_is_not_mistaken_for_a_bmo_edit(
+    unset_in_bmo,
+    action_factory,
+    bug_factory,
+    jira_webhook_request_factory,
+    mocked_service,
+    mocked_bugzilla,
+    jira_changelog_item_factory,
+):
+    """Jira's `None` inverts to BMO's `""`, while a bug with no priority reads
+    `--`. Both mean "unset", so a bug still at `--` has not been edited and the
+    Jira change must be written, not dropped as a conflict."""
+    context = make_context(
+        action_factory,
+        bug_factory,
+        jira_webhook_request_factory,
+        bug_kwargs={"priority": unset_in_bmo},
+        changelog__items=[
+            jira_changelog_item_factory(
+                field="priority", fromString="None", toString="P2"
+            )
+        ],
+        issue__fields__priority=JiraNamedValue(name="P2"),
+    )
+
+    status, _ = jira_steps.writeback_priority(context, bugzilla_service=mocked_service)
+
+    assert status == ReverseStepStatus.SUCCESS
+    mocked_bugzilla.update_bug.assert_called_once_with(context.bug.id, priority="P2")
+
+
+def test_a_real_bmo_priority_edit_still_wins_over_an_unset_jira_priority(
+    action_factory,
+    bug_factory,
+    jira_webhook_request_factory,
+    mocked_service,
+    mocked_bugzilla,
+    jira_changelog_item_factory,
+):
+    """Treating `--` as unset must not weaken the rule: Jira thinks the priority
+    was unset, but someone gave the bug a real priority since."""
+    context = make_context(
+        action_factory,
+        bug_factory,
+        jira_webhook_request_factory,
+        bug_kwargs={"priority": "P1"},
+        changelog__items=[
+            jira_changelog_item_factory(
+                field="priority", fromString="None", toString="P2"
+            )
+        ],
+        issue__fields__priority=JiraNamedValue(name="P2"),
+    )
+
+    status, _ = jira_steps.writeback_priority(context, bugzilla_service=mocked_service)
+
+    assert status == ReverseStepStatus.NOOP
+    assert not mocked_bugzilla.update_bug.called
+
+
 def test_write_proceeds_when_no_previous_value_is_known(
     action_factory,
     bug_factory,
@@ -1265,3 +1326,37 @@ def test_reverse_sync_skips_a_comment_jbi_put_on_the_issue(
     assert status == ReverseStepStatus.NOOP
     assert not mocked_bugzilla.update_bug.called
     assert any("forward sync" in r.message for r in capturelogs.records)
+
+
+def test_a_rejected_step_warning_says_why_bugzilla_refused(
+    action_factory,
+    bug_factory,
+    jira_webhook_request_factory,
+    mocked_service,
+    capturelogs,
+):
+    """ "HTTP 400" alone sent people hunting through tracebacks for the reason;
+    Bugzilla's own message belongs in the line that reports the rejection."""
+    import json
+    import logging
+
+    import requests
+
+    response = requests.Response()
+    response.status_code = 400
+    response._content = json.dumps(
+        {"error": True, "message": "You must select a resolution."}
+    ).encode()
+
+    def step(context, *, bugzilla_service):
+        raise requests.HTTPError("400", response=response)
+
+    step.__name__ = "rejected_step"
+    context = make_context(action_factory, bug_factory, jira_webhook_request_factory)
+
+    with capturelogs.for_logger("jbi.jira_steps").at_level(logging.WARNING):
+        with mock.patch.object(jira_steps, "REVERSE_STEPS", [step]):
+            jira_steps.ReverseExecutor(bugzilla_service=mocked_service)(context)
+
+    messages = [r.message for r in capturelogs.records]
+    assert any("You must select a resolution." in m for m in messages), messages

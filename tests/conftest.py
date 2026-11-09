@@ -55,6 +55,22 @@ def mocked_statsd():
         yield _mocked_statsd
 
 
+@pytest.fixture(autouse=True)
+def in_memory_dedup(monkeypatch):
+    """Never let a developer's `.env` point the tests at a real Firestore.
+
+    `FIRESTORE_DATABASE` is read from `.env`, and with it set the ledger would
+    try to authenticate to Google on the first event. Each test gets a fresh
+    in-memory store instead.
+    """
+    from jbi.dedup import InMemoryDedupStore
+
+    store = InMemoryDedupStore()
+    monkeypatch.setattr("jbi.ingest.get_dedup_store", lambda: store)
+    monkeypatch.setattr("jbi.app.get_dedup_store", lambda: store)
+    yield store
+
+
 register(factories.ActionStepsFactory)
 register(factories.ActionContextFactory)
 register(factories.ActionFactory)
