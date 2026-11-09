@@ -26,6 +26,48 @@
       comment:
         - create_comment
 
+- whiteboard_tag: fxa
+  bugzilla_user_id: 177149
+  description: "Mozilla Accounts (FxA) team tag, Cloud Services::Server: FxA"
+  parameters:
+    jira_project_key: JB
+    steps:
+      new:
+        - create_issue
+        - maybe_delete_duplicate
+        - add_link_to_bugzilla
+        - add_link_to_jira
+        - maybe_update_issue_status
+        - sync_whiteboard_labels
+        - sync_see_also
+      existing:
+        - update_issue_summary
+        - maybe_update_issue_status
+        - sync_whiteboard_labels
+        - sync_see_also
+      comment:
+        - create_comment
+      attachment:
+        - create_comment
+    # Jira is the source of truth for FXA. Only new bugs and closures move the
+    # Jira status: new/reopened bugs land in "New" for triage, resolved bugs
+    # close the issue. ASSIGNED is intentionally not mapped.
+    # The FXA project does not expose `resolution` on the edit screen, so
+    # `maybe_update_issue_resolution` is not used; "Done" sets the resolution
+    # via the workflow and "Cancelled" is handled specially by JBI.
+    status_map:
+      UNCONFIRMED: New
+      NEW: New
+      REOPENED: New
+      FIXED: Done
+      INVALID: Cancelled
+      WONTFIX: Cancelled
+      INACTIVE: Cancelled
+      DUPLICATE: Cancelled
+      WORKSFORME: Cancelled
+      INCOMPLETE: Cancelled
+      MOVED: Cancelled
+
 - whiteboard_tag: fxcm
   bugzilla_user_id: tbd
   description: Firefox Credential Management Team whiteboard tag
