@@ -320,7 +320,7 @@ class Consumer:
         self.actions = actions if actions is not None else get_actions()
 
         if subscriber is None:
-            from google.cloud import pubsub_v1  # imported lazily: only the
+            import google.cloud.pubsub_v1 as pubsub_v1  # imported lazily: only the
 
             # consumer process needs the Pub/Sub client, so the web service
             # does not pay for it at import time.
@@ -332,7 +332,7 @@ class Consumer:
         self.callback = make_callback(MessageProcessor(self.actions))
 
     def _flow_control(self):
-        from google.cloud import pubsub_v1
+        import google.cloud.pubsub_v1 as pubsub_v1
 
         return pubsub_v1.types.FlowControl(
             # Never 1: that serialises every ordering key behind one slot, so

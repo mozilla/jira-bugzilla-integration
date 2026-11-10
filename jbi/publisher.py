@@ -80,7 +80,7 @@ class JiraEventPublisher:
         if self._client is None:
             # Imported lazily, like the subscriber in `jbi.consumer`: only
             # processes that publish pay for (or need) the Google client.
-            from google.cloud import pubsub_v1
+            import google.cloud.pubsub_v1 as pubsub_v1
 
             client_options = None
             if self.settings.pubsub_region:
