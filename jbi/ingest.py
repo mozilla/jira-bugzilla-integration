@@ -16,14 +16,16 @@ forever.
 """
 
 import logging
-from collections import OrderedDict
+import time
 from enum import StrEnum, auto
 from typing import Optional, Union
 
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
+from statsd.defaults.env import statsd
 
 from jbi.bugzilla import models as bugzilla_models
+from jbi.dedup import ClaimStatus, DedupStore, get_dedup_store
 from jbi.errors import IgnoreInvalidRequestError
 from jbi.jira_inbound.handler import execute_jira_event
 from jbi.jira_inbound.models import JiraWebhookRequest
@@ -87,31 +89,16 @@ class IngestResult(BaseModel):
 # redelivered *comment* event would post the text twice, which no field-level
 # check catches.
 #
-# This is a bounded, in-process cache: cheap, and enough for the redelivery
-# bursts a broker actually produces (seconds apart, same instance). It is
-# explicitly **not** a distributed guarantee -- two instances do not share it,
-# and a restart forgets everything. A shared store (Redis) is the real answer
-# and is deliberately deferred rather than half-built here.
-
-_SEEN_MESSAGE_IDS: OrderedDict[str, None] = OrderedDict()
-_SEEN_MAX = 2048
-
-
-def already_delivered(message_id: Optional[str]) -> bool:
-    """Record a message id and report whether it had been seen before."""
-    if not message_id:
-        return False
-    if message_id in _SEEN_MESSAGE_IDS:
-        return True
-    _SEEN_MESSAGE_IDS[message_id] = None
-    while len(_SEEN_MESSAGE_IDS) > _SEEN_MAX:
-        _SEEN_MESSAGE_IDS.popitem(last=False)
-    return False
+# `jbi.dedup` holds the guard: a claim/lease ledger, shared through Firestore
+# in production and in-process otherwise. See that module for why it records
+# a claim rather than a bare "seen" flag.
 
 
 def reset_delivery_cache() -> None:
-    """Forget every recorded message id (used by tests)."""
-    _SEEN_MESSAGE_IDS.clear()
+    """Forget every recorded event (used by tests)."""
+    from jbi import dedup
+
+    dedup.get_dedup_store.cache_clear()
 
 
 # --- Ingestion --------------------------------------------------------------
@@ -121,6 +108,7 @@ async def ingest_event(
     event: InboundEvent,
     actions: Actions,
     queue: Optional[DeadLetterQueue] = None,
+    dedup: Optional[DedupStore] = None,
 ) -> IngestResult:
     """Run one inbound event through the core and report what to do next.
 
@@ -129,15 +117,86 @@ async def ingest_event(
     `None`, because the subscription's own retry and dead-letter topic own
     that -- two retry mechanisms stacked on each other would multiply
     redeliveries.
+
+    Events that carry an id (everything from a broker) are claimed in the
+    dedup ledger first, and the claim is settled afterwards: finished events
+    are marked done, failed ones released so the redelivery is processed
+    rather than mistaken for a duplicate.
     """
-    if already_delivered(event.message_id):
+    delivery_id = event.message_id
+    if not delivery_id:
+        return await _dispatch(event, actions, queue)
+
+    store = dedup or get_dedup_store()
+    started = time.monotonic()
+    try:
+        status = await store.claim(delivery_id)
+    except Exception as exc:
+        # Fail closed. Processing without the guard is exactly what produces
+        # duplicate comments; a transient store outage is better absorbed by
+        # redelivery (and alerted on) than by writing twice.
+        statsd.incr("jbi.dedup.store_error.count")
+        logger.exception(
+            "Dedup store unavailable for message %s",
+            delivery_id,
+            extra={"source": str(event.source), "message_id": delivery_id},
+        )
+        return IngestResult(
+            outcome=IngestOutcome.RETRY, reason=f"dedup store unavailable: {exc}"
+        )
+    finally:
+        statsd.timing("jbi.dedup.claim.timer", (time.monotonic() - started) * 1000)
+
+    statsd.incr(f"jbi.dedup.{_CLAIM_METRIC[status]}.count")
+    if status == ClaimStatus.DUPLICATE:
         logger.info(
             "Duplicate delivery of message %s ignored",
-            event.message_id,
-            extra={"source": str(event.source), "message_id": event.message_id},
+            delivery_id,
+            extra={"source": str(event.source), "message_id": delivery_id},
         )
         return IngestResult(outcome=IngestOutcome.IGNORED, reason="duplicate delivery")
+    if status == ClaimStatus.IN_PROGRESS:
+        # Another worker holds a live claim. Ask for redelivery rather than
+        # acknowledging: if that worker dies, the lease expires and a later
+        # delivery takes the event over.
+        return IngestResult(
+            outcome=IngestOutcome.RETRY, reason="another worker is processing it"
+        )
 
+    try:
+        result = await _dispatch(event, actions, queue)
+    except BaseException:
+        await _settle(store, delivery_id, done=False)
+        raise
+    await _settle(store, delivery_id, done=result.outcome != IngestOutcome.RETRY)
+    return result
+
+
+_CLAIM_METRIC = {
+    ClaimStatus.CLAIMED: "claimed",
+    ClaimStatus.TAKEN_OVER: "takeover",
+    ClaimStatus.DUPLICATE: "duplicate",
+    ClaimStatus.IN_PROGRESS: "in_progress",
+}
+
+
+async def _settle(store: DedupStore, delivery_id: str, *, done: bool) -> None:
+    """Mark a claim finished or give it up, without masking the real outcome.
+
+    If this fails the lease simply runs out and the event is taken over, so
+    the failure is logged and counted rather than raised over a result that
+    already happened.
+    """
+    try:
+        await (store.complete(delivery_id) if done else store.release(delivery_id))
+    except Exception:
+        statsd.incr("jbi.dedup.store_error.count")
+        logger.exception("Could not settle dedup claim for message %s", delivery_id)
+
+
+async def _dispatch(
+    event: InboundEvent, actions: Actions, queue: Optional[DeadLetterQueue]
+) -> IngestResult:
     if event.source == EventSource.BUGZILLA:
         return await _ingest_bugzilla(event, actions, queue)
     return await _ingest_jira(event, actions)

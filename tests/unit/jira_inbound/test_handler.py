@@ -243,6 +243,57 @@ def test_event_without_a_changelog_is_refused_loudly(
     assert "no changelog" in str(exc_info.value)
 
 
+def test_a_comment_event_needs_no_changelog(
+    correlated, jira_webhook_request_factory, inbound_actions, mocked_bugzilla
+):
+    """A comment is not a field change, so Jira's comment events never carry a
+    changelog. Refusing them for that reason blocked every comment, while the
+    comment step does not need one: it copies the comment that is in the
+    payload."""
+    event = jira_webhook_request_factory(with_comment=True, changelog=None)
+
+    details = execute_jira_event(event, inbound_actions)
+
+    assert set(details["steps"]) >= {"writeback_comment"}
+
+
+def test_a_comment_event_does_not_rewrite_fields_it_did_not_change(
+    correlated,
+    jira_webhook_request_factory,
+    action_factory,
+    mocked_bugzilla,
+):
+    """Letting a comment through the changelog gate must not turn it into a
+    full-state push: without a changelog the field writers must stay idle, or a
+    comment would overwrite Bugzilla fields with whatever Jira held."""
+    actions = Actions(
+        root=[
+            action_factory(
+                whiteboard_tag="devtest",
+                parameters__jira_project_key="JBI",
+                parameters__jira_inbound_enabled=True,
+                parameters__reverse_comment_sync_enabled=True,
+            )
+        ]
+    )
+    event = jira_webhook_request_factory(
+        with_comment=True,
+        changelog=None,
+        issue__fields__status__statusCategory__key="done",
+    )
+
+    details = execute_jira_event(event, actions)
+
+    assert details["steps"]["writeback_status"] == "NOOP"
+    assert details["steps"]["writeback_priority"] == "NOOP"
+    assert details["steps"]["writeback_summary"] == "NOOP"
+    assert details["steps"]["writeback_comment"] == "SUCCESS"
+    # One write to Bugzilla, and it carries the comment and nothing else: no
+    # status, priority or summary rode along.
+    assert mocked_bugzilla.update_bug.call_count == 1
+    assert set(mocked_bugzilla.update_bug.call_args.kwargs) == {"comment"}
+
+
 def test_full_state_sync_can_be_opted_into(
     correlated, jira_webhook_request_factory, action_factory, mocked_bugzilla
 ):
@@ -299,3 +350,21 @@ def test_dead_credentials_ask_for_redelivery_rather_than_acking(
 
     assert result.outcome == IngestOutcome.RETRY
     assert result.should_acknowledge is False
+
+
+# --- Metrics: why events are ignored ---------------------------------------
+
+
+def test_ignored_events_are_counted_by_reason(
+    mocked_jira, jira_webhook_event, inbound_actions
+):
+    """`ignored` alone is unexplainable on a dashboard; the reason code says
+    whether the cause is configuration, traffic, or an outage."""
+    mocked_jira.get_issue_remote_links.return_value = []
+
+    with mock.patch("jbi.jira_inbound.handler.statsd") as statsd:
+        with pytest.raises(IgnoreInvalidRequestError):
+            execute_jira_event(jira_webhook_event, inbound_actions)
+
+    counted = [call.args[0] for call in statsd.incr.call_args_list]
+    assert counted == ["jbi.jira.ignored.count", "jbi.jira.ignored.uncorrelated.count"]

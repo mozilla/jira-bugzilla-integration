@@ -35,6 +35,21 @@ instrumented_method = instrument(
 )
 
 
+def error_detail(resp: requests.Response, limit: int = 500) -> str:
+    """Return Bugzilla's explanation of a failed request, for the log.
+
+    Prefers the `message` field of its JSON error; falls back to the raw text
+    for anything else (a proxy's HTML page, say). Truncated so one bad
+    response cannot flood the log.
+    """
+    try:
+        body = resp.json()
+        text = body.get("message") if isinstance(body, dict) else None
+    except ValueError:
+        text = None
+    return str(text or resp.text or "")[:limit] or "<empty response>"
+
+
 class BugzillaClient:
     """A wrapper around `requests` to interact with a Bugzilla REST API."""
 
@@ -61,7 +76,16 @@ class BugzillaClient:
             resp = self._client.request(verb, url, *args, **kwargs)
             resp.raise_for_status()
         except requests.HTTPError:
-            logger.exception("%s %s", verb, url)
+            # Bugzilla says *why* it refused in the body (`{"message": ...}`),
+            # and a bare "400 Bad Request" hides exactly the part that explains
+            # it, so log it with the status.
+            logger.exception(
+                "%s %s -> %s: %s",
+                verb,
+                url,
+                resp.status_code,
+                error_detail(resp),
+            )
             raise
         parsed = resp.json()
         if parsed.get("error"):
@@ -128,6 +152,21 @@ class BugzillaClient:
         # https://bugzilla.readthedocs.io/en/latest/api/core/v1/bug.html#rest-update-bug
         url = f"{self.base_url}/rest/bug/{bugid}"
         updated_info = self._call("PUT", url, json=fields)
+        # An audit trail of the write: what was sent, and what Bugzilla says it
+        # changed. When the two disagree (or a field did not change), this is
+        # the only place the discrepancy is visible.
+        reported = [
+            bug.get("changes")
+            for bug in updated_info.get("bugs", [])
+            if isinstance(bug, dict)
+        ]
+        logger.info(
+            "PUT %s sent %s; Bugzilla reports changes %s",
+            url,
+            fields,
+            reported,
+            extra={"bug": {"id": bugid}},
+        )
         parsed = ApiResponse.model_validate(updated_info)
         if not parsed.bugs:
             raise BugzillaClientError(

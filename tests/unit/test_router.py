@@ -618,13 +618,13 @@ def test_jira_webhook_does_not_touch_the_bugzilla_path(
 # --- Query-string auth for producers that cannot set headers ---------------
 
 
-@pytest.mark.parametrize("path", ["/bugzilla_webhook", "/jira_webhook"])
-def test_token_query_param_authenticates(anon_client, test_api_key, path, mocked_jira):
-    """A Bugzilla webhook takes only a URL, and a Pub/Sub push subscription
-    cannot add headers, so the shared secret has to work in the query string.
-    A 401 here would make those producers unusable."""
-    mocked_jira.get_issue_remote_links.return_value = []
+def test_token_query_param_authenticates(anon_client, test_api_key):
+    """A Bugzilla webhook takes only a URL, so the shared secret has to work in
+    the query string on that endpoint. A 401 here would make it unusable.
 
+    `/jira_webhook` deliberately does not accept this form: see
+    `test_jira_webhook_rejects_query_string_and_basic_auth`."""
+    path = "/bugzilla_webhook"
     response = anon_client.post(
         f"{path}?token={test_api_key}",
         json={},
@@ -644,6 +644,184 @@ def test_wrong_token_is_rejected(anon_client, path):
     )
 
     assert response.status_code == 401
+
+
+def test_jira_webhook_rejects_query_string_and_basic_auth(
+    anon_client, test_api_key, jira_webhook_event
+):
+    """The key is a header on this endpoint: a query-string secret is written
+    to access logs, and Jira Automation can send a header."""
+    body = jira_webhook_event.model_dump_json()
+    headers = {"Content-Type": "application/json"}
+
+    via_query = anon_client.post(
+        f"/jira_webhook?token={test_api_key}", content=body, headers=headers
+    )
+    credentials = base64.b64encode(f":{test_api_key}".encode()).decode()
+    via_basic = anon_client.post(
+        "/jira_webhook",
+        content=body,
+        headers={**headers, "Authorization": f"Basic {credentials}"},
+    )
+    via_header = anon_client.post(
+        "/jira_webhook",
+        content=body,
+        headers={**headers, "X-Api-Key": test_api_key},
+    )
+
+    assert via_query.status_code == 401
+    assert via_basic.status_code == 401
+    assert via_header.status_code != 401
+
+
+JIRA_RULE_KEY = "jira-rule-key"  # pragma: allowlist secret
+
+
+def test_jira_webhook_prefers_the_dedicated_key(
+    anon_client, test_api_key, jira_webhook_event
+):
+    """With `JBI_JIRA_API_KEY` set, the admin key no longer opens the Jira
+    endpoint, so the rule can be rotated or revoked on its own."""
+    body = jira_webhook_event.model_dump_json()
+    get_settings.cache_clear()
+    with mock.patch.dict(
+        "os.environ", {"JBI_JIRA_API_KEY": JIRA_RULE_KEY}
+    ):  # pragma: allowlist secret
+        get_settings.cache_clear()
+        try:
+            admin_key = anon_client.post(
+                "/jira_webhook", content=body, headers={"X-Api-Key": test_api_key}
+            )
+            rule_key = anon_client.post(
+                "/jira_webhook", content=body, headers={"X-Api-Key": JIRA_RULE_KEY}
+            )
+        finally:
+            get_settings.cache_clear()
+
+    assert admin_key.status_code == 401
+    assert rule_key.status_code != 401
+
+
+WEBHOOK_SECRET = "native-webhook-secret"  # pragma: allowlist secret
+OLD_WEBHOOK_SECRET = "previous-webhook-secret"  # pragma: allowlist secret
+
+
+@pytest.fixture
+def webhook_secrets():
+    """Configure the native-webhook secrets for the duration of a test."""
+    environment = {
+        "JBI_JIRA_WEBHOOK_SECRET": WEBHOOK_SECRET,
+        "JBI_JIRA_WEBHOOK_SECRET_PREVIOUS": OLD_WEBHOOK_SECRET,
+    }
+    with mock.patch.dict("os.environ", environment):
+        get_settings.cache_clear()
+        try:
+            yield
+        finally:
+            get_settings.cache_clear()
+
+
+def _signed_post(client, body: bytes, secret: str, **extra_headers):
+    from jbi.jira_inbound.signature import sign
+
+    return client.post(
+        "/jira_webhook",
+        content=body,
+        headers={
+            "Content-Type": "application/json",
+            "X-Hub-Signature": sign(body, secret),
+            **extra_headers,
+        },
+    )
+
+
+def test_a_natively_signed_webhook_authenticates(
+    anon_client, jira_webhook_event, webhook_secrets
+):
+    """A native Jira webhook cannot send X-Api-Key; its signature is its
+    credential."""
+    response = _signed_post(
+        anon_client, jira_webhook_event.model_dump_json().encode(), WEBHOOK_SECRET
+    )
+
+    assert response.status_code != 401
+
+
+def test_the_previous_secret_still_authenticates_during_rotation(
+    anon_client, jira_webhook_event, webhook_secrets
+):
+    response = _signed_post(
+        anon_client, jira_webhook_event.model_dump_json().encode(), OLD_WEBHOOK_SECRET
+    )
+
+    assert response.status_code != 401
+
+
+def test_a_signature_under_the_wrong_secret_is_rejected(
+    anon_client, jira_webhook_event, webhook_secrets
+):
+    response = _signed_post(
+        anon_client, jira_webhook_event.model_dump_json().encode(), "attacker-guess"
+    )
+
+    assert response.status_code == 401
+
+
+def test_a_body_changed_after_signing_is_rejected(
+    anon_client, jira_webhook_event, webhook_secrets
+):
+    from jbi.jira_inbound.signature import sign
+
+    body = jira_webhook_event.model_dump_json().encode()
+
+    response = anon_client.post(
+        "/jira_webhook",
+        content=body + b" ",
+        headers={
+            "Content-Type": "application/json",
+            "X-Hub-Signature": sign(body, WEBHOOK_SECRET),
+        },
+    )
+
+    assert response.status_code == 401
+
+
+def test_a_valid_api_key_does_not_rescue_a_bad_signature(
+    anon_client, jira_webhook_event, webhook_secrets, test_api_key
+):
+    """A request that claims to be signed must verify."""
+    response = _signed_post(
+        anon_client,
+        jira_webhook_event.model_dump_json().encode(),
+        "attacker-guess",
+        **{"X-Api-Key": test_api_key},
+    )
+
+    assert response.status_code == 401
+
+
+def test_a_signature_is_rejected_when_no_secret_is_configured(
+    anon_client, jira_webhook_event
+):
+    """With no secret set, a signature signed with an empty key must not pass."""
+    response = _signed_post(
+        anon_client, jira_webhook_event.model_dump_json().encode(), ""
+    )
+
+    assert response.status_code == 401
+
+
+def test_the_api_key_still_works_without_a_signature(
+    anon_client, jira_webhook_event, test_api_key
+):
+    """The Automation-rule route is unaffected."""
+    response = anon_client.post(
+        "/jira_webhook",
+        content=jira_webhook_event.model_dump_json(),
+        headers={"X-Api-Key": test_api_key},
+    )
+
+    assert response.status_code != 401
 
 
 def test_a_bugzilla_payload_on_the_jira_endpoint_says_so(

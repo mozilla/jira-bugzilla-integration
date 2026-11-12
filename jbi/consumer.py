@@ -20,11 +20,17 @@ the web service, which keeps serving the webhook endpoints and health checks.
 
 import json
 import logging
+import os
 import signal
+import threading
 import time
+from concurrent.futures import CancelledError as FuturesCancelledError
 from concurrent.futures import TimeoutError as FuturesTimeoutError
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Callable, Optional
+
+from statsd.defaults.env import statsd
 
 from jbi.bugzilla import models as bugzilla_models
 from jbi.configuration import get_actions
@@ -34,6 +40,9 @@ from jbi.jira_inbound.models import JiraWebhookRequest
 from jbi.models import Actions
 
 logger = logging.getLogger(__name__)
+
+# How long one wait on the pull lasts before the loop looks around again.
+_WAIT_SLICE_SECONDS = 1.0
 
 
 class UndecodableMessage(Exception):
@@ -127,10 +136,36 @@ def decode_message(message: Any) -> DecodedMessage:
             source=source,
             payload=parsed,
             message_id=delivery_id or None,
-            delivery_attempt=int(attributes.get("delivery_attempt", 1) or 1),
+            delivery_attempt=_delivery_attempt(message, attributes),
         ),
         delivery_id=delivery_id,
     )
+
+
+def _delivery_attempt(message: Any, attributes: dict[str, str]) -> int:
+    """How many times the broker has delivered this message.
+
+    Pub/Sub exposes the count as `message.delivery_attempt` (only when the
+    subscription has a dead-letter policy, otherwise `None`); a publisher may
+    also set an attribute of the same name. Either is honoured.
+    """
+    raw = attributes.get("delivery_attempt") or getattr(
+        message, "delivery_attempt", None
+    )
+    try:
+        return int(raw or 1)
+    except (TypeError, ValueError):
+        return 1
+
+
+def _publish_lag_ms(message: Any) -> Optional[float]:
+    """Milliseconds since the broker accepted the message, if it says when."""
+    published = getattr(message, "publish_time", None)
+    if not isinstance(published, datetime):
+        return None
+    if published.tzinfo is None:
+        published = published.replace(tzinfo=timezone.utc)
+    return (datetime.now(timezone.utc) - published).total_seconds() * 1000
 
 
 class MessageProcessor:
@@ -153,9 +188,11 @@ class MessageProcessor:
         """
         import asyncio
 
+        statsd.incr("jbi.consumer.received.count")
         try:
             decoded = decode_message(message)
         except UndecodableMessage as exc:
+            statsd.incr("jbi.consumer.undecodable.count")
             # Ack: redelivery cannot fix a malformed payload, and nacking it
             # would occupy the subscription until the message expired.
             logger.error(
@@ -166,7 +203,27 @@ class MessageProcessor:
             )
             return True
 
-        result: IngestResult = asyncio.run(self._ingest(decoded.event, self.actions))
+        if decoded.event.delivery_attempt > 1:
+            statsd.incr("jbi.consumer.redelivered.count")
+
+        started = time.monotonic()
+        try:
+            result: IngestResult = asyncio.run(
+                self._ingest(decoded.event, self.actions)
+            )
+        finally:
+            statsd.timing(
+                "jbi.consumer.process.timer", (time.monotonic() - started) * 1000
+            )
+
+        statsd.incr(f"jbi.consumer.outcome.{result.outcome}.count")
+        if (
+            result.outcome != IngestOutcome.RETRY
+            and (lag := _publish_lag_ms(message)) is not None
+        ):
+            # Only for events that finished: a retried one is not delivered
+            # yet, and counting it would make an outage look like freshness.
+            statsd.timing("jbi.consumer.end_to_end_lag.timer", lag)
 
         logger.info(
             "Processed %s message %s -> %s%s",
@@ -212,7 +269,12 @@ def make_callback(processor: MessageProcessor) -> Callable[[Any], None]:
             should_ack = False
 
         try:
-            message.ack() if should_ack else message.nack()
+            if should_ack:
+                message.ack()
+                statsd.incr("jbi.consumer.acked.count")
+            else:
+                message.nack()
+                statsd.incr("jbi.consumer.nacked.count")
         except ValueError as exc:
             # Raised when the subscriber is already shutting down. Matched on
             # both words independently rather than the literal phrase
@@ -258,7 +320,7 @@ class Consumer:
         self.actions = actions if actions is not None else get_actions()
 
         if subscriber is None:
-            from google.cloud import pubsub_v1  # imported lazily: only the
+            import google.cloud.pubsub_v1 as pubsub_v1  # imported lazily: only the
 
             # consumer process needs the Pub/Sub client, so the web service
             # does not pay for it at import time.
@@ -270,7 +332,7 @@ class Consumer:
         self.callback = make_callback(MessageProcessor(self.actions))
 
     def _flow_control(self):
-        from google.cloud import pubsub_v1
+        import google.cloud.pubsub_v1 as pubsub_v1
 
         return pubsub_v1.types.FlowControl(
             # Never 1: that serialises every ordering key behind one slot, so
@@ -286,6 +348,12 @@ class Consumer:
         if timeout_seconds is None:
             timeout_seconds = self.settings.pubsub_pull_timeout_seconds
 
+        # The consumer is its own process, so it looks up JBI's Jira account
+        # itself; the web service's lookup does not carry over.
+        from jbi.jira_inbound.handler import resolve_bot_identity
+
+        resolve_bot_identity()
+
         streaming_pull_future = self.subscriber.subscribe(
             self.subscription_path,
             callback=self.callback,
@@ -297,11 +365,38 @@ class Consumer:
 
         def handle_signal(signum, _frame):
             nonlocal shutdown_requested
+            name = signal.Signals(signum).name
+            if shutdown_requested:
+                # The escape hatch. A stuck in-flight message must not make the
+                # consumer unkillable; Pub/Sub redelivers what was not acked.
+                logger.warning(
+                    "Received %s again; exiting now without waiting for "
+                    "in-flight messages (they will be redelivered)",
+                    name,
+                )
+                os._exit(130)
+
             logger.info(
-                "Received %s, shutting down gracefully", signal.Signals(signum).name
+                "Received %s, shutting down gracefully "
+                "(send it again to force an immediate exit)",
+                name,
             )
             shutdown_requested = True
-            streaming_pull_future.cancel()
+            # `cancel()` waits for in-flight messages (we asked it to), so it
+            # must not run inside the handler: that would block the handler,
+            # and with it any further Ctrl+C. A watchdog forces the exit if the
+            # graceful path never finishes.
+            threading.Thread(
+                target=streaming_pull_future.cancel,
+                name="consumer-cancel",
+                daemon=True,
+            ).start()
+            watchdog = threading.Timer(
+                self.settings.pubsub_shutdown_force_seconds,
+                self._force_exit,
+            )
+            watchdog.daemon = True
+            watchdog.start()
 
         signal.signal(signal.SIGTERM, handle_signal)
         signal.signal(signal.SIGINT, handle_signal)
@@ -315,7 +410,7 @@ class Consumer:
 
         with self.subscriber:
             try:
-                streaming_pull_future.result(timeout=timeout_seconds)
+                self._wait(streaming_pull_future, timeout_seconds)
             except FuturesTimeoutError:
                 logger.warning(
                     "Pull window elapsed; shutting down. Messages still held "
@@ -334,6 +429,10 @@ class Consumer:
             except KeyboardInterrupt:
                 logger.info("Interrupted, shutting down")
                 self._cancel(streaming_pull_future)
+            except FuturesCancelledError:
+                # What cancelling the streaming pull surfaces as: no message
+                # text to match, which is why it used to read as a failure.
+                logger.info("Subscriber cancelled by shutdown signal")
             except Exception as exc:
                 message = str(exc).lower()
                 if shutdown_requested and "cancel" in message:
@@ -349,6 +448,35 @@ class Consumer:
                 logger.info("Consumer stopped")
                 # Let background threads finish their ack/nack round trips.
                 time.sleep(int(self.settings.pubsub_shutdown_grace_seconds))
+
+    @staticmethod
+    def _wait(future, timeout_seconds: float) -> None:
+        """Wait for the pull to end, in short slices.
+
+        One long blocking wait is not interrupted by Ctrl+C on Windows: Python
+        only runs a signal handler once the wait returns, so a one-hour window
+        meant a one-hour wait. Short slices let the handler run within a second.
+        Raises `FuturesTimeoutError` when the window itself elapses.
+        """
+        deadline = time.monotonic() + timeout_seconds
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise FuturesTimeoutError()
+            try:
+                future.result(timeout=min(_WAIT_SLICE_SECONDS, remaining))
+                return
+            except FuturesTimeoutError:
+                continue
+
+    @staticmethod
+    def _force_exit() -> None:
+        """Last resort after a shutdown signal that never completed."""
+        logger.error(
+            "Graceful shutdown did not finish in time; exiting. Messages still "
+            "in flight will be redelivered."
+        )
+        os._exit(1)
 
     @staticmethod
     def _cancel(streaming_pull_future) -> None:
