@@ -30,6 +30,8 @@ from jbi.models import (
 )
 from jbi.queue import DeadLetterQueue
 from jbi.steps import StepStatus
+from jbi.visibility import bug_restriction_reason
+from jbi.writeback import sync_is_stopped
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +55,62 @@ def _tag_added_to_whiteboard(
             )
             return not removed_had_tag and added_has_tag
     return False
+
+
+def _bug_in_action_scope(bug: bugzilla_models.Bug, action: Action) -> bool:
+    """Return True when the bug's Product/Component is in the action's sync scope.
+
+    `sync_products_components` (R-01) is an allowlist of either full
+    ``Product::Component`` pairs or bare ``Product`` names (which match every
+    component of that product). Comparison is case-insensitive because BMO
+    product and component names are display strings, not identifiers.
+
+    An unset (``None``) scope means "no restriction", which is today's
+    behavior: every bug matching the whiteboard tag is synced.
+    """
+    scope = action.parameters.sync_products_components
+    if scope is None:
+        return True
+
+    product = (bug.product or "").strip().lower()
+    product_component = bug.product_component.strip().lower()
+    for entry in scope:
+        normalized = entry.strip().lower()
+        if normalized == product_component or normalized == product:
+            return True
+    return False
+
+
+# R-04 thresholds. Ordered most-severe first, so a lower index means "at least
+# as important as". Values outside these lists (``--``, ``""``, ``N/A``, or an
+# unset field) are treated as *below* any configured threshold: BMO leaves both
+# fields unset until triage, and the point of R-04 is to keep pre-triage bugs
+# out of Jira.
+PRIORITY_ORDER = ["P1", "P2", "P3", "P4", "P5"]
+SEVERITY_ORDER = ["S1", "S2", "S3", "S4"]
+
+
+def _meets_threshold(
+    value: Optional[str], minimum: Optional[str], order: list[str]
+) -> bool:
+    """Return True when `value` is at least as important as `minimum`."""
+    if not minimum:
+        return True
+    if value not in order:
+        return False
+    return order.index(value) <= order.index(minimum)
+
+
+def _bug_meets_sync_thresholds(bug: bugzilla_models.Bug, action: Action) -> bool:
+    """Return True when the bug is at or above the action's priority/severity bar.
+
+    Both thresholds must be met when both are configured. Unset thresholds
+    (``None``) impose no restriction, which is today's behavior.
+    """
+    params = action.parameters
+    return _meets_threshold(
+        bug.priority, params.min_priority, PRIORITY_ORDER
+    ) and _meets_threshold(bug.severity, params.min_severity, SEVERITY_ORDER)
 
 
 GROUP_TO_OPERATION = {
@@ -251,8 +309,34 @@ def execute_action(
         operation=Operation.HANDLE,
     )
     try:
-        if bug.is_private:
-            raise IgnoreInvalidRequestError("private bugs are not supported")
+        # Security/embargoed bugs never reach Jira. `is_private` alone is not
+        # enough: it is an optional payload field, and BMO expresses
+        # confidentiality through `groups`. Checked here on the payload as an
+        # early exit, and again after the refresh below, because a bug can
+        # gain a group between the webhook firing and JBI processing it --
+        # a window the dead-letter queue can widen to days.
+        if reason := bug_restriction_reason(bug):
+            raise IgnoreInvalidRequestError(
+                f"restricted bugs are not supported: {reason}"
+            )
+
+        # Invariant C, BMO side: a reverse write into Bugzilla fires this same
+        # webhook, so without this gate every Jira -> BMO write would bounce
+        # straight back into Jira. Handled here rather than in the router so
+        # a suppressed event is logged and counted like any other ignored one.
+        #
+        # `event.user` is optional in BMO payloads, so an actor-less event
+        # cannot be matched and is allowed through (fail-open). D7's
+        # read-before-write is what stops that case from oscillating: a write
+        # of an unchanged value issues no request.
+        if (
+            settings.bugzilla_bot_login
+            and event.user
+            and event.user.login == settings.bugzilla_bot_login
+        ):
+            raise IgnoreInvalidRequestError(
+                f"ignore event authored by JBI itself ({event.user.login})"
+            )
 
         try:
             relevant_actions = lookup_actions(bug, actions)
@@ -272,9 +356,29 @@ def execute_action(
             # is processed (eg. if it spent some time in the DL queue)
             raise IgnoreInvalidRequestError(str(err)) from err
 
-        runner_context = runner_context.update(bug=bug, actions=relevant_actions)
+        # Re-check on the refreshed bug. `BugNotAccessibleError` above only
+        # catches bugs JBI *cannot read*; a bug restricted to a group JBI
+        # belongs to stays readable, and would otherwise sync.
+        if reason := bug_restriction_reason(bug):
+            raise IgnoreInvalidRequestError(
+                f"restricted bugs are not supported: {reason}"
+            )
 
-        return do_execute_actions(runner_context, bug, relevant_actions)
+        # R-01: drop actions whose configured Product/Component scope does not
+        # cover this bug. This is evaluated after `refresh_bug_data` so we scope
+        # on the bug's current product/component rather than a stale payload.
+        in_scope_actions = [
+            action for action in relevant_actions if _bug_in_action_scope(bug, action)
+        ]
+        if not in_scope_actions:
+            raise IgnoreInvalidRequestError(
+                f"bug {bug.product_component!r} is out of scope for matching "
+                f"actions: {', '.join(a.whiteboard_tag for a in relevant_actions)}"
+            )
+
+        runner_context = runner_context.update(bug=bug, actions=in_scope_actions)
+
+        return do_execute_actions(runner_context, bug, in_scope_actions)
     except IgnoreInvalidRequestError as exception:
         logger.info(
             "Ignore incoming request: %s",
@@ -325,6 +429,25 @@ def do_execute_actions(
 
         if action_context.jira.issue is None:
             if event.target == "bug":
+                # R-04: only gate *creation*. Once a bug has a linked issue we
+                # keep syncing it even if it later drops below the threshold,
+                # otherwise an existing Jira issue would silently stop tracking
+                # its bug (worse than never having been created).
+                if not _bug_meets_sync_thresholds(bug, action):
+                    logger.info(
+                        "Bug %s is below the sync threshold of action %r "
+                        "(priority=%r, severity=%r)",
+                        bug.id,
+                        action.whiteboard_tag,
+                        bug.priority,
+                        bug.severity,
+                        extra=action_context.update(
+                            operation=Operation.IGNORE
+                        ).model_dump(),
+                    )
+                    statsd.incr("jbi.bugzilla.ignored.count")
+                    continue
+
                 action_context = action_context.update(operation=Operation.CREATE)
 
         else:
@@ -337,6 +460,26 @@ def do_execute_actions(
                 raise IgnoreInvalidRequestError(
                     f"ignore unreadable issue {action_context.jira.issue}"
                 )
+
+            # The stop label lives on the Jira issue, and that issue has just
+            # been fetched for the project check below -- so this costs no
+            # extra API call.
+            if sync_is_stopped(
+                jira_issue["fields"].get("labels") or [],
+                action.parameters.sync_stop_label,
+            ):
+                logger.info(
+                    "Sync stopped by the %r label on %s; skipping action %r for Bug %s",
+                    action.parameters.sync_stop_label,
+                    action_context.jira.issue,
+                    action.whiteboard_tag,
+                    bug.id,
+                    extra=action_context.update(
+                        operation=Operation.IGNORE
+                    ).model_dump(),
+                )
+                statsd.incr("jbi.sync_stopped.count")
+                continue
 
             # Make sure that associated project in configuration matches the
             # project of the linked Jira issue (see #635)

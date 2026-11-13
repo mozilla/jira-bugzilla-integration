@@ -322,3 +322,79 @@ def test_bugzilla_list_webhooks_raises_if_response_has_no_webhooks(
         bugzilla_client.list_webhooks()
 
     assert "Unexpected response" in str(exc)
+
+
+def test_a_refused_request_logs_the_reason_bugzilla_gave(
+    bugzilla_client, settings, mocked_responses, capturelogs
+):
+    """A bare "400 Bad Request" hides the part that explains it."""
+    import logging
+
+    url = f"{settings.bugzilla_base_url}/rest/bug/1"
+    mocked_responses.add(
+        responses.PUT,
+        url,
+        status=400,
+        json={
+            "error": True,
+            "code": 305,
+            "message": "You must select a resolution when closing a bug.",
+        },
+    )
+
+    with capturelogs.for_logger("jbi.bugzilla.client").at_level(logging.ERROR):
+        with pytest.raises(requests.HTTPError):
+            bugzilla_client.update_bug(1, status="RESOLVED")
+
+    messages = [r.message for r in capturelogs.records]
+    assert any("400" in m and "You must select a resolution" in m for m in messages), (
+        messages
+    )
+
+
+def test_an_unparseable_error_body_is_logged_truncated(
+    bugzilla_client, settings, mocked_responses, capturelogs
+):
+    import logging
+
+    url = f"{settings.bugzilla_base_url}/rest/bug/1"
+    mocked_responses.add(responses.PUT, url, status=400, body="<html>" + "x" * 5000)
+
+    with capturelogs.for_logger("jbi.bugzilla.client").at_level(logging.ERROR):
+        with pytest.raises(requests.HTTPError):
+            bugzilla_client.update_bug(1, status="RESOLVED")
+
+    (message,) = [r.message for r in capturelogs.records][:1]
+    assert "<html>" in message and len(message) < 800
+
+
+def test_an_update_logs_what_was_sent_and_what_bugzilla_says_changed(
+    bugzilla_client, settings, mocked_responses, capturelogs
+):
+    """When Bugzilla's record of a write disagrees with what JBI sent, this
+    line is the only evidence."""
+    import logging
+
+    url = f"{settings.bugzilla_base_url}/rest/bug/1"
+    mocked_responses.add(
+        responses.PUT,
+        url,
+        json={
+            "bugs": [
+                {
+                    "id": 1,
+                    "last_change_time": "2026-11-05T14:25:03Z",
+                    "changes": {"priority": {"added": "P3", "removed": "P1"}},
+                }
+            ]
+        },
+    )
+
+    with capturelogs.for_logger("jbi.bugzilla.client").at_level(logging.INFO):
+        bugzilla_client.update_bug(1, priority="P3")
+
+    messages = [r.message for r in capturelogs.records]
+    assert any(
+        "'priority': 'P3'" in m and "'added': 'P3'" in m and "'removed': 'P1'" in m
+        for m in messages
+    ), messages

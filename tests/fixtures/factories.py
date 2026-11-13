@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 import factory
 
 import jbi.bugzilla.models as bugzilla_models
+import jbi.jira_inbound.models as jira_inbound_models
 from jbi import Operation, models, queue
 
 
@@ -67,6 +68,15 @@ class WebhookCommentFactory(PydanticFactory):
     number = None
     is_private = None
     creation_time = None
+
+
+class AttachmentFlagFactory(PydanticFactory):
+    class Meta:
+        model = bugzilla_models.AttachmentFlag
+
+    id = 1
+    name = "review"
+    value = "?"
 
 
 class WebhookAttachmentFactory(PydanticFactory):
@@ -205,6 +215,102 @@ class WebhookFactory(PydanticFactory):
     name = "Test Webhooks"
     product = "Firefox"
     url = "http://server.example.com/bugzilla_webhook"
+
+
+class JiraUserFactory(PydanticFactory):
+    class Meta:
+        model = jira_inbound_models.JiraUser
+
+    accountId = "jira-account-id-jane"
+    displayName = "Jane Reviewer"
+    emailAddress = "jane@mozilla.com"
+
+
+class JiraStatusCategoryFactory(PydanticFactory):
+    class Meta:
+        model = jira_inbound_models.JiraStatusCategory
+
+    key = "indeterminate"
+    colorName = "yellow"
+
+
+class JiraStatusFactory(PydanticFactory):
+    class Meta:
+        model = jira_inbound_models.JiraStatus
+
+    name = "In Progress"
+    statusCategory = factory.SubFactory(JiraStatusCategoryFactory)
+
+
+class JiraIssueFieldsFactory(PydanticFactory):
+    class Meta:
+        model = jira_inbound_models.JiraIssueFields
+
+    summary = "JBI Test"
+    status = factory.SubFactory(JiraStatusFactory)
+    resolution = None
+    priority = None
+    assignee = None
+    project = factory.LazyFunction(
+        lambda: jira_inbound_models.JiraProject.model_construct(key="JBI")
+    )
+
+
+class JiraIssueFactory(PydanticFactory):
+    class Meta:
+        model = jira_inbound_models.JiraIssue
+
+    id = "10001"
+    key = "JBI-234"
+    fields = factory.SubFactory(JiraIssueFieldsFactory)
+
+
+class JiraChangelogItemFactory(PydanticFactory):
+    class Meta:
+        model = jira_inbound_models.JiraChangelogItem
+
+    field = "status"
+    fieldId = "status"
+    fromString = "To Do"
+    toString = "In Progress"
+
+
+class JiraChangelogFactory(PydanticFactory):
+    class Meta:
+        model = jira_inbound_models.JiraChangelog
+
+    # A plain LazyFunction rather than `factory.List`, which would register a
+    # generic `list` sub-fixture with pytest-factoryboy.
+    items = factory.LazyFunction(lambda: [JiraChangelogItemFactory()])
+
+
+class JiraCommentFactory(PydanticFactory):
+    class Meta:
+        model = jira_inbound_models.JiraComment
+
+    id = "10100"
+    body = "Looks good to me."
+    author = factory.SubFactory(JiraUserFactory)
+    created = None
+
+
+class JiraWebhookRequestFactory(PydanticFactory):
+    class Meta:
+        model = jira_inbound_models.JiraWebhookRequest
+
+    class Params:
+        with_comment = factory.Trait(
+            webhookEvent="comment_created",
+            comment=factory.SubFactory(JiraCommentFactory),
+        )
+
+    webhookEvent = "jira:issue_updated"
+    issue = factory.SubFactory(JiraIssueFactory)
+    user = factory.SubFactory(JiraUserFactory)
+    actor = None
+    changelog = factory.SubFactory(JiraChangelogFactory)
+    comment = None
+    timestamp = 1757500000000
 
 
 class PythonExceptionFactory(PydanticFactory):

@@ -1,0 +1,16 @@
+# Identity overrides for assignee sync and comment attribution (R-11).
+#
+# This file holds EXCEPTIONS ONLY: people whose Bugzilla email does not match
+# their Jira email, or whose Jira email is hidden by privacy settings.
+# Everyone else -- including new hires with a standard corporate email --
+# resolves automatically by email lookup and needs no entry here.
+#
+# Generate and refresh with `python bin/seed_identity_map.py`; entries that
+# runtime resolution fails on are reported by the reconciliation job (R-13),
+# so this list is alert-driven rather than hand-curated.
+#
+# users:
+#   - bmo_email: person@mozilla.com
+#     jira_account_id: 0123456789abcdef01234567
+#     display_name: A Person
+users: []

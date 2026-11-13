@@ -508,7 +508,9 @@ def test_set_assignee_failing_create(
 
     with capturelogs.for_logger("jbi.steps").at_level(logging.DEBUG):
         result, _ = steps.maybe_assign_jira_user(
-            context=action_context, jira_service=JiraService(mocked_jira)
+            context=action_context,
+            parameters=action_context.action.parameters,
+            jira_service=JiraService(mocked_jira),
         )
         assert result == steps.StepStatus.INCOMPLETE
 
@@ -538,7 +540,9 @@ def test_set_assignee_failing_update(
 
     with capturelogs.for_logger("jbi.steps").at_level(logging.DEBUG):
         steps.maybe_assign_jira_user(
-            context=action_context, jira_service=JiraService(mocked_jira)
+            context=action_context,
+            parameters=action_context.action.parameters,
+            jira_service=JiraService(mocked_jira),
         )
 
     assert capturelogs.messages == ["User postmaster@localhost not found"]
@@ -3576,3 +3580,318 @@ def test_create_issue_skips_creation_when_issue_exists(
     mocked_jira.update_issue_field.assert_called_once_with(
         key="JBI-234", fields={"summary": mock.ANY}
     )
+
+
+# --- R-02 / R-03: Phabricator review state (plan D4, D5) --------------------
+
+
+@pytest.fixture
+def phabricator_patch_context(action_context_factory):
+    """An attachment event carrying a fresh Phabricator patch on a linked bug."""
+    return action_context_factory(
+        operation=Operation.ATTACHMENT,
+        bug__with_attachment=True,
+        bug__id=5555,
+        bug__attachment__is_patch=True,
+        bug__attachment__is_obsolete=False,
+        bug__attachment__content_type="text/x-phabricator-request",
+        bug__attachment__file_name="phabricator-D1234-url.txt",
+        event__target="attachment",
+        jira__issue="JBI-234",
+        current_step="maybe_update_issue_status_on_patch",
+    )
+
+
+def _issue_with_category(category_key):
+    return {"fields": {"status": {"statusCategory": {"key": category_key}}}}
+
+
+def test_patch_moves_issue_to_review_status(
+    phabricator_patch_context, mocked_jira, action_params_factory
+):
+    mocked_jira.get_issue.return_value = _issue_with_category("indeterminate")
+
+    result, _ = steps.maybe_update_issue_status_on_patch(
+        phabricator_patch_context,
+        parameters=action_params_factory(phabricator_review_status="In Review"),
+        jira_service=JiraService(mocked_jira),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    mocked_jira.set_issue_status.assert_called_once_with("JBI-234", "In Review")
+
+
+def test_patch_does_nothing_without_configured_status(
+    phabricator_patch_context, mocked_jira, action_params_factory
+):
+    """The step is inert until an action configures the target status, which is
+    what keeps it default-OFF for every project in config today."""
+    result, _ = steps.maybe_update_issue_status_on_patch(
+        phabricator_patch_context,
+        parameters=action_params_factory(),
+        jira_service=JiraService(mocked_jira),
+    )
+
+    assert result == steps.StepStatus.NOOP
+    assert not mocked_jira.set_issue_status.called
+
+
+def test_patch_does_not_reopen_a_closed_issue(
+    phabricator_patch_context, mocked_jira, action_params_factory
+):
+    mocked_jira.get_issue.return_value = _issue_with_category("done")
+
+    result, _ = steps.maybe_update_issue_status_on_patch(
+        phabricator_patch_context,
+        parameters=action_params_factory(phabricator_review_status="In Review"),
+        jira_service=JiraService(mocked_jira),
+    )
+
+    assert result == steps.StepStatus.NOOP
+    assert not mocked_jira.set_issue_status.called
+
+
+def test_obsolete_patch_does_not_move_issue_to_review(
+    action_context_factory, mocked_jira, action_params_factory
+):
+    context = action_context_factory(
+        operation=Operation.ATTACHMENT,
+        bug__with_attachment=True,
+        bug__attachment__is_obsolete=True,
+        bug__attachment__content_type="text/x-phabricator-request",
+        bug__attachment__file_name="phabricator-D1234-url.txt",
+        event__target="attachment",
+        jira__issue="JBI-234",
+        current_step="maybe_update_issue_status_on_patch",
+    )
+    mocked_jira.get_issue.return_value = _issue_with_category("indeterminate")
+
+    result, _ = steps.maybe_update_issue_status_on_patch(
+        context,
+        parameters=action_params_factory(phabricator_review_status="In Review"),
+        jira_service=JiraService(mocked_jira),
+    )
+
+    assert result == steps.StepStatus.NOOP
+    assert not mocked_jira.set_issue_status.called
+
+
+def test_non_phabricator_attachment_does_not_move_issue_to_review(
+    action_context_factory, mocked_jira, action_params_factory
+):
+    context = action_context_factory(
+        operation=Operation.ATTACHMENT,
+        bug__with_attachment=True,
+        bug__attachment__content_type="text/plain",
+        bug__attachment__file_name="log.txt",
+        event__target="attachment",
+        jira__issue="JBI-234",
+        current_step="maybe_update_issue_status_on_patch",
+    )
+
+    result, _ = steps.maybe_update_issue_status_on_patch(
+        context,
+        parameters=action_params_factory(phabricator_review_status="In Review"),
+        jira_service=JiraService(mocked_jira),
+    )
+
+    assert result == steps.StepStatus.NOOP
+    assert not mocked_jira.set_issue_status.called
+
+
+@pytest.mark.parametrize(
+    "flag_value,expected_status,expects_transition",
+    [
+        ("-", steps.StepStatus.SUCCESS, True),
+        ("+", steps.StepStatus.NOOP, False),
+        ("?", steps.StepStatus.NOOP, False),
+    ],
+)
+def test_review_flag_moves_issue_out_of_review(
+    action_context_factory,
+    attachment_flag_factory,
+    mocked_jira,
+    action_params_factory,
+    flag_value,
+    expected_status,
+    expects_transition,
+):
+    context = action_context_factory(
+        operation=Operation.ATTACHMENT,
+        bug__with_attachment=True,
+        bug__attachment__content_type="text/x-phabricator-request",
+        bug__attachment__file_name="phabricator-D1234-url.txt",
+        bug__attachment__flags=[
+            attachment_flag_factory(name="review", value=flag_value)
+        ],
+        event__target="attachment",
+        jira__issue="JBI-234",
+        current_step="sync_phabricator_review_state",
+    )
+    mocked_jira.get_issue.return_value = _issue_with_category("indeterminate")
+
+    result, _ = steps.sync_phabricator_review_state(
+        context,
+        parameters=action_params_factory(
+            phabricator_changes_requested_status="In Progress"
+        ),
+        jira_service=JiraService(mocked_jira),
+    )
+
+    assert result == expected_status
+    assert mocked_jira.set_issue_status.called is expects_transition
+    if expects_transition:
+        mocked_jira.set_issue_status.assert_called_once_with("JBI-234", "In Progress")
+
+
+def test_review_minus_does_nothing_without_configured_status(
+    action_context_factory, attachment_flag_factory, mocked_jira, action_params_factory
+):
+    context = action_context_factory(
+        operation=Operation.ATTACHMENT,
+        bug__with_attachment=True,
+        bug__attachment__content_type="text/x-phabricator-request",
+        bug__attachment__file_name="phabricator-D1234-url.txt",
+        bug__attachment__flags=[attachment_flag_factory(name="review", value="-")],
+        event__target="attachment",
+        jira__issue="JBI-234",
+        current_step="sync_phabricator_review_state",
+    )
+
+    result, _ = steps.sync_phabricator_review_state(
+        context,
+        parameters=action_params_factory(),
+        jira_service=JiraService(mocked_jira),
+    )
+
+    assert result == steps.StepStatus.NOOP
+    assert not mocked_jira.set_issue_status.called
+
+
+def test_review_minus_does_not_transition_closed_issue(
+    action_context_factory, attachment_flag_factory, mocked_jira, action_params_factory
+):
+    context = action_context_factory(
+        operation=Operation.ATTACHMENT,
+        bug__with_attachment=True,
+        bug__attachment__content_type="text/x-phabricator-request",
+        bug__attachment__file_name="phabricator-D1234-url.txt",
+        bug__attachment__flags=[attachment_flag_factory(name="review", value="-")],
+        event__target="attachment",
+        jira__issue="JBI-234",
+        current_step="sync_phabricator_review_state",
+    )
+    mocked_jira.get_issue.return_value = _issue_with_category("done")
+
+    result, _ = steps.sync_phabricator_review_state(
+        context,
+        parameters=action_params_factory(
+            phabricator_changes_requested_status="In Progress"
+        ),
+        jira_service=JiraService(mocked_jira),
+    )
+
+    assert result == steps.StepStatus.NOOP
+    assert not mocked_jira.set_issue_status.called
+
+
+def test_status_category_helper_returns_none_for_unreadable_issue(
+    action_context_factory, mocked_jira
+):
+    """`get_issue` returns None for a 404, and the terminal-state guard must
+    not treat that as "closed" (nor blow up)."""
+    context = action_context_factory(jira__issue="JBI-234")
+    service = JiraService(mocked_jira)
+    mocked_jira.get_issue.side_effect = requests.HTTPError(
+        response=mock.MagicMock(status_code=404)
+    )
+
+    assert service.get_issue_status_category(context, "JBI-234") is None
+    assert service.issue_is_in_terminal_state(context, "JBI-234") is False
+
+
+# --- Private comments and attachments never reach Jira ----------------------
+
+
+def test_private_comment_is_not_copied_to_jira(
+    action_context_factory, mocked_jira, capturelogs
+):
+    """A private comment on an otherwise-public bug is still confidential.
+    `BugzillaClient.get_bug` re-fetches it when JBI can read it, so without
+    this guard the text reaches Jira verbatim."""
+    context = action_context_factory(
+        operation=Operation.COMMENT,
+        bug__with_comment=True,
+        bug__comment__body="embargoed details",
+        bug__comment__id=42,
+        bug__comment__is_private=True,
+        event__target="comment",
+        jira__issue="JBI-234",
+        current_step="create_comment",
+    )
+
+    with capturelogs.for_logger("jbi.steps").at_level(logging.INFO):
+        result, _ = steps.create_comment(context, jira_service=JiraService(mocked_jira))
+
+    assert result == steps.StepStatus.NOOP
+    assert not mocked_jira.issue_add_comment.called
+    assert any("is private" in record.message for record in capturelogs.records)
+
+
+def test_public_comment_is_still_copied(action_context_factory, mocked_jira):
+    context = action_context_factory(
+        operation=Operation.COMMENT,
+        bug__with_comment=True,
+        bug__comment__body="ordinary comment",
+        bug__comment__is_private=False,
+        event__target="comment",
+        event__user__login="person@mozilla.com",
+        jira__issue="JBI-234",
+        current_step="create_comment",
+    )
+
+    result, _ = steps.create_comment(context, jira_service=JiraService(mocked_jira))
+
+    assert result == steps.StepStatus.SUCCESS
+    assert mocked_jira.issue_add_comment.called
+
+
+def test_private_attachment_is_not_described_in_jira(
+    action_context_factory, mocked_jira
+):
+    """Attachment events post the description and filename into Jira."""
+    context = action_context_factory(
+        operation=Operation.ATTACHMENT,
+        bug__with_attachment=True,
+        bug__attachment__is_private=True,
+        bug__attachment__description="exploit proof-of-concept",
+        event__target="attachment",
+        jira__issue="JBI-234",
+        current_step="create_comment",
+    )
+
+    result, _ = steps.create_comment(context, jira_service=JiraService(mocked_jira))
+
+    assert result == steps.StepStatus.NOOP
+    assert not mocked_jira.issue_add_comment.called
+
+
+def test_private_attachment_is_not_linked_in_jira(action_context_factory, mocked_jira):
+    """The remote link carries the attachment description as its title."""
+    context = action_context_factory(
+        operation=Operation.ATTACHMENT,
+        bug__with_attachment=True,
+        bug__attachment__is_private=True,
+        bug__attachment__content_type="text/x-phabricator-request",
+        bug__attachment__file_name="phabricator-D1234-url.txt",
+        event__target="attachment",
+        jira__issue="JBI-234",
+        current_step="maybe_add_phabricator_link",
+    )
+
+    result, _ = steps.maybe_add_phabricator_link(
+        context, jira_service=JiraService(mocked_jira)
+    )
+
+    assert result == steps.StepStatus.NOOP
+    assert not mocked_jira.create_or_update_issue_remote_links.called

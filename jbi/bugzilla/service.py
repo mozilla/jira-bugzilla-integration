@@ -1,5 +1,6 @@
 import logging
 from functools import lru_cache
+from typing import Optional
 
 import requests
 from dockerflow import checks
@@ -25,6 +26,101 @@ class BugzillaService:
         """Add link to Bugzilla ticket"""
 
         return self.client.update_bug(bug.id, see_also={"add": [link]})
+
+    # --- Reverse (Jira -> BMO) writes ------------------------------------
+    #
+    # Every writer below is read-before-write: it compares the value it is
+    # about to write against the bug's current value and issues no request
+    # when they already match. That is the backstop layer of Invariant C --
+    # an echoed value terminates silently after one round trip instead of
+    # oscillating, even when the actor-based echo gates cannot fire.
+    #
+    # Callers must pass a freshly-fetched bug (the inbound handler fetches one
+    # per event); these methods deliberately do not re-fetch, so a caller can
+    # apply several writes against one read.
+
+    def _update_bug_if_changed(self, bug: Bug, changes: dict):
+        """Apply the given field changes, skipping any that are already set."""
+        pending = {
+            field: value
+            for field, value in changes.items()
+            if value is not None and getattr(bug, field, None) != value
+        }
+        if not pending:
+            logger.info(
+                "Bug %s already matches %s, no update sent",
+                bug.id,
+                ", ".join(sorted(changes)),
+                extra={"bug": {"id": bug.id}},
+            )
+            return None
+
+        logger.info(
+            "Updating Bug %s fields %s",
+            bug.id,
+            ", ".join(sorted(pending)),
+            extra={"bug": {"id": bug.id}},
+        )
+        return self.client.update_bug(bug.id, **pending)
+
+    def set_status_resolution(
+        self,
+        bug: Bug,
+        status: Optional[str],
+        resolution: Optional[str] = None,
+        assigned_to: Optional[str] = None,
+    ):
+        """Set the bug's status, and optionally its resolution and assignee.
+
+        All three travel in one request because BMO validates them as a set:
+        a resolution without the matching status transition is rejected, and
+        `ASSIGNED` is rejected outright on a bug with no assignee
+        ("You cannot set this bug's status to ASSIGNED because the bug is not
+        assigned to a person"). Passing the assignee alongside satisfies that
+        in a single write rather than leaving the bug half-updated.
+        """
+        return self._update_bug_if_changed(
+            bug,
+            {
+                "status": status,
+                "resolution": resolution,
+                "assigned_to": assigned_to,
+            },
+        )
+
+    def set_assignee(self, bug: Bug, email: Optional[str]):
+        """Assign the bug, or unassign it with BMO's `nobody@mozilla.org`."""
+        return self._update_bug_if_changed(bug, {"assigned_to": email})
+
+    def set_priority(self, bug: Bug, priority: Optional[str]):
+        """Set the bug's priority."""
+        return self._update_bug_if_changed(bug, {"priority": priority})
+
+    def set_summary(self, bug: Bug, summary: Optional[str]):
+        """Set the bug's summary."""
+        return self._update_bug_if_changed(bug, {"summary": summary})
+
+    def add_comment(self, bug: Bug, text: str):
+        """Post a comment on the bug, unless an identical one already exists.
+
+        A comment has no field to compare against, so the read-before-write
+        equivalent is a duplicate check against the bug's existing comments.
+        Without it, a replayed or echoed event would append the same text
+        again on every delivery.
+        """
+        if not text:
+            return None
+
+        existing = self.client.get_comments(bug.id)
+        if any(comment.text == text for comment in existing):
+            logger.info(
+                "Bug %s already has this comment, not posting it again",
+                bug.id,
+                extra={"bug": {"id": bug.id}},
+            )
+            return None
+
+        return self.client.update_bug(bug.id, comment={"body": text})
 
     def get_description(self, bug_id: int):
         """Fetch a bug's description

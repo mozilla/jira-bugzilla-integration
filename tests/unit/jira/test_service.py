@@ -1,4 +1,5 @@
 import logging
+from unittest import mock
 
 import pytest
 import requests
@@ -243,9 +244,7 @@ def test_update_issue_status_skips_transition_when_already_in_target_status(
     )
 
     with capturelogs.for_logger("jbi.jira.service").at_level(logging.DEBUG):
-        response = jira_service.update_issue_status(
-            context=context, jira_status="Live"
-        )
+        response = jira_service.update_issue_status(context=context, jira_status="Live")
 
     assert response is None
     assert len(mocked_responses.calls) == 1  # only the status GET, no transitions POST
@@ -1255,3 +1254,92 @@ def test_delete_issue_link_causes_ignores_other_link_types(
 
     # Only the GET, no DELETE
     assert len(mocked_responses.calls) == 1
+
+
+# --- Correlation: Jira issue -> Bugzilla bug (plan D6) ----------------------
+
+
+def test_get_linked_bugzilla_bug_id_from_global_id(mocked_jira):
+    """JBI writes the bug id as the remote link's globalId, so that is the
+    authoritative issue -> bug direction."""
+    service = jira.JiraService(mocked_jira)
+    mocked_jira.get_issue_remote_links.return_value = [
+        {
+            "globalId": "654321",
+            "object": {"url": "https://bugzilla/show_bug.cgi?id=654321"},
+        }
+    ]
+
+    assert service.get_linked_bugzilla_bug_id("JBI-234") == 654321
+
+
+def test_get_linked_bugzilla_bug_id_falls_back_to_url(mocked_jira):
+    """Links added by hand have no numeric globalId; parse the URL instead."""
+    service = jira.JiraService(mocked_jira)
+    mocked_jira.get_issue_remote_links.return_value = [
+        {"globalId": "some-other-system", "object": {"url": "https://phabricator/D1"}},
+        {"object": {"url": "https://bugzilla.mozilla.org/show_bug.cgi?id=987"}},
+    ]
+
+    assert service.get_linked_bugzilla_bug_id("JBI-234") == 987
+
+
+def test_get_linked_bugzilla_bug_id_returns_none_without_bugzilla_link(mocked_jira):
+    service = jira.JiraService(mocked_jira)
+    mocked_jira.get_issue_remote_links.return_value = [
+        {"globalId": "abc", "object": {"url": "https://example.com/thing"}}
+    ]
+
+    assert service.get_linked_bugzilla_bug_id("JBI-234") is None
+
+
+def test_get_linked_bugzilla_bug_id_returns_none_for_missing_issue(mocked_jira):
+    service = jira.JiraService(mocked_jira)
+    mocked_jira.get_issue_remote_links.side_effect = requests.HTTPError(
+        response=mock.MagicMock(status_code=404)
+    )
+
+    assert service.get_linked_bugzilla_bug_id("JBI-999") is None
+
+
+def test_get_linked_bugzilla_bug_id_reraises_other_errors(mocked_jira):
+    service = jira.JiraService(mocked_jira)
+    mocked_jira.get_issue_remote_links.side_effect = requests.HTTPError(
+        response=mock.MagicMock(status_code=500)
+    )
+
+    with pytest.raises(requests.HTTPError):
+        service.get_linked_bugzilla_bug_id("JBI-234")
+
+
+# --- "cannot see it" is not "does not exist" -------------------------------
+
+
+def test_404_with_working_credentials_means_no_link(mocked_jira):
+    """A genuinely uncorrelated issue: acknowledge and move on."""
+    service = jira.JiraService(mocked_jira)
+    mocked_jira.get_issue_remote_links.side_effect = requests.HTTPError(
+        response=mock.MagicMock(status_code=404)
+    )
+    mocked_jira.myself.return_value = {"accountId": "abc"}
+
+    assert service.get_linked_bugzilla_bug_id("JBI-1") is None
+
+
+def test_404_with_dead_credentials_raises_instead_of_dropping(mocked_jira):
+    """Jira answers 404 both for "no such issue" and for "you cannot see it",
+    including when credentials stop working. Treating the second as "no
+    linked bug" acknowledges and discards every inbound event for the
+    duration of the outage -- observed live when a sandbox token expired."""
+    from jbi.jira.service import JiraAuthenticationError
+
+    service = jira.JiraService(mocked_jira)
+    mocked_jira.get_issue_remote_links.side_effect = requests.HTTPError(
+        response=mock.MagicMock(status_code=404)
+    )
+    mocked_jira.myself.side_effect = requests.HTTPError(
+        response=mock.MagicMock(status_code=401)
+    )
+
+    with pytest.raises(JiraAuthenticationError):
+        service.get_linked_bugzilla_bug_id("JBI-1")
