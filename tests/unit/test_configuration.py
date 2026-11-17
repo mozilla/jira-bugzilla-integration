@@ -33,7 +33,8 @@ def test_filename_uses_env(mocker, settings):
     "config_file",
     [
         "config/config.local.yaml",
-        "config/config.nonprod.yaml",
+        # config.nonprod.yaml is excluded on purpose: stage enables
+        # `jira_inbound_enabled` on some actions to exercise the inbound path.
         "config/config.prod.yaml",
     ],
 )

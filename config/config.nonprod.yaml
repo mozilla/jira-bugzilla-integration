@@ -1,64 +1,270 @@
 ---
 # Action Config
-- whiteboard_tag: nonprodtest
-  bugzilla_user_id: 644672
-  description: Nonprod testing whiteboard tag (JBI Bin Project)
+- whiteboard_tag: fidefe
+  bugzilla_user_id: 159069
+  description: Firefox Front End whiteboard tag
   parameters:
-    jira_project_key: JB
+    jira_project_key: FIDEFE
+    steps:
+      new:
+        - create_issue
+        - maybe_delete_duplicate
+        - add_link_to_bugzilla
+        - add_link_to_jira
+        - maybe_assign_jira_user
+        - maybe_update_issue_status
+        - maybe_update_issue_resolution
+        - maybe_update_issue_priority
+        - maybe_update_issue_severity
+        - maybe_update_issue_points
+        - sync_whiteboard_labels
+        - sync_dependencies
+        - sync_see_also
+      existing:
+        - update_issue_summary
+        - maybe_assign_jira_user
+        - maybe_update_issue_status
+        - maybe_update_issue_resolution
+        - maybe_update_issue_priority
+        - maybe_update_issue_severity
+        - maybe_update_issue_points
+        - sync_whiteboard_labels
+        - sync_dependencies
+        - sync_see_also
     labels_brackets: both
-    steps:
-      new:
-        - create_issue
-        - maybe_delete_duplicate
-        - maybe_update_components
-        - add_link_to_bugzilla
-        - add_link_to_jira
-        - maybe_assign_jira_user
-        - maybe_update_issue_severity
-        - sync_whiteboard_labels
-        - sync_keywords_labels
-      existing:
-        - update_issue_summary
-        - maybe_assign_jira_user
-        - maybe_update_issue_severity
-        - sync_whiteboard_labels
-        - sync_keywords_labels
-      comment:
-        - create_comment
+    status_map: &status-closed-map
+      ASSIGNED: In Progress
+      FIXED: Closed
+      WONTFIX: Closed
+      DUPLICATE: Closed
+      INVALID: Closed
+      INCOMPLETE: Closed
+      WORKSFORME: Closed
+      REOPENED: In Progress
+    resolution_map: &basic-resolution-map
+      FIXED: Done
+      INVALID: Invalid
+      WONTFIX: "Won't Do"
+      INACTIVE: Inactive
+      DUPLICATE: Duplicate
+      WORKSFORME: "Cannot Reproduce"
+      INCOMPLETE: Incomplete
+      MOVED: Moved
 
-- whiteboard_tag: fxa
-  bugzilla_user_id: 177149
-  description: "Mozilla Accounts (FxA) team tag, Cloud Services::Server: FxA"
+
+- whiteboard_tag: fxp
+  bugzilla_user_id: 396948
+  description: Performance Team
   parameters:
-    jira_project_key: JB
+    jira_project_key: FXP
+    jira_components: &create-product-component
+      use_bug_component: false
+      use_bug_component_with_product_prefix: true
+      create_components: true
     steps:
       new:
         - create_issue
         - maybe_delete_duplicate
         - add_link_to_bugzilla
         - add_link_to_jira
+        - maybe_assign_jira_user
+        - maybe_update_components
         - maybe_update_issue_status
+        - maybe_update_issue_resolution
+        - maybe_update_issue_priority
+        - maybe_update_issue_severity
+        - maybe_add_phabricator_link
         - sync_whiteboard_labels
+        - sync_keywords_labels
+        - sync_dependencies
         - sync_see_also
+        - sync_regressions
       existing:
         - update_issue_summary
+        - maybe_update_components
+        - maybe_assign_jira_user
+        - maybe_update_issue_type
         - maybe_update_issue_status
+        - maybe_update_issue_resolution
+        - maybe_update_issue_priority
+        - maybe_update_issue_severity
+        - maybe_add_phabricator_link
         - sync_whiteboard_labels
+        - sync_keywords_labels
+        - sync_dependencies
         - sync_see_also
+        - sync_duplicates
+        - sync_regressions
+        - add_jira_comments_for_changes
       comment:
         - create_comment
-      attachment:
+    issue_type_map:
+      task: Task
+      defect: Bug
+      enhancement: Improvement
+    status_map: &basic-status-map
+      UNCONFIRMED: Backlog
+      NEW: Backlog
+      ASSIGNED: In Progress
+      REOPENED: In Progress
+      RESOLVED: Done
+      VERIFIED: Done
+      FIXED: Done
+      INVALID: Done
+      WONTFIX: Done
+      INACTIVE: Done
+      DUPLICATE: Done
+      WORKSFORME: Done
+      INCOMPLETE: Done
+      MOVED: Done
+    resolution_map: *basic-resolution-map
+
+
+
+- whiteboard_tag: aife
+  bugzilla_user_id: tbd
+  description: Firefox GenAI - Frontend
+  parameters:
+    jira_project_key: AIFE
+    jira_components: *create-product-component
+    steps: &genai-steps
+      new:
+        - create_issue
+        - maybe_delete_duplicate
+        - add_link_to_bugzilla
+        - add_link_to_jira
+        - maybe_assign_jira_user
+        - maybe_update_components
+        - maybe_update_issue_status
+        - maybe_update_issue_resolution
+        - maybe_update_issue_priority
+        - maybe_update_issue_severity
+        - maybe_update_issue_points
+        - maybe_add_phabricator_link
+        - sync_whiteboard_labels
+        - sync_keywords_labels
+        - sync_dependencies
+        - sync_see_also
+        - sync_regressions
+      existing:
+        - update_issue_summary
+        - maybe_update_components
+        - maybe_assign_jira_user
+        - maybe_update_issue_status
+        - maybe_update_issue_resolution
+        - maybe_update_issue_priority
+        - maybe_update_issue_severity
+        - maybe_update_issue_points
+        - maybe_add_phabricator_link
+        - sync_whiteboard_labels
+        - sync_keywords_labels
+        - sync_dependencies
+        - sync_see_also
+        - sync_duplicates
+        - sync_regressions
+        - add_jira_comments_for_changes
+      comment:
         - create_comment
-    # Jira is the source of truth for FXA. Only new bugs and closures move the
-    # Jira status: new/reopened bugs land in "New" for triage, resolved bugs
-    # close the issue. ASSIGNED is intentionally not mapped.
-    # The FXA project does not expose `resolution` on the edit screen, so
-    # `maybe_update_issue_resolution` is not used; "Done" sets the resolution
-    # via the workflow and "Cancelled" is handled specially by JBI.
+    status_map: *status-closed-map
+    resolution_map: *basic-resolution-map
+
+
+- whiteboard_tag: devtest
+  bugzilla_user_id: tbd
+  description: DevTest whiteboard tag
+  parameters:
+    jira_project_key: DevTest
+    jira_components:
+      set_custom_components:
+        - "Main"
+
+- whiteboard_tag: AIASST
+  bugzilla_user_id: tbd
+  description: AIASST inbound test
+  parameters:
+    jira_project_key: AIASST
+    jira_inbound_enabled: true
+    reverse_comment_sync_enabled: true
+    resolution_map:
+      FIXED: Completed
+    default_reverse_resolution: FIXED
+    # Only if your Jira priority names differ from P1-P5 / None.
+    # BMO value -> Jira priority name:
+    # priority_map:
+    #   "--": "None"
+    #   "P1": "Highest"
+    #   "P2": "High"
+    #   "P3": "Medium"
+    #   "P4": "Low"
+    #   "P5": "Lowest"
+
+- whiteboard_tag: aiact
+  bugzilla_user_id: tbd
+  description: Firefox GenAI - Act
+  parameters:
+    jira_inbound_enabled: true
+    reverse_comment_sync_enabled: true
+    jira_project_key: AIACT
+    jira_components: *create-product-component
+    steps: *genai-steps
+    status_map: *status-closed-map
+    resolution_map: *basic-resolution-map
+
+
+- whiteboard_tag: aiaug
+  bugzilla_user_id: tbd
+  description: Firefox GenAI - Augment
+  parameters:
+    jira_project_key: AIAUG
+    jira_inbound_enabled: true
+    jira_components: *create-product-component
+    steps: *genai-steps
+    status_map: *status-closed-map
+    resolution_map: *basic-resolution-map
+
+- whiteboard_tag: aidisc
+  bugzilla_user_id: tbd
+  description: Firefox GenAI - Discover
+  parameters:
+    jira_project_key: AIDISC
+    jira_inbound_enabled: true
+    jira_components: *create-product-component
+    steps: *genai-steps
+    status_map: *status-closed-map
+    resolution_map: *basic-resolution-map
+
+- whiteboard_tag: fx-vpn
+  bugzilla_user_id: 618576
+  description: VPN Integration in Firefox
+  parameters:
+    jira_project_key: FXVPN2
+    jira_inbound_enabled: true
+    steps:
+      new:
+        - create_issue
+        - maybe_delete_duplicate
+        - add_link_to_bugzilla
+        - add_link_to_jira
+        - maybe_assign_jira_user
+        - maybe_update_issue_status
+        - maybe_update_issue_priority
+        - maybe_update_issue_points
+        - sync_whiteboard_labels
+      existing:
+        - update_issue_summary
+        - maybe_assign_jira_user
+        - maybe_update_issue_status
+        - maybe_update_issue_priority
+        - maybe_update_issue_points
+        - sync_whiteboard_labels
+    labels_brackets: both
     status_map:
-      UNCONFIRMED: New
-      NEW: New
-      REOPENED: New
+      UNCONFIRMED: Backlog
+      NEW: Backlog
+      ASSIGNED: In Progress
+      REOPENED: In Progress
+      RESOLVED: Done
+      VERIFIED: Done
       FIXED: Done
       INVALID: Cancelled
       WONTFIX: Cancelled
@@ -68,11 +274,13 @@
       INCOMPLETE: Cancelled
       MOVED: Cancelled
 
-- whiteboard_tag: fxcm
-  bugzilla_user_id: tbd
-  description: Firefox Credential Management Team whiteboard tag
+  
+- whiteboard_tag: moz-vpn
+  bugzilla_user_id: 618576
+  description: Mozilla VPN
   parameters:
-    jira_project_key: JB
+    jira_project_key: VPN
+    jira_inbound_enabled: true
     steps:
       new:
         - create_issue
@@ -80,48 +288,18 @@
         - add_link_to_bugzilla
         - add_link_to_jira
         - maybe_assign_jira_user
+        - maybe_update_issue_status
+        - maybe_update_issue_resolution
         - maybe_update_issue_priority
-        - maybe_update_issue_status
+        - maybe_update_issue_points
         - sync_whiteboard_labels
       existing:
         - update_issue_summary
         - maybe_assign_jira_user
+        - maybe_update_issue_status
+        - maybe_update_issue_resolution
         - maybe_update_issue_priority
-        - maybe_update_issue_status
-        - sync_whiteboard_labels
-    labels_brackets: both
-    status_map:
-      ASSIGNED: To Do
-      REOPENED: To Do
-      RESOLVED: Done
-      VERIFIED: Done
-      FIXED: Done
-      INVALID: Done
-      WONTFIX: Done
-      INACTIVE: Done
-      DUPLICATE: Done
-      WORKSFORME: Done
-      INCOMPLETE: Done
-      MOVED: Done
-
-- whiteboard_tag: fxdroid
-  bugzilla_user_id: 430528
-  description: Firefox Android Team Tag
-  parameters:
-    jira_project_key: JB
-    steps:
-      new:
-        - create_issue
-        - maybe_delete_duplicate
-        - add_link_to_bugzilla
-        - add_link_to_jira
-        - maybe_assign_jira_user
-        - maybe_update_issue_status
-        - sync_whiteboard_labels
-      existing:
-        - update_issue_summary
-        - maybe_assign_jira_user
-        - maybe_update_issue_status
+        - maybe_update_issue_points
         - sync_whiteboard_labels
     labels_brackets: both
     status_map:
@@ -129,177 +307,16 @@
       NEW: Backlog
       ASSIGNED: In Progress
       REOPENED: In Progress
-      RESOLVED: Closed
-      VERIFIED: Closed
-      FIXED: Closed
-      INVALID: Closed
-      WONTFIX: Closed
-      INACTIVE: Closed
-      DUPLICATE: Closed
-      WORKSFORME: Closed
-      INCOMPLETE: Closed
-      MOVED: Closed
-
-- whiteboard_tag: fxp
-  bugzilla_user_id: 396948
-  description: Performance Team
-  parameters:
-    jira_project_key: JB
-    steps:
-      new:
-        - create_issue
-        - maybe_delete_duplicate
-        - add_link_to_bugzilla
-        - add_link_to_jira
-        - maybe_assign_jira_user
-        - maybe_update_components
-        - maybe_update_issue_status
-        - sync_whiteboard_labels
-        - sync_keywords_labels
-      existing:
-        - update_issue_summary
-        - maybe_assign_jira_user
-        - maybe_update_components
-        - maybe_update_issue_status
-        - sync_whiteboard_labels
-        - sync_keywords_labels
-      comment:
-        - create_comment
-    labels_brackets: both
-    status_map:
-      UNCONFIRMED: Backlog
-      NEW: Backlog
-      ASSIGNED: In Progress
-      REOPENED: In Progress
       RESOLVED: Done
       VERIFIED: Done
       FIXED: Done
-      INVALID: Done
-      WONTFIX: Done
-      INACTIVE: Done
-      DUPLICATE: Done
-      WORKSFORME: Done
-      INCOMPLETE: Done
-      MOVED: Done
+      INVALID: Cancelled
+      WONTFIX: Cancelled
+      INACTIVE: Cancelled
+      DUPLICATE: Cancelled
+      WORKSFORME: Cancelled
+      INCOMPLETE: Cancelled
+      MOVED: Cancelled
+    resolution_map: *basic-resolution-map
 
-- whiteboard_tag: sp3
-  bugzilla_user_id: 396948
-  description: Speedometer 3
-  parameters:
-    jira_project_key: JB
-    steps:
-      new:
-        - create_issue
-        - maybe_delete_duplicate
-        - add_link_to_bugzilla
-        - add_link_to_jira
-        - maybe_assign_jira_user
-        - maybe_update_components
-        - maybe_update_issue_status
-        - sync_whiteboard_labels
-        - sync_keywords_labels
-      existing:
-        - update_issue_summary
-        - maybe_assign_jira_user
-        - maybe_update_components
-        - maybe_update_issue_status
-        - sync_whiteboard_labels
-        - sync_keywords_labels
-      comment:
-        - create_comment
-    labels_brackets: both
-    status_map:
-      UNCONFIRMED: To Do
-      NEW: To Do
-      ASSIGNED: In Progress
-      REOPENED: In Progress
-      RESOLVED: Done
-      VERIFIED: Done
-      FIXED: Done
-      INVALID: Done
-      WONTFIX: Done
-      INACTIVE: Done
-      DUPLICATE: Done
-      WORKSFORME: Done
-      INCOMPLETE: Done
-      MOVED: Done
 
-- whiteboard_tag: dataplatform
-  bugzilla_user_id: tbd
-  description: Data Platform Infrastructure
-  parameters:
-    jira_project_key: JB
-    jira_components:
-      set_custom_components:
-        - "Data Platform Infrastructure"
-    steps:
-      new:
-        - create_issue
-        - maybe_delete_duplicate
-        - maybe_update_components
-        - add_link_to_bugzilla
-        - add_link_to_jira
-        - maybe_assign_jira_user
-        - maybe_update_issue_status
-      existing:
-        - update_issue_summary
-        - maybe_assign_jira_user
-        - maybe_update_issue_status
-      comment:
-        - create_comment
-    labels_brackets: both
-    status_map:
-      UNCONFIRMED: Backlog
-      NEW: Backlog
-      ASSIGNED: In Progress
-      REOPENED: In Progress
-      RESOLVED: Done
-      VERIFIED: Done
-      FIXED: Done
-      INVALID: Done
-      WONTFIX: Done
-      INACTIVE: Done
-      DUPLICATE: Done
-      WORKSFORME: Done
-      INCOMPLETE: Done
-      MOVED: Done
-
-- whiteboard_tag: dataquality
-  bugzilla_user_id: tbd
-  description: Data Quality
-  parameters:
-    jira_project_key: JB
-    jira_components:
-      set_custom_components:
-        - "Data Quality"
-    steps:
-      new:
-        - create_issue
-        - maybe_delete_duplicate
-        - maybe_update_components
-        - add_link_to_bugzilla
-        - add_link_to_jira
-        - maybe_assign_jira_user
-        - maybe_update_issue_status
-      existing:
-        - update_issue_summary
-        - maybe_assign_jira_user
-        - maybe_update_issue_status
-      comment:
-        - create_comment
-    labels_brackets: both
-    status_map:
-      UNCONFIRMED: To Do
-      NEW: To Do
-      ASSIGNED: In Progress
-      REOPENED: In Progress
-      RESOLVED: Done
-      VERIFIED: Done
-      FIXED: Done
-      INVALID: Done
-      WONTFIX: Done
-      INACTIVE: Done
-      DUPLICATE: Done
-      WORKSFORME: Done
-      INCOMPLETE: Done
-      MOVED: Done
