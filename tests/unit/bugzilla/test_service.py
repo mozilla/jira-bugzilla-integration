@@ -1,6 +1,7 @@
 import pytest
 
 from jbi import bugzilla
+from jbi.bugzilla.service import BugzillaService
 
 
 @pytest.fixture
@@ -261,3 +262,36 @@ def test_add_comment_does_not_duplicate_an_existing_comment(
 def test_add_comment_ignores_empty_text(mocked_service, mocked_bugzilla, bug_factory):
     assert mocked_service.add_comment(bug_factory(), "") is None
     assert not mocked_bugzilla.update_bug.called
+
+
+# --- P2-6: the service refuses free text on restricted bugs ----------------
+
+
+@pytest.mark.parametrize(
+    "restriction", [{"groups": ["core-security"]}, {"is_private": True}]
+)
+@pytest.mark.parametrize(
+    "write",
+    [
+        lambda service, bug: service.add_comment(bug, "from Jira, by someone: hi"),
+        lambda service, bug: service.set_summary(bug, "a new title"),
+    ],
+    ids=["comment", "summary"],
+)
+def test_free_text_is_never_written_to_a_restricted_bug(
+    bug_factory, mocked_bugzilla, restriction, write
+):
+    bug = bug_factory(summary="old title", **restriction)
+    mocked_bugzilla.get_comments.return_value = []
+
+    assert write(BugzillaService(mocked_bugzilla), bug) is None
+    assert not mocked_bugzilla.update_bug.called
+
+
+def test_free_text_still_reaches_a_public_bug(bug_factory, mocked_bugzilla):
+    bug = bug_factory(summary="old title", groups=[], is_private=False)
+    mocked_bugzilla.get_comments.return_value = []
+
+    BugzillaService(mocked_bugzilla).add_comment(bug, "from Jira, by someone: hi")
+
+    assert mocked_bugzilla.update_bug.called

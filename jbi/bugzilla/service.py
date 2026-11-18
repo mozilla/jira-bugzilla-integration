@@ -96,8 +96,32 @@ class BugzillaService:
         """Set the bug's priority."""
         return self._update_bug_if_changed(bug, {"priority": priority})
 
+    def _blocks_free_text(self, bug: Bug, what: str) -> bool:
+        """Last line of defense for R-12: no free text onto a restricted bug.
+
+        Every caller already checks visibility before it gets here. This
+        check exists so that the next step someone adds cannot forget to:
+        the service is the one place every write to BMO goes through.
+        """
+        from jbi.visibility import bug_restriction_reason
+
+        reason = bug_restriction_reason(bug)
+        if not reason:
+            return False
+        logger.warning(
+            "Refusing to write a %s to Bug %s: %s",
+            what,
+            bug.id,
+            reason,
+            extra={"bug": {"id": bug.id}},
+        )
+        statsd.incr("jbi.visibility.blocked_write.count")
+        return True
+
     def set_summary(self, bug: Bug, summary: Optional[str]):
         """Set the bug's summary."""
+        if self._blocks_free_text(bug, "summary"):
+            return None
         return self._update_bug_if_changed(bug, {"summary": summary})
 
     def add_comment(self, bug: Bug, text: str):
@@ -109,6 +133,9 @@ class BugzillaService:
         again on every delivery.
         """
         if not text:
+            return None
+
+        if self._blocks_free_text(bug, "comment"):
             return None
 
         existing = self.client.get_comments(bug.id)
