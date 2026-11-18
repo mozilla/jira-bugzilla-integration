@@ -15,6 +15,7 @@ from pydantic import (
     Field,
     RootModel,
     field_validator,
+    model_validator,
 )
 
 from jbi import Operation, steps
@@ -23,6 +24,21 @@ from jbi.bugzilla.models import Bug, BugId, WebhookEvent
 logger = logging.getLogger(__name__)
 
 JIRA_HOSTNAMES = ("jira", "atlassian")
+
+# Defaults applied to every action onboarded to bidirectional sync
+# (`jira_inbound_enabled: true`), so a team gets D4, D5 and D15 without
+# writing per-team config. An action can still override any of them, or set
+# one to `null` to turn that feature off. Actions that are not onboarded are
+# untouched, so existing forward-only behavior does not change.
+BIDIRECTIONAL_DEFAULTS: dict[str, str] = {
+    "phabricator_review_status": "In Review",
+    "phabricator_changes_requested_status": "In Progress",
+    "sync_stop_label": "jbi-sync-stop",
+}
+BIDIRECTIONAL_ATTACHMENT_STEPS = [
+    "maybe_update_issue_status_on_patch",
+    "sync_phabricator_review_state",
+]
 
 
 class ActionSteps(BaseModel, frozen=True):
@@ -172,12 +188,14 @@ class ActionParams(BaseModel, frozen=True):
 
     # An escape hatch for humans: adding this label to a Jira issue halts
     # syncing for that bug/issue pair in BOTH directions, and removing it
-    # resumes. Unset means the feature is off for this action.
+    # resumes. Unset means the feature is off for this action, except that
+    # onboarded actions default to `jbi-sync-stop` (BIDIRECTIONAL_DEFAULTS).
     sync_stop_label: Optional[str] = None
 
     # R-02 / R-03: Jira statuses used by the Phabricator review steps. `None`
     # (the default) means the corresponding step does nothing, so adding the
-    # steps to an action's config without setting these is inert.
+    # steps to an action's config without setting these is inert. Onboarded
+    # actions get "In Review" / "In Progress" (BIDIRECTIONAL_DEFAULTS).
     phabricator_review_status: Optional[str] = None
     phabricator_changes_requested_status: Optional[str] = None
 
@@ -193,6 +211,45 @@ class ActionParams(BaseModel, frozen=True):
     # reverse field writers) for this action. Defaults to off: no inbound
     # Jira event has any effect until an action opts in.
     jira_inbound_enabled: bool = False
+
+    @model_validator(mode="before")
+    @classmethod
+    def apply_bidirectional_defaults(cls, data):
+        """Fill in the D4/D5/D15 defaults for actions onboarded to bidirectional sync.
+
+        Only keys the action leaves out are filled, so an explicit value --
+        including `null`, to opt out -- always wins. The two review steps are
+        appended to the attachment steps only when the action does not list
+        its own; a team with a custom `attachment` list keeps exactly what it
+        wrote.
+        """
+        if not isinstance(data, dict) or not data.get("jira_inbound_enabled"):
+            return data
+
+        data = dict(data)
+        for key, value in BIDIRECTIONAL_DEFAULTS.items():
+            data.setdefault(key, value)
+
+        steps = data.get("steps")
+        if steps is None:
+            steps = {}
+        if isinstance(steps, ActionSteps):
+            if "attachment" in steps.model_fields_set:
+                return data
+            steps = steps.model_dump(include=steps.model_fields_set)
+        elif isinstance(steps, dict):
+            if "attachment" in steps:
+                return data
+            steps = dict(steps)
+        else:
+            return data
+
+        steps["attachment"] = [
+            *ActionSteps.model_fields["attachment"].default,
+            *BIDIRECTIONAL_ATTACHMENT_STEPS,
+        ]
+        data["steps"] = steps
+        return data
 
     @field_validator("resolution_map")
     @classmethod
