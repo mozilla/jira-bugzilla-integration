@@ -453,3 +453,68 @@ class ActionContext(Context, extra="forbid"):
         copied = copy(self.responses_by_step)
         copied[self.current_step].extend(responses)
         return self.update(responses_by_step=copied)
+
+
+# Settings a team may supply in its own `config/projects/<JIRA_KEY>.yaml`.
+# Mappings and Jira field ids only: anything that decides *whether* JBI syncs
+# a team (onboarding, steps, comment copying) stays in the reviewed main
+# config, because getting it wrong can leak data or flood a project.
+PROJECT_CONFIG_FIELDS = (
+    "status_map",
+    "resolution_map",
+    "priority_map",
+    "severity_map",
+    "issue_type_map",
+    "cf_fx_points_map",
+    "reverse_status_overrides",
+    "default_reverse_resolution",
+    "phabricator_review_status",
+    "phabricator_changes_requested_status",
+    "sync_stop_label",
+    "jira_priority_field",
+    "jira_resolution_field",
+    "jira_severity_field",
+    "jira_cf_fx_points_field",
+)
+
+
+class ProjectConfig(BaseModel):
+    """A team's own Bugzilla <-> Jira mappings for one Jira project.
+
+    Applied to every action whose `jira_project_key` matches, and wins over
+    the action's own values. Maps replace the action's map wholesale rather
+    than merging key by key: a `status_map` is read as a whole, and
+    `resolution_map` must stay invertible as a whole.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    jira_project_key: str
+    status_map: Optional[dict[str, str]] = None
+    resolution_map: Optional[dict[str, str]] = None
+    priority_map: Optional[dict[str, str]] = None
+    severity_map: Optional[dict[str, str | None]] = None
+    issue_type_map: Optional[dict[str, str]] = None
+    cf_fx_points_map: Optional[dict[str, int]] = None
+    reverse_status_overrides: Optional[dict[str, str]] = None
+    default_reverse_resolution: Optional[str] = None
+    phabricator_review_status: Optional[str] = None
+    phabricator_changes_requested_status: Optional[str] = None
+    sync_stop_label: Optional[str] = None
+    jira_priority_field: Optional[str] = None
+    jira_resolution_field: Optional[str] = None
+    jira_severity_field: Optional[str] = None
+    jira_cf_fx_points_field: Optional[str] = None
+
+    def overrides(self) -> dict:
+        """Return the settings this file actually sets.
+
+        Explicitly set keys only, so a file can still write `null` -- for
+        instance `sync_stop_label: null` to turn the stop label off for the
+        whole project.
+        """
+        return {
+            key: getattr(self, key)
+            for key in PROJECT_CONFIG_FIELDS
+            if key in self.model_fields_set
+        }
