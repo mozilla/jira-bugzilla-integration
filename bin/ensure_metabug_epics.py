@@ -14,8 +14,8 @@ the action also sets `sync_products_components`, only those are scanned.
 Metabugs are found by BMO's `meta` keyword, not by a `[meta]` title prefix;
 real metabugs exist without the prefix.
 
-    python bin/ensure_metabug_epics.py --tag aiplatform            # dry run
-    python bin/ensure_metabug_epics.py --tag aiplatform --apply
+    PYTHONPATH=. uv run python bin/ensure_metabug_epics.py --tag aiplatform            # dry run
+    PYTHONPATH=. uv run python bin/ensure_metabug_epics.py --tag aiplatform --apply
 
 Closed metabugs are skipped unless `--include-closed` is given: creating
 Epics for trackers resolved years ago only clutters the backlog.

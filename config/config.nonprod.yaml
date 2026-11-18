@@ -120,7 +120,6 @@
     resolution_map: *basic-resolution-map
 
 
-
 - whiteboard_tag: aife
   bugzilla_user_id: tbd
   description: Firefox GenAI - Frontend
@@ -274,7 +273,7 @@
       INCOMPLETE: Cancelled
       MOVED: Cancelled
 
-  
+
 - whiteboard_tag: moz-vpn
   bugzilla_user_id: 618576
   description: Mozilla VPN
@@ -318,5 +317,3 @@
       INCOMPLETE: Cancelled
       MOVED: Cancelled
     resolution_map: *basic-resolution-map
-
-
