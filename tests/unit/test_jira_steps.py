@@ -433,10 +433,14 @@ def test_unresolvable_assignee_leaves_the_bug_alone(
         ),
     )
 
-    with mock.patch("jbi.jira_steps.get_identity_map", return_value=IdentityMap()):
+    with (
+        mock.patch("jbi.jira_steps.get_identity_map", return_value=IdentityMap()),
+        mock.patch("jbi.jira_steps.report_unresolved") as reported,
+    ):
         status, _ = jira_steps.writeback_assignee(
             context, bugzilla_service=mocked_service
         )
+    reported.assert_called_once_with("to_bmo")
 
     assert status == ReverseStepStatus.INCOMPLETE
     assert not mocked_bugzilla.update_bug.called

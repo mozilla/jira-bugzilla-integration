@@ -21,7 +21,7 @@ from jbi import Operation
 from jbi.bugzilla.models import JIRA_HOSTNAMES, WebhookAttachment
 from jbi.environment import get_settings
 from jbi.hierarchy import ensure_mirror_epic, is_metabug, resolve_metabugs
-from jbi.identity import get_identity_map
+from jbi.identity import get_identity_map, report_unresolved
 from jbi.sync_markers import was_written_by_reverse_sync
 
 
@@ -490,6 +490,7 @@ def maybe_assign_jira_user(
             return (StepStatus.SUCCESS, context)
         except ValueError as exc:
             logger.info(str(exc), extra=context.model_dump())
+            report_unresolved("to_jira")
             return (StepStatus.INCOMPLETE, context)
 
     if context.operation == Operation.UPDATE:
@@ -505,6 +506,7 @@ def maybe_assign_jira_user(
                 ) or jira_service.assign_jira_user(context, bug.assigned_to)  # type: ignore
             except ValueError as exc:
                 logger.info(str(exc), extra=context.model_dump())
+                report_unresolved("to_jira")
                 # If that failed then just fall back to clearing the assignee.
                 resp = jira_service.clear_assignee(context)
         context.append_responses(resp)

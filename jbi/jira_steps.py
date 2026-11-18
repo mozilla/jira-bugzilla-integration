@@ -21,7 +21,7 @@ from requests import exceptions as requests_exceptions
 
 from jbi.bugzilla.client import error_detail
 from jbi.bugzilla.models import Bug
-from jbi.identity import UNASSIGNED_EMAIL, get_identity_map
+from jbi.identity import UNASSIGNED_EMAIL, get_identity_map, report_unresolved
 from jbi.jira_inbound.models import JiraWebhookRequest
 from jbi.models import Action, Context
 from jbi.sync_markers import was_written_by_forward_sync
@@ -306,6 +306,7 @@ def writeback_status(
     if status == "ASSIGNED" and not context.bug.is_assigned():
         assigned_to = resolve_bmo_assignee(context)
         if not assigned_to:
+            report_unresolved("to_bmo")
             logger.warning(
                 "Issue %s is in progress but Bug %s is unassigned and the "
                 "Jira assignee could not be resolved; BMO cannot represent "
@@ -393,6 +394,7 @@ def writeback_assignee(
                 context.bug.id,
                 extra=context.model_dump(),
             )
+            report_unresolved("to_bmo")
             return (ReverseStepStatus.INCOMPLETE, context)
 
     response = bugzilla_service.set_assignee(context.bug, email)

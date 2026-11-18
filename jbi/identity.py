@@ -26,8 +26,9 @@ import logging
 import os
 from typing import Mapping, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from pydantic_yaml import parse_yaml_raw_as
+from statsd.defaults.env import statsd
 
 from jbi import environment
 
@@ -51,6 +52,35 @@ class IdentityMap(BaseModel):
     users: list[IdentityEntry] = []
 
     model_config = {"ignored_types": (functools.cached_property,)}
+
+    @field_validator("users")
+    @classmethod
+    def reject_duplicates(cls, users: list[IdentityEntry]):
+        """Refuse a map that names one person twice (P2-5).
+
+        The lookups index by email and by accountId, so a duplicate would
+        silently resolve to whichever entry came last -- assigning work to
+        the wrong person, which section 5 ranks worse than leaving it unset.
+        """
+        problems = []
+        for label, values in (
+            ("bmo_email", [u.bmo_email.strip().lower() for u in users]),
+            (
+                "jira_account_id",
+                [u.jira_account_id for u in users if u.jira_account_id],
+            ),
+        ):
+            seen: set[str] = set()
+            for value in values:
+                if value in seen:
+                    problems.append(f"{label} {value!r}")
+                seen.add(value)
+        if problems:
+            raise ValueError(
+                "identity map lists the same person more than once: "
+                + ", ".join(problems)
+            )
+        return users
 
     @functools.cached_property
     def by_bmo_email(self) -> Mapping[str, IdentityEntry]:
@@ -86,6 +116,16 @@ class IdentityMap(BaseModel):
             return None
         entry = self.by_jira_account_id.get(jira_account_id)
         return entry.display_name if entry else None
+
+
+def report_unresolved(direction: str) -> None:
+    """Count a person JBI could not match, so the gap is visible (P2-5).
+
+    `direction` is `to_jira` or `to_bmo`. The count is what tells an operator
+    that someone needs an override entry, rather than relying on anyone
+    reading the logs; the R-13 reconciliation report builds on it.
+    """
+    statsd.incr(f"jbi.identity.unresolved.{direction}.count")
 
 
 def get_identity_map_from_file(path: str) -> IdentityMap:
