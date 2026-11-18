@@ -54,7 +54,7 @@ BIDIRECTIONAL_ATTACHMENT_STEPS = [
 # every other metabug a bug blocks is represented as a link (plan 10.1).
 PHASE2_STEPS: dict[str, dict[str, list[str]]] = {
     "metabug_epics_enabled": {
-        "new": ["sync_dependencies", "maybe_seed_epic_parent"],
+        "new": ["maybe_seed_epic_parent", "sync_dependencies"],
         "existing": ["sync_dependencies"],
     },
     "release_data_enabled": {
@@ -121,6 +121,21 @@ class JiraComponents(BaseModel, frozen=True):
     use_bug_component_with_product_prefix: bool = False
     create_components: bool = False
     set_custom_components: list[str] = []
+
+
+def _seed_before_links(steps: list[str]) -> list[str]:
+    """Run `maybe_seed_epic_parent` before `sync_dependencies`.
+
+    The seed step creates the metabugs' Epics; `sync_dependencies` can only
+    link to an issue that exists. A team list that already has
+    `sync_dependencies` (as `&genai-steps` does) would otherwise run it first
+    and miss the links on the child's first sync.
+    """
+    seed, links = "maybe_seed_epic_parent", "sync_dependencies"
+    if seed in steps and links in steps and steps.index(seed) > steps.index(links):
+        steps = [s for s in steps if s != seed]
+        steps.insert(steps.index(links), seed)
+    return steps
 
 
 class ActionParams(BaseModel, frozen=True):
@@ -293,7 +308,7 @@ class ActionParams(BaseModel, frozen=True):
             for group, extra in groups.items():
                 current = list(steps.get(group, getattr(defaults, group)))
                 current += [step for step in extra if step not in current]
-                steps[group] = current
+                steps[group] = _seed_before_links(current)
 
         data["steps"] = steps
         return data

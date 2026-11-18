@@ -374,11 +374,18 @@ def maybe_seed_epic_parent(
     if not metabugs:
         return (StepStatus.NOOP, context)
 
-    # Walk the metabugs in id order and take the first that yields an Epic.
-    # A metabug already mirrored as a non-Epic (the rollout case) is skipped
-    # rather than converted, so the next candidate gets the chance.
-    for metabug in metabugs:
-        epic_key = ensure_mirror_epic(context, metabug, jira_service, bugzilla_service)
+    # Every metabug the bug blocks gets its Epic now, on this -- its first --
+    # child: the parent takes one, and `sync_dependencies` (which runs after
+    # this step) links the issue to the rest, so no membership is lost
+    # (plan 10.1). A metabug already mirrored as a non-Epic (the rollout
+    # case) keeps its issue and is linked rather than parented.
+    epics = [
+        (metabug, ensure_mirror_epic(context, metabug, jira_service, bugzilla_service))
+        for metabug in metabugs
+    ]
+
+    # Lowest metabug id with an Epic wins the parent, so re-runs do not flap.
+    for metabug, epic_key in epics:
         if not epic_key:
             continue
 

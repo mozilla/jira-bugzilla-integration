@@ -130,8 +130,8 @@ def test_real_configs(config_file):
 # --- Phase 2 on by default ------------------------------------------------
 
 PHASE2_NEW = [
-    "sync_dependencies",
     "maybe_seed_epic_parent",
+    "sync_dependencies",
     "mirror_release_flags",
     "mirror_target_milestone",
 ]
@@ -168,11 +168,13 @@ def test_phase2_steps_are_appended_to_custom_lists_once():
         },
     )
 
+    # The seed step is moved ahead of the team's own `sync_dependencies`, so
+    # the Epics exist before the links to them are made.
     assert params.steps.new == [
         "create_issue",
         "add_link_to_jira",
-        "sync_dependencies",
         "maybe_seed_epic_parent",
+        "sync_dependencies",
         "mirror_release_flags",
         "mirror_target_milestone",
     ]

@@ -485,3 +485,41 @@ def test_reparent_in_jira_writes_nothing_to_bmo(
     assert mocked_bugzilla.update_bug.called is writes_expected
     if mocked_bugzilla.update_bug.called:
         assert "see_also" not in mocked_bugzilla.update_bug.call_args.kwargs
+
+
+def test_every_metabug_gets_its_epic_on_the_first_child(
+    action_context_factory,
+    action_params_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    bug_factory,
+    settings,
+):
+    """The parent takes the lowest id; the others still need an Epic so
+    `sync_dependencies` has something to link to (plan 10.1)."""
+    context = action_context_factory(
+        operation=Operation.CREATE,
+        jira__issue="JBI-1",
+        jira__project="JBI",
+        bug__blocks=[30, 20],
+        bug__keywords=[],
+        current_step="maybe_seed_epic_parent",
+    )
+    mocked_bugzilla.get_bug.side_effect = lambda bug_id: bug_factory(
+        id=bug_id, keywords=["meta"], see_also=[], summary=f"meta {bug_id}"
+    )
+    created = iter(["JBI-20", "JBI-30"])
+    mocked_jira.create_issue.side_effect = lambda **kwargs: {"key": next(created)}
+
+    result, _ = steps.maybe_seed_epic_parent(
+        context,
+        parameters=action_params_factory(metabug_epics_enabled=True),
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    assert mocked_jira.create_issue.call_count == 2
+    mocked_jira.update_issue_field.assert_called_once_with(
+        key="JBI-1", fields={"parent": {"key": "JBI-20"}}
+    )
