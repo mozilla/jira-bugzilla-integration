@@ -168,9 +168,13 @@ with that `jira_project_key` in every environment. Values there win over the act
 
 ### Metabugs and release data (Phase 2)
 
-- `metabug_epics_enabled` (on for onboarded actions): with the `maybe_seed_epic_parent` step in `new`, a newly
-  created issue is parented under an Epic mirroring the lowest-numbered metabug it blocks (a bug with
-  the `meta` keyword). The Epic is created the first time a child needs it. The parent is set once,
+- `metabug_epics_enabled` (on for onboarded actions): every metabug (a bug with the `meta` keyword)
+  that carries the team's whiteboard tag is mirrored as an **Epic**, whether or not it has children.
+  A metabug without the tag gets its Epic the first time a synced bug blocks it. A newly created issue
+  is parented under the Epic of the lowest-numbered metabug it blocks. Nested metabugs become
+  "blocks" links between their Epics, since Jira cannot put an Epic under an Epic.
+  `bin/ensure_metabug_epics.py --tag <tag>` backfills Epics for existing metabugs (dry run unless
+  `--apply`). The parent is set once,
   at creation; JBI never re-parents an issue afterwards, and a parent change in Jira is never written
   to Bugzilla. A metabug already mirrored as a non-Epic issue is skipped, and private or
   security-restricted metabugs are never mirrored. Other metabugs stay visible as issue links through

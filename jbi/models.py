@@ -55,7 +55,7 @@ BIDIRECTIONAL_ATTACHMENT_STEPS = [
 PHASE2_STEPS: dict[str, dict[str, list[str]]] = {
     "metabug_epics_enabled": {
         "new": ["maybe_seed_epic_parent", "sync_dependencies"],
-        "existing": ["sync_dependencies"],
+        "existing": ["maybe_seed_epic_parent", "sync_dependencies"],
     },
     "release_data_enabled": {
         "new": ["mirror_release_flags", "mirror_target_milestone"],

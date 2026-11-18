@@ -131,6 +131,10 @@ def create_issue(
 
     bug = context.bug
     issue_type = parameters.issue_type_map.get(bug.type or "", "Task")
+    if parameters.metabug_epics_enabled and is_metabug(bug):
+        # A metabug is a tracker, so it is mirrored as an Epic whether or not
+        # any of its children sync (R-05).
+        issue_type = "Epic"
     # In the payload of a bug creation, the `comment` field is `null`.
     description = bugzilla_service.get_description(bug.id)
 
@@ -347,42 +351,46 @@ def maybe_seed_epic_parent(
     jira_service: JiraService,
     bugzilla_service: BugzillaService,
 ) -> StepResult:
-    """Parent a newly created issue under its metabug's mirror Epic (R-06).
+    """Make sure the bug's metabugs have Epics, and seed a new issue's parent (R-05/R-06).
 
-    Seeded **once, at creation only.** Thereafter the parent is a planning
-    decision Jira owns: humans re-organize freely and JBI never re-parents
-    from BMO (R-07). Membership itself is not expressed here -- the full
-    many-to-many graph is already mirrored as issue links by
-    `sync_dependencies`, so this step only chooses the single parent.
+    Runs before `sync_dependencies`, which then links the issue to every
+    metabug's Epic. That covers nesting too: a metabug's own Epic gets
+    "blocks" links to the metabugs it is nested under.
+
+    The parent is seeded **once, at creation only**, and never for a
+    metabug -- Jira cannot parent an Epic under an Epic. Thereafter the parent
+    is a planning decision Jira owns: humans re-organize freely and JBI never
+    re-parents from BMO (R-07).
     """
     if not parameters.metabug_epics_enabled:
-        return (StepStatus.NOOP, context)
-
-    if context.operation != Operation.CREATE:
-        # UPDATE must never re-parent: see R-07.
         return (StepStatus.NOOP, context)
 
     issue_key = context.jira.issue
     if not issue_key:
         return (StepStatus.NOOP, context)
 
-    if is_metabug(context.bug):
-        # A metabug's own mirror is an Epic; Epics are not parented here.
+    if context.operation != Operation.CREATE and not (
+        {"blocks", "keywords"} & set(context.event.changed_fields())
+    ):
+        # Nothing about this bug's metabugs changed.
         return (StepStatus.NOOP, context)
 
     metabugs = resolve_metabugs(context.bug, parameters, bugzilla_service)
     if not metabugs:
         return (StepStatus.NOOP, context)
 
-    # Every metabug the bug blocks gets its Epic now, on this -- its first --
-    # child: the parent takes one, and `sync_dependencies` (which runs after
-    # this step) links the issue to the rest, so no membership is lost
-    # (plan 10.1). A metabug already mirrored as a non-Epic (the rollout
-    # case) keeps its issue and is linked rather than parented.
+    # Every metabug the bug blocks gets its Epic now, so `sync_dependencies`
+    # has an issue to link to and no membership is lost (plan 10.1). A
+    # metabug already mirrored as a non-Epic (the rollout case) keeps its
+    # issue and is linked rather than parented.
     epics = [
         (metabug, ensure_mirror_epic(context, metabug, jira_service, bugzilla_service))
         for metabug in metabugs
     ]
+
+    if context.operation != Operation.CREATE or is_metabug(context.bug):
+        # UPDATE must never re-parent (R-07); Epics are never parented.
+        return (StepStatus.SUCCESS, context)
 
     # Lowest metabug id with an Epic wins the parent, so re-runs do not flap.
     for metabug, epic_key in epics:
@@ -654,6 +662,9 @@ def maybe_update_issue_type(
     if context.operation != Operation.UPDATE:
         return (StepStatus.NOOP, context)
     if "type" not in context.event.changed_fields():
+        return (StepStatus.NOOP, context)
+    if parameters.metabug_epics_enabled and is_metabug(context.bug):
+        # A metabug's mirror is an Epic regardless of its bug type.
         return (StepStatus.NOOP, context)
 
     # Fall back to "Task" for unmapped types, mirroring `create_issue`.

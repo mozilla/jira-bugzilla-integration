@@ -103,11 +103,17 @@ def mirror_issue_key(metabug: Bug, project_key: str) -> Optional[str]:
     return key if isinstance(key, str) else None
 
 
+# Bugzilla refuses dependency loops, but a guard is cheap and the chain is
+# walked with live data.
+MAX_NESTING_DEPTH = 10
+
+
 def ensure_mirror_epic(
     context: "ActionContext",
     metabug: Bug,
     jira_service: "JiraService",
     bugzilla_service: "BugzillaService",
+    _seen: frozenset[int] = frozenset(),
 ) -> Optional[str]:
     """Return the Epic key mirroring this metabug, creating it if needed.
 
@@ -149,7 +155,58 @@ def ensure_mirror_epic(
     bugzilla_service.add_link_to_see_also(
         metabug, f"{settings.jira_base_url}browse/{epic_key}"
     )
+    link_to_outer_metabugs(
+        context, metabug, str(epic_key), jira_service, bugzilla_service, _seen
+    )
     return str(epic_key)
+
+
+def link_to_outer_metabugs(
+    context: "ActionContext",
+    metabug: Bug,
+    issue_key: str,
+    jira_service: "JiraService",
+    bugzilla_service: "BugzillaService",
+    _seen: frozenset[int] = frozenset(),
+) -> None:
+    """Mirror metabug nesting as "blocks" links between their Jira issues.
+
+    Jira cannot parent an Epic under an Epic, so a metabug nested under
+    another (it lists the outer one in `blocks`) is represented the way plan
+    10.1 represents every other membership: as a link. Outer metabugs get
+    their Epics here if they do not have one yet, all the way up the chain.
+
+    Called only when `issue_key` was just created, so each link is made once.
+    """
+    seen = _seen | {metabug.id}
+    if len(seen) > MAX_NESTING_DEPTH:
+        logger.warning(
+            "Metabug %s is nested more than %s deep; not walking further",
+            metabug.id,
+            MAX_NESTING_DEPTH,
+            extra=context.model_dump(),
+        )
+        return
+
+    for outer in resolve_metabugs(metabug, context.action.parameters, bugzilla_service):
+        if outer.id in seen:
+            continue
+        outer_key = ensure_mirror_epic(
+            context, outer, jira_service, bugzilla_service, _seen=seen
+        ) or mirror_issue_key(outer, context.jira.project)
+        if not outer_key:
+            continue
+        jira_service.create_issue_link_blocks(
+            context, blocking_issue=issue_key, blocked_issue=outer_key
+        )
+        logger.info(
+            "Linked %s (metabug %s) as blocking %s (metabug %s)",
+            issue_key,
+            metabug.id,
+            outer_key,
+            outer.id,
+            extra=context.model_dump(),
+        )
 
 
 def choose_parent_metabug(metabugs: list[Bug]) -> Optional[Bug]:

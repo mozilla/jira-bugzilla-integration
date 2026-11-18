@@ -523,3 +523,224 @@ def test_every_metabug_gets_its_epic_on_the_first_child(
     mocked_jira.update_issue_field.assert_called_once_with(
         key="JBI-1", fields={"parent": {"key": "JBI-20"}}
     )
+
+
+# --- Every metabug is an Epic; nesting becomes links ------------------------
+
+
+def _metabug_context(action_context_factory, operation, changed=(), **bug):
+    from tests.fixtures.factories import WebhookEventChangeFactory
+
+    return action_context_factory(
+        operation=operation,
+        jira__issue="JBI-1",
+        jira__project="JBI",
+        event__changes=[WebhookEventChangeFactory(field=f) for f in changed],
+        current_step="maybe_seed_epic_parent",
+        **{f"bug__{k}": v for k, v in bug.items()},
+    )
+
+
+def test_metabug_is_created_as_an_epic(
+    action_context_factory, action_params_factory, mocked_jira, mocked_bugzilla
+):
+    context = action_context_factory(
+        operation=Operation.CREATE,
+        jira__issue=None,
+        bug__keywords=["meta"],
+        bug__type="defect",
+        current_step="create_issue",
+    )
+    mocked_jira.create_issue.return_value = {"key": "JBI-9"}
+    mocked_bugzilla.get_comments.return_value = []
+
+    steps.create_issue(
+        context,
+        parameters=action_params_factory(metabug_epics_enabled=True),
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    fields = mocked_jira.create_issue.call_args.kwargs["fields"]
+    assert fields["issuetype"] == {"name": "Epic"}
+
+
+def test_metabug_uses_its_bug_type_when_feature_off(
+    action_context_factory, action_params_factory, mocked_jira, mocked_bugzilla
+):
+    context = action_context_factory(
+        operation=Operation.CREATE,
+        jira__issue=None,
+        bug__keywords=["meta"],
+        bug__type="defect",
+        current_step="create_issue",
+    )
+    mocked_jira.create_issue.return_value = {"key": "JBI-9"}
+    mocked_bugzilla.get_comments.return_value = []
+
+    steps.create_issue(
+        context,
+        parameters=action_params_factory(metabug_epics_enabled=False),
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert mocked_jira.create_issue.call_args.kwargs["fields"]["issuetype"] == {
+        "name": "Bug"
+    }
+
+
+def test_metabug_epic_type_is_never_changed_back(
+    action_context_factory, action_params_factory, mocked_jira
+):
+    from tests.fixtures.factories import WebhookEventChangeFactory
+
+    context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="JBI-9",
+        bug__keywords=["meta"],
+        bug__type="task",
+        event__changes=[WebhookEventChangeFactory(field="type")],
+        current_step="maybe_update_issue_type",
+    )
+
+    result, _ = steps.maybe_update_issue_type(
+        context,
+        parameters=action_params_factory(metabug_epics_enabled=True),
+        jira_service=JiraService(mocked_jira),
+    )
+
+    assert result == steps.StepStatus.NOOP
+    assert not mocked_jira.update_issue_field.called
+
+
+def test_tagged_metabug_gets_outer_epics_but_no_parent(
+    action_context_factory,
+    action_params_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    bug_factory,
+):
+    context = _metabug_context(
+        action_context_factory, Operation.CREATE, keywords=["meta"], blocks=[50]
+    )
+    mocked_bugzilla.get_bug.side_effect = lambda bug_id: bug_factory(
+        id=bug_id, keywords=["meta"], see_also=[], blocks=[]
+    )
+    mocked_jira.create_issue.return_value = {"key": "JBI-50"}
+
+    result, _ = steps.maybe_seed_epic_parent(
+        context,
+        parameters=action_params_factory(metabug_epics_enabled=True),
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.SUCCESS
+    assert mocked_jira.create_issue.call_count == 1  # the outer metabug's Epic
+    assert not mocked_jira.update_issue_field.called  # Epics are never parented
+
+
+def test_update_adding_a_metabug_ensures_its_epic_without_reparenting(
+    action_context_factory,
+    action_params_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    bug_factory,
+):
+    context = _metabug_context(
+        action_context_factory, Operation.UPDATE, changed=["blocks"], blocks=[60]
+    )
+    mocked_bugzilla.get_bug.side_effect = lambda bug_id: bug_factory(
+        id=bug_id, keywords=["meta"], see_also=[], blocks=[]
+    )
+    mocked_jira.create_issue.return_value = {"key": "JBI-60"}
+
+    steps.maybe_seed_epic_parent(
+        context,
+        parameters=action_params_factory(metabug_epics_enabled=True),
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert mocked_jira.create_issue.call_count == 1
+    assert not mocked_jira.update_issue_field.called
+
+
+def test_unrelated_update_does_no_metabug_work(
+    action_context_factory, action_params_factory, mocked_jira, mocked_bugzilla
+):
+    context = _metabug_context(
+        action_context_factory, Operation.UPDATE, changed=["summary"], blocks=[60]
+    )
+
+    result, _ = steps.maybe_seed_epic_parent(
+        context,
+        parameters=action_params_factory(metabug_epics_enabled=True),
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert result == steps.StepStatus.NOOP
+    assert not mocked_bugzilla.get_bug.called
+
+
+def test_nested_chain_is_linked_inner_to_outer(
+    action_context_factory,
+    action_params_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    bug_factory,
+):
+    """C blocks I, I blocks O: I's Epic blocks O's Epic."""
+    context = _metabug_context(action_context_factory, Operation.CREATE, blocks=[20])
+    metabugs = {
+        20: bug_factory(id=20, keywords=["meta"], see_also=[], blocks=[10]),
+        10: bug_factory(id=10, keywords=["meta"], see_also=[], blocks=[]),
+    }
+    mocked_bugzilla.get_bug.side_effect = lambda bug_id: metabugs[bug_id]
+    created = iter(["JBI-20", "JBI-10"])
+    mocked_jira.create_issue.side_effect = lambda **kwargs: {"key": next(created)}
+
+    steps.maybe_seed_epic_parent(
+        context,
+        parameters=action_params_factory(metabug_epics_enabled=True),
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    link = mocked_jira.create_issue_link.call_args.kwargs["data"]
+    # Same direction `create_issue_link_blocks` uses for a child: the inner
+    # metabug's Epic blocks the outer one's.
+    assert link["type"] == {"name": "Blocks"}
+    assert link["inwardIssue"] == {"key": "JBI-20"}
+    assert link["outwardIssue"] == {"key": "JBI-10"}
+    mocked_jira.update_issue_field.assert_called_once_with(
+        key="JBI-1", fields={"parent": {"key": "JBI-20"}}
+    )
+
+
+def test_a_nesting_cycle_terminates(
+    action_context_factory,
+    action_params_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    bug_factory,
+):
+    context = _metabug_context(action_context_factory, Operation.CREATE, blocks=[20])
+    metabugs = {
+        20: bug_factory(id=20, keywords=["meta"], see_also=[], blocks=[10]),
+        10: bug_factory(id=10, keywords=["meta"], see_also=[], blocks=[20]),
+    }
+    mocked_bugzilla.get_bug.side_effect = lambda bug_id: metabugs[bug_id]
+    created = iter(["JBI-20", "JBI-10", "JBI-X"])
+    mocked_jira.create_issue.side_effect = lambda **kwargs: {"key": next(created)}
+
+    steps.maybe_seed_epic_parent(
+        context,
+        parameters=action_params_factory(metabug_epics_enabled=True),
+        jira_service=JiraService(mocked_jira),
+        bugzilla_service=BugzillaService(mocked_bugzilla),
+    )
+
+    assert mocked_jira.create_issue.call_count == 2

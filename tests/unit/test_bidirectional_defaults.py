@@ -136,6 +136,7 @@ PHASE2_NEW = [
     "mirror_target_milestone",
 ]
 PHASE2_EXISTING = [
+    "maybe_seed_epic_parent",
     "sync_dependencies",
     "mirror_release_flags",
     "mirror_target_milestone",
