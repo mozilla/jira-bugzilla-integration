@@ -153,6 +153,8 @@ def test_stop_label_is_ignored_when_one_action_does_not_use_it(
                 whiteboard_tag="never-stops",
                 parameters__jira_project_key="JBI",
                 parameters__jira_inbound_enabled=True,
+                # Onboarded actions default to the label; opt out explicitly.
+                parameters__sync_stop_label=None,
             ),
         ]
     )

@@ -224,14 +224,16 @@ def test_action_without_a_stop_label_configured_is_unaffected(
     bug_factory,
     settings,
 ):
-    """Default-off: an action that has not opted in behaves exactly as before,
-    even if someone happens to use that label for their own purposes."""
+    """An action that opts out (`sync_stop_label: null`) behaves exactly as
+    before, even if someone happens to use that label for their own purposes.
+    Onboarded actions otherwise default to `jbi-sync-stop`."""
     actions = Actions(
         root=[
             action_factory(
                 whiteboard_tag="devtest",
                 parameters__jira_project_key="JBI",
                 parameters__jira_inbound_enabled=True,
+                parameters__sync_stop_label=None,
             )
         ]
     )

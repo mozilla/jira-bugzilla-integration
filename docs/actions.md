@@ -137,6 +137,24 @@ In this case if the bug changes to the NEW status the action will attempt to set
 issue status to "In Progress". If the bug changes to RESOLVED FIXED it will attempt to set the
 linked Jira issue status to "Closed". If the bug changes to a status not listed in `status_map` then no change will be made to the Jira issue.
 
+### Defaults for bidirectional sync
+
+An action with `jira_inbound_enabled: true` gets these settings without having to configure them:
+
+| Parameter | Default | Effect |
+|---|---|---|
+| `phabricator_review_status` | `In Review` | A Phabricator patch attached to the bug moves the Jira issue to this status. |
+| `phabricator_changes_requested_status` | `In Progress` | A reviewer setting `review-` moves the issue to this status. |
+| `sync_stop_label` | `jbi-sync-stop` | This label on the Jira issue pauses sync in both directions; removing it resumes. |
+
+The two review steps (`maybe_update_issue_status_on_patch`, `sync_phabricator_review_state`) are
+added to the default `attachment` steps. Issues already in a done status are never moved, and if the
+project's workflow has no transition to the status, JBI logs a warning and skips it.
+
+To customize, set the parameter on the action. To turn one off, set it to `null`. An action that
+lists its own `attachment` steps keeps exactly that list. Actions without `jira_inbound_enabled`
+are unaffected.
+
 ### Available Steps
 
 - `create_issue`
@@ -173,6 +191,8 @@ linked Jira issue status to "Closed". If the bug changes to a status not listed 
   Syncs the Bugzilla whitboard tags field to the Jira labels field.
 - `maybe_update_components`: looks at the component that's set on the bug (if any) and any components added to the project configuration with the `jira_components` parameter (see above). If those components are available on the Jira side as well, they're added to the Jira issue
 - `maybe_add_phabricator_link`: looks at an attachment and if it is a phabricator attachment, it gets added as a link or updated if the attachment was previously added.
+- `maybe_update_issue_status_on_patch`: when a Phabricator patch is attached, moves the issue to `phabricator_review_status`. Does nothing if that is unset.
+- `sync_phabricator_review_state`: when a reviewer sets `review-` on a patch, moves the issue to `phabricator_changes_requested_status`. Does nothing if that is unset.
 - `sync_dependencies`:
   Creates and removes Jira "Blocks" issue links based on Bugzilla's `depends_on` and `blocks` fields. For `depends_on`: if bug A depends on bug B and bug B has a linked Jira issue, a link is created where B's issue blocks A's issue. For `blocks`: if bug A blocks bug B and bug B has a linked Jira issue, a link is created where A's issue blocks B's issue. Supports cross-project linking when related bugs have multiple Jira issues. Silently skips bugs that are private, missing, or have no Jira issues. On UPDATE operations, only processes fields that actually changed.
 - `sync_see_also`:
