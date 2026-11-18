@@ -59,12 +59,12 @@ def test_harvesting_does_not_disturb_other_custom_fields():
 @pytest.mark.parametrize(
     "flags,expected",
     [
-        ({"firefox157": "fixed"}, ["fx157-fixed"]),
-        ({"firefox_esr140": "affected"}, ["fxesr140-affected"]),
+        ({"firefox157": "fixed"}, ["bz-status-157-fixed"]),
+        ({"firefox_esr140": "affected"}, ["bz-status-esr140-affected"]),
         # Sorted, so the label set is stable between runs.
         (
             {"firefox158": "affected", "firefox157": "fixed"},
-            ["fx157-fixed", "fx158-affected"],
+            ["bz-status-157-fixed", "bz-status-158-affected"],
         ),
         ({}, []),
     ],
@@ -76,10 +76,10 @@ def test_release_flag_label_rendering(flags, expected):
 @pytest.mark.parametrize(
     "milestone,expected",
     [
-        ("157 Branch", "milestone-157-branch"),
-        ("mozilla160", "milestone-mozilla160"),
+        ("157 Branch", "bz-milestone-157-branch"),
+        ("mozilla160", "bz-milestone-mozilla160"),
         # Jira labels cannot contain spaces.
-        ("Future Work", "milestone-future-work"),
+        ("Future Work", "bz-milestone-future-work"),
         ("---", None),
         ("", None),
         (None, None),
@@ -129,7 +129,7 @@ def test_stale_flag_label_is_retired(action_context_factory, mocked_jira):
         bug__release_flags={"firefox157": "fixed"},
     )
     mocked_jira.get_issue.return_value = {
-        "fields": {"labels": ["bugzilla", "fx157-affected"]}
+        "fields": {"labels": ["bugzilla", "bz-status-157-affected"]}
     }
 
     steps.mirror_release_flags(context, jira_service=JiraService(mocked_jira))
@@ -139,12 +139,12 @@ def test_stale_flag_label_is_retired(action_context_factory, mocked_jira):
     ops = update["update"]["labels"] if "update" in update else update["labels"]
     added = [o["add"] for o in ops if "add" in o]
     removed = [o["remove"] for o in ops if "remove" in o]
-    assert "fx157-fixed" in added
-    assert "fx157-affected" in removed
+    assert "bz-status-157-fixed" in added
+    assert "bz-status-157-affected" in removed
 
 
 def test_unrelated_labels_are_never_touched(action_context_factory, mocked_jira):
-    """JBI owns the `fx`/`milestone-` namespaces only. A whiteboard-derived
+    """JBI owns the `bz-status-`/`bz-milestone-` namespaces only. A whiteboard-derived
     label must survive untouched."""
     context = action_context_factory(
         operation=Operation.UPDATE,
@@ -154,6 +154,27 @@ def test_unrelated_labels_are_never_touched(action_context_factory, mocked_jira)
     )
     mocked_jira.get_issue.return_value = {
         "fields": {"labels": ["bugzilla", "devtest", "important"]}
+    }
+
+    result, _ = steps.mirror_release_flags(
+        context, jira_service=JiraService(mocked_jira)
+    )
+
+    assert result == steps.StepStatus.NOOP
+    assert not mocked_jira.update_issue.called
+
+
+def test_team_labels_sharing_old_prefixes_survive(action_context_factory, mocked_jira):
+    """Regression: a bare `fx` namespace claimed whiteboard labels such as
+    `fx-vpn` (FXVPN2) and `fxa`, and deleted them on the next sync."""
+    context = action_context_factory(
+        operation=Operation.UPDATE,
+        jira__issue="JBI-234",
+        current_step="mirror_release_flags",
+        bug__release_flags={},
+    )
+    mocked_jira.get_issue.return_value = {
+        "fields": {"labels": ["fx-vpn", "fxa", "fx157-fixed", "milestone-q3"]}
     }
 
     result, _ = steps.mirror_release_flags(
@@ -188,7 +209,7 @@ def test_milestone_change_replaces_the_old_label(action_context_factory, mocked_
         bug__target_milestone="158 Branch",
     )
     mocked_jira.get_issue.return_value = {
-        "fields": {"labels": ["milestone-157-branch", "bugzilla"]}
+        "fields": {"labels": ["bz-milestone-157-branch", "bugzilla"]}
     }
 
     steps.mirror_target_milestone(context, jira_service=JiraService(mocked_jira))
@@ -196,8 +217,8 @@ def test_milestone_change_replaces_the_old_label(action_context_factory, mocked_
     call = mocked_jira.update_issue.call_args
     update = call.kwargs.get("update") or call.args[1]
     ops = update["update"]["labels"] if "update" in update else update["labels"]
-    assert {"add": "milestone-158-branch"} in ops
-    assert {"remove": "milestone-157-branch"} in ops
+    assert {"add": "bz-milestone-158-branch"} in ops
+    assert {"remove": "bz-milestone-157-branch"} in ops
 
 
 def test_milestone_cleared_in_bmo_removes_the_label(
@@ -210,7 +231,7 @@ def test_milestone_cleared_in_bmo_removes_the_label(
         bug__target_milestone="---",
     )
     mocked_jira.get_issue.return_value = {
-        "fields": {"labels": ["milestone-157-branch"]}
+        "fields": {"labels": ["bz-milestone-157-branch"]}
     }
 
     result, _ = steps.mirror_target_milestone(
@@ -221,7 +242,7 @@ def test_milestone_cleared_in_bmo_removes_the_label(
     call = mocked_jira.update_issue.call_args
     update = call.kwargs.get("update") or call.args[1]
     ops = update["update"]["labels"] if "update" in update else update["labels"]
-    assert {"remove": "milestone-157-branch"} in ops
+    assert {"remove": "bz-milestone-157-branch"} in ops
 
 
 def test_no_release_data_is_a_noop(action_context_factory, mocked_jira):

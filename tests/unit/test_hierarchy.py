@@ -80,6 +80,26 @@ def test_resolve_metabugs_filters_non_meta_and_out_of_scope(
     assert [m.id for m in metabugs] == [10]
 
 
+@pytest.mark.parametrize(
+    "restriction",
+    [{"groups": ["core-security"]}, {"is_private": True}],
+)
+def test_restricted_metabug_is_never_mirrored(
+    bug_factory, action_params_factory, mocked_bugzilla, restriction
+):
+    """A security metabug's summary would become a Jira Epic title (R-12)."""
+    bug = bug_factory(blocks=[10, 20])
+    service = BugzillaService(mocked_bugzilla)
+    mocked_bugzilla.get_bug.side_effect = lambda bug_id: {
+        10: bug_factory(id=10, keywords=["meta"], **restriction),
+        20: bug_factory(id=20, keywords=["meta"]),
+    }[bug_id]
+
+    metabugs = resolve_metabugs(bug, action_params_factory(), service)
+
+    assert [m.id for m in metabugs] == [20]
+
+
 def test_resolve_metabugs_is_ordered_by_id(
     bug_factory, action_params_factory, mocked_bugzilla
 ):

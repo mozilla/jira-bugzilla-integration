@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING, Optional
 from jbi.bugzilla.models import Bug
 from jbi.environment import get_settings
 from jbi.scope import bug_in_scope
+from jbi.visibility import bug_restriction_reason
 
 if TYPE_CHECKING:
     from jbi.bugzilla.service import BugzillaService
@@ -69,7 +70,10 @@ def resolve_metabugs(
     """Fetch the bug's in-scope metabugs, lowest bug id first.
 
     Filtered to the action's own sync scope: a metabug in a component JBI
-    does not sync has no mirror to parent anything under.
+    does not sync has no mirror to parent anything under. Restricted metabugs
+    are dropped too: mirroring one would copy its summary into a Jira Epic,
+    and a security metabug's title can itself describe the vulnerability
+    (R-12, Invariant D).
     """
     candidate_ids = candidate_metabug_ids(bug)
     if not candidate_ids:
@@ -81,8 +85,16 @@ def resolve_metabugs(
         for candidate in fetched.values()
         if is_metabug(candidate)
         and bug_in_scope(candidate, parameters.sync_products_components)
+        and not _restricted(candidate)
     ]
     return sorted(metabugs, key=lambda candidate: candidate.id)
+
+
+def _restricted(metabug: Bug) -> bool:
+    if reason := bug_restriction_reason(metabug):
+        logger.info("Not mirroring metabug %s as an Epic: %s", metabug.id, reason)
+        return True
+    return False
 
 
 def mirror_issue_key(metabug: Bug, project_key: str) -> Optional[str]:

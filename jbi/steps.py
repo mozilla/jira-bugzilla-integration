@@ -786,13 +786,15 @@ def sync_whiteboard_labels(
 # Both namespaces are owned by JBI: any label matching the prefix is assumed
 # to be ours and is removed when the corresponding BMO value goes away. That
 # is what keeps a flag flipping from `affected` to `fixed` from leaving both
-# labels behind.
-RELEASE_FLAG_LABEL_PREFIX = "fx"
-MILESTONE_LABEL_PREFIX = "milestone-"
+# labels behind. The prefixes are deliberately specific: a bare `fx` would
+# claim -- and delete -- team labels such as the `fx-vpn` and `fxa`
+# whiteboard tags.
+RELEASE_FLAG_LABEL_PREFIX = "bz-status-"
+MILESTONE_LABEL_PREFIX = "bz-milestone-"
 
 
 def _release_flag_labels(release_flags: dict[str, str]) -> list[str]:
-    """Render BMO release flags as Jira labels, eg. `fx157-fixed`."""
+    """Render BMO release flags as Jira labels, eg. `bz-status-157-fixed`."""
     labels = []
     for release, value in sorted(release_flags.items()):
         # `firefox157` -> `157`, `firefox_esr140` -> `esr140`.
@@ -804,7 +806,7 @@ def _release_flag_labels(release_flags: dict[str, str]) -> list[str]:
 
 
 def _milestone_label(target_milestone: Optional[str]) -> Optional[str]:
-    """Render BMO's Target Milestone as a label, eg. `milestone-157-branch`.
+    """Render BMO's Target Milestone as a label, eg. `bz-milestone-157-branch`.
 
     `---` means unset, which is an absence rather than a milestone.
     """
