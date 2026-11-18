@@ -36,11 +36,32 @@ BIDIRECTIONAL_DEFAULTS: dict[str, str | bool] = {
     "phabricator_changes_requested_status": "In Progress",
     "sync_stop_label": "jbi-sync-stop",
     "reverse_comment_sync_enabled": True,
+    # Phase 2 is core behavior for onboarded teams; a project file can set
+    # either flag to `false` to switch that feature off.
+    "metabug_epics_enabled": True,
+    "release_data_enabled": True,
 }
 BIDIRECTIONAL_ATTACHMENT_STEPS = [
     "maybe_update_issue_status_on_patch",
     "sync_phabricator_review_state",
 ]
+
+# Steps each Phase 2 feature needs, appended to an onboarded action's `new`
+# and `existing` lists when the feature is on and the step is not already
+# listed. Appended at the end because each needs the linked issue, which
+# `create_issue` / `add_link_to_jira` establish earlier in `new`.
+# `sync_dependencies` carries the metabug links: an issue has one parent, so
+# every other metabug a bug blocks is represented as a link (plan 10.1).
+PHASE2_STEPS: dict[str, dict[str, list[str]]] = {
+    "metabug_epics_enabled": {
+        "new": ["sync_dependencies", "maybe_seed_epic_parent"],
+        "existing": ["sync_dependencies"],
+    },
+    "release_data_enabled": {
+        "new": ["mirror_release_flags", "mirror_target_milestone"],
+        "existing": ["mirror_release_flags", "mirror_target_milestone"],
+    },
+}
 
 
 class ActionSteps(BaseModel, frozen=True):
@@ -195,8 +216,12 @@ class ActionParams(BaseModel, frozen=True):
     sync_stop_label: Optional[str] = None
 
     # R-05/R-06: mirror BMO metabugs as Jira Epics and seed the parent of
-    # newly created issues. Off by default; Phase 2.
+    # newly created issues. R-09/R-10: mirror release flags and Target
+    # Milestone as labels. Off for actions that are not onboarded; on by
+    # default for onboarded ones (BIDIRECTIONAL_DEFAULTS), which also adds
+    # the steps each needs (PHASE2_STEPS).
     metabug_epics_enabled: bool = False
+    release_data_enabled: bool = False
 
     # R-02 / R-03: Jira statuses used by the Phabricator review steps. `None`
     # (the default) means the corresponding step does nothing, so adding the
@@ -224,13 +249,19 @@ class ActionParams(BaseModel, frozen=True):
     @model_validator(mode="before")
     @classmethod
     def apply_bidirectional_defaults(cls, data):
-        """Fill in the D4/D5/D15 defaults for actions onboarded to bidirectional sync.
+        """Fill in the defaults for actions onboarded to bidirectional sync.
 
         Only keys the action leaves out are filled, so an explicit value --
-        including `null`, to opt out -- always wins. The two review steps are
-        appended to the attachment steps only when the action does not list
-        its own; a team with a custom `attachment` list keeps exactly what it
-        wrote.
+        including `null`/`false`, to opt out -- always wins.
+
+        Steps:
+        - the two review steps (D4/D5) are added to `attachment` only when
+          the action does not list its own `attachment` steps;
+        - the Phase 2 steps are appended to `new` and `existing` -- the
+          action's own lists or the defaults -- for each feature that is on,
+          skipping any step already listed. Every onboarded team has custom
+          lists, so leaving those alone would leave Phase 2 off for all of
+          them.
         """
         if not isinstance(data, dict) or not data.get("jira_inbound_enabled"):
             return data
@@ -239,24 +270,31 @@ class ActionParams(BaseModel, frozen=True):
         for key, value in BIDIRECTIONAL_DEFAULTS.items():
             data.setdefault(key, value)
 
-        steps = data.get("steps")
-        if steps is None:
-            steps = {}
-        if isinstance(steps, ActionSteps):
-            if "attachment" in steps.model_fields_set:
-                return data
-            steps = steps.model_dump(include=steps.model_fields_set)
-        elif isinstance(steps, dict):
-            if "attachment" in steps:
-                return data
-            steps = dict(steps)
+        raw_steps = data.get("steps")
+        if raw_steps is None:
+            steps: dict = {}
+        elif isinstance(raw_steps, ActionSteps):
+            steps = raw_steps.model_dump(include=raw_steps.model_fields_set)
+        elif isinstance(raw_steps, dict):
+            steps = dict(raw_steps)
         else:
             return data
 
-        steps["attachment"] = [
-            *ActionSteps.model_fields["attachment"].default,
-            *BIDIRECTIONAL_ATTACHMENT_STEPS,
-        ]
+        defaults = ActionSteps()
+        if "attachment" not in steps:
+            steps["attachment"] = [
+                *defaults.attachment,
+                *BIDIRECTIONAL_ATTACHMENT_STEPS,
+            ]
+
+        for flag, groups in PHASE2_STEPS.items():
+            if not data.get(flag):
+                continue
+            for group, extra in groups.items():
+                current = list(steps.get(group, getattr(defaults, group)))
+                current += [step for step in extra if step not in current]
+                steps[group] = current
+
         data["steps"] = steps
         return data
 
@@ -471,6 +509,8 @@ PROJECT_CONFIG_FIELDS = (
     "phabricator_review_status",
     "phabricator_changes_requested_status",
     "sync_stop_label",
+    "metabug_epics_enabled",
+    "release_data_enabled",
     "jira_priority_field",
     "jira_resolution_field",
     "jira_severity_field",
@@ -501,6 +541,8 @@ class ProjectConfig(BaseModel):
     phabricator_review_status: Optional[str] = None
     phabricator_changes_requested_status: Optional[str] = None
     sync_stop_label: Optional[str] = None
+    metabug_epics_enabled: Optional[bool] = None
+    release_data_enabled: Optional[bool] = None
     jira_priority_field: Optional[str] = None
     jira_resolution_field: Optional[str] = None
     jira_severity_field: Optional[str] = None

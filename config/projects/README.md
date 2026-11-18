@@ -31,6 +31,10 @@ phabricator_changes_requested_status: In Progress
 
 # The label that pauses sync for one issue; `null` turns it off for the project
 sync_stop_label: jbi-sync-stop
+
+# Phase 2 features, on by default for onboarded teams
+metabug_epics_enabled: false     # no Epics for metabugs, no parent seeding
+release_data_enabled: false      # no bz-status-/bz-milestone- labels
 ```
 
 Other keys you can set: `priority_map`, `severity_map`, `issue_type_map`,

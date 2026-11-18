@@ -147,13 +147,16 @@ An action with `jira_inbound_enabled: true` gets these settings without having t
 | `phabricator_changes_requested_status` | `In Progress` | A reviewer setting `review-` moves the issue to this status. |
 | `sync_stop_label` | `jbi-sync-stop` | This label on the Jira issue pauses sync in both directions; removing it resumes. |
 | `reverse_comment_sync_enabled` | `true` | Jira comments are copied to the bug as "from Jira, by \<name\>: …". Never onto a private or security-restricted bug, and never a Jira comment with restricted visibility or on an issue with a security level. |
+| `metabug_epics_enabled` | `true` | Metabugs become Epics and new issues are parented under them (see below). Adds `sync_dependencies` and `maybe_seed_epic_parent`. |
+| `release_data_enabled` | `true` | Release flags and Target Milestone are mirrored as labels (see below). Adds `mirror_release_flags` and `mirror_target_milestone`. |
 
 The two review steps (`maybe_update_issue_status_on_patch`, `sync_phabricator_review_state`) are
-added to the default `attachment` steps. Issues already in a done status are never moved, and if the
+added to the default `attachment` steps. The Phase 2 steps are appended to the action's `new` and
+`existing` steps, including custom lists, unless already listed. Issues already in a done status are never moved, and if the
 project's workflow has no transition to the status, JBI logs a warning and skips it.
 
-To customize, set the parameter on the action. To turn one off, set it to `null` (`false` for
-`reverse_comment_sync_enabled`). An action that
+To customize, set the parameter on the action or in the project file. To turn one off, set it to
+`null` (`false` for `reverse_comment_sync_enabled` and the two Phase 2 switches). An action that
 lists its own `attachment` steps keeps exactly that list. Actions without `jira_inbound_enabled`
 are unaffected.
 
@@ -165,7 +168,7 @@ with that `jira_project_key` in every environment. Values there win over the act
 
 ### Metabugs and release data (Phase 2)
 
-- `metabug_epics_enabled` (default `false`): with the `maybe_seed_epic_parent` step in `new`, a newly
+- `metabug_epics_enabled` (on for onboarded actions): with the `maybe_seed_epic_parent` step in `new`, a newly
   created issue is parented under an Epic mirroring the lowest-numbered metabug it blocks (a bug with
   the `meta` keyword). The Epic is created the first time a child needs it. The parent is set once,
   at creation; JBI never re-parents an issue afterwards, and a parent change in Jira is never written
