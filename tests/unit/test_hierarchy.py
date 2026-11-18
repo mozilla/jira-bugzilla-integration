@@ -415,3 +415,73 @@ def test_parent_is_not_written_back_to_bmo(action_factory):
 
     assert is_writeback_allowed("parent") is False
     assert is_writeback_allowed("Epic Link") is False
+
+
+# --- R-07 / R-08 end to end: a Jira re-parent never reaches BMO ------------
+
+
+@pytest.mark.parametrize(
+    "field,field_id,writes_expected",
+    [
+        ("Parent", "parent", False),
+        ("Epic Link", "customfield_10014", False),
+        ("IssueParentAssociation", "parent", False),
+        # Control: the same harness does write for an execution field, so the
+        # assertions above cannot pass vacuously.
+        ("status", "status", True),
+    ],
+)
+def test_reparent_in_jira_writes_nothing_to_bmo(
+    jira_webhook_request_factory,
+    jira_changelog_item_factory,
+    action_factory,
+    mocked_jira,
+    mocked_bugzilla,
+    bug_factory,
+    settings,
+    field,
+    field_id,
+    writes_expected,
+):
+    """Moving a task to another epic is a planning decision Jira owns (R-07).
+    The whole inbound pipeline must leave the bug -- including its `see_also`
+    link back to the issue -- exactly as it was (R-08)."""
+    from jbi.errors import IgnoreInvalidRequestError
+    from jbi.jira_inbound.handler import execute_jira_event
+    from jbi.models import Actions
+
+    actions = Actions(
+        root=[
+            action_factory(
+                whiteboard_tag="devtest",
+                parameters__jira_project_key="JBI",
+                parameters__jira_inbound_enabled=True,
+                parameters__reverse_comment_sync_enabled=True,
+            )
+        ]
+    )
+    mocked_jira.get_issue_remote_links.return_value = [{"globalId": "654321"}]
+    mocked_bugzilla.get_bug.return_value = bug_factory(
+        id=654321,
+        whiteboard="[devtest]",
+        status="NEW",
+        assigned_to="owner@mozilla.com",
+        see_also=[f"{settings.jira_base_url}browse/JBI-234"],
+    )
+    event = jira_webhook_request_factory(
+        changelog__items=[
+            jira_changelog_item_factory(
+                field=field, fieldId=field_id, fromString="EPIC-1", toString="EPIC-2"
+            )
+        ],
+        issue__fields__labels=["bugzilla"],
+    )
+
+    try:
+        execute_jira_event(event, actions)
+    except IgnoreInvalidRequestError:
+        pass  # ignoring the event outright is also correct
+
+    assert mocked_bugzilla.update_bug.called is writes_expected
+    if mocked_bugzilla.update_bug.called:
+        assert "see_also" not in mocked_bugzilla.update_bug.call_args.kwargs
