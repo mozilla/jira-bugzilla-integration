@@ -157,6 +157,26 @@ To customize, set the parameter on the action. To turn one off, set it to `null`
 lists its own `attachment` steps keeps exactly that list. Actions without `jira_inbound_enabled`
 are unaffected.
 
+### Per-project mappings
+
+A team can keep its own mappings in `config/projects/<JIRA_KEY>.yaml`, applied to every action
+with that `jira_project_key` in every environment. Values there win over the action's values. See
+[`config/projects/README.md`](../config/projects/README.md) for the allowed keys.
+
+### Metabugs and release data (Phase 2)
+
+- `metabug_epics_enabled` (default `false`): with the `maybe_seed_epic_parent` step in `new`, a newly
+  created issue is parented under an Epic mirroring the lowest-numbered metabug it blocks (a bug with
+  the `meta` keyword). The Epic is created the first time a child needs it. The parent is set once,
+  at creation; JBI never re-parents an issue afterwards, and a parent change in Jira is never written
+  to Bugzilla. A metabug already mirrored as a non-Epic issue is skipped, and private or
+  security-restricted metabugs are never mirrored. Other metabugs stay visible as issue links through
+  `sync_dependencies`.
+- `mirror_release_flags` and `mirror_target_milestone` steps: mirror `cf_status_firefoxNN` flags
+  and Target Milestone onto the issue as labels, e.g. `bz-status-157-fixed` and
+  `bz-milestone-157-branch`. JBI owns the `bz-status-` and `bz-milestone-` label prefixes and removes
+  labels there that Bugzilla no longer backs. No other label is touched.
+
 ### Available Steps
 
 - `create_issue`
@@ -194,6 +214,8 @@ are unaffected.
 - `maybe_update_components`: looks at the component that's set on the bug (if any) and any components added to the project configuration with the `jira_components` parameter (see above). If those components are available on the Jira side as well, they're added to the Jira issue
 - `maybe_add_phabricator_link`: looks at an attachment and if it is a phabricator attachment, it gets added as a link or updated if the attachment was previously added.
 - `maybe_update_issue_status_on_patch`: when a Phabricator patch is attached, moves the issue to `phabricator_review_status`. Does nothing if that is unset.
+- `maybe_seed_epic_parent`: see "Metabugs and release data" above.
+- `mirror_release_flags`, `mirror_target_milestone`: see "Metabugs and release data" above.
 - `sync_phabricator_review_state`: when a reviewer sets `review-` on a patch, moves the issue to `phabricator_changes_requested_status`. Does nothing if that is unset.
 - `sync_dependencies`:
   Creates and removes Jira "Blocks" issue links based on Bugzilla's `depends_on` and `blocks` fields. For `depends_on`: if bug A depends on bug B and bug B has a linked Jira issue, a link is created where B's issue blocks A's issue. For `blocks`: if bug A blocks bug B and bug B has a linked Jira issue, a link is created where A's issue blocks B's issue. Supports cross-project linking when related bugs have multiple Jira issues. Silently skips bugs that are private, missing, or have no Jira issues. On UPDATE operations, only processes fields that actually changed.
