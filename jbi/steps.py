@@ -255,6 +255,17 @@ def maybe_update_issue_status_on_patch(
         # An abandoned patch is not a request for review.
         return (StepStatus.NOOP, context)
 
+    # Only a request for review moves the issue: a new patch, or the review
+    # flag being (re-)requested after rework. Reviewer verdicts arrive as
+    # attachment *modify* events too; `review-` belongs to
+    # `sync_phabricator_review_state`, and `review+` must not drag finished
+    # work back into review.
+    review_flag = _review_flag_value(attachment)
+    if review_flag in ("-", "+"):
+        return (StepStatus.NOOP, context)
+    if context.event.action != "create" and review_flag != "?":
+        return (StepStatus.NOOP, context)
+
     issue_key = context.jira.issue
     assert issue_key  # Attachment events only run on linked bugs.
 

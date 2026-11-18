@@ -3621,6 +3621,50 @@ def test_patch_moves_issue_to_review_status(
     mocked_jira.set_issue_status.assert_called_once_with("JBI-234", "In Review")
 
 
+@pytest.mark.parametrize(
+    "action,review,moves",
+    [
+        ("create", None, True),  # a new patch
+        ("create", "?", True),
+        ("modify", "?", True),  # review re-requested after rework
+        ("modify", None, False),  # some other edit to the attachment
+        ("modify", "-", False),  # changes requested: D5's job
+        ("modify", "+", False),  # approved: never back into review
+        ("create", "-", False),
+    ],
+)
+def test_only_a_review_request_moves_issue_to_review(
+    action_context_factory, mocked_jira, action_params_factory, action, review, moves
+):
+    """Found in the sandbox run: reviewer verdicts are attachment events too,
+    so without this a `review-` bounced the issue into review and out again."""
+    context = action_context_factory(
+        operation=Operation.ATTACHMENT,
+        bug__with_attachment=True,
+        bug__attachment__is_patch=True,
+        bug__attachment__is_obsolete=False,
+        bug__attachment__content_type="text/x-phabricator-request",
+        bug__attachment__file_name="phabricator-D1234-url.txt",
+        bug__attachment__flags=(
+            [{"id": None, "name": "review", "value": review}] if review else []
+        ),
+        event__target="attachment",
+        event__action=action,
+        jira__issue="JBI-234",
+        current_step="maybe_update_issue_status_on_patch",
+    )
+    mocked_jira.get_issue.return_value = _issue_with_category("indeterminate")
+
+    result, _ = steps.maybe_update_issue_status_on_patch(
+        context,
+        parameters=action_params_factory(phabricator_review_status="In Review"),
+        jira_service=JiraService(mocked_jira),
+    )
+
+    assert mocked_jira.set_issue_status.called is moves
+    assert (result == steps.StepStatus.SUCCESS) is moves
+
+
 def test_patch_does_nothing_without_configured_status(
     phabricator_patch_context, mocked_jira, action_params_factory
 ):
