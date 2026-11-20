@@ -904,3 +904,17 @@ def test_non_ascii_signature_is_401(anon_client, jira_webhook_event, webhook_sec
     )
 
     assert response.status_code == 401
+
+
+@pytest.mark.parametrize("bug", ["x", ["x"], 7, True])
+def test_misrouted_payload_with_odd_bug_value_is_invalid_not_500(
+    authenticated_client, bug
+):
+    """Review finding 8: a truthy non-dict `bug` raised AttributeError -> 500,
+    and Jira Automation kept retrying."""
+    response = authenticated_client.post(
+        "/jira_webhook", json={"bug": bug, "event": {}}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "invalid"

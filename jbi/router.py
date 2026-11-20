@@ -208,11 +208,13 @@ async def jira_webhook(
     # nothing in it ("no issue key in payload") and is silently ignored --
     # observed while wiring up a real BMO webhook.
     if isinstance(payload, dict) and "bug" in payload and "event" in payload:
+        bug = payload.get("bug")
         logger.error(
             "Received a Bugzilla payload on /jira_webhook (bug %s). The "
             "producer is pointed at the wrong endpoint; it should post to "
             "/bugzilla_webhook.",
-            (payload.get("bug") or {}).get("id"),
+            # `bug` can be anything a caller sends; never raise over a log line.
+            bug.get("id") if isinstance(bug, dict) else None,
         )
         statsd.incr("jbi.publisher.invalid.count")
         return {
