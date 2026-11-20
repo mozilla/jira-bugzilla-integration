@@ -21,9 +21,10 @@ In `config/config.<env>.yaml`, the team's action needs `jira_inbound_enabled`:
 The JBI operators then add the project to the **central Jira Automation
 rule's** JQL (`project in (..., MYTEAM)`), and to `JIRA_INBOUND_RULE_JQL`
 wherever the reconciliation report runs. The report flags the two when they
-disagree. The rule's body must include `"created": "{{issue.created}}"` in
-`issue.fields`, so that a change in the first seconds after an issue is
-created is retried rather than dropped.
+disagree. The rule's body must include `"created": "{{issue.created}}"` and
+`"reporter": { "accountId": "{{issue.reporter.accountId}}" }` in
+`issue.fields`, so that a change in the first seconds after JBI creates an
+issue is retried rather than dropped.
 
 The Jira Automation bot needs `CREATE_ISSUES`, `EDIT_ISSUES`, `ADD_COMMENTS`,
 `DELETE_ISSUES`, `TRANSITION_ISSUES` and `LINK_ISSUES` in the project, plus

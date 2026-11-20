@@ -250,6 +250,9 @@ class Sandbox:
                     "summary": f.get("summary"),
                     "project": {"key": f["project"]["key"]},
                     "created": f.get("created"),
+                    "reporter": {
+                        "accountId": (f.get("reporter") or {}).get("accountId", "")
+                    },
                     "status": {
                         "name": f["status"]["name"],
                         "statusCategory": {"key": f["status"]["statusCategory"]["key"]},
