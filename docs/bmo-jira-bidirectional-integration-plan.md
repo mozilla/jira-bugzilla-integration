@@ -1,13 +1,15 @@
 # BMO ↔ Jira Bidirectional Integration — Engineering Plan
 
-> **Status:** DRAFT for engineering review.
+> **Status:** COMPLETE — Phases 1–3 shipped; see §0.2 "As built" for what
+> changed from this plan during implementation, and where each deliverable landed.
 > **Purpose:** Translate the "BMO – Jira Integration" PRD (v2) into a concrete,
 > reviewable engineering plan: what exists in JBI today, what the requirements
 > ask for, where the two diverge, and a phased, testable path to close the gap.
 > **Audience:** Reviewers and implementers. This document does not itself change
 > behavior; it is the design and traceability reference the implementation PRs
 > will point back to.
-> **Revision:** v5 — the transport is **Pub/Sub pull** (a streaming-pull
+> **Revision:** v6 (as built, 2026-11-20) adds §0.2, which supersedes the plan
+> where they disagree. v5 — the transport is **Pub/Sub pull** (a streaming-pull
 > consumer process), correcting v4's push subscription; a Jira label can halt
 > syncing for a pair. See "What changed in v4". v3 incorporated the PR #1386 review
 > feedback, indexed in "Review feedback — what changed in v3".
@@ -38,6 +40,53 @@ Requested by the repo admin, and implemented before Phase 2 continues.
 | **One ingest seam** (`jbi/ingest.py`) that every transport calls. | Each transport previously wired itself into the core differently. The seam returns an *acknowledgement decision*, which HTTP never needed but a broker requires. |
 | **Duplicate suppression** on the broker message id. | At-least-once delivery makes duplicates normal. Most of the pipeline is idempotent already, but a redelivered comment event would post twice. |
 | **A sync-stop label** halts a pair in both directions (new Invariant E). | Gives humans an escape hatch that outranks every other rule, without a deploy or a config change. |
+
+## 0.2 As built (v6) — read this first
+
+The body of this plan is the design as reviewed. Implementation and the
+stage pilot changed several decisions; they are recorded in
+`docs/adrs/007-onboarding-defaults-and-team-config.md` and summarised here.
+Where this section and the body disagree, **this section is what shipped.**
+
+**Changed decisions**
+
+| Plan said | Shipped | Why |
+|---|---|---|
+| Pilot: Core :: Machine Learning: On Device, scoped by Product::Component (R-01) | **Onboarding is `jira_inbound_enabled: true` on a team's existing whiteboard-tag → project action.** `sync_products_components` remains an optional filter. The On Device pilot was dropped; stage runs AIASST, AIACT, AIAUG, AIDISC, FXVPN2, VPN. | Teams already map to Jira by tag; a second scope was a competing notion of "our bugs". |
+| Every new behavior default-OFF per action (§6) | **On by default for onboarded actions**: review moves (In Review / In Progress), `jbi-sync-stop`, Jira → BMO comment copying, metabug Epics, release-data labels. Not-onboarded actions are unchanged — which is what keeps prod (no onboarded actions) safe. | Per-team YAML before anything worked left stage teams with features silently off. |
+| Mappings live in each action | **Team-owned `config/projects/<JIRA_KEY>.yaml`**, by PR; project file > action > defaults; can switch features off, cannot onboard or turn comment copying on. | Lets a team fix a workflow mismatch (e.g. AIPLAT has no "In Review") without a JBI ticket. |
+| Mirror Epics: lazy vs. eager left open (§10.1) | **Eager**: every metabug with the team's tag is an Epic, even if empty; untagged metabugs get one on their first synced child. Nested metabugs → "blocks" links between Epics. | A tracker that exists in BMO should be visible in planning. Jira cannot parent an Epic under an Epic. |
+| Release flags / milestone as Jira fields (R-09/R-10) | **Labels** `bz-status-157-fixed`, `bz-milestone-157-branch`, in JBI-owned prefixes. | No such fields in the pilot projects; `fixVersions` has another writer. (An earlier `fx` prefix would have deleted team labels such as `fx-vpn`.) |
+| D4 moves to In Review on a patch | **Only on a review request** (new patch or `review?`). | Reviewer verdicts are attachment events too; `review-` bounced the issue into review and out. |
+
+**Where each deliverable landed**
+
+| Deliverables | PR |
+|---|---|
+| D1–D15, Pub/Sub consumer + publisher (ADR 005, 006) | #1398 |
+| Stage config with onboarded teams | #1421 |
+| Review/stop-label defaults for onboarded teams | #1422 |
+| Comment copying default; D4 review-request fix | #1423 |
+| Phase 2: P2-1…P2-6, project files, eager Epics + nesting, review-feedback fixes | #1424 |
+| Phase 3: P3-1 reconciliation report (`python -m jbi reconcile`), D12 live smoke tests (`make smoke`), P3-2 spike (`docs/spikes/`), onboarding guide (`docs/onboarding.md`), ADR 007 | Phase 3 PR |
+
+**Open items handed off**
+
+- **P3-2** needs a PRD decision; the spike recommends an opt-in default parent
+  Epic per project. No code yet.
+- **Central Automation rule:** its body must include
+  `"created": "{{issue.created}}"` and
+  `"reporter": { "accountId": "{{issue.reporter.accountId}}" }` (so the first
+  change to an issue JBI just created is retried, not dropped), and `JIRA_INBOUND_RULE_JQL` should mirror its scope for
+  the reconciliation report's drift check.
+- **Production rollout** is per team: set `jira_inbound_enabled` on that team's
+  prod action, add the project to the rule's JQL, and run
+  `bin/ensure_metabug_epics.py` (dry run first).
+- Known gaps, recorded rather than fixed: review state is per patch, not per
+  bug; D5 does not skip obsolete patches; backfilled Epics start without
+  labels/status until their metabug next changes.
+
+---
 
 ## 1. Decisions locked
 
