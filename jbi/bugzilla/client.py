@@ -50,6 +50,26 @@ def error_detail(resp: requests.Response, limit: int = 500) -> str:
     return str(text or resp.text or "")[:limit] or "<empty response>"
 
 
+# Fields whose values are free text. They can carry a copied Jira comment
+# or an embargoed title, and application logs sit outside the visibility and
+# retention controls that guard the bug, so only their size is logged.
+FREE_TEXT_FIELDS = frozenset({"comment", "summary", "description"})
+
+
+def _redact_free_text(fields):
+    """Return `fields` with free-text values replaced by a length marker."""
+    if not isinstance(fields, dict):
+        return fields
+    return {
+        key: (
+            f"<redacted, {len(str(value))} chars>"
+            if key in FREE_TEXT_FIELDS and value is not None
+            else value
+        )
+        for key, value in fields.items()
+    }
+
+
 class BugzillaClient:
     """A wrapper around `requests` to interact with a Bugzilla REST API."""
 
@@ -163,8 +183,8 @@ class BugzillaClient:
         logger.info(
             "PUT %s sent %s; Bugzilla reports changes %s",
             url,
-            fields,
-            reported,
+            _redact_free_text(fields),
+            [_redact_free_text(changes) for changes in reported],
             extra={"bug": {"id": bugid}},
         )
         parsed = ApiResponse.model_validate(updated_info)
