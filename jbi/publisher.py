@@ -40,13 +40,16 @@ class PublishError(Exception):
     """The event could not be handed to Pub/Sub; the caller should be told to retry."""
 
 
-def delivery_id(event: JiraWebhookRequest) -> str:
+def delivery_id(event: JiraWebhookRequest, body: Optional[bytes] = None) -> str:
     """Return an id that is the same every time Jira sends this event.
 
     Built from what identifies the event rather than from the whole body, so
     cosmetic differences between retries cannot split one event into two. The
-    Automation payload always carries a millisecond ``timestamp``; without it
-    two identical flips of the same field would collapse into one id.
+    Automation payload carries a millisecond ``timestamp`` that tells two
+    identical flips of the same field apart. When it is missing, the raw body
+    stands in for it: a retry of one delivery resends the same bytes, while a
+    second flip differs somewhere (``updated``, comment ids), so it is not
+    dropped as a duplicate of the first.
     """
     issue = event.issue
     parts: dict[str, Any] = {
@@ -59,6 +62,8 @@ def delivery_id(event: JiraWebhookRequest) -> str:
             for item in (event.changelog.items if event.changelog else [])
         ],
     }
+    if event.timestamp is None and body is not None:
+        parts["body"] = hashlib.sha256(body).hexdigest()
     canonical = json.dumps(parts, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(canonical.encode()).hexdigest()
 
@@ -112,7 +117,7 @@ class JiraEventPublisher:
         durably queued. Raises `PublishError` otherwise.
         """
         issue_key = event.issue.key if event.issue else None
-        event_id = delivery_id(event)
+        event_id = delivery_id(event, body)
         started = time.monotonic()
         try:
             future = self.client.publish(
