@@ -17,6 +17,7 @@ forever.
 
 import logging
 import time
+import uuid
 from enum import StrEnum, auto
 from typing import Optional, Union
 
@@ -128,9 +129,12 @@ async def ingest_event(
         return await _dispatch(event, actions, queue)
 
     store = dedup or get_dedup_store()
+    # Identifies this attempt, so settling it cannot touch a claim another
+    # worker took over after this one's lease ran out.
+    owner = uuid.uuid4().hex
     started = time.monotonic()
     try:
-        status = await store.claim(delivery_id)
+        status = await store.claim(delivery_id, owner)
     except Exception as exc:
         # Fail closed. Processing without the guard is exactly what produces
         # duplicate comments; a transient store outage is better absorbed by
@@ -166,9 +170,9 @@ async def ingest_event(
     try:
         result = await _dispatch(event, actions, queue)
     except BaseException:
-        await _settle(store, delivery_id, done=False)
+        await _settle(store, delivery_id, owner, done=False)
         raise
-    await _settle(store, delivery_id, done=result.outcome != IngestOutcome.RETRY)
+    await _settle(store, delivery_id, owner, done=result.outcome != IngestOutcome.RETRY)
     return result
 
 
@@ -180,7 +184,9 @@ _CLAIM_METRIC = {
 }
 
 
-async def _settle(store: DedupStore, delivery_id: str, *, done: bool) -> None:
+async def _settle(
+    store: DedupStore, delivery_id: str, owner: str, *, done: bool
+) -> None:
     """Mark a claim finished or give it up, without masking the real outcome.
 
     If this fails the lease simply runs out and the event is taken over, so
@@ -188,7 +194,11 @@ async def _settle(store: DedupStore, delivery_id: str, *, done: bool) -> None:
     already happened.
     """
     try:
-        await (store.complete(delivery_id) if done else store.release(delivery_id))
+        await (
+            store.complete(delivery_id, owner)
+            if done
+            else store.release(delivery_id, owner)
+        )
     except Exception:
         statsd.incr("jbi.dedup.store_error.count")
         logger.exception("Could not settle dedup claim for message %s", delivery_id)

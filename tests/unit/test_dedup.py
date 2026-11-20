@@ -164,6 +164,47 @@ async def test_a_crashed_workers_event_is_taken_over_after_the_lease(store, cloc
 
 
 @pytest.mark.asyncio
+async def test_a_taken_over_claim_survives_the_slow_worker_settling(store, clock):
+    """Review finding 5: A's lease ran out and B took over. A then failing
+    used to delete B's live claim, so a third delivery was processed as new
+    and the comment was posted twice."""
+    await store.claim("e1", "worker-a")
+    clock.advance(seconds=601)
+    assert await store.claim("e1", "worker-b") == ClaimStatus.TAKEN_OVER
+
+    await store.release("e1", "worker-a")
+    assert await store.claim("e1", "worker-c") == ClaimStatus.IN_PROGRESS
+
+    await store.complete("e1", "worker-a")
+    clock.advance(seconds=601)  # had A marked it done, this would be DUPLICATE
+    assert await store.claim("e1", "worker-c") == ClaimStatus.TAKEN_OVER
+
+
+@pytest.mark.asyncio
+async def test_the_holder_can_still_settle_its_own_claim(store):
+    await store.claim("e1", "worker-a")
+    await store.complete("e1", "worker-a")
+
+    assert await store.claim("e1", "worker-b") == ClaimStatus.DUPLICATE
+
+
+@pytest.mark.parametrize(
+    "record_owner,caller,expected",
+    [
+        ("a", "a", True),
+        ("a", "b", False),
+        (None, "b", True),  # written before owners existed
+        ("a", None, True),
+    ],
+)
+def test_owns(record_owner, caller, expected):
+    from jbi.dedup import owns
+
+    assert owns({"owner": record_owner}, caller) is expected
+    assert owns(None, caller) is False
+
+
+@pytest.mark.asyncio
 async def test_completed_events_are_forgotten_after_the_ttl(store, clock):
     await store.claim("e1")
     await store.complete("e1")

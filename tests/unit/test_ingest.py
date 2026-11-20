@@ -165,19 +165,22 @@ class RecordingStore:
         self.fail_on = fail_on
         self.calls = []
 
-    async def claim(self, delivery_id):
+    async def claim(self, delivery_id, owner=None):
         self.calls.append(("claim", delivery_id))
+        self.owners = [owner]
         if self.fail_on == "claim":
             raise RuntimeError("firestore down")
         return self.status
 
-    async def complete(self, delivery_id):
+    async def complete(self, delivery_id, owner=None):
         self.calls.append(("complete", delivery_id))
+        self.owners.append(owner)
         if self.fail_on == "complete":
             raise RuntimeError("firestore down")
 
-    async def release(self, delivery_id):
+    async def release(self, delivery_id, owner=None):
         self.calls.append(("release", delivery_id))
+        self.owners.append(owner)
         if self.fail_on == "release":
             raise RuntimeError("firestore down")
 
