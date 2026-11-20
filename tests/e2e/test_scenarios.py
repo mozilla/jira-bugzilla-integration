@@ -1,97 +1,214 @@
-"""The four PRD acceptance scenarios, end to end (plan D12).
+"""End-to-end smoke tests against a live Jira sandbox and Bugzilla dev (plan D12).
 
-Stubbed harness: each test states its steps and assertions precisely so that
-filling it in is mechanical once sandbox access exists. See README.md.
+The four PRD acceptance scenarios, the invariants, and the Phase 2 behavior.
+JBI is the real thing, running with a config that onboards
+JBI_E2E_WHITEBOARD_TAG; the two producers (BMO's webhook and the central
+Automation rule) are stood in for by `Sandbox.post_*_event`. See README.md.
+
+Run with `make smoke` (or `uv run pytest tests/e2e -m e2e`).
 """
 
 import pytest
 
+from .conftest import SLA_SECONDS
 
-@pytest.mark.e2e
-def test_scenario_1_in_scope_bug_creates_a_mapped_jira_issue(sandbox, not_implemented):
-    """PRD scenario 1.
-
-    Steps:
-      1. File a bug in the sandbox Product/Component with the pilot
-         whiteboard tag, above the configured priority/severity threshold.
-      2. Wait for JBI to process the Bugzilla webhook (<= SLA_SECONDS).
-
-    Assertions:
-      - exactly one Jira issue exists in the sandbox project for that bug;
-      - its summary, status, assignee, priority and severity match the bug;
-      - the bug's `see_also` links to the issue and the issue carries the
-        Bugzilla remote link (this is what the reverse direction correlates
-        on, so scenario 3 depends on it).
-    """
-    not_implemented("file a bug and assert the created issue's fields")
+pytestmark = pytest.mark.e2e
 
 
-@pytest.mark.e2e
-def test_scenario_2_out_of_scope_bug_creates_nothing(sandbox, not_implemented):
-    """PRD scenario 2 (R-01 / R-04).
+def _patch(review=None, action="create"):
+    """A Phabricator request attachment, as BMO's webhook carries it."""
+    from .sandbox import now_iso
 
-    Steps:
-      1. File a bug with the pilot tag but in a Product/Component outside
-         `sync_products_components`.
-      2. File a second bug in scope but below `min_priority`.
-
-    Assertions:
-      - no Jira issue is created for either bug;
-      - JBI logged both as ignored, with the reason (scope vs. threshold),
-        so an operator can tell the two cases apart.
-    """
-    not_implemented("file out-of-scope and below-threshold bugs")
-
-
-@pytest.mark.e2e
-def test_scenario_3_status_flows_in_both_directions_and_stops(sandbox, not_implemented):
-    """PRD scenario 3, plus Invariant C end to end.
-
-    Steps:
-      1. Start from a synced bug/issue pair (scenario 1).
-      2. Change the bug's status in BMO; wait for the forward sync.
-      3. Move the Jira issue to a `done`-category status with a resolution;
-         wait for the Automation rule to post to /jira_webhook.
-
-    Assertions:
-      - after step 2 the Jira issue's status matches the configured mapping;
-      - after step 3 the bug is RESOLVED with the resolution recovered from
-        the inverted `resolution_map` (never from inverting `status_map`);
-      - **the loop terminates**: the BMO write in step 3 fires exactly one
-        Bugzilla webhook, which JBI ignores as self-authored, and zero
-        further writes reach Jira. Assert on JBI's request log, not just on
-        the final values, since a loop that converges still burns quota.
-      - both directions complete within SLA_SECONDS.
-    """
-    not_implemented("drive a status change each way and assert the loop stops")
+    return {
+        "id": 900001,
+        "content_type": "text/x-phabricator-request",
+        "creation_time": now_iso(),
+        "description": "e2e patch",
+        "file_name": "phabricator-D99999-url.txt",
+        "flags": [{"id": None, "name": "review", "value": review}] if review else [],
+        "is_obsolete": False,
+        "is_patch": False,
+        "is_private": False,
+    }
 
 
-@pytest.mark.e2e
-def test_scenario_4_comment_reaches_the_bug_with_attribution(sandbox, not_implemented):
-    """PRD scenario 4 (R-12).
-
-    Steps:
-      1. Comment on the Jira issue of a synced, public bug.
-      2. Comment on the Jira issue of a synced but group-restricted bug.
-
-    Assertions:
-      - the public bug receives the comment, prefixed "from Jira, by <name>",
-        posted by JBI's service account (never impersonating the author);
-      - the restricted bug receives nothing, and the skip is logged;
-      - redelivering the same Jira event posts no second copy.
-    """
-    not_implemented("post Jira comments on a public and a restricted bug")
+# --- PRD acceptance scenarios ------------------------------------------------
 
 
-@pytest.mark.e2e
-def test_invariant_a_resyncing_a_linked_bug_creates_no_duplicate(
-    sandbox, not_implemented
-):
-    """Permanent regression guard (Invariant A), end to end.
+def test_scenario_1_tagged_bug_creates_a_mapped_issue(sandbox, synced_bug):
+    """PRD 1: one issue, fields mapped, linked both ways."""
+    bug_id, key = synced_bug("scenario 1")
 
-    Re-add the whiteboard tag to a bug that is already linked, and assert the
-    Jira project still contains exactly one issue for it. This is the failure
-    mode that would flood Jira at pilot rollout, since the pilot component
-    already holds many previously-linked bugs.
-    """
-    not_implemented("re-tag an already-linked bug and count issues")
+    issue = sandbox.issue(key)
+    fields = issue["fields"]
+    assert sandbox.bug(bug_id)["summary"] == fields["summary"]
+    assert "bugzilla" in fields["labels"]
+    remote = sandbox._jira.get(
+        f"{sandbox.jira}/rest/api/2/issue/{key}/remotelink", timeout=30
+    ).json()
+    assert any(str(link.get("globalId")) == str(bug_id) for link in remote)
+    assert sandbox.eventually(lambda: sandbox.issues_for_bug(bug_id) == [key])
+
+
+def test_scenario_2_untagged_bug_creates_nothing(sandbox):
+    """PRD 2: a bug no action claims never reaches Jira."""
+    bug_id = sandbox.file_bug("scenario 2, no whiteboard tag", tagged=False)
+
+    sandbox.post_bugzilla_event(bug_id, "create")
+
+    assert sandbox.linked_issue(bug_id) is None
+    assert sandbox.issues_for_bug(bug_id) == []
+
+
+def test_scenario_3_status_flows_both_ways_and_the_loop_stops(sandbox, synced_bug):
+    """PRD 3 + Invariant C: BMO -> Jira, Jira -> BMO, and no echo."""
+    bug_id, key = synced_bug("scenario 3")
+
+    # Jira -> BMO: close the issue, deliver the Automation event.
+    before = sandbox.issue(key, fields="status")["fields"]["status"]["name"]
+    sandbox.transition(key, sandbox.env.get("JBI_E2E_DONE_STATUS", "Closed"), "Fixed")
+    after = sandbox.issue(key, fields="status")["fields"]["status"]["name"]
+    response = sandbox.post_jira_event(key, [("status", before, after)])
+    assert response.status_code == 200, response.text
+
+    bug = sandbox.eventually(
+        lambda: (b := sandbox.bug(bug_id))["status"] == "RESOLVED" and b, SLA_SECONDS
+    )
+    assert bug, "the Jira close did not reach the bug"
+    assert bug["resolution"] == "FIXED"
+
+    # The BMO write fires BMO's webhook; delivering it must not bounce back.
+    transitions = sandbox.status_transitions(key)
+    sandbox.post_bugzilla_event(bug_id, "modify", changed=("status", "resolution"))
+    assert sandbox.status_transitions(key) == transitions
+
+
+def test_scenario_4_comment_reaches_the_bug_once_with_attribution(sandbox, synced_bug):
+    """PRD 4: attributed copy, posted by JBI, never twice."""
+    bug_id, key = synced_bug("scenario 4")
+    comment = sandbox.add_jira_comment(key, "e2e: looks good from Jira")
+
+    for _ in range(2):  # the second delivery is a redelivery
+        response = sandbox.post_jira_event(key, comment=comment)
+        assert response.status_code == 200, response.text
+
+    copies = [
+        text for text in sandbox.comments(bug_id) if "e2e: looks good from Jira" in text
+    ]
+    assert len(copies) == 1
+    assert copies[0].startswith("from Jira, by e2e human")
+
+
+@pytest.mark.skipif(
+    "not __import__('os').environ.get('JBI_E2E_RESTRICTED_GROUP')",
+    reason="set JBI_E2E_RESTRICTED_GROUP to a group your account can add",
+)
+def test_scenario_4b_nothing_reaches_a_restricted_bug(sandbox):
+    """PRD 4 / R-12: a restricted bug is never synced in either direction."""
+    import os
+
+    bug_id = sandbox.file_bug(
+        "scenario 4b, restricted", groups=[os.environ["JBI_E2E_RESTRICTED_GROUP"]]
+    )
+    sandbox.post_bugzilla_event(bug_id, "create")
+
+    assert sandbox.linked_issue(bug_id) is None
+
+
+def test_invariant_a_resyncing_a_linked_bug_creates_no_duplicate(sandbox, synced_bug):
+    bug_id, key = synced_bug("invariant A")
+
+    sandbox.post_bugzilla_event(bug_id, "create")
+    sandbox.post_bugzilla_event(bug_id, "modify", changed=("whiteboard",))
+
+    assert sandbox.eventually(lambda: sandbox.issues_for_bug(bug_id) == [key])
+
+
+# --- Phase 1 defaults: review moves and the stop label ----------------------
+
+
+def test_review_request_and_verdicts(sandbox, synced_bug):
+    """D4/D5: a request moves the issue into review; review- moves it out;
+    review+ moves nothing."""
+    import os
+
+    review_status = os.environ.get("JBI_E2E_REVIEW_STATUS", "In Review")
+    work_status = os.environ.get("JBI_E2E_CHANGES_STATUS", "In Progress")
+    bug_id, key = synced_bug("review moves")
+
+    def status():
+        return sandbox.issue(key, fields="status")["fields"]["status"]["name"]
+
+    sandbox.post_bugzilla_event(bug_id, "create", attachment=_patch())
+    assert status().lower() == review_status.lower()
+
+    sandbox.post_bugzilla_event(bug_id, "modify", attachment=_patch("-"))
+    assert status().lower() == work_status.lower()
+
+    moves = sandbox.status_transitions(key)
+    sandbox.post_bugzilla_event(bug_id, "modify", attachment=_patch("+"))
+    assert sandbox.status_transitions(key) == moves
+
+
+def test_stop_label_pauses_and_resumes(sandbox, synced_bug):
+    """D15: the label halts sync; removing it resumes from the current state."""
+    bug_id, key = synced_bug("stop label")
+    sandbox.label(key, add="jbi-sync-stop")
+
+    sandbox.update_bug(bug_id, summary=sandbox.bug(bug_id)["summary"] + " (paused)")
+    sandbox.post_bugzilla_event(bug_id, "modify", changed=("summary",))
+    assert "(paused)" not in sandbox.issue(key, fields="summary")["fields"]["summary"]
+
+    sandbox.label(key, remove="jbi-sync-stop")
+    sandbox.post_bugzilla_event(bug_id, "modify", changed=("summary",))
+    assert "(paused)" in sandbox.issue(key, fields="summary")["fields"]["summary"]
+
+
+# --- Phase 2: metabugs, nesting, release data --------------------------------
+
+
+def test_metabug_epic_parent_and_nesting(sandbox):
+    """R-05/R-06 + nesting: tagged metabug -> Epic; child parented; inner
+    metabug's Epic blocks the outer's."""
+    outer = sandbox.file_bug("outer metabug", keywords=["meta"])
+    inner = sandbox.file_bug("inner metabug", keywords=["meta"], blocks=[outer])
+    sandbox.post_bugzilla_event(inner, "create")
+    inner_key = sandbox.track_issue(sandbox.linked_issue(inner))
+    outer_key = sandbox.track_issue(sandbox.linked_issue(outer))
+    assert inner_key and outer_key
+
+    inner_issue = sandbox.issue(inner_key)["fields"]
+    assert inner_issue["issuetype"]["name"] == "Epic"
+    assert inner_issue.get("parent") is None
+    links = {
+        (link.get("outwardIssue") or {}).get("key")
+        for link in inner_issue.get("issuelinks", [])
+    }
+    assert outer_key in links
+
+    child = sandbox.file_bug("child of inner", blocks=[inner])
+    sandbox.post_bugzilla_event(child, "create")
+    child_key = sandbox.track_issue(sandbox.linked_issue(child))
+    assert sandbox.issue(child_key)["fields"]["parent"]["key"] == inner_key
+
+
+def test_release_data_labels(sandbox, synced_bug):
+    """R-09/R-10: flags and milestone become bz- labels, and swap cleanly."""
+    import os
+
+    milestone = os.environ.get("JBI_E2E_MILESTONE", "Future")
+    flag = os.environ.get("JBI_E2E_STATUS_FLAG", "cf_status_firefox126")
+    bug_id, key = synced_bug(
+        "release data", target_milestone=milestone, **{flag: "affected"}
+    )
+
+    labels = sandbox.issue(key, fields="labels")["fields"]["labels"]
+    release = flag.replace("cf_status_firefox", "").lstrip("_")
+    assert f"bz-status-{release}-affected" in labels
+    assert f"bz-milestone-{milestone.lower().replace(' ', '-')}" in labels
+
+    sandbox.update_bug(bug_id, **{flag: "fixed"})
+    sandbox.post_bugzilla_event(bug_id, "modify", changed=(flag,))
+    labels = sandbox.issue(key, fields="labels")["fields"]["labels"]
+    assert f"bz-status-{release}-fixed" in labels
+    assert f"bz-status-{release}-affected" not in labels

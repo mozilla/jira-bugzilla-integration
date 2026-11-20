@@ -59,5 +59,9 @@ docker-start: $(DOTENV_FILE) ## Start container
 	docker compose up
 
 .PHONY: test
+.PHONY: smoke
+smoke: $(INSTALL_STAMP) ## Run the e2e smoke tests against a sandbox (see tests/e2e/README.md)
+	$(UV) run pytest tests/e2e -m e2e -v -p no:dotenv
+
 test: $(INSTALL_STAMP) ## Run unit tests
 	$(UV) run pytest tests -n auto --cov-report term-missing --cov-fail-under 75 --cov jbi --cov checks
