@@ -1,6 +1,6 @@
 # Queue Inbound Jira Events Instead of Processing Them in the Webhook
 
-- Status: Proposed
+- Status: Accepted (shipped in #1398; dedup claims gained owner tokens in #1424)
 - Date: 2026-10-27
 
 Amends ADR 005, which added the Pub/Sub pull consumer but left
