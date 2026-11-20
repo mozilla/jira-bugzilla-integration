@@ -67,26 +67,41 @@ def test_correlated_and_opted_in_event_is_handled(
     }
 
 
-# --- Review finding 6: a just-created issue is not linked yet ----------------
+# --- Review finding 6 (and its re-review): a just-created issue is not linked yet
 
 
-def _with_created(event, created):
+def _with_fields(event, **fields):
     data = event.model_dump()
-    data["issue"]["fields"]["created"] = created
+    data["issue"]["fields"].update(fields)
     return type(event).model_validate(data)
 
 
-def test_just_created_unlinked_issue_is_retried(
-    mocked_jira, mocked_bugzilla, jira_webhook_event, inbound_actions
+def _minutes_ago(minutes):
+    import time
+
+    return int((time.time() - minutes * 60) * 1000)
+
+
+JBI = {"accountId": "jbi-bot", "displayName": "JBI"}
+PERSON = {"accountId": "a-person", "displayName": "A Person"}
+
+
+@pytest.fixture
+def jbi_account(mocker):
+    from jbi.jira_inbound import handler
+
+    mocker.patch.object(handler, "_resolved_bot_account_id", "jbi-bot")
+
+
+def test_an_issue_jbi_just_created_is_retried(
+    mocked_jira, mocked_bugzilla, jira_webhook_event, inbound_actions, jbi_account
 ):
     """JBI creates the issue before linking it; an edit in that gap used to be
     ignored and recorded done, so it never synced."""
-    import time
-
     from jbi.errors import RetryLaterError
 
     mocked_jira.get_issue_remote_links.return_value = []
-    event = _with_created(jira_webhook_event, int(time.time() * 1000) - 5_000)
+    event = _with_fields(jira_webhook_event, created=_minutes_ago(0.1), reporter=JBI)
 
     with pytest.raises(RetryLaterError):
         execute_jira_event(event, inbound_actions)
@@ -94,16 +109,52 @@ def test_just_created_unlinked_issue_is_retried(
 
 
 @pytest.mark.parametrize(
-    "created", [None, 1_000_000_000_000, "2001-09-09T01:46:40Z", "not a date"]
+    "fields,why",
+    [
+        (
+            dict(created=_minutes_ago(0.1), reporter=PERSON),
+            "a person's hand-made issue",
+        ),
+        (dict(created=_minutes_ago(6), reporter=JBI), "past the window"),
+        (dict(created=_minutes_ago(0.1)), "no reporter in the payload"),
+        (dict(reporter=JBI), "no created time in the payload"),
+        (dict(created="not a date", reporter=JBI), "unreadable created time"),
+    ],
 )
-def test_old_or_undated_unlinked_issue_is_still_ignored(
-    mocked_jira, jira_webhook_event, inbound_actions, created
+def test_other_unlinked_issues_are_ignored_not_retried(
+    mocked_jira, jira_webhook_event, inbound_actions, jbi_account, fields, why
 ):
+    """Re-review: retrying any recently created unlinked issue redelivered
+    normal traffic for minutes and could dead-letter it."""
     mocked_jira.get_issue_remote_links.return_value = []
-    event = _with_created(jira_webhook_event, created)
 
     with pytest.raises(IgnoreInvalidRequestError):
-        execute_jira_event(event, inbound_actions)
+        execute_jira_event(_with_fields(jira_webhook_event, **fields), inbound_actions)
+
+
+def test_the_window_is_five_minutes(jira_webhook_event, inbound_actions, jbi_account):
+    from jbi.jira_inbound.handler import UNLINKED_ISSUE_GRACE, should_retry_unlinked
+
+    assert UNLINKED_ISSUE_GRACE.total_seconds() == 300
+    inside = _with_fields(jira_webhook_event, created=_minutes_ago(4.5), reporter=JBI)
+    outside = _with_fields(jira_webhook_event, created=_minutes_ago(5.5), reporter=JBI)
+    assert should_retry_unlinked(inside, "JBI", inbound_actions) is True
+    assert should_retry_unlinked(outside, "JBI", inbound_actions) is False
+
+
+def test_a_project_without_an_inbound_action_is_never_retried(
+    mocked_jira, jira_webhook_event, action_factory, jbi_account
+):
+    from jbi.jira_inbound.handler import should_retry_unlinked
+
+    not_onboarded = Actions(
+        root=[
+            action_factory(whiteboard_tag="devtest", parameters__jira_project_key="JBI")
+        ]
+    )
+    event = _with_fields(jira_webhook_event, created=_minutes_ago(0.1), reporter=JBI)
+
+    assert should_retry_unlinked(event, "JBI", not_onboarded) is False
 
 
 def test_automation_created_timestamp_parses():

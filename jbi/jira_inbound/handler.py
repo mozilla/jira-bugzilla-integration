@@ -115,16 +115,54 @@ def is_bot_authored(event: JiraWebhookRequest) -> bool:
 
 # How long after creation an unlinked issue is retried rather than ignored.
 # JBI writes the link within seconds of creating the issue; the margin covers
-# a slow or retried forward sync.
-UNLINKED_ISSUE_GRACE = timedelta(minutes=10)
+# a slow or retried forward sync. Bounded so the redeliveries a single event
+# can cause stay under the subscription's dead-letter threshold: with a 10s
+# minimum backoff that doubles, five minutes is about five attempts, so the
+# subscription's max delivery attempts must be above that.
+UNLINKED_ISSUE_GRACE = timedelta(minutes=5)
 
 
-def _recently_created(event: JiraWebhookRequest) -> bool:
-    fields = event.issue.fields if event.issue else None
-    created = fields.created if fields else None
-    if created is None:
+def _is_jbi_account(user) -> bool:
+    if user is None:
         return False
-    return datetime.now(timezone.utc) - created < UNLINKED_ISSUE_GRACE
+    bot_account_id = settings.jira_bot_account_id or _resolved_bot_account_id
+    if bot_account_id and user.accountId == bot_account_id:
+        return True
+    bot_email = (settings.jira_username or "").strip().lower()
+    return "@" in bot_email and (user.emailAddress or "").strip().lower() == bot_email
+
+
+def should_retry_unlinked(
+    event: JiraWebhookRequest, project_key: str, actions: Actions
+) -> bool:
+    """Whether an unlinked issue is one JBI is about to link, so worth a retry.
+
+    All three must hold, or the event is ignored as uncorrelated, as before:
+
+    * the project belongs to an action onboarded to inbound sync -- events
+      from anywhere else are never JBI's business;
+    * JBI created the issue (it is the reporter) -- a person's hand-made issue
+      will never get a Bugzilla link, and retrying it only burns Jira calls
+      and redeliveries until it dead-letters;
+    * it was created within `UNLINKED_ISSUE_GRACE`.
+
+    Any field the payload does not carry (an older Automation body without
+    `created` or `reporter`) fails safe: no retry.
+    """
+    onboarded = {
+        action.parameters.jira_project_key.upper()
+        for action in actions
+        if action.enabled and action.parameters.jira_inbound_enabled
+    }
+    if project_key.upper() not in onboarded:
+        return False
+
+    fields = event.issue.fields if event.issue else None
+    if fields is None or not _is_jbi_account(fields.reporter):
+        return False
+    if fields.created is None:
+        return False
+    return datetime.now(timezone.utc) - fields.created < UNLINKED_ISSUE_GRACE
 
 
 def correlate_bug_id(
@@ -184,14 +222,15 @@ def execute_jira_event(event: JiraWebhookRequest, actions: Actions) -> dict:
     # Gate 2: correlation (Invariant B).
     bug_id = correlate_bug_id(issue_key)
     if bug_id is None:
-        if _recently_created(event):
+        if should_retry_unlinked(event, project_key, actions):
             # JBI creates the issue before it writes the link back, so an edit
             # in the first seconds can arrive with nothing to correlate. Ask
             # for redelivery instead of losing it; once the window closes, an
             # unlinked issue really is not JBI's (Invariant B).
             statsd.incr("jbi.jira.retry.not_linked_yet.count")
             raise RetryLaterError(
-                f"issue {issue_key} was just created and is not linked to a bug yet"
+                f"issue {issue_key} was just created by JBI and is not linked to "
+                "a bug yet"
             )
         raise _ignore(f"no Bugzilla bug linked to issue {issue_key}", "uncorrelated")
 

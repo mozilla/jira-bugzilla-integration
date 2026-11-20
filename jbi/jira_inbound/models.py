@@ -119,9 +119,12 @@ class JiraIssueFields(LenientModel):
     project: Optional[JiraProject] = None
     # Set when the issue carries an issue security level (embargoed work).
     security: Optional[JiraSecurityLevel] = None
-    # When the issue was created. Lets a just-created issue whose Bugzilla
-    # link is not written yet be retried rather than ignored.
+    # When the issue was created, and by whom. Together they let an issue JBI
+    # itself just created -- whose Bugzilla link is not written yet -- be
+    # retried rather than ignored. JBI does not set a reporter, so Jira makes
+    # it the account JBI authenticates as.
     created: Optional[datetime] = None
+    reporter: Optional[JiraUser] = None
 
     @field_validator("created", mode="before")
     @classmethod
