@@ -42,6 +42,12 @@ class JiraAuthenticationError(Exception):
     """
 
 
+def _is_bug_id(value: str) -> bool:
+    """ASCII digits only: `str.isdigit()` is also true for characters such as
+    "²" that `int()` then refuses."""
+    return value.isascii() and value.isdigit()
+
+
 class JiraService:
     """Used by action workflows to perform action-specific Jira tasks"""
 
@@ -277,16 +283,19 @@ class JiraService:
             logger.error("Could not read remote links of issue %s", issue_key)
             return None
 
+        bugzilla_host = urlparse(settings.bugzilla_base_url).hostname
         for link in links or []:
             global_id = str(link.get("globalId") or "")
-            if global_id.isdigit():
+            if _is_bug_id(global_id):
                 return int(global_id)
 
-            url = (link.get("object") or {}).get("url") or ""
-            if "show_bug.cgi" in url:
-                bug_ids = parse_qs(urlparse(url).query).get("id") or []
-                if bug_ids and bug_ids[0].isdigit():
-                    return int(bug_ids[0])
+            # Hand-made links: only a link to *our* Bugzilla names a bug.
+            url = urlparse((link.get("object") or {}).get("url") or "")
+            if url.hostname != bugzilla_host or not url.path.endswith("show_bug.cgi"):
+                continue
+            bug_ids = parse_qs(url.query).get("id") or []
+            if bug_ids and _is_bug_id(bug_ids[0]):
+                return int(bug_ids[0])
 
         return None
 
