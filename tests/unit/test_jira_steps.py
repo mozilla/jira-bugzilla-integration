@@ -906,19 +906,44 @@ def _commented(action_factory, bug_factory, factory, **kw):
     )
 
 
-def test_comment_sync_is_off_by_default(
+def test_comment_sync_is_on_by_default_for_onboarded_actions(
     action_factory,
     bug_factory,
     jira_webhook_request_factory,
     mocked_service,
     mocked_bugzilla,
 ):
-    """Copying free text to a world-readable bug requires an explicit opt-in,
-    separate from field sync."""
+    """Onboarded actions copy Jira comments without per-team config; the
+    visibility guard still decides each one."""
+    mocked_bugzilla.get_comments.return_value = []
     context = make_context(
         action_factory,
         bug_factory,
         jira_webhook_request_factory,
+        bug_kwargs={"groups": [], "is_private": False},
+        with_comment=True,
+        comment__body="looks good",
+    )
+
+    status, _ = jira_steps.writeback_comment(context, bugzilla_service=mocked_service)
+
+    assert status == ReverseStepStatus.SUCCESS
+    assert mocked_bugzilla.update_bug.called
+
+
+def test_comment_sync_can_be_switched_off(
+    action_factory,
+    bug_factory,
+    jira_webhook_request_factory,
+    mocked_service,
+    mocked_bugzilla,
+):
+    """`reverse_comment_sync_enabled: false` still opts a team out."""
+    context = make_context(
+        action_factory,
+        bug_factory,
+        jira_webhook_request_factory,
+        action_kwargs={"parameters__reverse_comment_sync_enabled": False},
         with_comment=True,
         comment__body="internal chatter",
     )

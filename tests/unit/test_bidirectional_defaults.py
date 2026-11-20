@@ -28,6 +28,7 @@ def test_onboarded_action_gets_defaults():
     assert params.phabricator_review_status == "In Review"
     assert params.phabricator_changes_requested_status == "In Progress"
     assert params.sync_stop_label == "jbi-sync-stop"
+    assert params.reverse_comment_sync_enabled is True
     assert params.steps.attachment == [
         *DEFAULT_ATTACHMENT_STEPS,
         *BIDIRECTIONAL_ATTACHMENT_STEPS,
@@ -40,6 +41,7 @@ def test_action_not_onboarded_is_unchanged():
     assert params.phabricator_review_status is None
     assert params.phabricator_changes_requested_status is None
     assert params.sync_stop_label is None
+    assert params.reverse_comment_sync_enabled is False
     assert params.steps.attachment == DEFAULT_ATTACHMENT_STEPS
 
 
@@ -57,10 +59,11 @@ def test_explicit_values_win():
 
 
 @pytest.mark.parametrize("key", sorted(BIDIRECTIONAL_DEFAULTS))
-def test_null_opts_out(key):
-    params = _params(jira_inbound_enabled=True, **{key: None})
+def test_explicit_off_opts_out(key):
+    off = False if isinstance(BIDIRECTIONAL_DEFAULTS[key], bool) else None
+    params = _params(jira_inbound_enabled=True, **{key: off})
 
-    assert getattr(params, key) is None
+    assert getattr(params, key) is off
 
 
 def test_custom_attachment_steps_are_kept():
@@ -106,12 +109,14 @@ def test_real_configs(config_file):
         if params.jira_inbound_enabled:
             assert params.phabricator_review_status == "In Review"
             assert params.sync_stop_label == "jbi-sync-stop"
+            assert params.reverse_comment_sync_enabled is True
             for step in BIDIRECTIONAL_ATTACHMENT_STEPS:
                 assert step in params.steps.attachment
         else:
             assert params.phabricator_review_status is None
             assert params.phabricator_changes_requested_status is None
             assert params.sync_stop_label is None
+            assert params.reverse_comment_sync_enabled is False
             for step in BIDIRECTIONAL_ATTACHMENT_STEPS:
                 assert step not in params.steps.attachment
 
