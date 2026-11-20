@@ -26,14 +26,16 @@ logger = logging.getLogger(__name__)
 JIRA_HOSTNAMES = ("jira", "atlassian")
 
 # Defaults applied to every action onboarded to bidirectional sync
-# (`jira_inbound_enabled: true`), so a team gets D4, D5 and D15 without
-# writing per-team config. An action can still override any of them, or set
-# one to `null` to turn that feature off. Actions that are not onboarded are
+# (`jira_inbound_enabled: true`), so a team gets D4, D5, D15 and Jira -> BMO
+# comment copying without writing per-team config. An action can still
+# override any of them, or set one to `null` (`false` for the comment switch)
+# to turn that feature off. Actions that are not onboarded are
 # untouched, so existing forward-only behavior does not change.
-BIDIRECTIONAL_DEFAULTS: dict[str, str] = {
+BIDIRECTIONAL_DEFAULTS: dict[str, str | bool] = {
     "phabricator_review_status": "In Review",
     "phabricator_changes_requested_status": "In Progress",
     "sync_stop_label": "jbi-sync-stop",
+    "reverse_comment_sync_enabled": True,
 }
 BIDIRECTIONAL_ATTACHMENT_STEPS = [
     "maybe_update_issue_status_on_patch",
@@ -200,11 +202,14 @@ class ActionParams(BaseModel, frozen=True):
     phabricator_changes_requested_status: Optional[str] = None
 
     # Copying Jira comment *text* onto a bug is gated separately from field
-    # sync, and defaults off. A field value is a small, enumerable thing; a
-    # comment is free text that may quote an embargoed issue, and publishing
-    # it onto a world-readable bug cannot be undone. Enabling this asserts
-    # that the Automation rule sends `comment.visibility` and
-    # `fields.security`, which the guard needs to fail closed (R-12).
+    # sync. A field value is a small, enumerable thing; a comment is free text
+    # that may quote an embargoed issue, and publishing it onto a
+    # world-readable bug cannot be undone. Off for actions that are not
+    # onboarded; on by default for onboarded ones (BIDIRECTIONAL_DEFAULTS).
+    # That is safe because every onboarded project is served by the one
+    # central Automation rule, which sends `comment.visibility` and
+    # `fields.security`, and the guard fails closed -- blocks the copy --
+    # when they are missing (R-12).
     reverse_comment_sync_enabled: bool = False
 
     # Enables the Jira -> BMO inbound path (the `/jira_webhook` spine and its
