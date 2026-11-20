@@ -5,7 +5,8 @@
 # Everyone else -- including new hires with a standard corporate email --
 # resolves automatically by email lookup and needs no entry here.
 #
-# Generate and refresh with `python bin/seed_identity_map.py`; entries that
+# Generate and refresh with
+# `PYTHONPATH=. uv run python bin/seed_identity_map.py`; entries that
 # runtime resolution fails on are reported by the reconciliation job (R-13),
 # so this list is alert-driven rather than hand-curated.
 #

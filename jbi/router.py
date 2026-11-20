@@ -78,7 +78,11 @@ def api_key_auth(
         api_key = basic_auth.password
     if not api_key and token:
         api_key = token
-    if not api_key or not secrets.compare_digest(api_key, settings.jbi_api_key):
+    # Compare bytes: `compare_digest` raises TypeError on non-ASCII `str`,
+    # which would turn a bad credential into a 500.
+    if not api_key or not secrets.compare_digest(
+        api_key.encode(), settings.jbi_api_key.encode()
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect API Key",
@@ -204,11 +208,13 @@ async def jira_webhook(
     # nothing in it ("no issue key in payload") and is silently ignored --
     # observed while wiring up a real BMO webhook.
     if isinstance(payload, dict) and "bug" in payload and "event" in payload:
+        bug = payload.get("bug")
         logger.error(
             "Received a Bugzilla payload on /jira_webhook (bug %s). The "
             "producer is pointed at the wrong endpoint; it should post to "
             "/bugzilla_webhook.",
-            (payload.get("bug") or {}).get("id"),
+            # `bug` can be anything a caller sends; never raise over a log line.
+            bug.get("id") if isinstance(bug, dict) else None,
         )
         statsd.incr("jbi.publisher.invalid.count")
         return {

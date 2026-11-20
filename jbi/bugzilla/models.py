@@ -11,6 +11,7 @@ from pydantic import (
     ValidationError,
     ValidationInfo,
     ValidatorFunctionWrapHandler,
+    model_validator,
 )
 from pydantic.functional_validators import WrapValidator
 from typing_extensions import Annotated
@@ -165,6 +166,34 @@ class Bug(BaseModel, frozen=True):
     attachment: Optional[WebhookAttachment] = None
     # Custom field Firefox for story points
     cf_fx_points: Optional[str] = None
+    # R-10: the release a fix is aimed at, eg. "157 Branch" or "---".
+    target_milestone: Optional[str] = None
+    # R-09: per-release status flags. BMO names these dynamically
+    # (`cf_status_firefox157`, `cf_status_firefox_esr140`, ...), so they
+    # cannot be declared as fields; `_harvest_release_flags` collects them
+    # off the raw payload into `{"firefox157": "fixed"}`.
+    release_flags: dict[str, str] = {}
+
+    @model_validator(mode="before")
+    @classmethod
+    def _harvest_release_flags(cls, data):
+        """Collect `cf_status_<release>` keys into `release_flags`.
+
+        Only meaningful values are kept: BMO uses `---` for "not set", and a
+        flag reading `---` is the absence of information rather than a state
+        worth mirroring.
+        """
+        if not isinstance(data, dict) or "release_flags" in data:
+            return data
+
+        flags = {
+            key[len("cf_status_") :]: str(value)
+            for key, value in data.items()
+            if key.startswith("cf_status_") and value not in (None, "", "---")
+        }
+        if flags:
+            data = {**data, "release_flags": flags}
+        return data
 
     @property
     def product_component(self) -> str:

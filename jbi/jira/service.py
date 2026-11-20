@@ -42,6 +42,12 @@ class JiraAuthenticationError(Exception):
     """
 
 
+def _is_bug_id(value: str) -> bool:
+    """ASCII digits only: `str.isdigit()` is also true for characters such as
+    "²" that `int()` then refuses."""
+    return value.isascii() and value.isdigit()
+
+
 class JiraService:
     """Used by action workflows to perform action-specific Jira tasks"""
 
@@ -277,16 +283,19 @@ class JiraService:
             logger.error("Could not read remote links of issue %s", issue_key)
             return None
 
+        bugzilla_host = urlparse(settings.bugzilla_base_url).hostname
         for link in links or []:
             global_id = str(link.get("globalId") or "")
-            if global_id.isdigit():
+            if _is_bug_id(global_id):
                 return int(global_id)
 
-            url = (link.get("object") or {}).get("url") or ""
-            if "show_bug.cgi" in url:
-                bug_ids = parse_qs(urlparse(url).query).get("id") or []
-                if bug_ids and bug_ids[0].isdigit():
-                    return int(bug_ids[0])
+            # Hand-made links: only a link to *our* Bugzilla names a bug.
+            url = urlparse((link.get("object") or {}).get("url") or "")
+            if url.hostname != bugzilla_host or not url.path.endswith("show_bug.cgi"):
+                continue
+            bug_ids = parse_qs(url.query).get("id") or []
+            if bug_ids and _is_bug_id(bug_ids[0]):
+                return int(bug_ids[0])
 
         return None
 
@@ -466,6 +475,53 @@ class JiraService:
         except Exception:
             return False
 
+    def get_issue_type(self, context: ActionContext, issue_key: str) -> Optional[str]:
+        """Return an issue's type name, or `None` if it cannot be read."""
+        issue = self.get_issue(context, issue_key)
+        if not issue:
+            return None
+        name = (issue.get("fields", {}).get("issuetype") or {}).get("name")
+        return str(name) if name else None
+
+    def create_epic(self, context: ActionContext, summary: str, project_key: str):
+        """Create an Epic and return the created issue payload.
+
+        Deliberately minimal: `Epic Name` (customfield_10011) exists on the
+        pilot project but is not required, and writing project-specific custom
+        fields from here would not port to other projects.
+        """
+        fields: dict[str, Any] = {
+            "summary": summary,
+            "issuetype": {"name": "Epic"},
+            "project": {"key": project_key},
+        }
+        logger.info(
+            "Creating mirror Epic in %s for Bug %s",
+            project_key,
+            context.bug.id,
+            extra={"fields": fields, **context.model_dump()},
+        )
+        response = self.client.create_issue(fields=fields)
+        return response[0] if isinstance(response, list) else response
+
+    def set_issue_parent(self, context: ActionContext, issue_key: str, parent_key: str):
+        """Set an issue's parent.
+
+        Uses the modern `parent` field rather than the legacy `Epic Link`
+        custom field: the pilot project expresses epic membership through
+        `parent` (verified against live issues), and `parent` is
+        project-agnostic where the custom field id is not.
+        """
+        logger.info(
+            "Parenting Jira issue %s under %s",
+            issue_key,
+            parent_key,
+            extra=context.model_dump(),
+        )
+        return self.client.update_issue_field(
+            key=issue_key, fields={"parent": {"key": parent_key}}
+        )
+
     def update_issue_summary(self, context: ActionContext):
         """Update's an issue's summary with the description of an incoming bug"""
         truncated_summary = context.bug.summary or ""
@@ -537,9 +593,10 @@ class JiraService:
     ) -> list[str]:
         """Return an issue's current labels, or `[]` if unreadable.
 
-        Used by the sync-stop check on the reverse path, where the issue's
-        current labels are the only way to know whether a human has paused
-        this pair.
+        Needed in two places: to retire labels in a JBI-owned namespace (a
+        release flag moving from `affected` to `fixed` has to remove the old
+        label, and the old value is not derivable from the bug's current
+        state), and to check the sync-stop label on the reverse path.
 
         `context` may be `None` for callers outside a forward action -- the
         inbound path has a `ReverseContext`, not an `ActionContext` -- in

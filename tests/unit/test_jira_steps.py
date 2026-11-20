@@ -433,10 +433,14 @@ def test_unresolvable_assignee_leaves_the_bug_alone(
         ),
     )
 
-    with mock.patch("jbi.jira_steps.get_identity_map", return_value=IdentityMap()):
+    with (
+        mock.patch("jbi.jira_steps.get_identity_map", return_value=IdentityMap()),
+        mock.patch("jbi.jira_steps.report_unresolved") as reported,
+    ):
         status, _ = jira_steps.writeback_assignee(
             context, bugzilla_service=mocked_service
         )
+    reported.assert_called_once_with("to_bmo")
 
     assert status == ReverseStepStatus.INCOMPLETE
     assert not mocked_bugzilla.update_bug.called
@@ -1319,6 +1323,110 @@ def test_server_error_is_not_swallowed(
     with mock.patch.object(jira_steps, "REVERSE_STEPS", [_raising_step(503)]):
         with pytest.raises(requests.HTTPError):
             jira_steps.ReverseExecutor(bugzilla_service=mocked_service)(context)
+
+
+@pytest.mark.parametrize("status_code", [401, 403, 408, 429, 500, 503])
+def test_transient_and_credential_errors_are_retried(
+    action_factory,
+    bug_factory,
+    jira_webhook_request_factory,
+    mocked_service,
+    status_code,
+):
+    """Review finding 1: revoked credentials or throttling are about JBI, not
+    the write. Swallowing them acked the event and the dedup ledger then
+    dropped every redelivery, so the change never synced."""
+    import requests
+
+    context = make_context(action_factory, bug_factory, jira_webhook_request_factory)
+
+    with mock.patch.object(jira_steps, "REVERSE_STEPS", [_raising_step(status_code)]):
+        with pytest.raises(requests.HTTPError):
+            jira_steps.ReverseExecutor(bugzilla_service=mocked_service)(context)
+
+
+@pytest.mark.parametrize("status_code", [400, 404, 422])
+def test_an_invalid_write_is_swallowed(
+    action_factory,
+    bug_factory,
+    jira_webhook_request_factory,
+    mocked_service,
+    status_code,
+):
+    context = make_context(action_factory, bug_factory, jira_webhook_request_factory)
+
+    with mock.patch.object(jira_steps, "REVERSE_STEPS", [_raising_step(status_code)]):
+        details = jira_steps.ReverseExecutor(bugzilla_service=mocked_service)(context)
+
+    assert details["steps"][f"raising_{status_code}"] == "INCOMPLETE"
+
+
+def test_summary_needs_the_free_text_opt_in(
+    action_factory,
+    bug_factory,
+    jira_webhook_request_factory,
+    jira_changelog_item_factory,
+    mocked_service,
+    mocked_bugzilla,
+):
+    """Review finding 2: a summary is free text, so it is gated like comments."""
+    context = make_context(
+        action_factory,
+        bug_factory,
+        jira_webhook_request_factory,
+        action_kwargs={"parameters__reverse_comment_sync_enabled": False},
+        bug_kwargs={"summary": "old", "groups": [], "is_private": False},
+        changelog__items=[
+            jira_changelog_item_factory(
+                field="summary", fieldId="summary", fromString="old", toString="new"
+            )
+        ],
+        issue__fields__summary="new",
+    )
+
+    status, _ = jira_steps.writeback_summary(context, bugzilla_service=mocked_service)
+
+    assert status == ReverseStepStatus.NOOP
+    assert not mocked_bugzilla.update_bug.called
+
+
+@pytest.mark.parametrize("bmo_status", ["RESOLVED", "VERIFIED", "CLOSED"])
+def test_a_done_event_never_moves_a_closed_bug(
+    action_factory,
+    bug_factory,
+    jira_webhook_request_factory,
+    jira_changelog_item_factory,
+    mocked_service,
+    mocked_bugzilla,
+    bmo_status,
+):
+    """Review finding 3: done -> RESOLVED used to overwrite VERIFIED/CLOSED,
+    undoing QA's verification."""
+    context = make_context(
+        action_factory,
+        bug_factory,
+        jira_webhook_request_factory,
+        action_kwargs={
+            "parameters__resolution_map": {"FIXED": "Done", "WONTFIX": "Won't Do"}
+        },
+        bug_kwargs={"status": bmo_status, "resolution": "FIXED"},
+        changelog__items=[
+            jira_changelog_item_factory(
+                field="resolution",
+                fieldId="resolution",
+                fromString="Done",
+                toString="Won't Do",
+            )
+        ],
+        issue__fields__status__statusCategory__key="done",
+        issue__fields__resolution={"name": "Won't Do"},
+    )
+    assert context.event.issue.fields.resolution.name == "Won't Do"
+
+    status, _ = jira_steps.writeback_status(context, bugzilla_service=mocked_service)
+
+    assert status == ReverseStepStatus.NOOP
+    assert not mocked_bugzilla.update_bug.called
 
 
 def test_reverse_sync_skips_a_comment_jbi_put_on_the_issue(

@@ -271,3 +271,57 @@ def test_check_reports_stale_account_ids(seed_script, mocked_jira, capsys):
 
     assert exit_code == 1
     assert "need attention" in capsys.readouterr().out
+
+
+# --- P2-5 hardening ---------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "users,problem",
+    [
+        (
+            [
+                {"bmo_email": "a@mozilla.com", "jira_account_id": "1"},
+                {"bmo_email": "A@Mozilla.com ", "jira_account_id": "2"},
+            ],
+            "bmo_email 'a@mozilla.com'",
+        ),
+        (
+            [
+                {"bmo_email": "a@mozilla.com", "jira_account_id": "1"},
+                {"bmo_email": "b@mozilla.com", "jira_account_id": "1"},
+            ],
+            "jira_account_id '1'",
+        ),
+    ],
+)
+def test_duplicate_people_are_rejected(users, problem):
+    from pydantic import ValidationError
+
+    from jbi.identity import IdentityMap
+
+    with pytest.raises(ValidationError, match=problem):
+        IdentityMap.model_validate({"users": users})
+
+
+def test_entries_without_account_id_are_not_duplicates():
+    from jbi.identity import IdentityMap
+
+    IdentityMap.model_validate(
+        {"users": [{"bmo_email": "a@mozilla.com"}, {"bmo_email": "b@mozilla.com"}]}
+    )
+
+
+@pytest.mark.parametrize("env", ["local", "nonprod", "prod"])
+def test_checked_in_identity_maps_are_valid(env):
+    from jbi.identity import get_identity_map_from_file
+
+    get_identity_map_from_file(f"config/identity_map.{env}.yaml")
+
+
+def test_unresolved_person_is_counted(mocker):
+    from jbi.identity import report_unresolved
+
+    incr = mocker.patch("jbi.identity.statsd.incr")
+    report_unresolved("to_bmo")
+    incr.assert_called_once_with("jbi.identity.unresolved.to_bmo.count")

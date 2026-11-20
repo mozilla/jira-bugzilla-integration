@@ -36,11 +36,32 @@ BIDIRECTIONAL_DEFAULTS: dict[str, str | bool] = {
     "phabricator_changes_requested_status": "In Progress",
     "sync_stop_label": "jbi-sync-stop",
     "reverse_comment_sync_enabled": True,
+    # Phase 2 is core behavior for onboarded teams; a project file can set
+    # either flag to `false` to switch that feature off.
+    "metabug_epics_enabled": True,
+    "release_data_enabled": True,
 }
 BIDIRECTIONAL_ATTACHMENT_STEPS = [
     "maybe_update_issue_status_on_patch",
     "sync_phabricator_review_state",
 ]
+
+# Steps each Phase 2 feature needs, appended to an onboarded action's `new`
+# and `existing` lists when the feature is on and the step is not already
+# listed. Appended at the end because each needs the linked issue, which
+# `create_issue` / `add_link_to_jira` establish earlier in `new`.
+# `sync_dependencies` carries the metabug links: an issue has one parent, so
+# every other metabug a bug blocks is represented as a link (plan 10.1).
+PHASE2_STEPS: dict[str, dict[str, list[str]]] = {
+    "metabug_epics_enabled": {
+        "new": ["maybe_seed_epic_parent", "sync_dependencies"],
+        "existing": ["maybe_seed_epic_parent", "sync_dependencies"],
+    },
+    "release_data_enabled": {
+        "new": ["mirror_release_flags", "mirror_target_milestone"],
+        "existing": ["mirror_release_flags", "mirror_target_milestone"],
+    },
+}
 
 
 class ActionSteps(BaseModel, frozen=True):
@@ -100,6 +121,21 @@ class JiraComponents(BaseModel, frozen=True):
     use_bug_component_with_product_prefix: bool = False
     create_components: bool = False
     set_custom_components: list[str] = []
+
+
+def _seed_before_links(steps: list[str]) -> list[str]:
+    """Run `maybe_seed_epic_parent` before `sync_dependencies`.
+
+    The seed step creates the metabugs' Epics; `sync_dependencies` can only
+    link to an issue that exists. A team list that already has
+    `sync_dependencies` (as `&genai-steps` does) would otherwise run it first
+    and miss the links on the child's first sync.
+    """
+    seed, links = "maybe_seed_epic_parent", "sync_dependencies"
+    if seed in steps and links in steps and steps.index(seed) > steps.index(links):
+        steps = [s for s in steps if s != seed]
+        steps.insert(steps.index(links), seed)
+    return steps
 
 
 class ActionParams(BaseModel, frozen=True):
@@ -194,6 +230,14 @@ class ActionParams(BaseModel, frozen=True):
     # onboarded actions default to `jbi-sync-stop` (BIDIRECTIONAL_DEFAULTS).
     sync_stop_label: Optional[str] = None
 
+    # R-05/R-06: mirror BMO metabugs as Jira Epics and seed the parent of
+    # newly created issues. R-09/R-10: mirror release flags and Target
+    # Milestone as labels. Off for actions that are not onboarded; on by
+    # default for onboarded ones (BIDIRECTIONAL_DEFAULTS), which also adds
+    # the steps each needs (PHASE2_STEPS).
+    metabug_epics_enabled: bool = False
+    release_data_enabled: bool = False
+
     # R-02 / R-03: Jira statuses used by the Phabricator review steps. `None`
     # (the default) means the corresponding step does nothing, so adding the
     # steps to an action's config without setting these is inert. Onboarded
@@ -201,8 +245,8 @@ class ActionParams(BaseModel, frozen=True):
     phabricator_review_status: Optional[str] = None
     phabricator_changes_requested_status: Optional[str] = None
 
-    # Copying Jira comment *text* onto a bug is gated separately from field
-    # sync. A field value is a small, enumerable thing; a comment is free text
+    # Copying Jira free text -- comments and the summary -- onto a bug is
+    # gated separately from field sync. A field value is a small, enumerable thing; a comment is free text
     # that may quote an embargoed issue, and publishing it onto a
     # world-readable bug cannot be undone. Off for actions that are not
     # onboarded; on by default for onboarded ones (BIDIRECTIONAL_DEFAULTS).
@@ -220,13 +264,19 @@ class ActionParams(BaseModel, frozen=True):
     @model_validator(mode="before")
     @classmethod
     def apply_bidirectional_defaults(cls, data):
-        """Fill in the D4/D5/D15 defaults for actions onboarded to bidirectional sync.
+        """Fill in the defaults for actions onboarded to bidirectional sync.
 
         Only keys the action leaves out are filled, so an explicit value --
-        including `null`, to opt out -- always wins. The two review steps are
-        appended to the attachment steps only when the action does not list
-        its own; a team with a custom `attachment` list keeps exactly what it
-        wrote.
+        including `null`/`false`, to opt out -- always wins.
+
+        Steps:
+        - the two review steps (D4/D5) are added to `attachment` only when
+          the action does not list its own `attachment` steps;
+        - the Phase 2 steps are appended to `new` and `existing` -- the
+          action's own lists or the defaults -- for each feature that is on,
+          skipping any step already listed. Every onboarded team has custom
+          lists, so leaving those alone would leave Phase 2 off for all of
+          them.
         """
         if not isinstance(data, dict) or not data.get("jira_inbound_enabled"):
             return data
@@ -235,24 +285,31 @@ class ActionParams(BaseModel, frozen=True):
         for key, value in BIDIRECTIONAL_DEFAULTS.items():
             data.setdefault(key, value)
 
-        steps = data.get("steps")
-        if steps is None:
-            steps = {}
-        if isinstance(steps, ActionSteps):
-            if "attachment" in steps.model_fields_set:
-                return data
-            steps = steps.model_dump(include=steps.model_fields_set)
-        elif isinstance(steps, dict):
-            if "attachment" in steps:
-                return data
-            steps = dict(steps)
+        raw_steps = data.get("steps")
+        if raw_steps is None:
+            steps: dict = {}
+        elif isinstance(raw_steps, ActionSteps):
+            steps = raw_steps.model_dump(include=raw_steps.model_fields_set)
+        elif isinstance(raw_steps, dict):
+            steps = dict(raw_steps)
         else:
             return data
 
-        steps["attachment"] = [
-            *ActionSteps.model_fields["attachment"].default,
-            *BIDIRECTIONAL_ATTACHMENT_STEPS,
-        ]
+        defaults = ActionSteps()
+        if "attachment" not in steps:
+            steps["attachment"] = [
+                *defaults.attachment,
+                *BIDIRECTIONAL_ATTACHMENT_STEPS,
+            ]
+
+        for flag, groups in PHASE2_STEPS.items():
+            if not data.get(flag):
+                continue
+            for group, extra in groups.items():
+                current = list(steps.get(group, getattr(defaults, group)))
+                current += [step for step in extra if step not in current]
+                steps[group] = _seed_before_links(current)
+
         data["steps"] = steps
         return data
 
@@ -449,3 +506,78 @@ class ActionContext(Context, extra="forbid"):
         copied = copy(self.responses_by_step)
         copied[self.current_step].extend(responses)
         return self.update(responses_by_step=copied)
+
+
+# Settings a team may supply in its own `config/projects/<JIRA_KEY>.yaml`.
+# Mappings and Jira field ids only: anything that decides *whether* JBI syncs
+# a team (onboarding, steps, comment copying) stays in the reviewed main
+# config, because getting it wrong can leak data or flood a project.
+PROJECT_CONFIG_FIELDS = (
+    "status_map",
+    "resolution_map",
+    "priority_map",
+    "severity_map",
+    "issue_type_map",
+    "cf_fx_points_map",
+    "reverse_status_overrides",
+    "default_reverse_resolution",
+    "phabricator_review_status",
+    "phabricator_changes_requested_status",
+    "sync_stop_label",
+    "reverse_comment_sync_enabled",
+    "metabug_epics_enabled",
+    "release_data_enabled",
+    "jira_priority_field",
+    "jira_resolution_field",
+    "jira_severity_field",
+    "jira_cf_fx_points_field",
+)
+
+
+class ProjectConfig(BaseModel):
+    """A team's own Bugzilla <-> Jira mappings for one Jira project.
+
+    Applied to every action whose `jira_project_key` matches, and wins over
+    the action's own values. Maps replace the action's map wholesale rather
+    than merging key by key: a `status_map` is read as a whole, and
+    `resolution_map` must stay invertible as a whole.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    jira_project_key: str
+    status_map: Optional[dict[str, str]] = None
+    resolution_map: Optional[dict[str, str]] = None
+    priority_map: Optional[dict[str, str]] = None
+    severity_map: Optional[dict[str, str | None]] = None
+    issue_type_map: Optional[dict[str, str]] = None
+    cf_fx_points_map: Optional[dict[str, int]] = None
+    reverse_status_overrides: Optional[dict[str, str]] = None
+    default_reverse_resolution: Optional[str] = None
+    phabricator_review_status: Optional[str] = None
+    phabricator_changes_requested_status: Optional[str] = None
+    sync_stop_label: Optional[str] = None
+    # Off only. Copying Jira text onto bugs is on by default for onboarded
+    # teams; a team may switch it off here, but switching it *on* for a team
+    # that had it off is a confidentiality decision for the reviewed main
+    # config.
+    reverse_comment_sync_enabled: Optional[Literal[False]] = None
+    metabug_epics_enabled: Optional[bool] = None
+    release_data_enabled: Optional[bool] = None
+    jira_priority_field: Optional[str] = None
+    jira_resolution_field: Optional[str] = None
+    jira_severity_field: Optional[str] = None
+    jira_cf_fx_points_field: Optional[str] = None
+
+    def overrides(self) -> dict:
+        """Return the settings this file actually sets.
+
+        Explicitly set keys only, so a file can still write `null` -- for
+        instance `sync_stop_label: null` to turn the stop label off for the
+        whole project.
+        """
+        return {
+            key: getattr(self, key)
+            for key in PROJECT_CONFIG_FIELDS
+            if key in self.model_fields_set
+        }

@@ -46,7 +46,10 @@ def is_valid_signature(
     # Check every candidate (no early exit on the first match) so the time taken
     # does not reveal which of the configured secrets was used.
     results = [
-        hmac.compare_digest(sign(body, secret)[len(_PREFIX) :], provided)
+        # Bytes, not str: `compare_digest` raises TypeError on non-ASCII str.
+        hmac.compare_digest(
+            sign(body, secret)[len(_PREFIX) :].encode(), provided.encode()
+        )
         for secret in candidates
     ]
     return any(results)

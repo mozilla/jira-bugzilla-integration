@@ -15,9 +15,9 @@ and report any that Jira no longer knows about, which is how a stale entry
 gets noticed instead of silently assigning nobody.
 
 Usage:
-    python bin/seed_identity_map.py --check
-    python bin/seed_identity_map.py person@mozilla.com other@mozilla.com
-    python bin/seed_identity_map.py --emails-from emails.txt
+    PYTHONPATH=. uv run python bin/seed_identity_map.py --check
+    PYTHONPATH=. uv run python bin/seed_identity_map.py person@mozilla.com other@mozilla.com
+    PYTHONPATH=. uv run python bin/seed_identity_map.py --emails-from emails.txt
 """
 
 import argparse

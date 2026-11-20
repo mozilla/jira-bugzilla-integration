@@ -17,6 +17,7 @@ forwards far more events than JBI acts on, and that is normal traffic.
 """
 
 import logging
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from statsd.defaults.env import statsd
@@ -26,7 +27,7 @@ from jbi.bugzilla import models as bugzilla_models
 from jbi.bugzilla.client import BugNotAccessibleError
 from jbi.bugzilla.service import get_service as get_bugzilla_service
 from jbi.environment import get_settings
-from jbi.errors import IgnoreInvalidRequestError
+from jbi.errors import IgnoreInvalidRequestError, RetryLaterError
 from jbi.jira_inbound.models import JiraWebhookRequest
 from jbi.jira_steps import ReverseContext, ReverseExecutor
 from jbi.models import Action, Actions
@@ -112,6 +113,58 @@ def is_bot_authored(event: JiraWebhookRequest) -> bool:
     return "@" in bot_email and event.actor_email == bot_email
 
 
+# How long after creation an unlinked issue is retried rather than ignored.
+# JBI writes the link within seconds of creating the issue; the margin covers
+# a slow or retried forward sync. Bounded so the redeliveries a single event
+# can cause stay under the subscription's dead-letter threshold: with a 10s
+# minimum backoff that doubles, five minutes is about five attempts, so the
+# subscription's max delivery attempts must be above that.
+UNLINKED_ISSUE_GRACE = timedelta(minutes=5)
+
+
+def _is_jbi_account(user) -> bool:
+    if user is None:
+        return False
+    bot_account_id = settings.jira_bot_account_id or _resolved_bot_account_id
+    if bot_account_id and user.accountId == bot_account_id:
+        return True
+    bot_email = (settings.jira_username or "").strip().lower()
+    return "@" in bot_email and (user.emailAddress or "").strip().lower() == bot_email
+
+
+def should_retry_unlinked(
+    event: JiraWebhookRequest, project_key: str, actions: Actions
+) -> bool:
+    """Whether an unlinked issue is one JBI is about to link, so worth a retry.
+
+    All three must hold, or the event is ignored as uncorrelated, as before:
+
+    * the project belongs to an action onboarded to inbound sync -- events
+      from anywhere else are never JBI's business;
+    * JBI created the issue (it is the reporter) -- a person's hand-made issue
+      will never get a Bugzilla link, and retrying it only burns Jira calls
+      and redeliveries until it dead-letters;
+    * it was created within `UNLINKED_ISSUE_GRACE`.
+
+    Any field the payload does not carry (an older Automation body without
+    `created` or `reporter`) fails safe: no retry.
+    """
+    onboarded = {
+        action.parameters.jira_project_key.upper()
+        for action in actions
+        if action.enabled and action.parameters.jira_inbound_enabled
+    }
+    if project_key.upper() not in onboarded:
+        return False
+
+    fields = event.issue.fields if event.issue else None
+    if fields is None or not _is_jbi_account(fields.reporter):
+        return False
+    if fields.created is None:
+        return False
+    return datetime.now(timezone.utc) - fields.created < UNLINKED_ISSUE_GRACE
+
+
 def correlate_bug_id(
     issue_key: str, jira_service: Optional[jira.JiraService] = None
 ) -> Optional[int]:
@@ -169,6 +222,16 @@ def execute_jira_event(event: JiraWebhookRequest, actions: Actions) -> dict:
     # Gate 2: correlation (Invariant B).
     bug_id = correlate_bug_id(issue_key)
     if bug_id is None:
+        if should_retry_unlinked(event, project_key, actions):
+            # JBI creates the issue before it writes the link back, so an edit
+            # in the first seconds can arrive with nothing to correlate. Ask
+            # for redelivery instead of losing it; once the window closes, an
+            # unlinked issue really is not JBI's (Invariant B).
+            statsd.incr("jbi.jira.retry.not_linked_yet.count")
+            raise RetryLaterError(
+                f"issue {issue_key} was just created by JBI and is not linked to "
+                "a bug yet"
+            )
         raise _ignore(f"no Bugzilla bug linked to issue {issue_key}", "uncorrelated")
 
     bugzilla_service = get_bugzilla_service()

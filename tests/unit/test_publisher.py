@@ -160,3 +160,30 @@ def test_delivery_id_is_a_valid_firestore_document_id(jira_webhook_event):
 
     assert len(value) == 64 and "/" not in value
     assert json.dumps(value)  # plain ascii hex
+
+
+def test_without_a_timestamp_two_identical_flips_are_not_one_event(
+    jira_webhook_request_factory,
+):
+    """Review finding 7: with no timestamp, Done -> Reopened -> Done twice got
+    the same id and the second was dropped as a duplicate."""
+    first = jira_webhook_request_factory(timestamp=None)
+    second = jira_webhook_request_factory(timestamp=None)
+    body_one = b'{"timestamp": null, "issue": {"fields": {"updated": 1}}}'
+    body_two = b'{"timestamp": null, "issue": {"fields": {"updated": 2}}}'
+
+    assert delivery_id(first, body_one) != delivery_id(second, body_two)
+
+
+def test_without_a_timestamp_a_retry_is_still_a_duplicate(jira_webhook_request_factory):
+    event = jira_webhook_request_factory(timestamp=None)
+    body = b'{"timestamp": null}'
+
+    assert delivery_id(event, body) == delivery_id(event, body)
+
+
+def test_with_a_timestamp_the_body_does_not_matter(jira_webhook_request_factory):
+    """Cosmetic differences between retries must not split one event."""
+    event = jira_webhook_request_factory(timestamp=1757500000000)
+
+    assert delivery_id(event, b"{}") == delivery_id(event, b'{ "x": 1 }')
