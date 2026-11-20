@@ -65,6 +65,8 @@ def consume(timeout):
 def reconcile(tag, days, output_format, output):
     """Report where BMO and Jira have drifted apart (read-only, R-13)."""
     import logging
+    import logging.config
+    import sys
 
     from jbi import reconcile as rec
     from jbi.bugzilla.service import get_service as get_bugzilla_service
@@ -73,7 +75,20 @@ def reconcile(tag, days, output_format, output):
     from jbi.jira import get_service as get_jira_service
     from jbi.log import CONFIG
 
-    logging.config.dictConfig(CONFIG)
+    config = CONFIG
+    if not output:
+        # The report itself goes to stdout; keep it parseable. (Copy only the
+        # dicts that change: the config holds streams, which cannot be
+        # deep-copied.)
+        handlers = config["handlers"]
+        config = {
+            **config,
+            "handlers": {
+                **handlers,
+                "console": {**handlers["console"], "stream": sys.stderr},
+            },
+        }
+    logging.config.dictConfig(config)
     settings = get_settings()
     report = rec.build_report(
         get_actions(),

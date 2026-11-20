@@ -102,6 +102,23 @@ def carries_tag(bug: Bug, tag: str) -> bool:
     return bool(re.search(pattern, bug.whiteboard or "", re.IGNORECASE))
 
 
+# A field is only compared when the action's forward steps sync it. A team
+# that does not push priority to Jira, say, has Jira priorities that differ
+# from BMO by its own configuration -- that is not drift.
+FIELD_STEPS = {
+    "status": "maybe_update_issue_status",
+    "priority": "maybe_update_issue_priority",
+    "assignee": "maybe_assign_jira_user",
+    "summary": "update_issue_summary",
+}
+
+
+def synced_fields(action: Action) -> set[str]:
+    """The execution fields this action keeps in sync from BMO to Jira."""
+    steps = set(action.parameters.steps.new) | set(action.parameters.steps.existing)
+    return {field for field, step in FIELD_STEPS.items() if step in steps}
+
+
 def _name(value: Any) -> Optional[str]:
     return value.get("name") if isinstance(value, dict) else None
 
@@ -122,6 +139,7 @@ def check_pair(
         "issue_key": issue_key,
     }
     findings: list[Finding] = []
+    synced = synced_fields(action)
 
     status = fields.get("status") or {}
     jira_status = status.get("name")
@@ -131,7 +149,9 @@ def check_pair(
     # Status: the exact mapped status when the team's status_map has one, and
     # otherwise at least open-vs-done, which every workflow agrees on.
     expected = params.status_map.get(bug.resolution or bug.status or "")
-    if expected and jira_status and expected != jira_status:
+    if "status" not in synced:
+        pass
+    elif expected and jira_status and expected != jira_status:
         findings.append(
             Finding(
                 kind=Kind.STATUS,
@@ -185,7 +205,12 @@ def check_pair(
     # Priority, through the same map the forward sync uses.
     expected_priority = params.priority_map.get(bug.priority or "")
     jira_priority = _name(fields.get("priority"))
-    if expected_priority and jira_priority and expected_priority != jira_priority:
+    if (
+        "priority" in synced
+        and expected_priority
+        and jira_priority
+        and expected_priority != jira_priority
+    ):
         findings.append(
             Finding(
                 kind=Kind.PRIORITY,
@@ -196,12 +221,20 @@ def check_pair(
             )
         )
 
-    findings.extend(_assignee_findings(bug, fields.get("assignee"), identity_map, base))
+    if "assignee" in synced:
+        findings.extend(
+            _assignee_findings(bug, fields.get("assignee"), identity_map, base)
+        )
 
     # Summary: say *that* it differs, never what it says (it may be embargoed).
     jira_summary = (fields.get("summary") or "").strip()
     bmo_summary = (bug.summary or "").strip()
-    if jira_summary and bmo_summary and jira_summary != bmo_summary:
+    if (
+        "summary" in synced
+        and jira_summary
+        and bmo_summary
+        and jira_summary != bmo_summary
+    ):
         findings.append(
             Finding(
                 kind=Kind.SUMMARY,

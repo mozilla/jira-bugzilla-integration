@@ -12,6 +12,16 @@ from jbi.reconcile import Kind, check_pair
 
 NOW = datetime(2026, 11, 20, tzinfo=timezone.utc)
 
+SYNC_ALL = {
+    "new": ["create_issue", "add_link_to_bugzilla", "add_link_to_jira"],
+    "existing": [
+        "update_issue_summary",
+        "maybe_assign_jira_user",
+        "maybe_update_issue_status",
+        "maybe_update_issue_priority",
+    ],
+}
+
 
 @pytest.fixture
 def action(action_factory):
@@ -21,6 +31,7 @@ def action(action_factory):
         parameters__jira_inbound_enabled=True,
         parameters__status_map={"ASSIGNED": "In Progress", "FIXED": "Done"},
         parameters__resolution_map={"FIXED": "Done", "WONTFIX": "Won't Do"},
+        parameters__steps=SYNC_ALL,
     )
 
 
@@ -131,6 +142,26 @@ def test_a_default_reverse_resolution_means_nothing_to_report(
         IdentityMap(),
     )
     assert Kind.CLOSED_WITHOUT_RESOLUTION not in kinds(found)
+
+
+def test_fields_the_team_does_not_sync_are_not_drift(action_factory, bug_factory):
+    """Found on the first sandbox run: a team without
+    `maybe_update_issue_priority` has no Jira priorities, by its own config."""
+    action = action_factory(
+        parameters__jira_project_key="JBI",
+        parameters__jira_inbound_enabled=True,
+        parameters__status_map={"ASSIGNED": "In Progress"},
+        parameters__steps={"existing": ["update_issue_summary"]},
+    )
+    found = check_pair(
+        action,
+        bug(bug_factory, priority="P1", assigned_to="a@mozilla.com"),
+        "JBI-1",
+        fields(status="To Do", category="indeterminate", priority=None, account=None),
+        IdentityMap(),
+    )
+    assert found == []
+    assert reconcile.synced_fields(action) == {"summary"}
 
 
 def test_priority_drift(action, bug_factory):
@@ -385,3 +416,28 @@ def test_cli_writes_the_report(action, tmp_path, mocker):
 
     assert result.exit_code == 0, result.output
     assert '"priority_drift": 1' in out.read_text()
+
+
+def test_cli_stdout_is_pure_json(action, mocker):
+    """Found on the sandbox run: log lines on stdout broke `| jq`."""
+    import json
+
+    from click.testing import CliRunner
+
+    from jbi.__main__ import cli
+
+    mocker.patch("jbi.__main__.get_actions", return_value=Actions(root=[action]))
+    bugzilla, jira = _clients([_raw(1, priority="P1")], {"JBI-1": fields()})
+    mocker.patch(
+        "jbi.bugzilla.service.get_service", return_value=mock.Mock(client=bugzilla)
+    )
+    mocker.patch("jbi.jira.get_service", return_value=mock.Mock(client=jira))
+    mocker.patch("jbi.identity.get_identity_map", return_value=IdentityMap())
+    configure = mocker.patch("logging.config.dictConfig")
+
+    result = CliRunner().invoke(cli, ["reconcile", "--days", "0"])
+
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.output)["counts"] == {"priority_drift": 1}
+    stream = configure.call_args.args[0]["handlers"]["console"]["stream"]
+    assert getattr(stream, "name", "") == "<stderr>"
