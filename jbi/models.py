@@ -524,6 +524,7 @@ PROJECT_CONFIG_FIELDS = (
     "phabricator_review_status",
     "phabricator_changes_requested_status",
     "sync_stop_label",
+    "reverse_comment_sync_enabled",
     "metabug_epics_enabled",
     "release_data_enabled",
     "jira_priority_field",
@@ -556,6 +557,11 @@ class ProjectConfig(BaseModel):
     phabricator_review_status: Optional[str] = None
     phabricator_changes_requested_status: Optional[str] = None
     sync_stop_label: Optional[str] = None
+    # Off only. Copying Jira text onto bugs is on by default for onboarded
+    # teams; a team may switch it off here, but switching it *on* for a team
+    # that had it off is a confidentiality decision for the reviewed main
+    # config.
+    reverse_comment_sync_enabled: Optional[Literal[False]] = None
     metabug_epics_enabled: Optional[bool] = None
     release_data_enabled: Optional[bool] = None
     jira_priority_field: Optional[str] = None

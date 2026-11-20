@@ -127,6 +127,15 @@ def test_onboarding_and_steps_cannot_be_set_here(config_dir, key):
         _load(config_dir)
 
 
+def test_comment_copying_can_be_switched_off_but_not_on(config_dir):
+    _write_project(
+        config_dir,
+        "ALPHA.yaml",
+        "jira_project_key: ALPHA\nreverse_comment_sync_enabled: false\n",
+    )
+    assert _load(config_dir)["alpha"].parameters.reverse_comment_sync_enabled is False
+
+
 def test_file_name_must_match_project_key(config_dir):
     _write_project(config_dir, "ALPHA.yaml", "jira_project_key: BETA\n")
     with pytest.raises(ConfigError, match="must be named BETA.yaml"):

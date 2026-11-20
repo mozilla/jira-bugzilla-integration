@@ -32,6 +32,9 @@ phabricator_changes_requested_status: In Progress
 # The label that pauses sync for one issue; `null` turns it off for the project
 sync_stop_label: jbi-sync-stop
 
+# Copy Jira comments to Bugzilla (on by default); only `false` is allowed here
+# reverse_comment_sync_enabled: false
+
 # Phase 2 features, on by default for onboarded teams
 metabug_epics_enabled: false     # no Epics for metabugs, no parent seeding
 release_data_enabled: false      # no bz-status-/bz-milestone- labels
@@ -47,5 +50,5 @@ Notes:
 - A map **replaces** the action's map completely; it is not merged entry by
   entry. List every value you need.
 - Unknown keys are rejected, so a typo fails CI instead of being ignored.
-- Onboarding (`jira_inbound_enabled`), steps and comment copying are not set
-  here; they stay in the main config.
+- Onboarding (`jira_inbound_enabled`) and steps are not set here; they stay
+  in the main config. Comment copying can only be switched **off** here.
