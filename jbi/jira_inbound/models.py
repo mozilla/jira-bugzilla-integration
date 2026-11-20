@@ -9,9 +9,10 @@ JBI must degrade to "ignore this event" rather than 422 when a field is
 missing. The reverse steps decide what they can act on.
 """
 
+from datetime import datetime, timezone
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from jbi.bugzilla.models import SmartAwareDatetime
 
@@ -118,6 +119,26 @@ class JiraIssueFields(LenientModel):
     project: Optional[JiraProject] = None
     # Set when the issue carries an issue security level (embargoed work).
     security: Optional[JiraSecurityLevel] = None
+    # When the issue was created. Lets a just-created issue whose Bugzilla
+    # link is not written yet be retried rather than ignored.
+    created: Optional[datetime] = None
+
+    @field_validator("created", mode="before")
+    @classmethod
+    def _parse_created(cls, value):
+        """Accept what Jira sends: epoch milliseconds from Automation, an ISO
+        string from a native webhook. Anything unreadable is `None` -- this
+        field only refines the retry decision and must not fail the event."""
+        if value is None or isinstance(value, datetime):
+            return value
+        try:
+            if isinstance(value, (int, float)):
+                return datetime.fromtimestamp(value / 1000, tz=timezone.utc)
+            parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+            return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+        except (ValueError, OverflowError, OSError):
+            return None
+
     # `None` means the payload did not carry labels at all, which is different
     # from "no labels" -- the stop-label check has to fetch them in that case
     # rather than assume the issue is unlabelled.

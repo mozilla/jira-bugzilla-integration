@@ -301,3 +301,22 @@ async def test_events_without_an_id_skip_the_ledger(
     await ingest_event(envelope, inbound_actions, dedup=store)
 
     assert store.calls == []
+
+
+@pytest.mark.asyncio
+async def test_a_retry_later_jira_event_is_retried(jira_webhook_event, mocker):
+    """Review finding 6: `RetryLaterError` asks for redelivery, it is not
+    acked as ignored."""
+    from jbi.errors import RetryLaterError
+
+    mocker.patch(
+        "jbi.ingest.execute_jira_event", side_effect=RetryLaterError("not linked yet")
+    )
+    store = RecordingStore()
+
+    result = await ingest_event(
+        _jira_envelope(jira_webhook_event), actions=None, dedup=store
+    )
+
+    assert result.outcome == IngestOutcome.RETRY
+    assert ("release", "msg-1") in store.calls

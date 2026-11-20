@@ -27,7 +27,7 @@ from statsd.defaults.env import statsd
 
 from jbi.bugzilla import models as bugzilla_models
 from jbi.dedup import ClaimStatus, DedupStore, get_dedup_store
-from jbi.errors import IgnoreInvalidRequestError
+from jbi.errors import IgnoreInvalidRequestError, RetryLaterError
 from jbi.jira_inbound.handler import execute_jira_event
 from jbi.jira_inbound.models import JiraWebhookRequest
 from jbi.models import Actions
@@ -265,6 +265,9 @@ async def _ingest_jira(event: InboundEvent, actions: Actions) -> IngestResult:
         details = await run_in_threadpool(execute_jira_event, payload, actions)
     except IgnoreInvalidRequestError as exc:
         return IngestResult(outcome=IngestOutcome.IGNORED, reason=str(exc))
+    except RetryLaterError as exc:
+        logger.info("Retrying Jira event later: %s", exc)
+        return IngestResult(outcome=IngestOutcome.RETRY, reason=str(exc))
     except Exception as exc:
         logger.exception(
             "Failed to ingest Jira event for issue %s",

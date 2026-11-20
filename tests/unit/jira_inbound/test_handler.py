@@ -67,6 +67,61 @@ def test_correlated_and_opted_in_event_is_handled(
     }
 
 
+# --- Review finding 6: a just-created issue is not linked yet ----------------
+
+
+def _with_created(event, created):
+    data = event.model_dump()
+    data["issue"]["fields"]["created"] = created
+    return type(event).model_validate(data)
+
+
+def test_just_created_unlinked_issue_is_retried(
+    mocked_jira, mocked_bugzilla, jira_webhook_event, inbound_actions
+):
+    """JBI creates the issue before linking it; an edit in that gap used to be
+    ignored and recorded done, so it never synced."""
+    import time
+
+    from jbi.errors import RetryLaterError
+
+    mocked_jira.get_issue_remote_links.return_value = []
+    event = _with_created(jira_webhook_event, int(time.time() * 1000) - 5_000)
+
+    with pytest.raises(RetryLaterError):
+        execute_jira_event(event, inbound_actions)
+    assert not mocked_bugzilla.update_bug.called
+
+
+@pytest.mark.parametrize(
+    "created", [None, 1_000_000_000_000, "2001-09-09T01:46:40Z", "not a date"]
+)
+def test_old_or_undated_unlinked_issue_is_still_ignored(
+    mocked_jira, jira_webhook_event, inbound_actions, created
+):
+    mocked_jira.get_issue_remote_links.return_value = []
+    event = _with_created(jira_webhook_event, created)
+
+    with pytest.raises(IgnoreInvalidRequestError):
+        execute_jira_event(event, inbound_actions)
+
+
+def test_automation_created_timestamp_parses():
+    """The real Automation payload sends epoch milliseconds."""
+    import json
+    from pathlib import Path
+
+    from jbi.jira_inbound.models import JiraWebhookRequest
+
+    payload = json.loads(
+        Path("tests/fixtures/jira_automation_payload.json").read_text()
+    )
+    event = JiraWebhookRequest.model_validate(payload)
+
+    assert event.issue.fields.created.year >= 2026
+    assert event.issue.fields.created.tzinfo is not None
+
+
 def test_uncorrelated_issue_is_ignored(
     mocked_jira, mocked_bugzilla, jira_webhook_event, inbound_actions
 ):

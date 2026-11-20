@@ -17,6 +17,7 @@ forwards far more events than JBI acts on, and that is normal traffic.
 """
 
 import logging
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from statsd.defaults.env import statsd
@@ -26,7 +27,7 @@ from jbi.bugzilla import models as bugzilla_models
 from jbi.bugzilla.client import BugNotAccessibleError
 from jbi.bugzilla.service import get_service as get_bugzilla_service
 from jbi.environment import get_settings
-from jbi.errors import IgnoreInvalidRequestError
+from jbi.errors import IgnoreInvalidRequestError, RetryLaterError
 from jbi.jira_inbound.models import JiraWebhookRequest
 from jbi.jira_steps import ReverseContext, ReverseExecutor
 from jbi.models import Action, Actions
@@ -112,6 +113,20 @@ def is_bot_authored(event: JiraWebhookRequest) -> bool:
     return "@" in bot_email and event.actor_email == bot_email
 
 
+# How long after creation an unlinked issue is retried rather than ignored.
+# JBI writes the link within seconds of creating the issue; the margin covers
+# a slow or retried forward sync.
+UNLINKED_ISSUE_GRACE = timedelta(minutes=10)
+
+
+def _recently_created(event: JiraWebhookRequest) -> bool:
+    fields = event.issue.fields if event.issue else None
+    created = fields.created if fields else None
+    if created is None:
+        return False
+    return datetime.now(timezone.utc) - created < UNLINKED_ISSUE_GRACE
+
+
 def correlate_bug_id(
     issue_key: str, jira_service: Optional[jira.JiraService] = None
 ) -> Optional[int]:
@@ -169,6 +184,15 @@ def execute_jira_event(event: JiraWebhookRequest, actions: Actions) -> dict:
     # Gate 2: correlation (Invariant B).
     bug_id = correlate_bug_id(issue_key)
     if bug_id is None:
+        if _recently_created(event):
+            # JBI creates the issue before it writes the link back, so an edit
+            # in the first seconds can arrive with nothing to correlate. Ask
+            # for redelivery instead of losing it; once the window closes, an
+            # unlinked issue really is not JBI's (Invariant B).
+            statsd.incr("jbi.jira.retry.not_linked_yet.count")
+            raise RetryLaterError(
+                f"issue {issue_key} was just created and is not linked to a bug yet"
+            )
         raise _ignore(f"no Bugzilla bug linked to issue {issue_key}", "uncorrelated")
 
     bugzilla_service = get_bugzilla_service()
