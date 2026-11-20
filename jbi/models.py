@@ -245,8 +245,8 @@ class ActionParams(BaseModel, frozen=True):
     phabricator_review_status: Optional[str] = None
     phabricator_changes_requested_status: Optional[str] = None
 
-    # Copying Jira comment *text* onto a bug is gated separately from field
-    # sync. A field value is a small, enumerable thing; a comment is free text
+    # Copying Jira free text -- comments and the summary -- onto a bug is
+    # gated separately from field sync. A field value is a small, enumerable thing; a comment is free text
     # that may quote an embargoed issue, and publishing it onto a
     # world-readable bug cannot be undone. Off for actions that are not
     # onboarded; on by default for onboarded ones (BIDIRECTIONAL_DEFAULTS).

@@ -78,7 +78,11 @@ def api_key_auth(
         api_key = basic_auth.password
     if not api_key and token:
         api_key = token
-    if not api_key or not secrets.compare_digest(api_key, settings.jbi_api_key):
+    # Compare bytes: `compare_digest` raises TypeError on non-ASCII `str`,
+    # which would turn a bad credential into a 500.
+    if not api_key or not secrets.compare_digest(
+        api_key.encode(), settings.jbi_api_key.encode()
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect API Key",
