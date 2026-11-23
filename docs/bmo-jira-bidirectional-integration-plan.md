@@ -75,13 +75,13 @@ Where this section and the body disagree, **this section is what shipped.**
 
 - **P3-2** needs a PRD decision; the spike recommends an opt-in default parent
   Epic per project. No code yet.
-- **Central Automation rule:** its body must include
-  `"created": "{{issue.created}}"` and
-  `"reporter": { "accountId": "{{issue.reporter.accountId}}" }` (so the first
-  change to an issue JBI just created is retried, not dropped), and `JIRA_INBOUND_RULE_JQL` should mirror its scope for
-  the reconciliation report's drift check.
+- **Jira webhook:** Jira events reach JBI through a native, JQL-scoped Jira
+  webhook into Pub/Sub, not an Automation rule. Its standard payload carries
+  `created` and `reporter`, so the just-created retry needs no setup. Mirror its
+  JQL in `JIRA_INBOUND_JQL` for the reconciliation report's drift check, and keep
+  the subscription's max delivery attempts above 5.
 - **Production rollout** is per team: set `jira_inbound_enabled` on that team's
-  prod action, add the project to the rule's JQL, and run
+  prod action, add the project to the Jira webhook's JQL, and run
   `bin/ensure_metabug_epics.py` (dry run first).
 - Known gaps, recorded rather than fixed: review state is per patch, not per
   bug; D5 does not skip obsolete patches; backfilled Epics start without
