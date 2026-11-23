@@ -58,6 +58,7 @@ Where this section and the body disagree, **this section is what shipped.**
 | Mirror Epics: lazy vs. eager left open (§10.1) | **Eager**: every metabug with the team's tag is an Epic, even if empty; untagged metabugs get one on their first synced child. Nested metabugs → "blocks" links between Epics. | A tracker that exists in BMO should be visible in planning. Jira cannot parent an Epic under an Epic. |
 | Release flags / milestone as Jira fields (R-09/R-10) | **Labels** `bz-status-157-fixed`, `bz-milestone-157-branch`, in JBI-owned prefixes. | No such fields in the pilot projects; `fixVersions` has another writer. (An earlier `fx` prefix would have deleted team labels such as `fx-vpn`.) |
 | D4 moves to In Review on a patch | **Only on a review request** (new patch or `review?`). | Reviewer verdicts are attachment events too; `review-` bounced the issue into review and out. |
+| Parent seeded once, at creation, from the child's Blocks only (§10.1) | **One rule from either end, at any time:** a child's Blocks or a metabug's Depends On (the same BMO relationship) makes an issue with **no parent** a child of the metabug's Epic; an issue that has a parent keeps it and gets a "blocks" link; never a link to one's own parent. | Editing a metabug's Depends On did nothing. "Fill an empty parent, never replace one" keeps R-07. |
 
 **Where each deliverable landed**
 
@@ -68,7 +69,7 @@ Where this section and the body disagree, **this section is what shipped.**
 | Review/stop-label defaults for onboarded teams | #1422 |
 | Comment copying default; D4 review-request fix | #1423 |
 | Phase 2: P2-1…P2-6, project files, eager Epics + nesting, review-feedback fixes | #1424 |
-| Phase 3: P3-1 reconciliation report (`python -m jbi reconcile`), D12 live smoke tests (`make smoke`), P3-2 spike (`docs/spikes/`), onboarding guide (`docs/onboarding.md`), ADR 007 | Phase 3 PR |
+| Phase 3: P3-1 reconciliation report (`python -m jbi reconcile`), D12 live smoke tests (`make smoke`), one rule for Blocks / Depends On, P3-2 spike (`docs/spikes/`), onboarding guide (`docs/onboarding.md`), ADR 007 | #1425 |
 
 **Open items handed off**
 
