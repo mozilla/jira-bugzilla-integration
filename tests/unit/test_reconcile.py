@@ -233,8 +233,8 @@ def test_summary_drift_never_reveals_the_text(action, bug_factory):
         ("", set()),
     ],
 )
-def test_rule_projects(jql, expected):
-    assert reconcile.rule_projects(jql) == expected
+def test_jql_projects(jql, expected):
+    assert reconcile.jql_projects(jql) == expected
 
 
 def test_rule_scope_findings_both_directions():
@@ -301,7 +301,7 @@ def test_build_report(action, action_factory):
         jira,
         IdentityMap(),
         since=None,
-        rule_jql="project in (JBI)",
+        inbound_jql="project in (JBI)",
         now=NOW,
     )
 
@@ -322,7 +322,7 @@ def test_rule_scope_unset_is_noted(action):
     report = reconcile.build_report(
         Actions(root=[action]), bugzilla, jira, IdentityMap(), None, None, now=NOW
     )
-    assert any("JIRA_INBOUND_RULE_JQL" in note for note in report.notes)
+    assert any("JIRA_INBOUND_JQL" in note for note in report.notes)
 
 
 def test_jira_lookups_are_batched(action):
@@ -347,7 +347,7 @@ def test_since_is_sent_to_bugzilla(action):
         jira,
         IdentityMap(),
         since=reconcile.since_days(30, now=NOW),
-        rule_jql=None,
+        inbound_jql=None,
         now=NOW,
     )
 

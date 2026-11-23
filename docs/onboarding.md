@@ -18,13 +18,13 @@ In `config/config.<env>.yaml`, the team's action needs `jira_inbound_enabled`:
     jira_inbound_enabled: true    # <- two-way sync, and everything below
 ```
 
-The JBI operators then add the project to the **central Jira Automation
-rule's** JQL (`project in (..., MYTEAM)`), and to `JIRA_INBOUND_RULE_JQL`
-wherever the reconciliation report runs. The report flags the two when they
-disagree. The rule's body must include `"created": "{{issue.created}}"` and
-`"reporter": { "accountId": "{{issue.reporter.accountId}}" }` in
-`issue.fields`, so that a change in the first seconds after JBI creates an
-issue is retried rather than dropped.
+The JBI operators then add the project to the **Jira webhook's JQL filter**
+(`project in (..., MYTEAM)`). The webhook sends Jira events to JBI, which
+queues them on Pub/Sub for the consumer that writes to Bugzilla. Mirror the
+same JQL in `JIRA_INBOUND_JQL` wherever the reconciliation report runs, so the
+report flags the two if they drift apart. Both steps are needed: a project in
+the webhook but not onboarded in config is ignored, and an onboarded project
+missing from the webhook never sends JBI anything.
 
 The Jira Automation bot needs `CREATE_ISSUES`, `EDIT_ISSUES`, `ADD_COMMENTS`,
 `DELETE_ISSUES`, `TRANSITION_ISSUES` and `LINK_ISSUES` in the project, plus
@@ -77,7 +77,7 @@ disagree for every onboarded team:
 - people JBI can't match (fix these with an entry in
   `config/identity_map.<env>.yaml`);
 - tagged bugs that never synced;
-- Automation-rule scope that doesn't match the config.
+- a Jira webhook filter that doesn't match the config.
 
 Run it on a schedule. Each finding is a log line plus a
 `jbi.reconcile.findings.<kind>` gauge.

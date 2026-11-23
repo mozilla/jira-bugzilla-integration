@@ -474,3 +474,41 @@ def test_ignored_events_are_counted_by_reason(
 
     counted = [call.args[0] for call in statsd.incr.call_args_list]
     assert counted == ["jbi.jira.ignored.count", "jbi.jira.ignored.uncorrelated.count"]
+
+
+def test_native_webhook_payload_supports_the_just_created_retry(
+    inbound_actions, mocker
+):
+    """Stage's Jira events come from a native webhook, which sends the whole
+    issue -- `created` in Jira's ISO format and `reporter` -- with no body
+    to configure."""
+    from datetime import datetime, timedelta, timezone
+
+    from jbi.jira_inbound import handler
+    from jbi.jira_inbound.models import JiraWebhookRequest
+
+    mocker.patch.object(handler, "_resolved_bot_account_id", "jbi-bot")
+    created = (datetime.now(timezone.utc) - timedelta(seconds=30)).strftime(
+        "%Y-%m-%dT%H:%M:%S.000+0000"
+    )
+    native = {
+        "timestamp": 1795500000000,
+        "webhookEvent": "comment_created",
+        "issue": {
+            "id": "10001",
+            "key": "JBI-234",
+            "fields": {
+                "summary": "s",
+                "project": {"key": "JBI"},
+                "created": created,
+                "reporter": {"accountId": "jbi-bot", "displayName": "JBI"},
+                "status": {"name": "To Do", "statusCategory": {"key": "new"}},
+            },
+        },
+        "comment": {"id": "1", "body": "hi", "author": {"accountId": "a-person"}},
+    }
+
+    event = JiraWebhookRequest.model_validate(native)
+
+    assert event.issue.fields.created is not None
+    assert handler.should_retry_unlinked(event, "JBI", inbound_actions) is True

@@ -2,8 +2,8 @@
 
 The four PRD acceptance scenarios, the invariants, and the Phase 2 behavior.
 JBI is the real thing, running with a config that onboards
-JBI_E2E_WHITEBOARD_TAG; the two producers (BMO's webhook and the central
-Automation rule) are stood in for by `Sandbox.post_*_event`. See README.md.
+JBI_E2E_WHITEBOARD_TAG; the two producers (BMO's webhook and the Jira
+webhook) are stood in for by `Sandbox.post_*_event`. See README.md.
 
 Run with `make smoke` (or `uv run pytest tests/e2e -m e2e`).
 """

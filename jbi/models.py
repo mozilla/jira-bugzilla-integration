@@ -250,10 +250,10 @@ class ActionParams(BaseModel, frozen=True):
     # that may quote an embargoed issue, and publishing it onto a
     # world-readable bug cannot be undone. Off for actions that are not
     # onboarded; on by default for onboarded ones (BIDIRECTIONAL_DEFAULTS).
-    # That is safe because every onboarded project is served by the one
-    # central Automation rule, which sends `comment.visibility` and
-    # `fields.security`, and the guard fails closed -- blocks the copy --
-    # when they are missing (R-12).
+    # That is safe because every onboarded project's events come from the
+    # Jira webhook, whose standard payload carries `comment.visibility` and
+    # `fields.security` whenever they are set, and the guard fails closed --
+    # blocks the copy -- on a restricted comment or issue (R-12).
     reverse_comment_sync_enabled: bool = False
 
     # Enables the Jira -> BMO inbound path (the `/jira_webhook` spine and its

@@ -11,7 +11,7 @@ Bugzilla like a dev instance.
 |---|---|
 | JBI, its config, both APIs | real |
 | BMO's webhook | stood in for: the test posts the event JBI would receive |
-| The central Jira Automation rule | stood in for: the test builds the rule's body from the live issue and posts it |
+| The Jira webhook | stood in for: the test builds an event from the live issue and posts it to `/jira_webhook` (in the Automation-body shape, which JBI also accepts; the native webhook sends the same fields and more) |
 
 The producers cannot be pointed at a developer machine, so the tests cover
 everything from "event arrives" onwards. The Jira events name a separate

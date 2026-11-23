@@ -438,7 +438,7 @@ def writeback_summary(
         return (ReverseStepStatus.NOOP, context)
 
     # A summary is free text, so it needs the same opt-in as comments: the
-    # flag asserts that the Automation rule sends `fields.security`, without
+    # flag asserts that the Jira sender includes `fields.security`, without
     # which an embargoed issue's title looks unrestricted.
     if not context.action.parameters.reverse_comment_sync_enabled:
         return (ReverseStepStatus.NOOP, context)

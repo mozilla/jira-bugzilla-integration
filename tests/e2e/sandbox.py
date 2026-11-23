@@ -2,8 +2,8 @@
 
 The two producers are stood in for, because neither can be pointed at a
 developer's machine: BMO webhooks (`post_bugzilla_event`) and the central
-Jira Automation rule (`post_jira_event`, which builds the same body the rule
-sends from the live issue). Everything in between -- JBI, its config, both
+Jira webhook (`post_jira_event`, which builds the event from the live issue,
+in the Automation-body shape JBI also accepts). Everything in between -- JBI, its config, both
 APIs -- is the real thing.
 
 Every bug and issue a test creates is recorded and cleaned up afterwards:
@@ -224,10 +224,10 @@ class Sandbox:
         changes: list[tuple[str, str, str]] = (),  # type: ignore[assignment]
         comment: Optional[dict] = None,
     ) -> requests.Response:
-        """Post what the central Automation rule would, built from the live issue."""
+        """Post the Jira event JBI would receive, built from the live issue."""
         f = self.issue(key)["fields"]
         # The change was made with JBI's own credentials (the sandbox has no
-        # second account), but the event models what the Automation rule sends
+        # second account), but the event models what the Jira webhook sends
         # for a *person's* change: a different initiator. With JBI's id here,
         # Invariant C would correctly ignore the event.
         human = {

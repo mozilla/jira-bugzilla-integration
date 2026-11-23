@@ -46,11 +46,11 @@ class Settings(BaseSettings):
     jira_bot_account_id: Optional[str] = None
     bugzilla_bot_login: Optional[str] = None
 
-    # The JQL scope of the central Jira Automation rule that publishes Jira
-    # events (eg. `project in (AIACT, AIASST)`). Only read by the
-    # reconciliation report, to flag projects onboarded in config but missing
-    # from the rule, or the reverse. Unset means that check is skipped.
-    jira_inbound_rule_jql: Optional[str] = None
+    # The JQL filter of the Jira webhook that sends Jira events to JBI (eg.
+    # `project in (AIACT, AIASST)`). Only read by the reconciliation report, to
+    # flag projects onboarded in config but missing from the webhook, or the
+    # reverse. Unset means that check is skipped.
+    jira_inbound_jql: Optional[str] = None
 
     # Pub/Sub pull consumer (`python -m jbi consume`). Unset project/
     # subscription means the consumer cannot start; the web service is

@@ -12,8 +12,8 @@ reports what a human should look at:
 * people JBI cannot match between the two systems (plan section 5), which is
   the alert that drives upkeep of the identity override file;
 * tagged bugs that never got an issue, or whose issue is gone;
-* projects onboarded in config but missing from the central Automation
-  rule's JQL, or the reverse (plan section 12).
+* projects onboarded in config but missing from the Jira webhook's JQL
+  filter, or the reverse (plan section 12).
 
 Findings go to the log (one structured WARNING each), to statsd as gauges,
 and to a JSON or Markdown report. Free text never appears in a finding: a
@@ -304,7 +304,7 @@ _PROJECT_CLAUSE = re.compile(
 )
 
 
-def rule_projects(jql: str) -> set[str]:
+def jql_projects(jql: str) -> set[str]:
     """Project keys named in a JQL scope such as `project in (A, B)`."""
     keys: set[str] = set()
     for listed, single in _PROJECT_CLAUSE.findall(jql or ""):
@@ -316,14 +316,14 @@ def rule_projects(jql: str) -> set[str]:
 
 
 def rule_scope_findings(jql: Optional[str], onboarded: Iterable[str]) -> list[Finding]:
-    """Compare the Automation rule's scope with the onboarded projects."""
+    """Compare the Jira webhook's JQL filter with the onboarded projects."""
     onboarded_keys = {key.upper() for key in onboarded}
-    in_rule = rule_projects(jql or "")
+    in_rule = jql_projects(jql or "")
     findings = [
         Finding(
             kind=Kind.RULE_SCOPE,
             project=key,
-            detail="onboarded in config but not in the Automation rule's JQL: "
+            detail="onboarded in config but not in the Jira webhook's JQL: "
             "Jira changes in this project never reach JBI",
         )
         for key in sorted(onboarded_keys - in_rule)
@@ -332,7 +332,7 @@ def rule_scope_findings(jql: Optional[str], onboarded: Iterable[str]) -> list[Fi
         Finding(
             kind=Kind.RULE_SCOPE,
             project=key,
-            detail="in the Automation rule's JQL but not onboarded in config: "
+            detail="in the Jira webhook's JQL but not onboarded in config: "
             "its events are published and then ignored",
         )
         for key in sorted(in_rule - onboarded_keys)
@@ -383,7 +383,7 @@ def build_report(
     jira_client,
     identity_map: IdentityMap,
     since: Optional[datetime],
-    rule_jql: Optional[str],
+    inbound_jql: Optional[str],
     only_tag: Optional[str] = None,
     now: Optional[datetime] = None,
 ) -> Report:
@@ -449,17 +449,15 @@ def build_report(
             report.pairs_checked += 1
             report.findings.extend(check_pair(action, bug, key, fields, identity_map))
 
-    if rule_jql:
+    if inbound_jql:
         if only_tag is None:
             report.findings.extend(
                 rule_scope_findings(
-                    rule_jql, {a.parameters.jira_project_key for a in onboarded}
+                    inbound_jql, {a.parameters.jira_project_key for a in onboarded}
                 )
             )
     else:
-        report.notes.append(
-            "Automation rule scope not checked: set JIRA_INBOUND_RULE_JQL."
-        )
+        report.notes.append("Jira webhook scope not checked: set JIRA_INBOUND_JQL.")
 
     report.skipped = dict(skipped)
     report.counts = dict(Counter(f.kind.value for f in report.findings))

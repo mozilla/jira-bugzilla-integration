@@ -96,7 +96,7 @@ def reconcile(tag, days, output_format, output):
         get_jira_service().client,
         get_identity_map(),
         since=rec.since_days(days or None),
-        rule_jql=settings.jira_inbound_rule_jql,
+        inbound_jql=settings.jira_inbound_jql,
         only_tag=tag,
     )
     rec.publish(report)
