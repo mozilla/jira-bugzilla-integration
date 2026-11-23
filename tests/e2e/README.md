@@ -64,6 +64,7 @@ Optional:
 | stop label | D15: pause and resume |
 | metabug | Phase 2: tagged metabug -> Epic, nesting -> "blocks" link, child parented |
 | release data | Phase 2: `bz-status-`/`bz-milestone-` labels, swapped on change |
+| depends on | a metabug's Depends On makes an unparented issue a child of its Epic, with no link to its own parent |
 
 Each run creates a handful of bugs and issues and cleans them up afterwards:
 issues are deleted; bugs, which Bugzilla cannot delete, are resolved INVALID.

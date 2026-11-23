@@ -212,3 +212,26 @@ def test_release_data_labels(sandbox, synced_bug):
     labels = sandbox.issue(key, fields="labels")["fields"]["labels"]
     assert f"bz-status-{release}-fixed" in labels
     assert f"bz-status-{release}-affected" not in labels
+
+
+def test_depends_on_makes_an_unparented_issue_a_child(sandbox, synced_bug):
+    """A metabug's Depends On is the same relationship as its child's Blocks:
+    an issue with no parent becomes a child of the metabug's Epic, even after
+    creation, with no extra link to its own parent."""
+    metabug = sandbox.file_bug("metabug for depends-on", keywords=["meta"])
+    sandbox.post_bugzilla_event(metabug, "create")
+    epic = sandbox.track_issue(sandbox.linked_issue(metabug))
+    bug_id, key = synced_bug("added to a metabug's Depends On")
+    # Jira omits `fields` entirely when none of the requested ones is set.
+    assert sandbox.issue(key, fields="parent").get("fields", {}).get("parent") is None
+
+    sandbox.update_bug(metabug, depends_on={"add": [bug_id]})
+    sandbox.post_bugzilla_event(metabug, "modify", changed=("depends_on",))
+
+    fields = sandbox.issue(key, fields="parent,issuelinks").get("fields", {})
+    assert (fields.get("parent") or {}).get("key") == epic
+    linked = {
+        (link.get("outwardIssue") or link.get("inwardIssue") or {}).get("key")
+        for link in fields.get("issuelinks", [])
+    }
+    assert epic not in linked
