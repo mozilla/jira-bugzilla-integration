@@ -39,7 +39,7 @@ already.
 | Never copied | Nothing reaches a private or security-restricted bug. Nothing comes from a restricted Jira comment or an issue with a security level. Planning fields (sprint, points, epic/parent, rank, fix version, labels, components) are never written to Bugzilla. |
 | Patch review | Patch posted or `review?` → **In Review**. `review-` → **In Progress**. `review+` → no move. |
 | Pause | The Jira label **`jbi-sync-stop`** pauses both directions for that issue. Remove it to resume. |
-| Metabugs | A bug with the `meta` keyword and the team's tag becomes an **Epic**. A new child bug is parented under its lowest-numbered metabug's Epic once, at creation, and never moved after that. Nested metabugs show up as "blocks" links between Epics. |
+| Metabugs | A bug with `meta` in its Keywords and the team's tag becomes an **Epic**. A bug related to it (its Blocks, or the metabug's Depends On) becomes a child of that Epic if it has no parent yet, and keeps an existing parent otherwise, with a "blocks" link instead. Nested metabugs show up as "blocks" links between Epics. |
 | Release data | `status-firefoxNN` flags and Target Milestone appear as labels, e.g. `bz-status-157-fixed` and `bz-milestone-157-branch`. |
 
 ## 3. Adjust or opt out (optional, a second PR)

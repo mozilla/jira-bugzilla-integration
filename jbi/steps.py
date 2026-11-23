@@ -23,6 +23,7 @@ from jbi.environment import get_settings
 from jbi.hierarchy import ensure_mirror_epic, is_metabug, resolve_metabugs
 from jbi.identity import get_identity_map, report_unresolved
 from jbi.sync_markers import was_written_by_reverse_sync
+from jbi.visibility import bug_restriction_reason
 
 
 class StepStatus(Enum):
@@ -344,6 +345,11 @@ def sync_phabricator_review_state(
     return (StepStatus.SUCCESS, context)
 
 
+# The Bugzilla fields that carry metabug membership. "Depends On" on a
+# metabug and "Blocks" on its child are the two ends of one relationship.
+MEMBERSHIP_FIELDS = {"blocks", "depends_on", "keywords"}
+
+
 def maybe_seed_epic_parent(
     context: ActionContext,
     *,
@@ -351,16 +357,22 @@ def maybe_seed_epic_parent(
     jira_service: JiraService,
     bugzilla_service: BugzillaService,
 ) -> StepResult:
-    """Make sure the bug's metabugs have Epics, and seed a new issue's parent (R-05/R-06).
+    """Put issues under their metabug's Epic (R-05/R-06), from either end.
 
-    Runs before `sync_dependencies`, which then links the issue to every
-    metabug's Epic. That covers nesting too: a metabug's own Epic gets
-    "blocks" links to the metabugs it is nested under.
+    One rule for every metabug relationship, however it was set in Bugzilla
+    (a child's Blocks or a metabug's Depends On -- the same relationship):
 
-    The parent is seeded **once, at creation only**, and never for a
-    metabug -- Jira cannot parent an Epic under an Epic. Thereafter the parent
-    is a planning decision Jira owns: humans re-organize freely and JBI never
-    re-parents from BMO (R-07).
+    * an issue with **no parent** becomes a child of its metabug's Epic --
+      at creation or later; for several metabugs, the lowest bug id wins;
+    * an issue that **already has a parent** keeps it -- the parent is a
+      planning decision Jira owns once set, and JBI never moves it (R-07);
+      `sync_dependencies` (which runs after this step) adds a "blocks" link
+      to the Epic instead;
+    * Epics are never parented -- Jira cannot nest them -- so a metabug inside
+      another metabug is a "blocks" link between their Epics.
+
+    Every metabug the bug belongs to gets its Epic here, so the links that
+    follow always have an issue to point at (plan 10.1).
     """
     if not parameters.metabug_epics_enabled:
         return (StepStatus.NOOP, context)
@@ -370,26 +382,31 @@ def maybe_seed_epic_parent(
         return (StepStatus.NOOP, context)
 
     if context.operation != Operation.CREATE and not (
-        {"blocks", "keywords"} & set(context.event.changed_fields())
+        MEMBERSHIP_FIELDS & set(context.event.changed_fields())
     ):
-        # Nothing about this bug's metabugs changed.
+        # Nothing about this bug's metabug relationships changed.
         return (StepStatus.NOOP, context)
+
+    if is_metabug(context.bug):
+        return _seed_from_metabug(
+            context, issue_key, parameters, jira_service, bugzilla_service
+        )
 
     metabugs = resolve_metabugs(context.bug, parameters, bugzilla_service)
     if not metabugs:
         return (StepStatus.NOOP, context)
 
-    # Every metabug the bug blocks gets its Epic now, so `sync_dependencies`
-    # has an issue to link to and no membership is lost (plan 10.1). A
-    # metabug already mirrored as a non-Epic (the rollout case) keeps its
+    # A metabug already mirrored as a non-Epic (the rollout case) keeps its
     # issue and is linked rather than parented.
     epics = [
         (metabug, ensure_mirror_epic(context, metabug, jira_service, bugzilla_service))
         for metabug in metabugs
     ]
 
-    if context.operation != Operation.CREATE or is_metabug(context.bug):
-        # UPDATE must never re-parent (R-07); Epics are never parented.
+    if context.operation != Operation.CREATE and jira_service.get_issue_parent(
+        context, issue_key
+    ):
+        # Already placed, by JBI earlier or by a person: Jira owns it now.
         return (StepStatus.SUCCESS, context)
 
     # Lowest metabug id with an Epic wins the parent, so re-runs do not flap.
@@ -399,7 +416,7 @@ def maybe_seed_epic_parent(
 
         resp = jira_service.set_issue_parent(context, issue_key, epic_key)
         logger.info(
-            "Seeded parent of %s as %s (metabug %s of %s candidates)",
+            "Parented %s under %s (metabug %s of %s candidates)",
             issue_key,
             epic_key,
             metabug.id,
@@ -415,6 +432,54 @@ def maybe_seed_epic_parent(
         extra=context.model_dump(),
     )
     return (StepStatus.INCOMPLETE, context)
+
+
+def _seed_from_metabug(
+    context: ActionContext,
+    issue_key: str,
+    parameters: ActionParams,
+    jira_service: JiraService,
+    bugzilla_service: BugzillaService,
+) -> StepResult:
+    """The metabug's end of the relationship: its Depends On list.
+
+    Its own outer metabugs get Epics (nesting becomes links). Each bug it
+    depends on that already has an issue in this project, is not itself a
+    metabug, and has no parent, becomes a child of this Epic. Bugs without an
+    issue -- typically untagged ones -- are skipped: only tagged bugs sync.
+    """
+    for outer in resolve_metabugs(context.bug, parameters, bugzilla_service):
+        ensure_mirror_epic(context, outer, jira_service, bugzilla_service)
+
+    if not context.bug.depends_on:
+        return (StepStatus.SUCCESS, context)
+    if jira_service.get_issue_type(context, issue_key) != "Epic":
+        # A metabug mirrored as a Task before Phase 2 cannot hold children.
+        return (StepStatus.SUCCESS, context)
+
+    project = context.jira.project
+    children = bugzilla_service.get_bugs_by_ids(sorted(context.bug.depends_on))
+    parented = 0
+    for child in children.values():
+        if is_metabug(child) or bug_restriction_reason(child):
+            continue
+        child_key = child.extract_from_see_also(project_key=project)
+        if not isinstance(child_key, str):
+            continue
+        if jira_service.get_issue_parent(context, child_key):
+            continue
+        resp = jira_service.set_issue_parent(context, child_key, issue_key)
+        context = context.append_responses(resp)
+        parented += 1
+        logger.info(
+            "Parented %s under %s (metabug %s lists bug %s in Depends On)",
+            child_key,
+            issue_key,
+            context.bug.id,
+            child.id,
+            extra=context.model_dump(),
+        )
+    return (StepStatus.SUCCESS if parented else StepStatus.NOOP, context)
 
 
 def maybe_delete_duplicate(
@@ -963,6 +1028,7 @@ def sync_dependencies(
     *,
     jira_service: JiraService,
     bugzilla_service: BugzillaService,
+    parameters: Optional[ActionParams] = None,
 ) -> StepResult:
     """Create and remove Jira 'Blocks' links for depends_on and blocks changes.
 
@@ -988,6 +1054,18 @@ def sync_dependencies(
 
     primary_issue: str = context.jira.issue
     links_changed = 0
+    epics_on = bool(parameters and parameters.metabug_epics_enabled)
+    primary_parent = (
+        jira_service.get_issue_parent(context, primary_issue) if epics_on else None
+    )
+
+    def _is_parent_link(jira_key: str, primary_is_blocked: bool) -> bool:
+        """A child and its own parent Epic need no link: the parent says it."""
+        if not epics_on:
+            return False
+        if not primary_is_blocked:  # primary blocks jira_key: is it our parent?
+            return jira_key == primary_parent
+        return jira_service.get_issue_parent(context, jira_key) == primary_issue
 
     def _sync_field(
         bug_ids: list[int], *, action: str, primary_is_blocked: bool
@@ -1000,8 +1078,14 @@ def sync_dependencies(
             ):
                 blocking = jira_key if primary_is_blocked else primary_issue
                 blocked = primary_issue if primary_is_blocked else jira_key
+                if action == "create" and _is_parent_link(jira_key, primary_is_blocked):
+                    # Also clears a link an earlier run made before the
+                    # issue was parented.
+                    action_here = "delete"
+                else:
+                    action_here = action
                 try:
-                    if action == "create":
+                    if action_here == "create":
                         jira_service.create_issue_link_blocks(
                             context, blocking_issue=blocking, blocked_issue=blocked
                         )

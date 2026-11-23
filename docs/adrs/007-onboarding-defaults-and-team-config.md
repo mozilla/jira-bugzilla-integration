@@ -46,6 +46,14 @@ created metabug Epics lazily. Running it on stage showed three problems:
    Epic under an Epic, so nested metabugs become "blocks" links between their
    Epics, consistent with §10.1's "membership as links, parent as planning
    overlay". `bin/ensure_metabug_epics.py` backfills by tag.
+5. **One rule for every metabug relationship**, from either end (a child's
+   Blocks or a metabug's Depends On, which are the same Bugzilla
+   relationship): an issue with no parent becomes a child of the metabug's
+   Epic, **whenever** the relationship is added, not only at creation. An
+   issue that already has a parent keeps it and gets a "blocks" link. An
+   issue is never linked to its own parent. This relaxes §10.1's "seed once,
+   at creation" to "fill an empty parent, never replace one", which keeps R-07:
+   a parent, once set by JBI or a person, is Jira's.
 
 ## Consequences
 

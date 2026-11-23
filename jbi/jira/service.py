@@ -504,6 +504,15 @@ class JiraService:
         response = self.client.create_issue(fields=fields)
         return response[0] if isinstance(response, list) else response
 
+    def get_issue_parent(self, context: ActionContext, issue_key: str) -> Optional[str]:
+        """Return the key of the issue's parent, or `None` when it has none."""
+        issue = self.get_issue(context, issue_key)
+        if not issue:
+            return None
+        parent = (issue.get("fields") or {}).get("parent") or {}
+        key = parent.get("key")
+        return key if isinstance(key, str) else None
+
     def set_issue_parent(self, context: ActionContext, issue_key: str, parent_key: str):
         """Set an issue's parent.
 
