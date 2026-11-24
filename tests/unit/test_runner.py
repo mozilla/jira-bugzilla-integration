@@ -303,20 +303,58 @@ async def test_execute_or_queue_happy_path(
     mock_queue.track_failed.assert_not_called()
 
 
+async def aiter_sync(iterable):
+    for i in iterable:
+        yield i
+
+
 @pytest.mark.asyncio
 async def test_execute_or_queue_blocked(
+    mocker,
     actions,
     mock_queue,
     bugzilla_webhook_request,
+    queue_item_factory,
 ):
     mock_queue.is_blocked.return_value = True
+    mock_queue.retrieve_for_bug.return_value = aiter_sync(
+        [queue_item_factory(payload__bug__id=bugzilla_webhook_request.bug.id)]
+    )
+    mocker.patch("jbi.runner.execute_action", side_effect=Exception("Not yet"))
+
     await execute_or_queue(
         request=bugzilla_webhook_request,
         queue=mock_queue,
         actions=mock.MagicMock(spec=Actions),
     )
     mock_queue.is_blocked.assert_called_once()
+    mock_queue.done.assert_not_called()
     mock_queue.postpone.assert_called_once()
+    mock_queue.track_failed.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_execute_or_queue_blocked_drains_pending_items(
+    mocker,
+    actions,
+    mock_queue,
+    bugzilla_webhook_request,
+    queue_item_factory,
+):
+    mock_queue.is_blocked.return_value = True
+    pending = queue_item_factory(payload__bug__id=bugzilla_webhook_request.bug.id)
+    mock_queue.retrieve_for_bug.return_value = aiter_sync([pending])
+    executor = mocker.patch("jbi.runner.execute_action")
+
+    await execute_or_queue(
+        request=bugzilla_webhook_request,
+        queue=mock_queue,
+        actions=mock.MagicMock(spec=Actions),
+    )
+    # The pending event is processed, and so is the incoming one.
+    mock_queue.done.assert_called_once_with(pending)
+    assert executor.call_count == 2
+    mock_queue.postpone.assert_not_called()
     mock_queue.track_failed.assert_not_called()
 
 
