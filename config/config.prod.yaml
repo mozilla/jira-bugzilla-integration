@@ -426,6 +426,13 @@
       WORKSFORME: Cancelled
       INCOMPLETE: Cancelled
       MOVED: Cancelled
+      # Although the Resolution field isn't shown 
+      # in Jira for SYNC, we'll use a standard 
+      # mapping from BMO because we do use both. 
+      # This will capture resolutions originating  
+      # from Bugzilla, even if it remains blank 
+      # for things originating from Jira.
+    resolution_map: *basic-resolution-map
 
 - whiteboard_tag: uniffi
   bugzilla_user_id: 624105
