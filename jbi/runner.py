@@ -29,6 +29,7 @@ from jbi.models import (
     RunnerContext,
 )
 from jbi.queue import DeadLetterQueue
+from jbi.scope import bug_in_scope
 from jbi.steps import StepStatus
 from jbi.visibility import bug_restriction_reason
 from jbi.writeback import sync_is_stopped
@@ -58,27 +59,8 @@ def _tag_added_to_whiteboard(
 
 
 def _bug_in_action_scope(bug: bugzilla_models.Bug, action: Action) -> bool:
-    """Return True when the bug's Product/Component is in the action's sync scope.
-
-    `sync_products_components` (R-01) is an allowlist of either full
-    ``Product::Component`` pairs or bare ``Product`` names (which match every
-    component of that product). Comparison is case-insensitive because BMO
-    product and component names are display strings, not identifiers.
-
-    An unset (``None``) scope means "no restriction", which is today's
-    behavior: every bug matching the whiteboard tag is synced.
-    """
-    scope = action.parameters.sync_products_components
-    if scope is None:
-        return True
-
-    product = (bug.product or "").strip().lower()
-    product_component = bug.product_component.strip().lower()
-    for entry in scope:
-        normalized = entry.strip().lower()
-        if normalized == product_component or normalized == product:
-            return True
-    return False
+    """Return True when the bug is in this action's `sync_products_components`."""
+    return bug_in_scope(bug, action.parameters.sync_products_components)
 
 
 # R-04 thresholds. Ordered most-severe first, so a lower index means "at least

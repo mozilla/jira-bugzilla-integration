@@ -268,9 +268,7 @@ def test_update_issue_status_skips_when_no_transition_to_target_status(
     )
 
     with capturelogs.for_logger("jbi.jira.service").at_level(logging.DEBUG):
-        response = jira_service.update_issue_status(
-            context=context, jira_status="Live"
-        )
+        response = jira_service.update_issue_status(context=context, jira_status="Live")
 
     assert response is None
     assert [c.request.method for c in mocked_responses.calls] == ["GET", "GET"]
@@ -1273,15 +1271,41 @@ def test_get_linked_bugzilla_bug_id_from_global_id(mocked_jira):
     assert service.get_linked_bugzilla_bug_id("JBI-234") == 654321
 
 
-def test_get_linked_bugzilla_bug_id_falls_back_to_url(mocked_jira):
+def test_get_linked_bugzilla_bug_id_falls_back_to_url(mocked_jira, settings):
     """Links added by hand have no numeric globalId; parse the URL instead."""
     service = jira.JiraService(mocked_jira)
     mocked_jira.get_issue_remote_links.return_value = [
         {"globalId": "some-other-system", "object": {"url": "https://phabricator/D1"}},
-        {"object": {"url": "https://bugzilla.mozilla.org/show_bug.cgi?id=987"}},
+        {"object": {"url": f"{settings.bugzilla_base_url}/show_bug.cgi?id=987"}},
     ]
 
     assert service.get_linked_bugzilla_bug_id("JBI-234") == 987
+
+
+@pytest.mark.parametrize(
+    "link",
+    [
+        {"globalId": "²"},  # isdigit() but not int()-able
+        {"globalId": "١٢٣"},  # Arabic-Indic digits
+        {"object": {"url": "https://elsewhere.example/show_bug.cgi?id=987"}},
+        {"object": {"url": "BUGZILLA/show_bug.cgi?id=²"}},
+    ],
+)
+def test_odd_remote_links_are_not_a_bug_id(mocked_jira, settings, link):
+    """Review finding 9: '²' made `int()` raise, so the event was retried until
+    it dead-lettered; and a show_bug.cgi link on any host was trusted."""
+    if "object" in link:
+        link = {
+            "object": {
+                "url": link["object"]["url"].replace(
+                    "BUGZILLA", settings.bugzilla_base_url
+                )
+            }
+        }
+    service = jira.JiraService(mocked_jira)
+    mocked_jira.get_issue_remote_links.return_value = [link]
+
+    assert service.get_linked_bugzilla_bug_id("JBI-234") is None
 
 
 def test_get_linked_bugzilla_bug_id_returns_none_without_bugzilla_link(mocked_jira):

@@ -21,7 +21,7 @@ from requests import exceptions as requests_exceptions
 
 from jbi.bugzilla.client import error_detail
 from jbi.bugzilla.models import Bug
-from jbi.identity import UNASSIGNED_EMAIL, get_identity_map
+from jbi.identity import UNASSIGNED_EMAIL, get_identity_map, report_unresolved
 from jbi.jira_inbound.models import JiraWebhookRequest
 from jbi.models import Action, Context
 from jbi.sync_markers import was_written_by_forward_sync
@@ -284,6 +284,28 @@ def writeback_status(
         )
         return (ReverseStepStatus.NOOP, context)
 
+    if status in RESOLVED_STATUSES and (context.bug.status or "") in RESOLVED_STATUSES:
+        # Already closed in BMO. Writing RESOLVED over VERIFIED or CLOSED
+        # would undo QA's verification, and a closed bug already has the
+        # resolution BMO considers authoritative (BMO wins for execution
+        # fields), so only a missing one is filled in.
+        if context.bug.resolution:
+            logger.info(
+                "Bug %s is already %s; not moving it to %s",
+                context.bug.id,
+                context.bug.status,
+                status,
+                extra=context.model_dump(),
+            )
+            return (ReverseStepStatus.NOOP, context)
+        resolution = reverse_resolution_for(context)
+        if not resolution:
+            return (ReverseStepStatus.NOOP, context)
+        response = bugzilla_service.set_status_resolution(context.bug, None, resolution)
+        if response is None:
+            return (ReverseStepStatus.NOOP, context)
+        return (ReverseStepStatus.SUCCESS, context.append_responses(response))
+
     resolution = None
     if status in RESOLVED_STATUSES:
         resolution = reverse_resolution_for(context)
@@ -306,6 +328,7 @@ def writeback_status(
     if status == "ASSIGNED" and not context.bug.is_assigned():
         assigned_to = resolve_bmo_assignee(context)
         if not assigned_to:
+            report_unresolved("to_bmo")
             logger.warning(
                 "Issue %s is in progress but Bug %s is unassigned and the "
                 "Jira assignee could not be resolved; BMO cannot represent "
@@ -393,6 +416,7 @@ def writeback_assignee(
                 context.bug.id,
                 extra=context.model_dump(),
             )
+            report_unresolved("to_bmo")
             return (ReverseStepStatus.INCOMPLETE, context)
 
     response = bugzilla_service.set_assignee(context.bug, email)
@@ -411,6 +435,12 @@ def writeback_summary(
     fields = context.event.issue.fields if context.event.issue else None
     summary = fields.summary if fields else None
     if not summary:
+        return (ReverseStepStatus.NOOP, context)
+
+    # A summary is free text, so it needs the same opt-in as comments: the
+    # flag asserts that the Automation rule sends `fields.security`, without
+    # which an embargoed issue's title looks unrestricted.
+    if not context.action.parameters.reverse_comment_sync_enabled:
         return (ReverseStepStatus.NOOP, context)
 
     # A summary is free text too: the title of an embargoed issue can itself
@@ -506,6 +536,11 @@ def writeback_comment(
     return (ReverseStepStatus.SUCCESS, context.append_responses(response))
 
 
+# Bugzilla responses that mean "this particular write is invalid". Anything
+# else -- auth, throttling, timeouts, outages -- is retried.
+BUGZILLA_REJECTED_WRITE_CODES = frozenset({400, 404, 422})
+
+
 # The reverse pipeline, in execution order.
 REVERSE_STEPS: list[ReverseStep] = [
     writeback_status,
@@ -549,14 +584,16 @@ class ReverseExecutor:
                 )
             except requests_exceptions.HTTPError as exc:
                 code = getattr(exc.response, "status_code", None)
-                if code is None or not (400 <= code < 500):
-                    # 5xx or a connection problem: a real outage, which the
-                    # caller should see rather than have swallowed.
+                if code not in BUGZILLA_REJECTED_WRITE_CODES:
+                    # 5xx, a connection problem, or a 4xx that is about JBI
+                    # rather than this write -- revoked credentials (401/403),
+                    # a timeout (408), rate limiting (429). The caller must see
+                    # these so the event is retried, not acked as handled.
                     raise
-                # A 4xx means BMO rejected *this* write as invalid. Retrying
-                # will not help, and one rejected field must not discard the
-                # rest of the pipeline -- a failed status write should still
-                # let the comment through.
+                # BMO rejected *this* write as invalid. Retrying will not
+                # help, and one rejected field must not discard the rest of
+                # the pipeline -- a failed status write should still let the
+                # comment through.
                 logger.warning(
                     "Reverse step %s rejected by Bugzilla (HTTP %s: %s) for "
                     "issue %s / Bug %s; continuing with the remaining steps",

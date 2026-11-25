@@ -398,3 +398,40 @@ def test_an_update_logs_what_was_sent_and_what_bugzilla_says_changed(
         "'priority': 'P3'" in m and "'added': 'P3'" in m and "'removed': 'P1'" in m
         for m in messages
     ), messages
+
+
+@pytest.mark.no_mocked_bugzilla
+def test_update_bug_does_not_log_free_text(
+    bugzilla_client, settings, mocked_responses, caplog
+):
+    """Review finding 10: the audit line logged copied Jira comments and
+    summaries verbatim, outside the bug's visibility and retention controls."""
+    import logging
+
+    embargoed_text = "embargoed: CVE-2026-0001 heap overflow in foo"
+    mocked_responses.add(
+        responses.PUT,
+        f"{settings.bugzilla_base_url}/rest/bug/42",
+        json={
+            "bugs": [
+                {
+                    "id": 42,
+                    "changes": {"summary": {"added": embargoed_text, "removed": "old"}},
+                }
+            ]
+        },
+    )
+
+    with caplog.at_level(logging.INFO, logger="jbi.bugzilla.client"):
+        bugzilla_client.update_bug(
+            42,
+            summary=embargoed_text,
+            comment={"body": embargoed_text},
+            status="ASSIGNED",
+        )
+
+    logged = " ".join(r.getMessage() for r in caplog.records)
+    assert "PUT" in logged
+    assert embargoed_text not in logged
+    assert "summary" in logged and "comment" in logged  # field names still audited
+    assert "ASSIGNED" in logged  # non-free-text values still logged

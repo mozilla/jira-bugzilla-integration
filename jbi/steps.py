@@ -20,7 +20,8 @@ from requests import exceptions as requests_exceptions
 from jbi import Operation
 from jbi.bugzilla.models import JIRA_HOSTNAMES, WebhookAttachment
 from jbi.environment import get_settings
-from jbi.identity import get_identity_map
+from jbi.hierarchy import ensure_mirror_epic, is_metabug, resolve_metabugs
+from jbi.identity import get_identity_map, report_unresolved
 from jbi.sync_markers import was_written_by_reverse_sync
 
 
@@ -130,6 +131,10 @@ def create_issue(
 
     bug = context.bug
     issue_type = parameters.issue_type_map.get(bug.type or "", "Task")
+    if parameters.metabug_epics_enabled and is_metabug(bug):
+        # A metabug is a tracker, so it is mirrored as an Epic whether or not
+        # any of its children sync (R-05).
+        issue_type = "Epic"
     # In the payload of a bug creation, the `comment` field is `null`.
     description = bugzilla_service.get_description(bug.id)
 
@@ -255,6 +260,17 @@ def maybe_update_issue_status_on_patch(
         # An abandoned patch is not a request for review.
         return (StepStatus.NOOP, context)
 
+    # Only a request for review moves the issue: a new patch, or the review
+    # flag being (re-)requested after rework. Reviewer verdicts arrive as
+    # attachment *modify* events too; `review-` belongs to
+    # `sync_phabricator_review_state`, and `review+` must not drag finished
+    # work back into review.
+    review_flag = _review_flag_value(attachment)
+    if review_flag in ("-", "+"):
+        return (StepStatus.NOOP, context)
+    if context.event.action != "create" and review_flag != "?":
+        return (StepStatus.NOOP, context)
+
     issue_key = context.jira.issue
     assert issue_key  # Attachment events only run on linked bugs.
 
@@ -326,6 +342,79 @@ def sync_phabricator_review_state(
     resp = jira_service.update_issue_status(context, target_status)
     context = context.append_responses(resp)
     return (StepStatus.SUCCESS, context)
+
+
+def maybe_seed_epic_parent(
+    context: ActionContext,
+    *,
+    parameters: ActionParams,
+    jira_service: JiraService,
+    bugzilla_service: BugzillaService,
+) -> StepResult:
+    """Make sure the bug's metabugs have Epics, and seed a new issue's parent (R-05/R-06).
+
+    Runs before `sync_dependencies`, which then links the issue to every
+    metabug's Epic. That covers nesting too: a metabug's own Epic gets
+    "blocks" links to the metabugs it is nested under.
+
+    The parent is seeded **once, at creation only**, and never for a
+    metabug -- Jira cannot parent an Epic under an Epic. Thereafter the parent
+    is a planning decision Jira owns: humans re-organize freely and JBI never
+    re-parents from BMO (R-07).
+    """
+    if not parameters.metabug_epics_enabled:
+        return (StepStatus.NOOP, context)
+
+    issue_key = context.jira.issue
+    if not issue_key:
+        return (StepStatus.NOOP, context)
+
+    if context.operation != Operation.CREATE and not (
+        {"blocks", "keywords"} & set(context.event.changed_fields())
+    ):
+        # Nothing about this bug's metabugs changed.
+        return (StepStatus.NOOP, context)
+
+    metabugs = resolve_metabugs(context.bug, parameters, bugzilla_service)
+    if not metabugs:
+        return (StepStatus.NOOP, context)
+
+    # Every metabug the bug blocks gets its Epic now, so `sync_dependencies`
+    # has an issue to link to and no membership is lost (plan 10.1). A
+    # metabug already mirrored as a non-Epic (the rollout case) keeps its
+    # issue and is linked rather than parented.
+    epics = [
+        (metabug, ensure_mirror_epic(context, metabug, jira_service, bugzilla_service))
+        for metabug in metabugs
+    ]
+
+    if context.operation != Operation.CREATE or is_metabug(context.bug):
+        # UPDATE must never re-parent (R-07); Epics are never parented.
+        return (StepStatus.SUCCESS, context)
+
+    # Lowest metabug id with an Epic wins the parent, so re-runs do not flap.
+    for metabug, epic_key in epics:
+        if not epic_key:
+            continue
+
+        resp = jira_service.set_issue_parent(context, issue_key, epic_key)
+        logger.info(
+            "Seeded parent of %s as %s (metabug %s of %s candidates)",
+            issue_key,
+            epic_key,
+            metabug.id,
+            len(metabugs),
+            extra=context.model_dump(),
+        )
+        context = context.append_responses(resp)
+        return (StepStatus.SUCCESS, context)
+
+    logger.info(
+        "No metabug of Bug %s has an Epic mirror; leaving the issue unparented",
+        context.bug.id,
+        extra=context.model_dump(),
+    )
+    return (StepStatus.INCOMPLETE, context)
 
 
 def maybe_delete_duplicate(
@@ -416,6 +505,7 @@ def maybe_assign_jira_user(
             return (StepStatus.SUCCESS, context)
         except ValueError as exc:
             logger.info(str(exc), extra=context.model_dump())
+            report_unresolved("to_jira")
             return (StepStatus.INCOMPLETE, context)
 
     if context.operation == Operation.UPDATE:
@@ -431,6 +521,7 @@ def maybe_assign_jira_user(
                 ) or jira_service.assign_jira_user(context, bug.assigned_to)  # type: ignore
             except ValueError as exc:
                 logger.info(str(exc), extra=context.model_dump())
+                report_unresolved("to_jira")
                 # If that failed then just fall back to clearing the assignee.
                 resp = jira_service.clear_assignee(context)
         context.append_responses(resp)
@@ -572,6 +663,9 @@ def maybe_update_issue_type(
         return (StepStatus.NOOP, context)
     if "type" not in context.event.changed_fields():
         return (StepStatus.NOOP, context)
+    if parameters.metabug_epics_enabled and is_metabug(context.bug):
+        # A metabug's mirror is an Epic regardless of its bug type.
+        return (StepStatus.NOOP, context)
 
     # Fall back to "Task" for unmapped types, mirroring `create_issue`.
     issue_type = parameters.issue_type_map.get(context.bug.type or "", "Task")
@@ -702,6 +796,89 @@ def sync_whiteboard_labels(
         )
 
     return _update_issue_labels(context, jira_service, additions, removals)
+
+
+# R-09/R-10 land in labels rather than in Jira fields, because the pilot
+# project has no release-flag or milestone custom field and `fixVersions` --
+# the only release-shaped field available -- is already written by a separate
+# release automation. Two writers on one field fight; labels cannot collide.
+#
+# Both namespaces are owned by JBI: any label matching the prefix is assumed
+# to be ours and is removed when the corresponding BMO value goes away. That
+# is what keeps a flag flipping from `affected` to `fixed` from leaving both
+# labels behind. The prefixes are deliberately specific: a bare `fx` would
+# claim -- and delete -- team labels such as the `fx-vpn` and `fxa`
+# whiteboard tags.
+RELEASE_FLAG_LABEL_PREFIX = "bz-status-"
+MILESTONE_LABEL_PREFIX = "bz-milestone-"
+
+
+def _release_flag_labels(release_flags: dict[str, str]) -> list[str]:
+    """Render BMO release flags as Jira labels, eg. `bz-status-157-fixed`."""
+    labels = []
+    for release, value in sorted(release_flags.items()):
+        # `firefox157` -> `157`, `firefox_esr140` -> `esr140`.
+        short = release.replace("firefox", "", 1).lstrip("_") or release
+        labels.append(
+            f"{RELEASE_FLAG_LABEL_PREFIX}{short}-{value}".replace(" ", ".").lower()
+        )
+    return labels
+
+
+def _milestone_label(target_milestone: Optional[str]) -> Optional[str]:
+    """Render BMO's Target Milestone as a label, eg. `bz-milestone-157-branch`.
+
+    `---` means unset, which is an absence rather than a milestone.
+    """
+    milestone = (target_milestone or "").strip()
+    if not milestone or milestone == "---":
+        return None
+    slug = milestone.lower().replace(" ", "-")
+    return f"{MILESTONE_LABEL_PREFIX}{slug}"
+
+
+def _labels_owned_by(existing: Iterable[str], prefix: str) -> list[str]:
+    """Return the existing labels in a JBI-owned namespace."""
+    return [label for label in existing if str(label).startswith(prefix)]
+
+
+def mirror_release_flags(
+    context: ActionContext, *, jira_service: JiraService
+) -> StepResult:
+    """Mirror BMO per-release status flags onto the Jira issue as labels (R-09)."""
+    desired = _release_flag_labels(context.bug.release_flags)
+
+    current = jira_service.get_issue_labels(context, context.jira.issue)
+    stale = [
+        label
+        for label in _labels_owned_by(current, RELEASE_FLAG_LABEL_PREFIX)
+        if label not in desired
+    ]
+
+    if not desired and not stale:
+        return (StepStatus.NOOP, context)
+
+    return _update_issue_labels(context, jira_service, desired, stale)
+
+
+def mirror_target_milestone(
+    context: ActionContext, *, jira_service: JiraService
+) -> StepResult:
+    """Mirror BMO's Target Milestone onto the Jira issue as a label (R-10)."""
+    desired_label = _milestone_label(context.bug.target_milestone)
+    desired = [desired_label] if desired_label else []
+
+    current = jira_service.get_issue_labels(context, context.jira.issue)
+    stale = [
+        label
+        for label in _labels_owned_by(current, MILESTONE_LABEL_PREFIX)
+        if label not in desired
+    ]
+
+    if not desired and not stale:
+        return (StepStatus.NOOP, context)
+
+    return _update_issue_labels(context, jira_service, desired, stale)
 
 
 def sync_keywords_labels(

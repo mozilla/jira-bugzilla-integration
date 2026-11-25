@@ -65,6 +65,7 @@ def decide_claim(
     now: datetime,
     lease: timedelta,
     ttl: timedelta,
+    owner: Optional[str] = None,
 ) -> tuple[ClaimStatus, Optional[Record]]:
     """Decide what claiming an event means, and what to store.
 
@@ -80,6 +81,7 @@ def decide_claim(
     if existing is None:
         return ClaimStatus.CLAIMED, {
             "state": PROCESSING,
+            "owner": owner,
             "attempts": 1,
             "first_seen": now,
             "updated_at": now,
@@ -95,11 +97,27 @@ def decide_claim(
 
     return ClaimStatus.TAKEN_OVER, {
         **existing,
+        "owner": owner,
         "attempts": existing.get("attempts", 1) + 1,
         "updated_at": now,
         "lease_expires_at": now + lease,
         "expire_at": now + ttl,
     }
+
+
+def owns(record: Optional[Record], owner: Optional[str]) -> bool:
+    """Whether `owner` still holds the claim on `record`.
+
+    A worker whose lease ran out may have been taken over; settling the claim
+    after that would delete or finish the new holder's claim, and the next
+    redelivery would then be processed a second time. Records written before
+    owners existed carry none and are treated as owned, which is the old
+    behavior.
+    """
+    if record is None:
+        return False
+    holder = record.get("owner")
+    return holder is None or owner is None or holder == owner
 
 
 def finished(record: Record, now: datetime, ttl: timedelta) -> Record:
@@ -116,13 +134,15 @@ def finished(record: Record, now: datetime, ttl: timedelta) -> Record:
 class DedupStore(Protocol):
     """Where claims live."""
 
-    async def claim(self, delivery_id: str) -> ClaimStatus: ...
+    async def claim(
+        self, delivery_id: str, owner: Optional[str] = None
+    ) -> ClaimStatus: ...
 
-    async def complete(self, delivery_id: str) -> None:
-        """Mark the event fully handled; later deliveries are duplicates."""
+    async def complete(self, delivery_id: str, owner: Optional[str] = None) -> None:
+        """Mark the event fully handled, if `owner` still holds the claim."""
 
-    async def release(self, delivery_id: str) -> None:
-        """Give the claim up so a redelivery can be processed."""
+    async def release(self, delivery_id: str, owner: Optional[str] = None) -> None:
+        """Give the claim up so a redelivery can be processed, if `owner` holds it."""
 
 
 class InMemoryDedupStore:
@@ -148,10 +168,14 @@ class InMemoryDedupStore:
         # Each consumer message runs on its own thread and event loop.
         self._lock = threading.Lock()
 
-    async def claim(self, delivery_id: str) -> ClaimStatus:
+    async def claim(self, delivery_id: str, owner: Optional[str] = None) -> ClaimStatus:
         with self._lock:
             status, record = decide_claim(
-                self._records.get(delivery_id), self._clock(), self._lease, self._ttl
+                self._records.get(delivery_id),
+                self._clock(),
+                self._lease,
+                self._ttl,
+                owner,
             )
             if record is not None:
                 self._records[delivery_id] = record
@@ -160,15 +184,16 @@ class InMemoryDedupStore:
                     self._records.popitem(last=False)
             return status
 
-    async def complete(self, delivery_id: str) -> None:
+    async def complete(self, delivery_id: str, owner: Optional[str] = None) -> None:
         with self._lock:
             record = self._records.get(delivery_id)
-            if record is not None:
-                self._records[delivery_id] = finished(record, self._clock(), self._ttl)
+            if owns(record, owner):
+                self._records[delivery_id] = finished(record, self._clock(), self._ttl)  # type: ignore[arg-type]
 
-    async def release(self, delivery_id: str) -> None:
+    async def release(self, delivery_id: str, owner: Optional[str] = None) -> None:
         with self._lock:
-            self._records.pop(delivery_id, None)
+            if owns(self._records.get(delivery_id), owner):
+                self._records.pop(delivery_id, None)
 
     def clear(self) -> None:
         with self._lock:
@@ -199,7 +224,7 @@ class FirestoreDedupStore:
         self._ttl = timedelta(days=ttl_days)
         self._clock = clock
 
-    def _claim_sync(self, delivery_id: str) -> ClaimStatus:
+    def _claim_sync(self, delivery_id: str, owner: Optional[str] = None) -> ClaimStatus:
         # Imported here, like the other Google clients: only processes that
         # use Firestore need it.
         from google.cloud import firestore
@@ -211,7 +236,7 @@ class FirestoreDedupStore:
             snapshot = ref.get(transaction=transaction)
             existing = snapshot.to_dict() if snapshot.exists else None
             status, record = decide_claim(
-                existing, self._clock(), self._lease, self._ttl
+                existing, self._clock(), self._lease, self._ttl, owner
             )
             if record is not None:
                 transaction.set(ref, record)
@@ -220,7 +245,8 @@ class FirestoreDedupStore:
         status: ClaimStatus = run(self._client.transaction())
         return status
 
-    def _complete_sync(self, delivery_id: str) -> None:
+    def _settle_sync(self, delivery_id: str, owner: Optional[str], done: bool) -> None:
+        """Finish or delete the claim, in a transaction, only if `owner` holds it."""
         from google.cloud import firestore
 
         ref = self._collection.document(delivery_id)
@@ -228,22 +254,25 @@ class FirestoreDedupStore:
         @firestore.transactional
         def run(transaction) -> None:
             snapshot = ref.get(transaction=transaction)
-            if snapshot.exists:
-                transaction.set(
-                    ref, finished(snapshot.to_dict(), self._clock(), self._ttl)
-                )
+            record = snapshot.to_dict() if snapshot.exists else None
+            if not owns(record, owner):
+                return
+            if done:
+                transaction.set(ref, finished(record, self._clock(), self._ttl))  # type: ignore[arg-type]
+            else:
+                transaction.delete(ref)
 
         run(self._client.transaction())
 
-    async def claim(self, delivery_id: str) -> ClaimStatus:
+    async def claim(self, delivery_id: str, owner: Optional[str] = None) -> ClaimStatus:
         # The client is synchronous; keep it off the event loop.
-        return await run_in_threadpool(self._claim_sync, delivery_id)
+        return await run_in_threadpool(self._claim_sync, delivery_id, owner)
 
-    async def complete(self, delivery_id: str) -> None:
-        await run_in_threadpool(self._complete_sync, delivery_id)
+    async def complete(self, delivery_id: str, owner: Optional[str] = None) -> None:
+        await run_in_threadpool(self._settle_sync, delivery_id, owner, True)
 
-    async def release(self, delivery_id: str) -> None:
-        await run_in_threadpool(self._collection.document(delivery_id).delete)
+    async def release(self, delivery_id: str, owner: Optional[str] = None) -> None:
+        await run_in_threadpool(self._settle_sync, delivery_id, owner, False)
 
     def check_readable(self) -> list[dockerflow.checks.CheckMessage]:
         """Heartbeat check: the ledger is reachable and readable.

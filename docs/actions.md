@@ -137,6 +137,53 @@ In this case if the bug changes to the NEW status the action will attempt to set
 issue status to "In Progress". If the bug changes to RESOLVED FIXED it will attempt to set the
 linked Jira issue status to "Closed". If the bug changes to a status not listed in `status_map` then no change will be made to the Jira issue.
 
+### Defaults for bidirectional sync
+
+An action with `jira_inbound_enabled: true` gets these settings without having to configure them:
+
+| Parameter | Default | Effect |
+|---|---|---|
+| `phabricator_review_status` | `In Review` | A Phabricator patch attached to the bug moves the Jira issue to this status. |
+| `phabricator_changes_requested_status` | `In Progress` | A reviewer setting `review-` moves the issue to this status. |
+| `sync_stop_label` | `jbi-sync-stop` | This label on the Jira issue pauses sync in both directions; removing it resumes. |
+| `reverse_comment_sync_enabled` | `true` | Jira comments are copied to the bug as "from Jira, by \<name\>: …". Never onto a private or security-restricted bug, and never a Jira comment with restricted visibility or on an issue with a security level. |
+| `metabug_epics_enabled` | `true` | Metabugs become Epics and new issues are parented under them (see below). Adds `sync_dependencies` and `maybe_seed_epic_parent`. |
+| `release_data_enabled` | `true` | Release flags and Target Milestone are mirrored as labels (see below). Adds `mirror_release_flags` and `mirror_target_milestone`. |
+
+The two review steps (`maybe_update_issue_status_on_patch`, `sync_phabricator_review_state`) are
+added to the default `attachment` steps. The Phase 2 steps are appended to the action's `new` and
+`existing` steps, including custom lists, unless already listed. Issues already in a done status are never moved, and if the
+project's workflow has no transition to the status, JBI logs a warning and skips it.
+
+To customize, set the parameter on the action or in the project file. To turn one off, set it to
+`null` (`false` for `reverse_comment_sync_enabled` and the two Phase 2 switches). An action that
+lists its own `attachment` steps keeps exactly that list. Actions without `jira_inbound_enabled`
+are unaffected.
+
+### Per-project mappings
+
+A team can keep its own mappings in `config/projects/<JIRA_KEY>.yaml`, applied to every action
+with that `jira_project_key` in every environment. Values there win over the action's values. See
+[`config/projects/README.md`](../config/projects/README.md) for the allowed keys.
+
+### Metabugs and release data (Phase 2)
+
+- `metabug_epics_enabled` (on for onboarded actions): every metabug (a bug with the `meta` keyword)
+  that carries the team's whiteboard tag is mirrored as an **Epic**, whether or not it has children.
+  A metabug without the tag gets its Epic the first time a synced bug blocks it. A newly created issue
+  is parented under the Epic of the lowest-numbered metabug it blocks. Nested metabugs become
+  "blocks" links between their Epics, since Jira cannot put an Epic under an Epic.
+  `bin/ensure_metabug_epics.py --tag <tag>` backfills Epics for existing metabugs (dry run unless
+  `--apply`). The parent is set once,
+  at creation; JBI never re-parents an issue afterwards, and a parent change in Jira is never written
+  to Bugzilla. A metabug already mirrored as a non-Epic issue is skipped, and private or
+  security-restricted metabugs are never mirrored. Other metabugs stay visible as issue links through
+  `sync_dependencies`.
+- `mirror_release_flags` and `mirror_target_milestone` steps: mirror `cf_status_firefoxNN` flags
+  and Target Milestone onto the issue as labels, e.g. `bz-status-157-fixed` and
+  `bz-milestone-157-branch`. JBI owns the `bz-status-` and `bz-milestone-` label prefixes and removes
+  labels there that Bugzilla no longer backs. No other label is touched.
+
 ### Available Steps
 
 - `create_issue`
@@ -173,6 +220,10 @@ linked Jira issue status to "Closed". If the bug changes to a status not listed 
   Syncs the Bugzilla whitboard tags field to the Jira labels field.
 - `maybe_update_components`: looks at the component that's set on the bug (if any) and any components added to the project configuration with the `jira_components` parameter (see above). If those components are available on the Jira side as well, they're added to the Jira issue
 - `maybe_add_phabricator_link`: looks at an attachment and if it is a phabricator attachment, it gets added as a link or updated if the attachment was previously added.
+- `maybe_update_issue_status_on_patch`: when a Phabricator patch is attached, moves the issue to `phabricator_review_status`. Does nothing if that is unset.
+- `maybe_seed_epic_parent`: see "Metabugs and release data" above.
+- `mirror_release_flags`, `mirror_target_milestone`: see "Metabugs and release data" above.
+- `sync_phabricator_review_state`: when a reviewer sets `review-` on a patch, moves the issue to `phabricator_changes_requested_status`. Does nothing if that is unset.
 - `sync_dependencies`:
   Creates and removes Jira "Blocks" issue links based on Bugzilla's `depends_on` and `blocks` fields. For `depends_on`: if bug A depends on bug B and bug B has a linked Jira issue, a link is created where B's issue blocks A's issue. For `blocks`: if bug A blocks bug B and bug B has a linked Jira issue, a link is created where A's issue blocks B's issue. Supports cross-project linking when related bugs have multiple Jira issues. Silently skips bugs that are private, missing, or have no Jira issues. On UPDATE operations, only processes fields that actually changed.
 - `sync_see_also`:
