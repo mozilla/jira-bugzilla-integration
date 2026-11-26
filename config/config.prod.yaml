@@ -411,6 +411,10 @@
         - maybe_add_phabricator_link
       comment:
         - create_comment
+    issue_type_map:
+      enhancement: Task
+      task: Task
+      defect: Bug
     status_map:
       UNCONFIRMED: New
       NEW: New
